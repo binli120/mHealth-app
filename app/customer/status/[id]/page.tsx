@@ -20,7 +20,7 @@ import {
 } from "lucide-react"
 
 interface PageProps {
-  params: Promise<{ id: string }>
+  params: { id: string }
 }
 
 const timelineSteps = [
@@ -56,8 +56,8 @@ const timelineSteps = [
   },
 ]
 
-export default async function StatusDetailPage({ params }: PageProps) {
-  const { id } = await params
+export default function StatusDetailPage({ params }: PageProps) {
+  const { id } = params
 
   return (
     <div className="min-h-screen bg-background">

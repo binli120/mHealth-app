@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Heart, CheckCircle2, Download, Mail, Calendar, ArrowRight } from "lucide-react"
 
+const submittedDate = new Date().toLocaleDateString()
+const caseId = `MH-2024-${crypto.randomUUID().slice(0, 5).toUpperCase()}`
+
 export default function ConfirmationPage() {
-  const caseId = "MH-2024-" + Math.random().toString(36).substring(2, 7).toUpperCase()
-  
   return (
     <div className="flex min-h-screen flex-col bg-background">
       {/* Header */}
@@ -53,7 +54,7 @@ export default function ConfirmationPage() {
                 <div className="flex items-center gap-3">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Submitted:</span>
-                  <span className="text-foreground">{new Date().toLocaleDateString()}</span>
+                  <span className="text-foreground">{submittedDate}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Mail className="h-4 w-4 text-muted-foreground" />

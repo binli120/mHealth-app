@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Upload, Camera, X, FileText, CheckCircle2, Loader2, ZoomIn } from "lucide-react"
@@ -139,10 +140,12 @@ export function DocumentUploader({
               <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-border bg-secondary">
                 {document.preview ? (
                   <>
-                    <img
+                    <Image
                       src={document.preview}
                       alt={document.name}
-                      className="h-full w-full object-cover"
+                      fill
+                      unoptimized
+                      className="object-cover"
                     />
                     <button className="absolute inset-0 flex items-center justify-center bg-foreground/50 opacity-0 transition-opacity hover:opacity-100">
                       <ZoomIn className="h-6 w-6 text-background" />
