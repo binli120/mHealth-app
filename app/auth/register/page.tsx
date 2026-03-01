@@ -7,35 +7,96 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { getSupabaseClient } from "@/lib/supabase/client"
 import { Heart, Eye, EyeOff, ArrowLeft, CheckCircle2 } from "lucide-react"
+
+type RegisterStep = "form" | "verify"
 
 export default function RegisterPage() {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [step, setStep] = useState<"form" | "verify">("form")
+  const [step, setStep] = useState<RegisterStep>("form")
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
+  const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
+  const [password, setPassword] = useState("")
+  const [errorMessage, setErrorMessage] = useState("")
+  const [infoMessage, setInfoMessage] = useState("")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setErrorMessage("")
+    setInfoMessage("")
+
+    if (password.length < 8) {
+      setErrorMessage("Password must be at least 8 characters.")
+      return
+    }
+
     setIsLoading(true)
-    setTimeout(() => {
-      setIsLoading(false)
+
+    try {
+      const supabase = getSupabaseClient()
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+            phone,
+          },
+        },
+      })
+
+      if (error) {
+        setErrorMessage(error.message)
+        return
+      }
+
+      if (data.session) {
+        router.push("/application/type")
+        return
+      }
+
       setStep("verify")
-    }, 1500)
+      setInfoMessage("Account created. Please check your email for a confirmation link.")
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Registration failed.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const handleVerify = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleResend = async () => {
+    setErrorMessage("")
+    setInfoMessage("")
     setIsLoading(true)
-    setTimeout(() => {
+
+    try {
+      const supabase = getSupabaseClient()
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email,
+      })
+
+      if (error) {
+        setErrorMessage(error.message)
+        return
+      }
+
+      setInfoMessage("Confirmation email resent.")
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to resend confirmation email.")
+    } finally {
       setIsLoading(false)
-      router.push("/application/type")
-    }, 1500)
+    }
   }
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      {/* Header */}
       <header className="border-b border-border bg-card px-4 py-4">
         <div className="mx-auto flex max-w-7xl items-center gap-4">
           <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
@@ -45,10 +106,8 @@ export default function RegisterPage() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="flex flex-1 items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
-          {/* Logo */}
           <div className="mb-8 text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
               <Heart className="h-6 w-6 text-primary-foreground" />
@@ -61,54 +120,70 @@ export default function RegisterPage() {
             <Card className="border-border bg-card">
               <CardHeader className="space-y-1 pb-4">
                 <CardTitle className="text-xl text-card-foreground">Account Information</CardTitle>
-                <CardDescription>
-                  Create an account to save your progress
-                </CardDescription>
+                <CardDescription>Create an account to save your progress</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="firstName" className="text-foreground">First Name</Label>
+                      <Label htmlFor="firstName" className="text-foreground">
+                        First Name
+                      </Label>
                       <Input
                         id="firstName"
                         placeholder="John"
                         required
                         className="border-input bg-background text-foreground"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="lastName" className="text-foreground">Last Name</Label>
+                      <Label htmlFor="lastName" className="text-foreground">
+                        Last Name
+                      </Label>
                       <Input
                         id="lastName"
                         placeholder="Doe"
                         required
                         className="border-input bg-background text-foreground"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-foreground">Email Address</Label>
+                    <Label htmlFor="email" className="text-foreground">
+                      Email Address
+                    </Label>
                     <Input
                       id="email"
                       type="email"
                       placeholder="you@example.com"
                       required
                       className="border-input bg-background text-foreground"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-foreground">Phone Number</Label>
+                    <Label htmlFor="phone" className="text-foreground">
+                      Phone Number
+                    </Label>
                     <Input
                       id="phone"
                       type="tel"
                       placeholder="(555) 123-4567"
                       required
                       className="border-input bg-background text-foreground"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="password" className="text-foreground">Create Password</Label>
+                    <Label htmlFor="password" className="text-foreground">
+                      Create Password
+                    </Label>
                     <div className="relative">
                       <Input
                         id="password"
@@ -116,25 +191,27 @@ export default function RegisterPage() {
                         placeholder="Create a strong password"
                         required
                         className="border-input bg-background pr-10 text-foreground"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       At least 8 characters with a number and special character
                     </p>
                   </div>
-                  <Button 
-                    type="submit" 
+
+                  {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
+                  {infoMessage ? <p className="text-sm text-accent">{infoMessage}</p> : null}
+
+                  <Button
+                    type="submit"
                     className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                     disabled={isLoading}
                   >
@@ -158,41 +235,31 @@ export default function RegisterPage() {
                 </div>
                 <CardTitle className="text-center text-xl text-card-foreground">Verify Your Email</CardTitle>
                 <CardDescription className="text-center">
-                  {"We've sent a verification code to your email"}
+                  We sent a confirmation link to <span className="font-medium">{email}</span>
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <form onSubmit={handleVerify} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="otp" className="text-foreground">Verification Code</Label>
-                    <Input
-                      id="otp"
-                      placeholder="Enter 6-digit code"
-                      maxLength={6}
-                      required
-                      className="border-input bg-background text-center text-lg tracking-widest text-foreground"
-                    />
-                  </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? "Verifying..." : "Verify & Continue"}
-                  </Button>
-                </form>
+              <CardContent className="space-y-3">
+                {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
+                {infoMessage ? <p className="text-sm text-accent">{infoMessage}</p> : null}
 
-                <p className="mt-6 text-center text-sm text-muted-foreground">
-                  {"Didn't receive the code? "}
-                  <button className="font-medium text-primary hover:underline">
-                    Resend
-                  </button>
-                </p>
+                <Button
+                  type="button"
+                  onClick={handleResend}
+                  variant="outline"
+                  className="w-full"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Sending..." : "Resend Confirmation Email"}
+                </Button>
+                <Link href="/auth/login" className="block">
+                  <Button type="button" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
+                    Go to Sign In
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
           )}
 
-          {/* Help Text */}
           <p className="mt-6 text-center text-xs text-muted-foreground">
             Need help? Call <span className="font-medium text-foreground">1-800-841-2900</span>
           </p>

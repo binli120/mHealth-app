@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { WizardLayout } from "@/components/application/wizard-layout"
-import { User, Users, DollarSign, Building2, Upload, FileCheck, Send, Plus, Trash2 } from "lucide-react"
+import { User, Users, DollarSign, Building2, Upload, FileCheck, Send, Plus, Trash2, Download } from "lucide-react"
 
 const steps = [
   { id: "personal", title: "Personal Info", icon: User },
@@ -42,10 +42,53 @@ interface IncomeSource {
   frequency: string
 }
 
+interface ApplicationFormData {
+  firstName: string
+  lastName: string
+  dob: string
+  ssn: string
+  address: string
+  city: string
+  state: string
+  zip: string
+  phone: string
+  citizenship: string
+  householdMembers: HouseholdMember[]
+  incomeSources: IncomeSource[]
+  hasAssets: string
+  bankAccounts: string
+  investments: string
+  property: string
+  documents: string[]
+  certify: boolean
+}
+
+function getMonthlyIncome(incomeSources: IncomeSource[]): number {
+  return incomeSources.reduce((sum, source) => {
+    const amount = Number(source.amount || 0)
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return sum
+    }
+
+    switch (source.frequency) {
+      case "weekly":
+        return sum + amount * 4
+      case "biweekly":
+        return sum + amount * 2
+      case "yearly":
+        return sum + amount / 12
+      default:
+        return sum + amount
+    }
+  }, 0)
+}
+
 export default function NewApplicationPage() {
   const router = useRouter()
   const [currentStep, setCurrentStep] = useState(1)
-  const [formData, setFormData] = useState({
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
+  const [formData, setFormData] = useState<ApplicationFormData>({
     // Personal Info
     firstName: "",
     lastName: "",
@@ -81,10 +124,71 @@ export default function NewApplicationPage() {
     current: index + 1 === currentStep,
   }))
 
-  const handleNext = () => {
+  const handleDownloadFilledPdf = async () => {
+    setIsGeneratingPdf(true)
+
+    try {
+      const monthlyIncome = getMonthlyIncome(formData.incomeSources)
+      const firstEmploymentIncome = formData.incomeSources.find((source) =>
+        source.type === "employment" || source.type === "self-employment"
+      )
+
+      const payload = {
+        firstName: formData.firstName || "Jane",
+        lastName: formData.lastName || "Doe",
+        dateOfBirth: formData.dob,
+        ssn: formData.ssn,
+        streetAddress: formData.address,
+        city: formData.city,
+        state: formData.state,
+        zipCode: formData.zip,
+        phone: formData.phone,
+        householdSize: formData.householdMembers.length + 1,
+        citizenship: (formData.citizenship || "citizen") as "citizen" | "permanent" | "refugee" | "other",
+        employerName: firstEmploymentIncome?.employer || "",
+        monthlyIncome,
+        annualIncome: monthlyIncome * 12,
+        signatureName: `${formData.firstName} ${formData.lastName}`.trim(),
+      }
+
+      const response = await fetch("/api/forms/aca-3-0325/fill", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to generate filled PDF")
+      }
+
+      const blob = await response.blob()
+      const downloadUrl = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = downloadUrl
+      link.download = `ACA-3-0325-${(formData.lastName || "application").toLowerCase()}-filled.pdf`
+      link.click()
+      window.URL.revokeObjectURL(downloadUrl)
+
+      return true
+    } catch (error) {
+      console.error(error)
+      window.alert("Could not generate filled ACA form. Please try again.")
+      return false
+    } finally {
+      setIsGeneratingPdf(false)
+    }
+  }
+
+  const handleNext = async () => {
     if (currentStep < steps.length) {
       setCurrentStep(currentStep + 1)
-    } else {
+      return
+    }
+
+    const generated = await handleDownloadFilledPdf()
+    if (generated) {
       router.push("/application/confirmation")
     }
   }
@@ -837,6 +941,19 @@ export default function NewApplicationPage() {
                       </p>
                     </div>
                   </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full gap-2"
+                    disabled={!formData.certify || isGeneratingPdf}
+                    onClick={() => {
+                      void handleDownloadFilledPdf()
+                    }}
+                  >
+                    <Download className="h-4 w-4" />
+                    {isGeneratingPdf ? "Generating Filled ACA PDF..." : "Download Filled ACA PDF"}
+                  </Button>
                 </div>
               </div>
             </CardContent>
@@ -866,11 +983,13 @@ export default function NewApplicationPage() {
           Back
         </Button>
         <Button
-          onClick={handleNext}
+          onClick={() => {
+            void handleNext()
+          }}
           className="bg-primary text-primary-foreground hover:bg-primary/90"
-          disabled={currentStep === 7 && !formData.certify}
+          disabled={(currentStep === 7 && !formData.certify) || isGeneratingPdf}
         >
-          {currentStep === 7 ? "Submit Application" : "Continue"}
+          {currentStep === 7 ? (isGeneratingPdf ? "Generating PDF..." : "Submit Application") : "Continue"}
         </Button>
       </div>
     </WizardLayout>

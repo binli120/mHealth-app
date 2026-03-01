@@ -1,5 +1,6 @@
 "use client"
 
+import { use } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,7 +21,7 @@ import {
 } from "lucide-react"
 
 interface PageProps {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 const timelineSteps = [
@@ -57,7 +58,7 @@ const timelineSteps = [
 ]
 
 export default function StatusDetailPage({ params }: PageProps) {
-  const { id } = params
+  const { id } = use(params)
 
   return (
     <div className="min-h-screen bg-background">
