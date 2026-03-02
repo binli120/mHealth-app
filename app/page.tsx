@@ -1,12 +1,31 @@
 "use client"
 
+import { useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { setLanguage } from "@/lib/redux/features/app-slice"
+import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
+import { isSupportedLanguage, SUPPORTED_LANGUAGES } from "@/lib/i18n/languages"
+import { getMessage, type AppMessageKey } from "@/lib/i18n/messages"
 import { Shield, FileText, Clock, Phone, ChevronRight, Heart, Users, CheckCircle2 } from "lucide-react"
 
 export default function LandingPage() {
+  const dispatch = useAppDispatch()
+  const selectedLanguage = useAppSelector((state) => state.app.language)
+  const t = (key: AppMessageKey) => getMessage(selectedLanguage, key)
+
+  const handleLanguageChange = (value: string) => {
+    if (isSupportedLanguage(value)) {
+      dispatch(setLanguage(value))
+    }
+  }
+
+  useEffect(() => {
+    document.documentElement.lang = selectedLanguage
+  }, [selectedLanguage])
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -20,34 +39,34 @@ export default function LandingPage() {
           </div>
           <nav className="hidden items-center gap-6 md:flex">
             <Link href="#" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-              Programs
+              {t("navPrograms")}
             </Link>
             <Link href="#" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-              Eligibility
+              {t("navEligibility")}
             </Link>
             <Link href="#" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-              Resources
+              {t("navResources")}
             </Link>
             <Link href="#" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-              Contact
+              {t("navContact")}
             </Link>
           </nav>
           <div className="flex items-center gap-3">
-            <Select defaultValue="en">
-              <SelectTrigger className="w-[100px] border-border bg-card text-foreground">
-                <SelectValue placeholder="Language" />
+            <Select value={selectedLanguage} onValueChange={handleLanguageChange}>
+              <SelectTrigger className="w-[190px] border-border bg-card text-foreground">
+                <SelectValue placeholder={t("language")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="en">English</SelectItem>
-                <SelectItem value="es">Español</SelectItem>
-                <SelectItem value="pt">Português</SelectItem>
-                <SelectItem value="zh">中文</SelectItem>
-                <SelectItem value="vi">Tiếng Việt</SelectItem>
+                {SUPPORTED_LANGUAGES.map((language) => (
+                  <SelectItem key={language.code} value={language.code}>
+                    {language.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Link href="/auth/login">
               <Button variant="outline" size="sm" className="hidden sm:flex">
-                Sign In
+                {t("signIn")}
               </Button>
             </Link>
           </div>
@@ -61,36 +80,35 @@ export default function LandingPage() {
             <div className="space-y-6">
               <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
                 <Shield className="mr-2 h-4 w-4" />
-                Trusted by millions of Massachusetts residents
+                {t("trustedByResidents")}
               </div>
               <h1 className="text-balance text-4xl font-bold tracking-tight text-foreground md:text-5xl lg:text-6xl">
-                Health Coverage for Every Massachusetts Resident
+                {t("heroTitle")}
               </h1>
               <p className="text-pretty text-lg text-muted-foreground md:text-xl">
-                Apply for MassHealth coverage online. Get access to quality healthcare, 
-                prescriptions, and medical services at little to no cost.
+                {t("heroDescription")}
               </p>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <Link href="/application/new">
                   <Button size="lg" className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto">
-                    Apply for MassHealth
+                    {t("applyForMassHealth")}
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </Link>
                 <Link href="/customer/status">
                   <Button size="lg" variant="outline" className="w-full sm:w-auto">
-                    Continue Saved Application
+                    {t("continueSavedApplication")}
                   </Button>
                 </Link>
               </div>
               <div className="flex items-center gap-6 pt-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-accent" />
-                  Free to apply
+                  {t("freeToApply")}
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-accent" />
-                  Quick online process
+                  {t("quickOnlineProcess")}
                 </div>
               </div>
             </div>
@@ -99,25 +117,25 @@ export default function LandingPage() {
               <div className="absolute -bottom-20 -left-20 h-72 w-72 rounded-full bg-accent/10 blur-3xl" />
               <Card className="relative border-border bg-card shadow-xl">
                 <CardHeader className="pb-4">
-                  <CardTitle className="text-lg text-card-foreground">Check Your Status</CardTitle>
-                  <CardDescription>Already applied? Track your application.</CardDescription>
+                  <CardTitle className="text-lg text-card-foreground">{t("checkYourStatus")}</CardTitle>
+                  <CardDescription>{t("alreadyAppliedTrack")}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between rounded-lg bg-secondary p-3">
-                      <span className="text-sm font-medium text-secondary-foreground">Application ID</span>
+                      <span className="text-sm font-medium text-secondary-foreground">{t("applicationId")}</span>
                       <span className="text-sm text-muted-foreground">MH-2024-XXXXX</span>
                     </div>
                     <div className="flex items-center justify-between rounded-lg bg-accent/10 p-3">
-                      <span className="text-sm font-medium text-foreground">Status</span>
+                      <span className="text-sm font-medium text-foreground">{t("status")}</span>
                       <span className="inline-flex items-center rounded-full bg-accent/20 px-2.5 py-0.5 text-xs font-medium text-accent">
-                        Under Review
+                        {t("underReview")}
                       </span>
                     </div>
                   </div>
                   <Link href="/customer/status">
                     <Button variant="secondary" className="w-full">
-                      View Full Status
+                      {t("viewFullStatus")}
                     </Button>
                   </Link>
                 </CardContent>
@@ -138,8 +156,8 @@ export default function LandingPage() {
                     <FileText className="h-6 w-6 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-card-foreground group-hover:text-primary">New Application</h3>
-                    <p className="text-sm text-muted-foreground">Start your application</p>
+                    <h3 className="font-semibold text-card-foreground group-hover:text-primary">{t("quickActionNewApplication")}</h3>
+                    <p className="text-sm text-muted-foreground">{t("quickActionStartApplication")}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -151,8 +169,8 @@ export default function LandingPage() {
                     <Clock className="h-6 w-6 text-accent" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-card-foreground group-hover:text-primary">Renewal</h3>
-                    <p className="text-sm text-muted-foreground">Renew your coverage</p>
+                    <h3 className="font-semibold text-card-foreground group-hover:text-primary">{t("quickActionRenewal")}</h3>
+                    <p className="text-sm text-muted-foreground">{t("quickActionRenewCoverage")}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -164,8 +182,8 @@ export default function LandingPage() {
                     <Users className="h-6 w-6 text-success" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-card-foreground group-hover:text-primary">Add Member</h3>
-                    <p className="text-sm text-muted-foreground">Add household member</p>
+                    <h3 className="font-semibold text-card-foreground group-hover:text-primary">{t("quickActionAddMember")}</h3>
+                    <p className="text-sm text-muted-foreground">{t("quickActionAddHouseholdMember")}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -177,8 +195,8 @@ export default function LandingPage() {
                     <Phone className="h-6 w-6 text-warning" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-card-foreground group-hover:text-primary">Get Help</h3>
-                    <p className="text-sm text-muted-foreground">Contact support</p>
+                    <h3 className="font-semibold text-card-foreground group-hover:text-primary">{t("quickActionGetHelp")}</h3>
+                    <p className="text-sm text-muted-foreground">{t("quickActionContactSupport")}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -192,10 +210,10 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl">
           <div className="mb-12 text-center">
             <h2 className="mb-4 text-3xl font-bold text-foreground md:text-4xl">
-              Why Choose MassHealth?
+              {t("whyChooseMassHealth")}
             </h2>
             <p className="mx-auto max-w-2xl text-muted-foreground">
-              Comprehensive health coverage designed to meet the needs of Massachusetts residents
+              {t("featureLead")}
             </p>
           </div>
           <div className="grid gap-8 md:grid-cols-3">
@@ -204,9 +222,9 @@ export default function LandingPage() {
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
                   <Shield className="h-6 w-6 text-primary" />
                 </div>
-                <h3 className="mb-2 text-lg font-semibold text-card-foreground">Comprehensive Coverage</h3>
+                <h3 className="mb-2 text-lg font-semibold text-card-foreground">{t("featureComprehensiveTitle")}</h3>
                 <p className="text-sm text-muted-foreground">
-                  Access to doctors, hospitals, prescriptions, mental health services, and more at little to no cost.
+                  {t("featureComprehensiveBody")}
                 </p>
               </CardContent>
             </Card>
@@ -215,9 +233,9 @@ export default function LandingPage() {
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-accent/10">
                   <Clock className="h-6 w-6 text-accent" />
                 </div>
-                <h3 className="mb-2 text-lg font-semibold text-card-foreground">Quick Processing</h3>
+                <h3 className="mb-2 text-lg font-semibold text-card-foreground">{t("featureQuickTitle")}</h3>
                 <p className="text-sm text-muted-foreground">
-                  Our streamlined application process uses AI to help review your documents faster than ever.
+                  {t("featureQuickBody")}
                 </p>
               </CardContent>
             </Card>
@@ -226,9 +244,9 @@ export default function LandingPage() {
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-success/10">
                   <Users className="h-6 w-6 text-success" />
                 </div>
-                <h3 className="mb-2 text-lg font-semibold text-card-foreground">Family Coverage</h3>
+                <h3 className="mb-2 text-lg font-semibold text-card-foreground">{t("featureFamilyTitle")}</h3>
                 <p className="text-sm text-muted-foreground">
-                  Cover your entire household with a single application. Programs for all ages and circumstances.
+                  {t("featureFamilyBody")}
                 </p>
               </CardContent>
             </Card>
@@ -242,19 +260,19 @@ export default function LandingPage() {
           <div className="grid gap-8 text-center md:grid-cols-4">
             <div>
               <div className="text-4xl font-bold text-primary">2M+</div>
-              <div className="mt-1 text-sm text-muted-foreground">Members Covered</div>
+              <div className="mt-1 text-sm text-muted-foreground">{t("statMembersCovered")}</div>
             </div>
             <div>
               <div className="text-4xl font-bold text-primary">98%</div>
-              <div className="mt-1 text-sm text-muted-foreground">Satisfaction Rate</div>
+              <div className="mt-1 text-sm text-muted-foreground">{t("statSatisfactionRate")}</div>
             </div>
             <div>
               <div className="text-4xl font-bold text-primary">24/7</div>
-              <div className="mt-1 text-sm text-muted-foreground">Support Available</div>
+              <div className="mt-1 text-sm text-muted-foreground">{t("statSupportAvailable")}</div>
             </div>
             <div>
               <div className="text-4xl font-bold text-primary">5 Days</div>
-              <div className="mt-1 text-sm text-muted-foreground">Average Processing</div>
+              <div className="mt-1 text-sm text-muted-foreground">{t("statAverageProcessing")}</div>
             </div>
           </div>
         </div>
@@ -264,21 +282,21 @@ export default function LandingPage() {
       <section className="px-4 py-16 md:py-24">
         <div className="mx-auto max-w-3xl text-center">
           <h2 className="mb-4 text-3xl font-bold text-foreground md:text-4xl">
-            Ready to Get Started?
+            {t("ctaTitle")}
           </h2>
           <p className="mb-8 text-lg text-muted-foreground">
-            Apply for MassHealth coverage today and get access to quality healthcare for you and your family.
+            {t("ctaBody")}
           </p>
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
             <Link href="/application/new">
               <Button size="lg" className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto">
-                Start Application
+                {t("ctaStartApplication")}
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </Link>
             <Link href="/auth/login">
               <Button size="lg" variant="outline" className="w-full sm:w-auto">
-                Sign In to Continue
+                {t("ctaSignInToContinue")}
               </Button>
             </Link>
           </div>
@@ -297,38 +315,38 @@ export default function LandingPage() {
                 <span className="font-semibold text-foreground">MassHealth</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                Providing quality health coverage to Massachusetts residents since 1997.
+                {t("footerLead")}
               </p>
             </div>
             <div>
-              <h4 className="mb-4 font-semibold text-foreground">Programs</h4>
+              <h4 className="mb-4 font-semibold text-foreground">{t("footerPrograms")}</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="#" className="hover:text-foreground">Standard</Link></li>
-                <li><Link href="#" className="hover:text-foreground">CarePlus</Link></li>
-                <li><Link href="#" className="hover:text-foreground">Family Assistance</Link></li>
-                <li><Link href="#" className="hover:text-foreground">Long-Term Care</Link></li>
+                <li><Link href="#" className="hover:text-foreground">{t("footerProgramStandard")}</Link></li>
+                <li><Link href="#" className="hover:text-foreground">{t("footerProgramCarePlus")}</Link></li>
+                <li><Link href="#" className="hover:text-foreground">{t("footerProgramFamilyAssistance")}</Link></li>
+                <li><Link href="#" className="hover:text-foreground">{t("footerProgramLongTermCare")}</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="mb-4 font-semibold text-foreground">Resources</h4>
+              <h4 className="mb-4 font-semibold text-foreground">{t("footerResources")}</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="#" className="hover:text-foreground">Eligibility Guide</Link></li>
-                <li><Link href="#" className="hover:text-foreground">Document Checklist</Link></li>
-                <li><Link href="#" className="hover:text-foreground">FAQs</Link></li>
-                <li><Link href="#" className="hover:text-foreground">Contact Us</Link></li>
+                <li><Link href="#" className="hover:text-foreground">{t("footerEligibilityGuide")}</Link></li>
+                <li><Link href="#" className="hover:text-foreground">{t("footerDocumentChecklist")}</Link></li>
+                <li><Link href="#" className="hover:text-foreground">{t("footerFaqs")}</Link></li>
+                <li><Link href="#" className="hover:text-foreground">{t("footerContactUs")}</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="mb-4 font-semibold text-foreground">Contact</h4>
+              <h4 className="mb-4 font-semibold text-foreground">{t("footerContact")}</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>1-800-841-2900</li>
                 <li>TTY: 1-800-497-4648</li>
-                <li>Mon-Fri: 8am-5pm</li>
+                <li>{t("footerHours")}</li>
               </ul>
             </div>
           </div>
           <div className="mt-8 border-t border-border pt-8 text-center text-sm text-muted-foreground">
-            <p>© 2024 Commonwealth of Massachusetts. All rights reserved.</p>
+            <p>{t("footerRights")}</p>
           </div>
         </div>
       </footer>
