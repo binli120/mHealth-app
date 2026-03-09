@@ -1,0 +1,513 @@
+{
+  "form_id": "ACA-3",
+  "form_version": "03/25",
+  "attestation": true,
+  "assisterEnabled": true,
+  "pre_application": {
+    "snap_opt_in": true,
+    "long_term_care": [
+      "Home- and Community-Based Services Waiver"
+    ]
+  },
+  "step1_contact": {
+    "p1_name": "Jane Ann Doe",
+    "p1_dob": "04/15/1988",
+    "p1_email": "jane.doe@example.com",
+    "p1_no_home_address": false,
+    "p1_home_address": {
+      "street": "123 Main St",
+      "apt": "Apt 4B",
+      "city": "Boston",
+      "state": "MA",
+      "zip": "02108",
+      "county": "Suffolk"
+    },
+    "p1_home_street": "123 Main St",
+    "p1_home_apt": "Apt 4B",
+    "p1_home_city": "Boston",
+    "p1_home_state": "MA",
+    "p1_home_zip": "02108",
+    "p1_home_county": "Suffolk",
+    "p1_mailing_same": true,
+    "p1_mailing_address": {
+      "street": "123 Main St",
+      "apt": "Apt 4B",
+      "city": "Boston",
+      "state": "MA",
+      "zip": "02108",
+      "county": "Suffolk"
+    },
+    "p1_mail_street": "123 Main St",
+    "p1_mail_apt": "Apt 4B",
+    "p1_mail_city": "Boston",
+    "p1_mail_state": "MA",
+    "p1_mail_zip": "02108",
+    "p1_mail_county": "Suffolk",
+    "p1_phone": "(617)555-0101",
+    "p1_other_phone": "(857)555-0199",
+    "p1_num_people": 2,
+    "p1_language_spoken": "English",
+    "p1_language_written": "Spanish",
+    "p1_in_prison": "No",
+    "p1_prison_who": "",
+    "p1_awaiting_trial": ""
+  },
+  "enrollment_assister": {
+    "assister_type": "Navigator",
+    "assister_name": "Carlos Mendez",
+    "assister_email": "carlos.mendez@assister.org",
+    "assister_org_name": "Boston Community Health Navigators",
+    "assister_org_id": "NAV-44218",
+    "assister_org_phone": "(617)555-1212"
+  },
+  "persons": [
+    {
+      "personNumber": 1,
+      "ss_identity": {
+        "name": "Jane Ann Doe",
+        "relationship_to_p1": "SELF",
+        "lives_with_p1": "Yes",
+        "separate_address": {
+          "street": "",
+          "apt": "",
+          "city": "",
+          "state": "",
+          "zip": ""
+        },
+        "dob": "04/15/1988",
+        "sex_at_birth": "Female",
+        "sep_street": "",
+        "sep_apt": "",
+        "sep_city": "",
+        "sep_state": "",
+        "sep_zip": ""
+      },
+      "ss_demographics": {
+        "gender_identity": [
+          "Female"
+        ],
+        "gender_identity_specify": "",
+        "sexual_orientation": [
+          "Straight or heterosexual"
+        ],
+        "sexual_orientation_specify": "",
+        "hispanic_latino": "No, not Hispanic or Latino",
+        "race": [
+          "White"
+        ],
+        "ethnicity": "Western European"
+      },
+      "ss_ssn": {
+        "has_ssn": "Yes",
+        "ssn": "123-45-6789",
+        "ssn_name_matches": "Yes",
+        "ssn_card_name": "",
+        "no_ssn_reason": ""
+      },
+      "ss_tax": {
+        "aptc_agree": "Yes",
+        "legally_married": "Yes",
+        "spouse_name_dob": "John Michael Doe | 02/20/1986",
+        "joint_tax_return": "Yes",
+        "claim_dependents": "Yes",
+        "dependents_list": "Sam Doe | 08/14/2014\nMia Doe | 11/03/2018",
+        "claimed_as_dependent": "No",
+        "tax_filer_name": "",
+        "tax_filer_dob": "",
+        "tax_filer_relationship": "",
+        "tax_filer_married_joint": "",
+        "tax_filer_spouse_name_dob": "",
+        "tax_filer_other_dependents": "",
+        "domestic_abuse_separate_taxes": "No",
+        "prior_aptc_irs": "Yes"
+      },
+      "ss_coverage": {
+        "applying_for_coverage": "Yes",
+        "us_citizen": "Yes",
+        "naturalized_citizen": "No",
+        "alien_number": "",
+        "naturalization_cert_number": "",
+        "eligible_immigration_status": "No",
+        "has_immigration_doc": "",
+        "immigration_status_award_date": "",
+        "immigration_status_type": "",
+        "immigration_doc_type": "",
+        "immigration_doc_id": "",
+        "immigration_alien_number": "",
+        "immigration_doc_expiry": "",
+        "immigration_country": "",
+        "immigration_same_name": "",
+        "immigration_prior_name": "",
+        "arrived_after_aug_1996": "",
+        "veteran_or_military": "",
+        "trafficking_victim": [],
+        "caretaker_of_child": "Yes",
+        "children_names_dob": "Sam Doe | 08/14/2014\nMia Doe | 11/03/2018",
+        "ma_resident": "Yes",
+        "has_disability": "No",
+        "needs_accommodation": "No",
+        "is_pregnant": "No",
+        "num_babies": "",
+        "due_date": "",
+        "breast_cervical_cancer": "No",
+        "hiv_positive": "No",
+        "foster_care": "No",
+        "foster_care_state": "",
+        "foster_care_medicaid": ""
+      },
+      "ss_income": {
+        "has_income": "Yes",
+        "employment_jobs": [
+          {
+            "employer_name_address": "General Hospital, 55 Fruit St, Boston MA 02114",
+            "employer_tax_id": "04-1234567",
+            "wages_amount": "$2,800.00",
+            "wages_frequency": "Monthly",
+            "income_effective_date": "01/01/2026",
+            "hours_per_week": 40,
+            "seasonally_employed": "Yes",
+            "seasonal_months": [
+              "Jan.",
+              "Feb.",
+              "March",
+              "April",
+              "May",
+              "June",
+              "July",
+              "August",
+              "Sept.",
+              "Oct.",
+              "Nov.",
+              "Dec."
+            ]
+          },
+          {
+            "employer_name_address": "Weekend Urgent Care, 77 Summer St, Boston MA 02110",
+            "employer_tax_id": "04-7654321",
+            "wages_amount": "$600.00",
+            "wages_frequency": "Monthly",
+            "income_effective_date": "01/15/2026",
+            "hours_per_week": 10,
+            "seasonally_employed": "No",
+            "seasonal_months": []
+          }
+        ],
+        "self_employment": "Yes",
+        "self_employment_type": "Online retail",
+        "self_employment_net_income": "$450.00",
+        "self_employment_profit_loss": "Profit",
+        "self_employment_hours": 8,
+        "other_income": {
+          "inc_social_security": {
+            "selected": false
+          },
+          "inc_unemployment": {
+            "selected": false
+          },
+          "inc_retirement_pension": {
+            "selected": true,
+            "amount": "$250.00",
+            "frequency": "Monthly",
+            "source": "Former employer pension"
+          },
+          "inc_investment": {
+            "selected": true,
+            "amount": "$120.00",
+            "frequency": "Monthly"
+          },
+          "inc_veteran_taxable": {
+            "selected": false
+          },
+          "inc_military_retirement": {
+            "selected": false
+          },
+          "inc_alimony": {
+            "selected": false
+          },
+          "inc_other_taxable": {
+            "selected": true,
+            "amount": "$75.00",
+            "frequency": "Monthly",
+            "type": "Jury duty stipend"
+          },
+          "inc_rental_royalty": {
+            "selected": false
+          },
+          "inc_capital_gains": {
+            "selected": false
+          },
+          "inc_farming_fishing": {
+            "selected": false
+          },
+          "inc_lottery_gambling": {
+            "selected": false
+          }
+        },
+        "one_time_income_current_year": "Yes",
+        "otinc_cy_type": "Tax refund",
+        "otinc_cy_amt": "$1,200.00",
+        "otinc_cy_month": "February",
+        "otinc_cy_year": 2026,
+        "one_time_income_next_year": "No",
+        "otinc_ny_type": "",
+        "otinc_ny_amt": "",
+        "otinc_ny_month": "",
+        "otinc_ny_year": "",
+        "deductions": {
+          "ded_educator": {
+            "selected": true,
+            "yearly_amount": "$300.00"
+          },
+          "ded_business_expense": {
+            "selected": false
+          },
+          "ded_hsa": {
+            "selected": true,
+            "yearly_amount": "$1,000.00"
+          },
+          "ded_moving_armed_forces": {
+            "selected": false
+          },
+          "ded_self_employ_tax": {
+            "selected": true,
+            "yearly_amount": "$900.00"
+          },
+          "ded_sep_simple": {
+            "selected": false
+          },
+          "ded_self_employ_health": {
+            "selected": true,
+            "yearly_amount": "$1,200.00"
+          },
+          "ded_early_withdrawal": {
+            "selected": false
+          },
+          "ded_alimony_paid": {
+            "selected": false
+          },
+          "ded_ira": {
+            "selected": true,
+            "yearly_amount": "$1,500.00"
+          },
+          "ded_student_loan": {
+            "selected": true,
+            "yearly_amount": "$600.00"
+          },
+          "ded_none": {
+            "selected": false
+          }
+        },
+        "total_income_current_year": "$68,500.00",
+        "total_income_next_year": "$70,200.00"
+      }
+    },
+    {
+      "personNumber": 2,
+      "ss_identity": {
+        "name": "John Michael Doe",
+        "relationship_to_p1": "Spouse",
+        "lives_with_p1": "Yes",
+        "separate_address": {
+          "street": "",
+          "apt": "",
+          "city": "",
+          "state": "",
+          "zip": ""
+        },
+        "dob": "02/20/1986",
+        "sex_at_birth": "Male",
+        "sep_street": "",
+        "sep_apt": "",
+        "sep_city": "",
+        "sep_state": "",
+        "sep_zip": ""
+      },
+      "ss_demographics": {
+        "gender_identity": [
+          "Male"
+        ],
+        "gender_identity_specify": "",
+        "sexual_orientation": [
+          "Straight or heterosexual"
+        ],
+        "sexual_orientation_specify": "",
+        "hispanic_latino": "Yes, Hispanic or Latino",
+        "race": [
+          "Some Other Race"
+        ],
+        "ethnicity": "Caribbean"
+      },
+      "ss_ssn": {
+        "has_ssn": "No",
+        "ssn": "",
+        "ssn_name_matches": "",
+        "ssn_card_name": "",
+        "no_ssn_reason": "Just applied"
+      },
+      "ss_tax": {
+        "aptc_agree": "Yes",
+        "legally_married": "Yes",
+        "spouse_name_dob": "Jane Ann Doe | 04/15/1988",
+        "joint_tax_return": "Yes",
+        "claim_dependents": "No",
+        "dependents_list": "",
+        "claimed_as_dependent": "No",
+        "tax_filer_name": "",
+        "tax_filer_dob": "",
+        "tax_filer_relationship": "",
+        "tax_filer_married_joint": "",
+        "tax_filer_spouse_name_dob": "",
+        "tax_filer_other_dependents": "",
+        "domestic_abuse_separate_taxes": "No",
+        "prior_aptc_irs": "Yes"
+      },
+      "ss_coverage": {
+        "applying_for_coverage": "Yes",
+        "us_citizen": "No",
+        "naturalized_citizen": "",
+        "alien_number": "",
+        "naturalization_cert_number": "",
+        "eligible_immigration_status": "Yes",
+        "has_immigration_doc": "Yes",
+        "immigration_status_award_date": "08/01/2019",
+        "immigration_status_type": "Lawful permanent resident",
+        "immigration_doc_type": "Permanent Resident Card (I-551)",
+        "immigration_doc_id": "A012345678",
+        "immigration_alien_number": "A012345678",
+        "immigration_doc_expiry": "08/01/2029",
+        "immigration_country": "Dominican Republic",
+        "immigration_same_name": "No",
+        "immigration_prior_name": "Juan Miguel Doe",
+        "arrived_after_aug_1996": "Yes",
+        "veteran_or_military": "No",
+        "trafficking_victim": [],
+        "caretaker_of_child": "No",
+        "children_names_dob": "",
+        "ma_resident": "Yes",
+        "has_disability": "Yes",
+        "needs_accommodation": "Yes",
+        "is_pregnant": "No",
+        "num_babies": "",
+        "due_date": "",
+        "breast_cervical_cancer": "No",
+        "hiv_positive": "No",
+        "foster_care": "Yes",
+        "foster_care_state": "New York",
+        "foster_care_medicaid": "Yes"
+      },
+      "ss_income": {
+        "has_income": "Yes",
+        "employment_jobs": [
+          {
+            "employer_name_address": "Metro Logistics, 1 Seaport Blvd, Boston MA 02210",
+            "employer_tax_id": "04-8888888",
+            "wages_amount": "$1,850.00",
+            "wages_frequency": "Every 2 weeks",
+            "income_effective_date": "12/01/2025",
+            "hours_per_week": 38,
+            "seasonally_employed": "No",
+            "seasonal_months": []
+          }
+        ],
+        "self_employment": "No",
+        "self_employment_type": "",
+        "self_employment_net_income": "",
+        "self_employment_profit_loss": "",
+        "self_employment_hours": "",
+        "other_income": {
+          "inc_social_security": {
+            "selected": false
+          },
+          "inc_unemployment": {
+            "selected": true,
+            "amount": "$300.00",
+            "frequency": "Weekly"
+          },
+          "inc_retirement_pension": {
+            "selected": false
+          },
+          "inc_investment": {
+            "selected": false
+          },
+          "inc_veteran_taxable": {
+            "selected": false
+          },
+          "inc_military_retirement": {
+            "selected": false
+          },
+          "inc_alimony": {
+            "selected": false
+          },
+          "inc_other_taxable": {
+            "selected": false
+          },
+          "inc_rental_royalty": {
+            "selected": false
+          },
+          "inc_capital_gains": {
+            "selected": false
+          },
+          "inc_farming_fishing": {
+            "selected": false
+          },
+          "inc_lottery_gambling": {
+            "selected": true,
+            "amount": "$2,000.00",
+            "frequency": "One time only",
+            "effective_date": "01/20/2026"
+          }
+        },
+        "one_time_income_current_year": "No",
+        "otinc_cy_type": "",
+        "otinc_cy_amt": "",
+        "otinc_cy_month": "",
+        "otinc_cy_year": "",
+        "one_time_income_next_year": "Yes",
+        "otinc_ny_type": "Retirement withdrawal",
+        "otinc_ny_amt": "$5,000.00",
+        "otinc_ny_month": "March",
+        "otinc_ny_year": 2027,
+        "deductions": {
+          "ded_educator": {
+            "selected": false
+          },
+          "ded_business_expense": {
+            "selected": false
+          },
+          "ded_hsa": {
+            "selected": false
+          },
+          "ded_moving_armed_forces": {
+            "selected": false
+          },
+          "ded_self_employ_tax": {
+            "selected": false
+          },
+          "ded_sep_simple": {
+            "selected": false
+          },
+          "ded_self_employ_health": {
+            "selected": false
+          },
+          "ded_early_withdrawal": {
+            "selected": false
+          },
+          "ded_alimony_paid": {
+            "selected": false
+          },
+          "ded_ira": {
+            "selected": false
+          },
+          "ded_student_loan": {
+            "selected": false
+          },
+          "ded_none": {
+            "selected": true
+          }
+        },
+        "total_income_current_year": "$58,300.00",
+        "total_income_next_year": "$60,000.00"
+      }
+    }
+  ]
+}

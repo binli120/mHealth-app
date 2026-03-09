@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="640" viewBox="0 0 1024 640">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#dbeafe" />
+      <stop offset="100%" stop-color="#bfdbfe" />
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="640" rx="28" fill="url(#bg)" />
+  <rect x="28" y="28" width="968" height="584" rx="24" fill="none" stroke="#1e40af" stroke-width="4" />
+
+  <text x="64" y="92" font-family="Arial, sans-serif" font-size="40" font-weight="700" fill="#1e3a8a">
+    MASSACHUSETTS TEST ID CARD
+  </text>
+  <text x="64" y="132" font-family="Arial, sans-serif" font-size="22" fill="#1e3a8a">
+    QA SAMPLE - NOT A GOVERNMENT DOCUMENT
+  </text>
+
+  <rect x="64" y="180" width="220" height="280" rx="14" fill="#e5e7eb" stroke="#334155" />
+  <circle cx="174" cy="280" r="70" fill="#94a3b8" />
+  <rect x="110" y="352" width="128" height="80" rx="18" fill="#94a3b8" />
+
+  <text x="330" y="220" font-family="Arial, sans-serif" font-size="24" fill="#0f172a">NAME: JANE DOE</text>
+  <text x="330" y="264" font-family="Arial, sans-serif" font-size="24" fill="#0f172a">DOB: 1987-07-04</text>
+  <text x="330" y="308" font-family="Arial, sans-serif" font-size="24" fill="#0f172a">ID#: TEST-0000001</text>
+  <text x="330" y="352" font-family="Arial, sans-serif" font-size="24" fill="#0f172a">ADDR: 123 MAIN ST</text>
+  <text x="330" y="396" font-family="Arial, sans-serif" font-size="24" fill="#0f172a">CITY: BOSTON MA 02108</text>
+
+  <g transform="rotate(-20 512 320)">
+    <text x="180" y="360" font-family="Arial, sans-serif" font-size="96" font-weight="700" fill="#dc2626" opacity="0.28">
+      NOT A REAL ID
+    </text>
+  </g>
+</svg>

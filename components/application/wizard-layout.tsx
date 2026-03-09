@@ -1,12 +1,14 @@
 "use client"
 
 import Link from "next/link"
-import { Heart, ArrowLeft, CheckCircle2 } from "lucide-react"
+import { ArrowLeft, CheckCircle2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { ShieldHeartIcon } from "@/lib/icons"
 
 interface Step {
   id: string
   title: string
+  shortTitle?: string
   completed: boolean
   current: boolean
 }
@@ -16,9 +18,33 @@ interface WizardLayoutProps {
   steps: Step[]
   currentStep: number
   title: string
+  contentClassName?: string
 }
 
-export function WizardLayout({ children, steps, currentStep, title }: WizardLayoutProps) {
+export function WizardLayout({
+  children,
+  steps,
+  currentStep,
+  title,
+  contentClassName,
+}: WizardLayoutProps) {
+  const activeStep = steps[currentStep - 1] ?? steps.find((step) => step.current)
+  const getConnectorClass = (step: Step | undefined) => {
+    if (!step) {
+      return "bg-border"
+    }
+
+    if (step.completed) {
+      return "bg-accent"
+    }
+
+    if (step.current) {
+      return "bg-primary/60"
+    }
+
+    return "bg-border"
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       {/* Header */}
@@ -30,7 +56,7 @@ export function WizardLayout({ children, steps, currentStep, title }: WizardLayo
           </Link>
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <Heart className="h-4 w-4 text-primary-foreground" />
+              <ShieldHeartIcon color="currentColor" className="h-4 w-4 text-primary-foreground" />
             </div>
             <span className="font-semibold text-foreground">MassHealth</span>
           </div>
@@ -40,54 +66,74 @@ export function WizardLayout({ children, steps, currentStep, title }: WizardLayo
         </div>
       </header>
 
-      {/* Progress Steps - Desktop */}
-      <div className="hidden border-b border-border bg-card px-4 py-4 lg:block">
-        <div className="mx-auto max-w-5xl">
-          <div className="flex items-center justify-between">
+      {/* Progress Steps */}
+      <div className="border-b border-border bg-card px-3 py-3 sm:px-4 sm:py-4">
+        <div className="mx-auto w-full max-w-7xl">
+          <div className="sm:hidden">
+            {activeStep ? (
+              <div className="flex flex-col items-center gap-1 text-center">
+                <div
+                  className={cn(
+                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-medium transition-colors",
+                    activeStep.completed
+                      ? "bg-accent text-accent-foreground"
+                      : "bg-primary text-primary-foreground",
+                  )}
+                >
+                  {activeStep.completed ? <CheckCircle2 className="h-5 w-5" /> : currentStep}
+                </div>
+                <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {activeStep.shortTitle ?? activeStep.title}
+                </span>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="hidden sm:flex sm:items-start sm:gap-1">
             {steps.map((step, index) => (
-              <div key={step.id} className="flex items-center">
-                <div className="flex items-center gap-2">
+              <div key={step.id} className="flex min-w-0 flex-1 flex-col items-center gap-1 text-center">
+                <div className="flex w-full items-center">
                   <div
                     className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-colors",
+                      "h-0.5 flex-1",
+                      index === 0 ? "bg-transparent" : getConnectorClass(steps[index - 1]),
+                    )}
+                  />
+                  <div
+                    className={cn(
+                      "mx-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium transition-colors",
                       step.completed
                         ? "bg-accent text-accent-foreground"
                         : step.current
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-muted-foreground"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-muted-foreground",
                     )}
                   >
-                    {step.completed ? (
-                      <CheckCircle2 className="h-5 w-5" />
-                    ) : (
-                      index + 1
-                    )}
+                    {step.completed ? <CheckCircle2 className="h-5 w-5" /> : index + 1}
                   </div>
-                  <span
-                    className={cn(
-                      "text-sm font-medium",
-                      step.current ? "text-foreground" : "text-muted-foreground"
-                    )}
-                  >
-                    {step.title}
-                  </span>
-                </div>
-                {index < steps.length - 1 && (
                   <div
                     className={cn(
-                      "mx-4 h-0.5 w-12 rounded-full",
-                      step.completed ? "bg-accent" : "bg-border"
+                      "h-0.5 flex-1",
+                      index === steps.length - 1 ? "bg-transparent" : getConnectorClass(step),
                     )}
                   />
-                )}
+                </div>
+                <span
+                  className={cn(
+                    "max-w-full truncate px-1 text-[10px] font-medium uppercase tracking-wide",
+                    step.current ? "text-foreground" : "text-muted-foreground",
+                  )}
+                >
+                  {step.shortTitle ?? step.title}
+                </span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Progress Bar - Mobile */}
-      <div className="border-b border-border bg-card px-4 py-3 lg:hidden">
+      {/* Progress Summary */}
+      <div className="border-b border-border bg-card px-4 py-3">
         <div className="mb-2 flex items-center justify-between text-sm">
           <span className="font-medium text-foreground">{title}</span>
           <span className="text-muted-foreground">{Math.round((currentStep / steps.length) * 100)}% complete</span>
@@ -102,7 +148,7 @@ export function WizardLayout({ children, steps, currentStep, title }: WizardLayo
 
       {/* Main Content */}
       <main className="flex-1 px-4 py-8">
-        <div className="mx-auto max-w-2xl">{children}</div>
+        <div className={cn("mx-auto w-full max-w-2xl", contentClassName)}>{children}</div>
       </main>
     </div>
   )

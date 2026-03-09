@@ -1,19 +1,36 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { getSupabaseClient } from "@/lib/supabase/client"
-import { Heart, Eye, EyeOff, ArrowLeft, CheckCircle2 } from "lucide-react"
+import { isLocalAuthHelperEnabled, normalizeAuthEmail } from "@/lib/auth/local-auth"
+import { formatPhoneNumber } from "@/lib/utils/input-format"
+import { Eye, EyeOff, ArrowLeft, CheckCircle2 } from "lucide-react"
+import { ShieldHeartIcon } from "@/lib/icons"
 
 type RegisterStep = "form" | "verify"
 
+interface DevRegisterResponse {
+  ok?: boolean
+  error?: string
+}
+
+function getSafeNextPath(nextPath: string | null, fallback: string): string {
+  if (!nextPath || !nextPath.startsWith("/") || nextPath.startsWith("//") || nextPath.startsWith("/auth/")) {
+    return fallback
+  }
+
+  return nextPath
+}
+
 export default function RegisterPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [step, setStep] = useState<RegisterStep>("form")
@@ -24,11 +41,26 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("")
   const [errorMessage, setErrorMessage] = useState("")
   const [infoMessage, setInfoMessage] = useState("")
+  const nextPath = useMemo(
+    () => getSafeNextPath(searchParams.get("next"), "/application/type"),
+    [searchParams],
+  )
+  const loginHref = useMemo(
+    () => `/auth/login?next=${encodeURIComponent(nextPath)}`,
+    [nextPath],
+  )
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErrorMessage("")
     setInfoMessage("")
+    const normalizedEmail = normalizeAuthEmail(email)
+    const localAuthHelperEnabled = isLocalAuthHelperEnabled()
+
+    if (!normalizedEmail) {
+      setErrorMessage("Email is required.")
+      return
+    }
 
     if (password.length < 8) {
       setErrorMessage("Password must be at least 8 characters.")
@@ -39,8 +71,56 @@ export default function RegisterPage() {
 
     try {
       const supabase = getSupabaseClient()
+
+      const tryDevRegisterAndSignIn = async (params: {
+        email: string
+        password: string
+        firstName: string
+        lastName: string
+        phone: string
+      }) => {
+        if (!localAuthHelperEnabled) {
+          return { ok: false as const, error: "Local auth helper is disabled." }
+        }
+
+        const registerResponse = await fetch("/api/auth/dev-register", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: params.email,
+            password: params.password,
+            firstName: params.firstName,
+            lastName: params.lastName,
+            phone: params.phone,
+          }),
+        })
+
+        const registerPayload = (await registerResponse.json().catch(() => ({}))) as DevRegisterResponse
+        if (!registerResponse.ok || !registerPayload.ok) {
+          return {
+            ok: false as const,
+            error: registerPayload.error || "Unable to create local account in development mode.",
+          }
+        }
+
+        const signInResult = await supabase.auth.signInWithPassword({
+          email: normalizeAuthEmail(params.email),
+          password: params.password,
+        })
+        if (signInResult.error) {
+          return {
+            ok: false as const,
+            error: signInResult.error.message,
+          }
+        }
+
+        return { ok: true as const }
+      }
+
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: normalizedEmail,
         password,
         options: {
           data: {
@@ -52,12 +132,80 @@ export default function RegisterPage() {
       })
 
       if (error) {
+        if (localAuthHelperEnabled) {
+          const recovered = await tryDevRegisterAndSignIn({
+            email: normalizedEmail,
+            password,
+            firstName,
+            lastName,
+            phone,
+          })
+
+          if (recovered.ok) {
+            router.push(nextPath)
+            return
+          }
+
+          setErrorMessage(recovered.error || error.message)
+          return
+        }
+
         setErrorMessage(error.message)
         return
       }
 
+      const looksLikeExistingUser =
+        Array.isArray(data.user?.identities) && data.user.identities.length === 0
+
+      if (looksLikeExistingUser) {
+        if (localAuthHelperEnabled) {
+          const recovered = await tryDevRegisterAndSignIn({
+            email: normalizedEmail,
+            password,
+            firstName,
+            lastName,
+            phone,
+          })
+
+          if (recovered.ok) {
+            router.push(nextPath)
+            return
+          }
+
+          setErrorMessage(recovered.error || "An account with this email already exists. Please sign in instead.")
+          return
+        }
+
+        setErrorMessage("An account with this email already exists. Please sign in instead.")
+        return
+      }
+
+      if (!data.user?.id) {
+        setErrorMessage("Sign-up did not return a user record. Please try again.")
+        return
+      }
+
       if (data.session) {
-        router.push("/application/type")
+        router.push(nextPath)
+        return
+      }
+
+      // Local development fallback: auto-confirm email and sign in.
+      if (localAuthHelperEnabled) {
+        const recovered = await tryDevRegisterAndSignIn({
+          email: normalizedEmail,
+          password,
+          firstName,
+          lastName,
+          phone,
+        })
+
+        if (recovered.ok) {
+          router.push(nextPath)
+          return
+        }
+
+        setErrorMessage(recovered.error || "Local auto-confirm failed.")
         return
       }
 
@@ -77,9 +225,10 @@ export default function RegisterPage() {
 
     try {
       const supabase = getSupabaseClient()
+      const normalizedEmail = normalizeAuthEmail(email)
       const { error } = await supabase.auth.resend({
         type: "signup",
-        email,
+        email: normalizedEmail,
       })
 
       if (error) {
@@ -110,7 +259,7 @@ export default function RegisterPage() {
         <div className="w-full max-w-md">
           <div className="mb-8 text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-              <Heart className="h-6 w-6 text-primary-foreground" />
+              <ShieldHeartIcon color="currentColor" className="h-6 w-6 text-primary-foreground" />
             </div>
             <h1 className="text-2xl font-bold text-foreground">Create Account</h1>
             <p className="mt-1 text-muted-foreground">Start your MassHealth application</p>
@@ -173,11 +322,13 @@ export default function RegisterPage() {
                     <Input
                       id="phone"
                       type="tel"
-                      placeholder="(555) 123-4567"
+                      placeholder="(555)123-4567"
                       required
                       className="border-input bg-background text-foreground"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) => setPhone(formatPhoneNumber(e.target.value))}
+                      maxLength={13}
+                      inputMode="numeric"
                     />
                   </div>
                   <div className="space-y-2">
@@ -221,7 +372,7 @@ export default function RegisterPage() {
 
                 <p className="mt-6 text-center text-sm text-muted-foreground">
                   Already have an account?{" "}
-                  <Link href="/auth/login" className="font-medium text-primary hover:underline">
+                  <Link href={loginHref} className="font-medium text-primary hover:underline">
                     Sign in
                   </Link>
                 </p>
@@ -251,7 +402,7 @@ export default function RegisterPage() {
                 >
                   {isLoading ? "Sending..." : "Resend Confirmation Email"}
                 </Button>
-                <Link href="/auth/login" className="block">
+                <Link href={loginHref} className="block">
                   <Button type="button" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
                     Go to Sign In
                   </Button>

@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { 
-  Heart, 
   Search,
   Clock, 
   CheckCircle2, 
@@ -15,7 +14,6 @@ import {
   FileText,
   Users,
   Bell,
-  User,
   LogOut,
   Filter,
   ChevronRight,
@@ -24,6 +22,7 @@ import {
   Calendar
 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ShieldHeartIcon, UserBadgeIcon } from "@/lib/icons"
 
 const stats = [
   { 
@@ -141,7 +140,7 @@ export default function ReviewerDashboardPage() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar-primary">
-                <Heart className="h-5 w-5 text-sidebar-primary-foreground" />
+                <ShieldHeartIcon color="currentColor" className="h-5 w-5 text-sidebar-primary-foreground" />
               </div>
               <div>
                 <span className="text-lg font-semibold text-sidebar-foreground">MassHealth</span>
@@ -173,7 +172,7 @@ export default function ReviewerDashboardPage() {
               </span>
             </Button>
             <Button variant="ghost" size="icon" className="text-sidebar-foreground">
-              <User className="h-5 w-5" />
+              <UserBadgeIcon color="currentColor" className="h-5 w-5" />
             </Button>
             <Link href="/">
               <Button variant="ghost" size="icon" className="text-sidebar-foreground">
@@ -308,7 +307,7 @@ export default function ReviewerDashboardPage() {
                     <div className="group flex flex-col gap-4 rounded-lg border border-border bg-card p-4 transition-all hover:border-primary/50 hover:shadow-md sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex items-center gap-4">
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary">
-                          <User className="h-5 w-5 text-muted-foreground" />
+                          <UserBadgeIcon color="currentColor" className="h-5 w-5 text-muted-foreground" />
                         </div>
                         <div>
                           <div className="flex items-center gap-2">

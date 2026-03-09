@@ -1,9 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const generateMassHealthAcaPdfMock = vi.fn()
+const requireAuthenticatedUserMock = vi.fn()
 
 vi.mock("@/lib/pdf/masshealth-aca", () => ({
   generateMassHealthAcaPdf: generateMassHealthAcaPdfMock,
+}))
+
+vi.mock("@/lib/auth/require-auth", () => ({
+  requireAuthenticatedUser: requireAuthenticatedUserMock,
 }))
 
 describe("app/api/forms/aca-3-0325/fill/route", () => {
@@ -12,6 +17,11 @@ describe("app/api/forms/aca-3-0325/fill/route", () => {
   beforeEach(() => {
     vi.resetModules()
     generateMassHealthAcaPdfMock.mockReset()
+    requireAuthenticatedUserMock.mockReset()
+    requireAuthenticatedUserMock.mockResolvedValue({
+      ok: true,
+      userId: "11111111-1111-4111-8111-111111111111",
+    })
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
   })
 
@@ -47,7 +57,7 @@ describe("app/api/forms/aca-3-0325/fill/route", () => {
     expect(Array.from(bytes)).toEqual([1, 2, 3])
   })
 
-  it("returns 400 when payload is invalid", async () => {
+  it("returns 422 when payload is invalid", async () => {
     const { POST } = await import("@/app/api/forms/aca-3-0325/fill/route")
 
     const request = new Request("http://localhost/api/forms/aca-3-0325/fill", {
@@ -58,13 +68,13 @@ describe("app/api/forms/aca-3-0325/fill/route", () => {
 
     const response = await POST(request)
 
-    expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toEqual({ error: "Unable to generate filled ACA PDF" })
+    expect(response.status).toBe(422)
+    await expect(response.json()).resolves.toEqual({ error: "Invalid ACA form payload." })
     expect(generateMassHealthAcaPdfMock).not.toHaveBeenCalled()
     expect(consoleErrorSpy).toHaveBeenCalled()
   })
 
-  it("returns 400 when PDF generation fails", async () => {
+  it("returns 500 when PDF generation fails", async () => {
     generateMassHealthAcaPdfMock.mockRejectedValue(new Error("template unavailable"))
 
     const { POST } = await import("@/app/api/forms/aca-3-0325/fill/route")
@@ -77,7 +87,7 @@ describe("app/api/forms/aca-3-0325/fill/route", () => {
 
     const response = await POST(request)
 
-    expect(response.status).toBe(400)
+    expect(response.status).toBe(500)
     await expect(response.json()).resolves.toEqual({ error: "Unable to generate filled ACA PDF" })
     expect(consoleErrorSpy).toHaveBeenCalled()
   })

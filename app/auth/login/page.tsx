@@ -1,27 +1,173 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Heart, Eye, EyeOff, ArrowLeft } from "lucide-react"
+import { getSupabaseClient } from "@/lib/supabase/client"
+import { isLocalAuthHelperEnabled, normalizeAuthEmail } from "@/lib/auth/local-auth"
+import { Eye, EyeOff, ArrowLeft } from "lucide-react"
+import { ShieldHeartIcon } from "@/lib/icons"
+
+interface DevAutoConfirmResponse {
+  ok?: boolean
+  error?: string
+}
+
+interface DevRegisterResponse {
+  ok?: boolean
+  error?: string
+}
+
+function getSafeNextPath(nextPath: string | null, fallback: string): string {
+  if (!nextPath || !nextPath.startsWith("/") || nextPath.startsWith("//") || nextPath.startsWith("/auth/")) {
+    return fallback
+  }
+
+  return nextPath
+}
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [errorMessage, setErrorMessage] = useState("")
+  const nextPath = useMemo(
+    () => getSafeNextPath(searchParams.get("next"), "/customer/dashboard"),
+    [searchParams],
+  )
+  const registerHref = useMemo(
+    () => `/auth/register?next=${encodeURIComponent(nextPath)}`,
+    [nextPath],
+  )
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setErrorMessage("")
     setIsLoading(true)
-    // Simulate login
-    setTimeout(() => {
+
+    try {
+      const supabase = getSupabaseClient()
+      const normalizedEmail = normalizeAuthEmail(email)
+      const localAuthHelperEnabled = isLocalAuthHelperEnabled()
+
+      if (!normalizedEmail) {
+        setErrorMessage("Email is required.")
+        return
+      }
+
+      const tryDevRepairAndSignIn = async (params: { email: string; password: string }) => {
+        if (!localAuthHelperEnabled) {
+          return { ok: false as const, error: "Local auth helper is disabled." }
+        }
+
+        const registerResponse = await fetch("/api/auth/dev-register", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: params.email,
+            password: params.password,
+            firstName: "Local",
+            lastName: "User",
+            phone: "",
+          }),
+        })
+
+        const registerPayload = (await registerResponse.json().catch(() => ({}))) as DevRegisterResponse
+        if (!registerResponse.ok || !registerPayload.ok) {
+          return {
+            ok: false as const,
+            error: registerPayload.error || "Unable to repair local account.",
+          }
+        }
+
+        const retry = await supabase.auth.signInWithPassword({
+          email: normalizeAuthEmail(params.email),
+          password: params.password,
+        })
+
+        if (retry.error) {
+          return {
+            ok: false as const,
+            error: retry.error.message,
+          }
+        }
+
+        return { ok: true as const }
+      }
+
+      const signIn = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password,
+      })
+
+      if (signIn.error) {
+        const looksUnconfirmed = /not confirmed|not verified/i.test(signIn.error.message)
+        if (localAuthHelperEnabled && looksUnconfirmed) {
+          const confirmResponse = await fetch("/api/auth/dev-auto-confirm", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ email: normalizedEmail }),
+          })
+
+          const confirmPayload = (await confirmResponse.json().catch(() => ({}))) as DevAutoConfirmResponse
+          if (confirmResponse.ok && confirmPayload.ok) {
+            const retry = await supabase.auth.signInWithPassword({
+              email: normalizedEmail,
+              password,
+            })
+
+            if (!retry.error) {
+              router.push(nextPath)
+              router.refresh()
+              return
+            }
+
+            setErrorMessage(retry.error.message)
+            return
+          }
+
+          setErrorMessage(confirmPayload.error || signIn.error.message)
+          return
+        }
+
+        if (localAuthHelperEnabled) {
+          const repaired = await tryDevRepairAndSignIn({
+            email: normalizedEmail,
+            password,
+          })
+
+          if (repaired.ok) {
+            router.push(nextPath)
+            router.refresh()
+            return
+          }
+
+          setErrorMessage(repaired.error || signIn.error.message)
+          return
+        }
+
+        setErrorMessage(signIn.error.message)
+        return
+      }
+
+      router.push(nextPath)
+      router.refresh()
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to sign in.")
+    } finally {
       setIsLoading(false)
-      router.push("/customer/dashboard")
-    }, 1500)
+    }
   }
 
   return (
@@ -42,7 +188,7 @@ export default function LoginPage() {
           {/* Logo */}
           <div className="mb-8 text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-              <Heart className="h-6 w-6 text-primary-foreground" />
+              <ShieldHeartIcon color="currentColor" className="h-6 w-6 text-primary-foreground" />
             </div>
             <h1 className="text-2xl font-bold text-foreground">Welcome Back</h1>
             <p className="mt-1 text-muted-foreground">Sign in to your MassHealth account</p>
@@ -66,6 +212,8 @@ export default function LoginPage() {
                     placeholder="you@example.com"
                     required
                     className="border-input bg-background text-foreground"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
@@ -85,6 +233,8 @@ export default function LoginPage() {
                       placeholder="Enter your password"
                       required
                       className="border-input bg-background pr-10 text-foreground"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
                     />
                     <button
                       type="button"
@@ -99,6 +249,7 @@ export default function LoginPage() {
                     </button>
                   </div>
                 </div>
+                {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
                 <Button 
                   type="submit" 
                   className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
@@ -139,7 +290,7 @@ export default function LoginPage() {
 
               <p className="mt-6 text-center text-sm text-muted-foreground">
                 {"Don't have an account? "}
-                <Link href="/auth/register" className="font-medium text-primary hover:underline">
+                <Link href={registerHref} className="font-medium text-primary hover:underline">
                   Create one
                 </Link>
               </p>

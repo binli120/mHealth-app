@@ -5,9 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { 
-  Heart, 
   Search,
-  User,
   Bell,
   LogOut,
   Filter,
@@ -22,6 +20,7 @@ import {
   Shield
 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ShieldHeartIcon, UserBadgeIcon } from "@/lib/icons"
 
 const auditLogs = [
   {
@@ -123,7 +122,7 @@ export default function AuditLogPage() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar-primary">
-                <Heart className="h-5 w-5 text-sidebar-primary-foreground" />
+                <ShieldHeartIcon color="currentColor" className="h-5 w-5 text-sidebar-primary-foreground" />
               </div>
               <div>
                 <span className="text-lg font-semibold text-sidebar-foreground">MassHealth</span>
@@ -152,7 +151,7 @@ export default function AuditLogPage() {
               <Bell className="h-5 w-5" />
             </Button>
             <Button variant="ghost" size="icon" className="text-sidebar-foreground">
-              <User className="h-5 w-5" />
+              <UserBadgeIcon color="currentColor" className="h-5 w-5" />
             </Button>
             <Link href="/">
               <Button variant="ghost" size="icon" className="text-sidebar-foreground">
@@ -186,7 +185,7 @@ export default function AuditLogPage() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input 
-                  placeholder="Search by Case ID, User, or Action..." 
+                  placeholder="Search by Case ID, or Action..." 
                   className="border-input bg-background pl-9 text-foreground"
                 />
               </div>
@@ -255,7 +254,7 @@ export default function AuditLogPage() {
                       <p className="mt-1 text-sm text-muted-foreground">{log.details}</p>
                       <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
-                          <User className="h-3 w-3" />
+                          <UserBadgeIcon color="currentColor" className="h-3 w-3" />
                           {log.user}
                         </span>
                         <span className="rounded-full bg-secondary px-2 py-0.5">

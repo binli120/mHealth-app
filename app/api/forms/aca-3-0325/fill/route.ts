@@ -1,39 +1,20 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { generateMassHealthAcaPdf } from "@/lib/pdf/masshealth-aca"
+import { massHealthAcaPayloadSchema } from "@/lib/pdf/masshealth-aca-payload"
+import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 
 export const runtime = "nodejs"
 
-const payloadSchema = z.object({
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  dateOfBirth: z.string().optional().default(""),
-  email: z.string().optional(),
-  ssn: z.string().optional(),
-  streetAddress: z.string().optional().default(""),
-  apartment: z.string().optional(),
-  city: z.string().optional().default(""),
-  state: z.string().optional().default("MA"),
-  zipCode: z.string().optional().default(""),
-  county: z.string().optional(),
-  phone: z.string().optional().default(""),
-  otherPhone: z.string().optional(),
-  householdSize: z.number().int().min(1).optional().default(1),
-  citizenship: z.enum(["citizen", "permanent", "refugee", "other"]).optional(),
-  preferredSpokenLanguage: z.string().optional(),
-  preferredWrittenLanguage: z.string().optional(),
-  employerName: z.string().optional(),
-  monthlyIncome: z.number().optional(),
-  annualIncome: z.number().optional(),
-  weeklyHours: z.number().optional(),
-  signatureName: z.string().optional(),
-  signatureDate: z.string().optional(),
-})
-
 export async function POST(request: Request) {
   try {
+    const authResult = await requireAuthenticatedUser(request)
+    if (!authResult.ok) {
+      return authResult.response
+    }
+
     const body = await request.json()
-    const payload = payloadSchema.parse(body)
+    const payload = massHealthAcaPayloadSchema.parse(body)
 
     const pdfBytes = await generateMassHealthAcaPdf(payload)
     const filename = `ACA-3-0325-filled-${new Date().toISOString().slice(0, 10)}.pdf`
@@ -49,12 +30,14 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Failed to generate ACA PDF", error)
 
+    const isValidationError = error instanceof z.ZodError
+
     return NextResponse.json(
       {
-        error: "Unable to generate filled ACA PDF",
+        error: isValidationError ? "Invalid ACA form payload." : "Unable to generate filled ACA PDF",
       },
       {
-        status: 400,
+        status: isValidationError ? 422 : 500,
       },
     )
   }

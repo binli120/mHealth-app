@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -9,10 +10,14 @@ import { setLanguage } from "@/lib/redux/features/app-slice"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { isSupportedLanguage, SUPPORTED_LANGUAGES } from "@/lib/i18n/languages"
 import { getMessage, type AppMessageKey } from "@/lib/i18n/messages"
-import { Shield, FileText, Clock, Phone, ChevronRight, Heart, Users, CheckCircle2 } from "lucide-react"
+import { Shield, FileText, Clock, Phone, ChevronRight, Users, CheckCircle2 } from "lucide-react"
+import { ShieldHeartIcon } from "@/lib/icons"
+import { getSafeSupabaseSession } from "@/lib/supabase/client"
 
 export default function LandingPage() {
+  const router = useRouter()
   const dispatch = useAppDispatch()
+  const [pendingRoute, setPendingRoute] = useState<string | null>(null)
   const selectedLanguage = useAppSelector((state) => state.app.language)
   const t = (key: AppMessageKey) => getMessage(selectedLanguage, key)
 
@@ -26,6 +31,28 @@ export default function LandingPage() {
     document.documentElement.lang = selectedLanguage
   }, [selectedLanguage])
 
+  const handleProtectedAction = async (route: string) => {
+    if (pendingRoute) {
+      return
+    }
+
+    setPendingRoute(route)
+
+    try {
+      const { session } = await getSafeSupabaseSession()
+      if (session) {
+        router.push(route)
+        return
+      }
+    } catch {
+      // Fall through to login redirect.
+    } finally {
+      setPendingRoute(null)
+    }
+
+    router.push(`/auth/login?next=${encodeURIComponent(route)}`)
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -33,7 +60,7 @@ export default function LandingPage() {
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
           <div className="flex items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-              <Heart className="h-5 w-5 text-primary-foreground" />
+              <ShieldHeartIcon color="currentColor" className="h-5 w-5 text-primary-foreground" />
             </div>
             <span className="text-xl font-semibold text-foreground">MassHealth</span>
           </div>
@@ -44,7 +71,7 @@ export default function LandingPage() {
             <Link href="#" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
               {t("navEligibility")}
             </Link>
-            <Link href="#" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+            <Link href="/knowledge-center" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
               {t("navResources")}
             </Link>
             <Link href="#" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
@@ -89,17 +116,36 @@ export default function LandingPage() {
                 {t("heroDescription")}
               </p>
               <div className="flex flex-col gap-3 sm:flex-row">
-                <Link href="/application/new">
-                  <Button size="lg" className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto">
-                    {t("applyForMassHealth")}
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-                <Link href="/customer/status">
-                  <Button size="lg" variant="outline" className="w-full sm:w-auto">
-                    {t("continueSavedApplication")}
-                  </Button>
-                </Link>
+                <Button
+                  type="button"
+                  size="lg"
+                  className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
+                  disabled={Boolean(pendingRoute)}
+                  onClick={() => void handleProtectedAction("/application/type")}
+                >
+                  {pendingRoute === "/application/type" ? "Checking..." : t("applyForMassHealth")}
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  size="lg"
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  disabled={Boolean(pendingRoute)}
+                  onClick={() => void handleProtectedAction("/customer/status")}
+                >
+                  {pendingRoute === "/customer/status" ? "Checking..." : t("continueSavedApplication")}
+                </Button>
+                <Button
+                  type="button"
+                  size="lg"
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  disabled={Boolean(pendingRoute)}
+                  onClick={() => void handleProtectedAction("/application/check")}
+                >
+                  {pendingRoute === "/application/check" ? "Checking..." : t("checkYourApplication")}
+                </Button>
               </div>
               <div className="flex items-center gap-6 pt-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
@@ -115,18 +161,18 @@ export default function LandingPage() {
             <div className="relative hidden lg:block">
               <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
               <div className="absolute -bottom-20 -left-20 h-72 w-72 rounded-full bg-accent/10 blur-3xl" />
-              <Card className="relative border-border bg-card shadow-xl">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg text-card-foreground">{t("checkYourStatus")}</CardTitle>
+              <Card className="relative ml-auto w-full max-w-sm border-border bg-card shadow-xl xl:max-w-md">
+                <CardHeader className="space-y-1 pb-3">
+                  <CardTitle className="text-base text-card-foreground xl:text-lg">{t("checkYourStatus")}</CardTitle>
                   <CardDescription>{t("alreadyAppliedTrack")}</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3">
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between rounded-lg bg-secondary p-3">
+                    <div className="flex items-center justify-between rounded-lg bg-secondary p-2.5">
                       <span className="text-sm font-medium text-secondary-foreground">{t("applicationId")}</span>
                       <span className="text-sm text-muted-foreground">MH-2024-XXXXX</span>
                     </div>
-                    <div className="flex items-center justify-between rounded-lg bg-accent/10 p-3">
+                    <div className="flex items-center justify-between rounded-lg bg-accent/10 p-2.5">
                       <span className="text-sm font-medium text-foreground">{t("status")}</span>
                       <span className="inline-flex items-center rounded-full bg-accent/20 px-2.5 py-0.5 text-xs font-medium text-accent">
                         {t("underReview")}
@@ -149,7 +195,7 @@ export default function LandingPage() {
       <section className="border-b border-border bg-card px-4 py-12">
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Link href="/application/new" className="group">
+            <Link href="/application/type" className="group">
               <Card className="h-full border-border bg-card transition-all hover:border-primary/50 hover:shadow-lg">
                 <CardContent className="flex items-center gap-4 p-6">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
@@ -188,7 +234,7 @@ export default function LandingPage() {
                 </CardContent>
               </Card>
             </Link>
-            <Link href="/contact" className="group">
+            <Link href="/knowledge-center" className="group">
               <Card className="h-full border-border bg-card transition-all hover:border-primary/50 hover:shadow-lg">
                 <CardContent className="flex items-center gap-4 p-6">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-warning/10">
@@ -288,7 +334,7 @@ export default function LandingPage() {
             {t("ctaBody")}
           </p>
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
-            <Link href="/application/new">
+            <Link href="/application/type">
               <Button size="lg" className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto">
                 {t("ctaStartApplication")}
                 <ChevronRight className="h-4 w-4" />
@@ -310,7 +356,7 @@ export default function LandingPage() {
             <div>
               <div className="mb-4 flex items-center gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                  <Heart className="h-4 w-4 text-primary-foreground" />
+                  <ShieldHeartIcon color="currentColor" className="h-4 w-4 text-primary-foreground" />
                 </div>
                 <span className="font-semibold text-foreground">MassHealth</span>
               </div>

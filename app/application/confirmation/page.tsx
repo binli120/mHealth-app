@@ -3,7 +3,8 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Heart, CheckCircle2, Download, Mail, Calendar, ArrowRight } from "lucide-react"
+import { CheckCircle2, Download, Mail, Calendar, ArrowRight } from "lucide-react"
+import { ShieldHeartIcon } from "@/lib/icons"
 
 const submittedDate = new Date().toLocaleDateString()
 const caseId = `MH-2024-${crypto.randomUUID().slice(0, 5).toUpperCase()}`
@@ -16,7 +17,7 @@ export default function ConfirmationPage() {
         <div className="mx-auto flex max-w-7xl items-center justify-center">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <Heart className="h-4 w-4 text-primary-foreground" />
+              <ShieldHeartIcon color="currentColor" className="h-4 w-4 text-primary-foreground" />
             </div>
             <span className="font-semibold text-foreground">MassHealth</span>
           </div>

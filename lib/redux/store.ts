@@ -1,11 +1,16 @@
 import { configureStore } from "@reduxjs/toolkit"
 
+import { applicationReducer } from "@/lib/redux/features/application-slice"
 import { appReducer } from "@/lib/redux/features/app-slice"
+import { extractWorkflowReducer } from "@/lib/redux/features/extract-workflow-slice"
 
 export const makeStore = () =>
   configureStore({
+    devTools: false,
     reducer: {
       app: appReducer,
+      application: applicationReducer,
+      extractWorkflow: extractWorkflowReducer,
     },
   })
 

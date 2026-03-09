@@ -1,0 +1,3432 @@
+{
+  "form_variant": "ACA-3-0325",
+  "people": [],
+  "form_items": [
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question_id": "1",
+      "question_text": "First name, middle name, last name, and suffix",
+      "answer_type": "text",
+      "options": [],
+      "value": "Alex M Carter"
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question_id": "2",
+      "question_text": "Date of birth",
+      "answer_type": "text",
+      "options": [],
+      "value": "07/14/1991"
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question_id": "3",
+      "question_text": "What is your email address?",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question_id": "4",
+      "question_text": "Street address",
+      "answer_type": "text",
+      "options": [],
+      "value": "123 Maple Street"
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question_id": "5",
+      "question_text": "Apartment or unit number",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question_id": "6",
+      "question_text": "City",
+      "answer_type": "text",
+      "options": [],
+      "value": "Boston"
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question_id": "7",
+      "question_text": "State",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question_id": "8",
+      "question_text": "ZIP code",
+      "answer_type": "text",
+      "options": [],
+      "value": "02118"
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question_id": "9",
+      "question_text": "County",
+      "answer_type": "text",
+      "options": [],
+      "value": "Suffolk"
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question_id": "10",
+      "question_text": "Mailing address",
+      "answer_type": "text",
+      "options": [],
+      "value": "PO Box 9021"
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question_id": "11",
+      "question_text": "Apartment or unit number",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question_id": "12",
+      "question_text": "City",
+      "answer_type": "text",
+      "options": [],
+      "value": "Boston"
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question_id": "13",
+      "question_text": "State",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question_id": "14",
+      "question_text": "ZIP code",
+      "answer_type": "text",
+      "options": [],
+      "value": "02118"
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question_id": "15",
+      "question_text": "County",
+      "answer_type": "text",
+      "options": [],
+      "value": "Suffolk"
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question_id": "16",
+      "question_text": "Phone number",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question_id": "17",
+      "question_text": "Other phone number",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question_id": "18",
+      "question_text": "# of people listed on the application",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question_id": "19",
+      "question_text": "What is your preferred language, if not English? Spoken",
+      "answer_type": "text",
+      "options": [],
+      "value": "English"
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question_id": "20",
+      "question_text": "Is anyone on this application in prison or jail?",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question_id": "21",
+      "question_text": "Is this person awaiting trial?",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 5,
+      "section": "STEP 2 Person 1 (continued)",
+      "question_id": "6",
+      "question_text": "Which of these describes your current sexual orientation?",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 5,
+      "section": "STEP 2 Person 1 (continued)",
+      "question_id": "7",
+      "question_text": "Are you of Hispanic or Latino origin or descent?",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 5,
+      "section": "STEP 2 Person 1 (continued)",
+      "question_id": "8",
+      "question_text": "Race (see page 27)",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 5,
+      "section": "STEP 2 Person 1 (continued)",
+      "question_id": "9",
+      "question_text": "Ethnicity (see page 27)",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 5,
+      "section": "STEP 2 Person 1 (continued)",
+      "question_id": "10",
+      "question_text": "Do you have a Social Security number (SSN)? [W| Yes [_] No (optional if not applying)",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 5,
+      "section": "STEP 2 Person 1 (continued)",
+      "question_id": "11",
+      "question_text": "If you get an Advance Premium Tax Credit (APTC), do you agree to file a federal tax return for the tax year when the credits are",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 5,
+      "section": "STEP 2 Person 1 (continued)",
+      "question_id": "a",
+      "question_text": "Are you legally married? [/]Yes [_]No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": "Yes"
+    },
+    {
+      "page": 5,
+      "section": "STEP 2 Person 1 (continued)",
+      "question_id": "b",
+      "question_text": "Do you plan to file a joint federal tax return with your spouse for the tax year for which you are applying? [/]Yes [_]No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": "Yes"
+    },
+    {
+      "page": 5,
+      "section": "STEP 2 Person 1 (continued)",
+      "question_id": "c",
+      "question_text": "Will you claim any dependents on your federal income tax return for the year for which you are applying? [/|Yes [_]No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": "Taylor Carter 04/02/2016"
+    },
+    {
+      "page": 5,
+      "section": "STEP 2 Person 1 (continued)",
+      "question_id": "d",
+      "question_text": "If No, skip to question",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 6,
+      "section": "page_6",
+      "question_id": "1",
+      "question_text": "You have received an APTC or ConnectorCare in the past, and",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 6,
+      "section": "page_6",
+      "question_id": "2",
+      "question_text": "The statement is true for all people listed in the househol",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 6,
+      "section": "page_6",
+      "question_id": "12",
+      "question_text": "Are you applying for health or dental coverage for YOURSELF? Yes No If Yes, answer all the questions below. If No, answer Questions 18 and 19, then go to Income Information.",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 6,
+      "section": "page_6",
+      "question_id": "13",
+      "question_text": "Are you a US citizen or US national? Yes No If Yes, are you a naturalized, derived, or acquired citizen (not born in the US)? Yes No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 6,
+      "section": "page_6",
+      "question_id": "14",
+      "question_text": "If you are a noncitizen, do you have an eligible immigration status? Yes No. If No, go to Question",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 6,
+      "section": "page_6",
+      "question_id": "15",
+      "question_text": "Do you live with at least one child younger than 19, and are you the main person taking care of this child or children? Yes No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 6,
+      "section": "page_6",
+      "question_id": "a",
+      "question_text": "If Yes, do you have an immigration document? Yes No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 6,
+      "section": "page_6",
+      "question_id": "b",
+      "question_text": "Did you use the same name on this application that you did to get your immigration status? Yes No If No, what name did you use? First name, middle name, last name, and suffix Alex M Carter",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 6,
+      "section": "page_6",
+      "question_id": "c",
+      "question_text": "Did you arrive in the US after August 22, 1996? Yes No",
+      "answer_type": "single_or_multi_choice",
+      "options": [
+        "Yes",
+        "No",
+        "August"
+      ],
+      "value": null
+    },
+    {
+      "page": 6,
+      "section": "page_6",
+      "question_id": "d",
+      "question_text": "Will you be claimed as a dependent on someone else's federal income tax return for the year for which you are applying? Yes No If you are claimed by someone else as a dependent on their federal income tax return, this may affect whether you can receive a premium tax credit. Do not answer Yes to this question if you are a child under the age of 21 being claimed by a noncustodial parent. If Yes, please list the name of the tax filer. Alex Carter",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 6,
+      "section": "page_6",
+      "question_id": "d",
+      "question_text": "Are you an honorably discharged veteran or active-duty member of the US military, or the spouse or child of an honorably discharged veteran or an active-duty member of the US military? Yes No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 8,
+      "section": "STEP 2 Person 1 (continued)",
+      "question_id": "34",
+      "question_text": "Have you or will you receive income during this calendar year as a one-time-only payment? [V7] Yes C] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 8,
+      "section": "STEP 2 Person 1 (continued)",
+      "question_id": "35",
+      "question_text": "Will you receive income during the next calendar year as a one-time-only payment? [V7] Yes C] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 8,
+      "section": "STEP 2 Person 1 (continued)",
+      "question_id": "36",
+      "question_text": "What deductions do you report on your income tax return?",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 8,
+      "section": "STEP 2 Person 1 (continued)",
+      "question_id": "37",
+      "question_text": "What is your total expected income for the current calendar year?",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 8,
+      "section": "STEP 2 Person 1 (continued)",
+      "question_id": "38",
+      "question_text": "What is your total expected income for next calendar year, if different?",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 9,
+      "section": "STEP 2 Person 2",
+      "question_id": "1",
+      "question_text": "First name, middle name, last name, and suffix",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 9,
+      "section": "STEP 2 Person 2",
+      "question_id": "2",
+      "question_text": "Relationship to Person 1 Sample 131 Does this person live with Person1? [/JYes [_]No",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 9,
+      "section": "STEP 2 Person 2",
+      "question_id": "3",
+      "question_text": "Date of birth (mm/dd/yyyy) 07/14/1991",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 9,
+      "section": "STEP 2 Person 2",
+      "question_id": "4",
+      "question_text": "What was this person\u2019s sex assigned at birth? [/|Male [_|Female",
+      "answer_type": "single_or_multi_choice",
+      "options": [
+        "Male",
+        "Female"
+      ],
+      "value": null
+    },
+    {
+      "page": 9,
+      "section": "STEP 2 Person 2",
+      "question_id": "5",
+      "question_text": "Which best describes this person\u2019s current gender identity? Select up to five options.",
+      "answer_type": "multi_choice",
+      "options": [
+        "Male",
+        "Female"
+      ],
+      "value": null
+    },
+    {
+      "page": 9,
+      "section": "STEP 2 Person 2",
+      "question_id": "6",
+      "question_text": "Which of these describes this person\u2019s current sexual orientation? Select up to five options.",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 9,
+      "section": "STEP 2 Person 2",
+      "question_id": "7",
+      "question_text": "Is this person of Hispanic or Latino origin or descent?",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 9,
+      "section": "STEP 2 Person 2",
+      "question_id": "8",
+      "question_text": "Race (see page 27)",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 9,
+      "section": "STEP 2 Person 2",
+      "question_id": "9",
+      "question_text": "Ethnicity (see page 27) Boston",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 9,
+      "section": "STEP 2 Person 2",
+      "question_id": "10",
+      "question_text": "Does this person have a Social Security number (SSN)? [/]Yes [_]| No (optional if not applying)",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": "Yes"
+    },
+    {
+      "page": 9,
+      "section": "STEP 2 Person 2",
+      "question_id": "11",
+      "question_text": "If this person gets an Advance Premium Tax Credit (APTC), does this person agree to file a federal tax return for the tax year that",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 9,
+      "section": "STEP 2 Person 2",
+      "question_id": "a",
+      "question_text": "Is this person legally married? [/|Yes [_|No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 9,
+      "section": "STEP 2 Person 2",
+      "question_id": "b",
+      "question_text": "Does this person plan to file a joint federal tax return with a spouse for the tax year for which this person is applying?",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 9,
+      "section": "STEP 2 Person 2",
+      "question_id": "c",
+      "question_text": "Will this person claim any dependents on this person's federal income tax return for the year for which this person is",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 9,
+      "section": "STEP 2 Person 2",
+      "question_id": "d",
+      "question_text": "If No, skip to question",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 10,
+      "section": "page_10",
+      "question_id": "12",
+      "question_text": "Is this person applying for health or dental coverage? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 10,
+      "section": "page_10",
+      "question_id": "13",
+      "question_text": "Is this person a US citizen or US national? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 10,
+      "section": "page_10",
+      "question_id": "14",
+      "question_text": "If this person is a noncitizen, do they have an eligible immigration status? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 10,
+      "section": "page_10",
+      "question_id": "15",
+      "question_text": "Does this person live with at least one child younger than 19, and is this person the main person taking care of this child or children? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 10,
+      "section": "page_10",
+      "question_id": "16",
+      "question_text": "Is this person living in Massachusetts, and does this person either intend to reside here, even if they do not have a fixed address, or has this person entered Massachusetts with a job commitment or seeking employment? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 10,
+      "section": "page_10",
+      "question_id": "17",
+      "question_text": "Does this person have an injury, illness, or disability (including a disabling mental health condition) that has lasted or is expected to last for at least 12 months? If legally blind, answer Yes. [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 10,
+      "section": "page_10",
+      "question_id": "18",
+      "question_text": "Does this person need reasonable accommodation because of a disability or an injury? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 10,
+      "section": "page_10",
+      "question_id": "19",
+      "question_text": "Is this person pregnant? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 10,
+      "section": "page_10",
+      "question_id": "a",
+      "question_text": "If Yes, does this person have an immigration document? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 10,
+      "section": "page_10",
+      "question_id": "b",
+      "question_text": "Did this person use the same name on this application that they did to get their immigration status? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 10,
+      "section": "page_10",
+      "question_id": "c",
+      "question_text": "Did this person arrive in the US after August 22, 1996? [ ] Yes [ ] No",
+      "answer_type": "single_or_multi_choice",
+      "options": [
+        "Yes",
+        "No",
+        "August"
+      ],
+      "value": null
+    },
+    {
+      "page": 10,
+      "section": "page_10",
+      "question_id": "d",
+      "question_text": "Will this person be claimed as a dependent on someone else's federal income tax return for the year for which this person is applying? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 10,
+      "section": "page_10",
+      "question_id": "d",
+      "question_text": "Is this person an honorably discharged veteran or active-duty member of the US military, or the spouse or child of an honorably discharged veteran or an active-duty member of the US military? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 11,
+      "section": "Step 2 Person 2 (continued)",
+      "question_id": "20",
+      "question_text": "Optional Does this person have breast or cervical cancer? Yes No (Special coverage rules may apply.)",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 11,
+      "section": "Step 2 Person 2 (continued)",
+      "question_id": "21",
+      "question_text": "Optional Is this person HIV positive? Yes No (MassHealth has special coverage rules for people with HIV.)",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 11,
+      "section": "Step 2 Person 2 (continued)",
+      "question_id": "22",
+      "question_text": "Was this person ever in foster care? Yes No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 11,
+      "section": "Step 2 Person 2 (continued)",
+      "question_id": "23",
+      "question_text": "Does this person have any income? Yes No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 11,
+      "section": "Step 2 Person 2 (continued)",
+      "question_id": "24",
+      "question_text": "CURRENT JOB 1: Employer name and address Federal Tax ID#",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 11,
+      "section": "Step 2 Person 2 (continued)",
+      "question_id": "26",
+      "question_text": "Average number of hours worked each WEEK 40",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 11,
+      "section": "Step 2 Person 2 (continued)",
+      "question_id": "27",
+      "question_text": "Is this person seasonally employed? Yes No. If Yes, which months does this person work in a calendar year?",
+      "answer_type": "single_or_multi_choice",
+      "options": [
+        "Yes",
+        "No",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August"
+      ],
+      "value": null
+    },
+    {
+      "page": 11,
+      "section": "Step 2 Person 2 (continued)",
+      "question_id": "28",
+      "question_text": "CURRENT JOB 2: Employer name and address Federal Tax ID#",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 11,
+      "section": "Step 2 Person 2 (continued)",
+      "question_id": "30",
+      "question_text": "Average number of hours worked each WEEK 40",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 11,
+      "section": "Step 2 Person 2 (continued)",
+      "question_id": "31",
+      "question_text": "Is this person seasonally employed? Yes No. If Yes, which months does this person work in a calendar year?",
+      "answer_type": "single_or_multi_choice",
+      "options": [
+        "Yes",
+        "No",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August"
+      ],
+      "value": null
+    },
+    {
+      "page": 11,
+      "section": "Step 2 Person 2 (continued)",
+      "question_id": "32",
+      "question_text": "SELF-EMPLOYMENT: Is this person self-employed? Yes No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 11,
+      "section": "Step 2 Person 2 (continued)",
+      "question_id": "33",
+      "question_text": "Check all that apply. State the amount and how often this person gets it. NOTE: You do not need to tell us about child support, nontaxable veteran\u2019s payments, Supplemental Security Income (SSI), or most workers\u2019 compensation income.",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 11,
+      "section": "Step 2 Person 2 (continued)",
+      "question_id": "a",
+      "question_text": "If Yes, in what state was this person in foster care? MA",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 11,
+      "section": "Step 2 Person 2 (continued)",
+      "question_id": "a",
+      "question_text": "Wages/tips (before taxes) $ 2450 Weekly Every 2 weeks Twice a month Monthly Quarterly",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 11,
+      "section": "Step 2 Person 2 (continued)",
+      "question_id": "a",
+      "question_text": "If Yes, what type of work does this person do? Sample 177",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 11,
+      "section": "Step 2 Person 2 (continued)",
+      "question_id": "b",
+      "question_text": "Was this person getting healthcare through a state Medicaid program? Yes No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 11,
+      "section": "Step 2 Person 2 (continued)",
+      "question_id": "b",
+      "question_text": "Income effective date 03/01/2026",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 11,
+      "section": "Step 2 Person 2 (continued)",
+      "question_id": "b",
+      "question_text": "March April May June July August Sept. Oct. Nov. De",
+      "answer_type": "single_or_multi_choice",
+      "options": [
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August"
+      ],
+      "value": null
+    },
+    {
+      "page": 11,
+      "section": "Step 2 Person 2 (continued)",
+      "question_id": "b",
+      "question_text": "On average, how much net income (profits or losses after business expenses are paid) will this person get from this selfemployment each month? $ N/A /month profit or $ 300 /month loss",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 11,
+      "section": "Step 2 Person 2 (continued)",
+      "question_id": "c",
+      "question_text": "How many hours does this person work per week? Sample 180",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 12,
+      "section": "STEP 2 Person 2 (continued)",
+      "question_id": "34",
+      "question_text": "Has or will this person receive income during this calendar year as a one-time-only payment? [V|Yes [_|No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 12,
+      "section": "STEP 2 Person 2 (continued)",
+      "question_id": "35",
+      "question_text": "Will this person receive income during the next calendar year as a one-time-only payment? [V|Yes [_|No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 12,
+      "section": "STEP 2 Person 2 (continued)",
+      "question_id": "36",
+      "question_text": "What deductions do they report on their income tax return?",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 12,
+      "section": "STEP 2 Person 2 (continued)",
+      "question_id": "37",
+      "question_text": "What is this person's total expected income for the current calendar year?",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 12,
+      "section": "STEP 2 Person 2 (continued)",
+      "question_id": "38",
+      "question_text": "What is this person's total expected income for next calendar year, if different?",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 13,
+      "section": "STEP 2. Person 3",
+      "question_id": "1",
+      "question_text": "First name, middle name, last name, and suffix",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 13,
+      "section": "STEP 2. Person 3",
+      "question_id": "2",
+      "question_text": "Relationship to Person 1 Sample 231 [Relationship to Person 2 Sample 232, to Person 2 Sample 232 | Does this person live with Person1? [/|Yes [_]No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 13,
+      "section": "STEP 2. Person 3",
+      "question_id": "3",
+      "question_text": "Date of birth (mm/dd/yyyy) 07/14/1991",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 13,
+      "section": "STEP 2. Person 3",
+      "question_id": "4",
+      "question_text": "What was this person\u2019s sex assigned at birth? [/|Male [_]Female.",
+      "answer_type": "single_or_multi_choice",
+      "options": [
+        "Male",
+        "Female"
+      ],
+      "value": null
+    },
+    {
+      "page": 13,
+      "section": "STEP 2. Person 3",
+      "question_id": "5",
+      "question_text": "Which best describes this person\u2019s current gender identity? Select up to five options.",
+      "answer_type": "multi_choice",
+      "options": [
+        "Male",
+        "Female"
+      ],
+      "value": null
+    },
+    {
+      "page": 13,
+      "section": "STEP 2. Person 3",
+      "question_id": "6",
+      "question_text": "Which of these describes this person\u2019s current sexual orientation? Select up to five options.",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 13,
+      "section": "STEP 2. Person 3",
+      "question_id": "7",
+      "question_text": "Is this person of Hispanic or Latino origin or descent?",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 13,
+      "section": "STEP 2. Person 3",
+      "question_id": "8",
+      "question_text": "Race (see page 27)",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 13,
+      "section": "STEP 2. Person 3",
+      "question_id": "9",
+      "question_text": "Ethnicity (see page 27) Boston",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 13,
+      "section": "STEP 2. Person 3",
+      "question_id": "10",
+      "question_text": "Does this person have a Social Security number (SSN)? [/]Yes [_] No (optional if not applying)",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": "Yes"
+    },
+    {
+      "page": 13,
+      "section": "STEP 2. Person 3",
+      "question_id": "11",
+      "question_text": "If this person gets an Advance Premium Tax Credit (APTC), does this person agree to file a federal tax return for the tax year that",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 13,
+      "section": "STEP 2. Person 3",
+      "question_id": "a",
+      "question_text": "Is this person legally married? [/|Yes [_]No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 13,
+      "section": "STEP 2. Person 3",
+      "question_id": "b",
+      "question_text": "Does this person plan to file a joint federal tax return with a spouse for the tax year for which this person is applying?",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 13,
+      "section": "STEP 2. Person 3",
+      "question_id": "c",
+      "question_text": "Will this person claim any dependents on this person's federal income tax return for the year for which this person is",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 13,
+      "section": "STEP 2. Person 3",
+      "question_id": "d",
+      "question_text": "If No, skip to question",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 14,
+      "section": "STEP 2. Person 3 (continued)",
+      "question_id": "12",
+      "question_text": "Is this person applying for health or dental coverage? |V| Yes C] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 14,
+      "section": "STEP 2. Person 3 (continued)",
+      "question_id": "13",
+      "question_text": "Is this person a US citizen or US national? [V|Yes [ |No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 14,
+      "section": "STEP 2. Person 3 (continued)",
+      "question_id": "14",
+      "question_text": "If this person is a noncitizen, do they have an eligible immigration status? [| Yes CT] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 14,
+      "section": "STEP 2. Person 3 (continued)",
+      "question_id": "15",
+      "question_text": "Does this person live with at least one child younger than 19, and is this person the main person taking care of this child or",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 14,
+      "section": "STEP 2. Person 3 (continued)",
+      "question_id": "16",
+      "question_text": "Is this person living in Massachusetts, and does this person either intend to reside here, even if they do not have a fixed",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 14,
+      "section": "STEP 2. Person 3 (continued)",
+      "question_id": "17",
+      "question_text": "Does this person have an injury, illness, or disability (including a disabling mental health condition) that has lasted or is",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 14,
+      "section": "STEP 2. Person 3 (continued)",
+      "question_id": "18",
+      "question_text": "Does this person need reasonable accommodation because of a disability or an injury? || Yes C] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 14,
+      "section": "STEP 2. Person 3 (continued)",
+      "question_id": "19",
+      "question_text": "Is this person pregnant? || Yes C] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 14,
+      "section": "STEP 2. Person 3 (continued)",
+      "question_id": "a",
+      "question_text": "If Yes, does this person have an immigration document? [/|Yes [_]No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 14,
+      "section": "STEP 2. Person 3 (continued)",
+      "question_id": "b",
+      "question_text": "Did this person use the same name on this application that they did to get their immigration status? |Y Yes C] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 14,
+      "section": "STEP 2. Person 3 (continued)",
+      "question_id": "c",
+      "question_text": "Did this person arrive in the US after August 22,1996? [/|Yes [_]No",
+      "answer_type": "single_or_multi_choice",
+      "options": [
+        "Yes",
+        "No",
+        "August"
+      ],
+      "value": null
+    },
+    {
+      "page": 14,
+      "section": "STEP 2. Person 3 (continued)",
+      "question_id": "d",
+      "question_text": "Will this person be claimed as a dependent on someone else's federal income tax return for the year for which this person is",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 14,
+      "section": "STEP 2. Person 3 (continued)",
+      "question_id": "d",
+      "question_text": "Is this person an honorably discharged veteran or active-duty member of the US military, or the spouse or child of an",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 15,
+      "section": "Step 2 Person 3 (continued)",
+      "question_id": "20",
+      "question_text": "Optional Does this person have breast or cervical cancer? Yes No (Special coverage rules may apply.)",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 15,
+      "section": "Step 2 Person 3 (continued)",
+      "question_id": "21",
+      "question_text": "Optional Is this person HIV positive? Yes No (MassHealth has special coverage rules for people with HIV.)",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 15,
+      "section": "Step 2 Person 3 (continued)",
+      "question_id": "22",
+      "question_text": "Was this person ever in foster care? Yes No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 15,
+      "section": "Step 2 Person 3 (continued)",
+      "question_id": "23",
+      "question_text": "Does this person have any income? Yes No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 15,
+      "section": "Step 2 Person 3 (continued)",
+      "question_id": "24",
+      "question_text": "CURRENT JOB 1: Employer name and address",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 15,
+      "section": "Step 2 Person 3 (continued)",
+      "question_id": "26",
+      "question_text": "Average number of hours worked each WEEK 40",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 15,
+      "section": "Step 2 Person 3 (continued)",
+      "question_id": "27",
+      "question_text": "Is this person seasonally employed? Yes No. If Yes, which months does this person work in a calendar year?",
+      "answer_type": "single_or_multi_choice",
+      "options": [
+        "Yes",
+        "No",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August"
+      ],
+      "value": null
+    },
+    {
+      "page": 15,
+      "section": "Step 2 Person 3 (continued)",
+      "question_id": "28",
+      "question_text": "CURRENT JOB 2: Employer name and address",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 15,
+      "section": "Step 2 Person 3 (continued)",
+      "question_id": "30",
+      "question_text": "Average number of hours worked each WEEK 40",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 15,
+      "section": "Step 2 Person 3 (continued)",
+      "question_id": "31",
+      "question_text": "Is this person seasonally employed? Yes No. If Yes, which months does this person work in a calendar year?",
+      "answer_type": "single_or_multi_choice",
+      "options": [
+        "Yes",
+        "No",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August"
+      ],
+      "value": null
+    },
+    {
+      "page": 15,
+      "section": "Step 2 Person 3 (continued)",
+      "question_id": "32",
+      "question_text": "SELF-EMPLOYMENT: Is this person self-employed? Yes No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 15,
+      "section": "Step 2 Person 3 (continued)",
+      "question_id": "33",
+      "question_text": "Check all that apply. State the amount and how often this person gets it. NOTE: You do not need to tell us about child support, nontaxable veteran\u2019s payments, Supplemental Security Income (SSI), or most workers\u2019 compensation income.",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 15,
+      "section": "Step 2 Person 3 (continued)",
+      "question_id": "a",
+      "question_text": "If Yes, in what state was this person in foster care? MA",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 15,
+      "section": "Step 2 Person 3 (continued)",
+      "question_id": "a",
+      "question_text": "Wages/tips (before taxes) $ 2450 Weekly Every 2 weeks Twice a month Monthly Quarterly",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 15,
+      "section": "Step 2 Person 3 (continued)",
+      "question_id": "a",
+      "question_text": "If Yes, what type of work does this person do? Sample 278",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 15,
+      "section": "Step 2 Person 3 (continued)",
+      "question_id": "b",
+      "question_text": "Was this person getting healthcare through a state Medicaid program? Yes No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 15,
+      "section": "Step 2 Person 3 (continued)",
+      "question_id": "b",
+      "question_text": "Income effective date 03/01/2026",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 15,
+      "section": "Step 2 Person 3 (continued)",
+      "question_id": "b",
+      "question_text": "March April May June July August Sept. Oct. Nov. De",
+      "answer_type": "single_or_multi_choice",
+      "options": [
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August"
+      ],
+      "value": null
+    },
+    {
+      "page": 15,
+      "section": "Step 2 Person 3 (continued)",
+      "question_id": "b",
+      "question_text": "On average, how much net income (profits or losses after business expenses are paid) will this person get from this self-employment each month? $ N/A /month profit or $ 300 /month loss",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 15,
+      "section": "Step 2 Person 3 (continued)",
+      "question_id": "c",
+      "question_text": "How many hours does this person work per week? Sample 281",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 16,
+      "section": "STEP 2. Person 3 (continued)",
+      "question_id": "34",
+      "question_text": "Has or will this person receive income during this calendar year as a one-time-only payment? [/|Yes [_|No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 16,
+      "section": "STEP 2. Person 3 (continued)",
+      "question_id": "35",
+      "question_text": "Will this person receive income during the next calendar year as a one-time-only payment? [W|Yes [_|No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 16,
+      "section": "STEP 2. Person 3 (continued)",
+      "question_id": "36",
+      "question_text": "What deductions do they report on their income tax return?",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 16,
+      "section": "STEP 2. Person 3 (continued)",
+      "question_id": "37",
+      "question_text": "What is this person's total expected income for the current calendar year?",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 16,
+      "section": "STEP 2. Person 3 (continued)",
+      "question_id": "38",
+      "question_text": "What is this person's total expected income for next calendar year, if different?",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 17,
+      "section": "page_17",
+      "question_id": "1",
+      "question_text": "First name, middle name, last name, and suffix",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 17,
+      "section": "page_17",
+      "question_id": "2",
+      "question_text": "Relationship to Person 1 Sample 332 Relationship to Person 2 Sample 333 Relationship to Person 3 Sample 334",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 17,
+      "section": "page_17",
+      "question_id": "3",
+      "question_text": "Date of birth (mm/dd/yyyy) 07/14/1991",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 17,
+      "section": "page_17",
+      "question_id": "4",
+      "question_text": "What was this person\u2019s sex assigned at birth? Male Female. This is usually the sex that was originally listed on their birth certificate.",
+      "answer_type": "single_or_multi_choice",
+      "options": [
+        "Male",
+        "Female"
+      ],
+      "value": null
+    },
+    {
+      "page": 17,
+      "section": "page_17",
+      "question_id": "5",
+      "question_text": "Which best describes this person\u2019s current gender identity? Select up to five options.",
+      "answer_type": "multi_choice",
+      "options": [
+        "Male",
+        "Female"
+      ],
+      "value": null
+    },
+    {
+      "page": 17,
+      "section": "page_17",
+      "question_id": "6",
+      "question_text": "Which of these describes this person\u2019s current sexual orientation? Select up to five options.",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 17,
+      "section": "page_17",
+      "question_id": "7",
+      "question_text": "Is this person of Hispanic or Latino origin or descent?",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 17,
+      "section": "page_17",
+      "question_id": "8",
+      "question_text": "Race (see page 27)",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 17,
+      "section": "page_17",
+      "question_id": "9",
+      "question_text": "Ethnicity (see page 27) Boston",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 17,
+      "section": "page_17",
+      "question_id": "10",
+      "question_text": "Does this person have a Social Security number (SSN)? Yes No (optional if not applying)",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 17,
+      "section": "page_17",
+      "question_id": "11",
+      "question_text": "If this person gets an Advance Premium Tax Credit (APTC), does this person agree to file a federal tax return for the tax year that the credits are received? Yes No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 17,
+      "section": "page_17",
+      "question_id": "a",
+      "question_text": "Is this person legally married? Yes No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 17,
+      "section": "page_17",
+      "question_id": "b",
+      "question_text": "Does this person plan to file a joint federal tax return with a spouse for the tax year for which this person is applying?",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 17,
+      "section": "page_17",
+      "question_id": "c",
+      "question_text": "Will this person claim any dependents on this person's federal income tax return for the year for which this person is applying? Yes No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 17,
+      "section": "page_17",
+      "question_id": "d",
+      "question_text": "If No, skip to question",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 18,
+      "section": "Step 2 | Person 4 (continued)",
+      "question_id": "12",
+      "question_text": "Is this person applying for health or dental coverage? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 18,
+      "section": "Step 2 | Person 4 (continued)",
+      "question_id": "13",
+      "question_text": "Is this person a US citizen or US national? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 18,
+      "section": "Step 2 | Person 4 (continued)",
+      "question_id": "14",
+      "question_text": "If this person is a noncitizen, do they have an eligible immigration status? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 18,
+      "section": "Step 2 | Person 4 (continued)",
+      "question_id": "15",
+      "question_text": "Does this person live with at least one child younger than 19, and is this person the main person taking care of this child or children? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 18,
+      "section": "Step 2 | Person 4 (continued)",
+      "question_id": "16",
+      "question_text": "Is this person living in Massachusetts, and does this person either intend to reside here, even if they do not have a fixed address, or has this person entered Massachusetts with a job commitment or seeking employment? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 18,
+      "section": "Step 2 | Person 4 (continued)",
+      "question_id": "17",
+      "question_text": "Does this person have an injury, illness, or disability (including a disabling mental health condition) that has lasted or is expected to last for at least 12 months? If legally blind, answer Yes. [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 18,
+      "section": "Step 2 | Person 4 (continued)",
+      "question_id": "18",
+      "question_text": "Does this person need reasonable accommodation because of a disability or an injury? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 18,
+      "section": "Step 2 | Person 4 (continued)",
+      "question_id": "19",
+      "question_text": "Is this person pregnant? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 18,
+      "section": "Step 2 | Person 4 (continued)",
+      "question_id": "a",
+      "question_text": "If Yes, does this person have an immigration document? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 18,
+      "section": "Step 2 | Person 4 (continued)",
+      "question_id": "b",
+      "question_text": "Did this person use the same name on this application that they did to get their immigration status? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 18,
+      "section": "Step 2 | Person 4 (continued)",
+      "question_id": "c",
+      "question_text": "Did this person arrive in the US after August 22, 1996? [ ] Yes [ ] No",
+      "answer_type": "single_or_multi_choice",
+      "options": [
+        "Yes",
+        "No",
+        "August"
+      ],
+      "value": null
+    },
+    {
+      "page": 18,
+      "section": "Step 2 | Person 4 (continued)",
+      "question_id": "d",
+      "question_text": "Will this person be claimed as a dependent on someone else's federal income tax return for the year for which this person is applying? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": "Tax filer date of birth 07/14/1991 How is this person related to the tax filer? [ ] Sample 354"
+    },
+    {
+      "page": 18,
+      "section": "Step 2 | Person 4 (continued)",
+      "question_id": "d",
+      "question_text": "Is this person an honorably discharged veteran or active-duty member of the US military, or the spouse or child of an honorably discharged veteran or an active-duty member of the US military? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": "Tax filer date of birth 07/14/1991 How is this person related to the tax filer? [ ] Sample 354"
+    },
+    {
+      "page": 19,
+      "section": "STEP 2. Person 4 (continued)",
+      "question_id": "20",
+      "question_text": "Optional Does this person have breast or cervical cancer? [V|Yes [_|No (Special coverage rules may apply.)",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 19,
+      "section": "STEP 2. Person 4 (continued)",
+      "question_id": "21",
+      "question_text": "Optional Is this person HIV positive? [Z|Yes [_|No (MassHealth has special coverage rules for people with HIV.)",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 19,
+      "section": "STEP 2. Person 4 (continued)",
+      "question_id": "22",
+      "question_text": "Was this person ever in foster care? [V|Yes [_]No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 19,
+      "section": "STEP 2. Person 4 (continued)",
+      "question_id": "23",
+      "question_text": "Does this person have any income? [/W|Yes [_]No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 19,
+      "section": "STEP 2. Person 4 (continued)",
+      "question_id": "24",
+      "question_text": "CURRENT JOB 1: Employer name and address eves Tax ID#",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 19,
+      "section": "STEP 2. Person 4 (continued)",
+      "question_id": "26",
+      "question_text": "Average number of hours worked each WEEK 40",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 19,
+      "section": "STEP 2. Person 4 (continued)",
+      "question_id": "27",
+      "question_text": "Is this person seasonally employed? [/|Yes [_]|No. If Yes, which months does this person work in a calendar year?",
+      "answer_type": "single_or_multi_choice",
+      "options": [
+        "Yes",
+        "No",
+        "March",
+        "May",
+        "June",
+        "July",
+        "August"
+      ],
+      "value": null
+    },
+    {
+      "page": 19,
+      "section": "STEP 2. Person 4 (continued)",
+      "question_id": "28",
+      "question_text": "CURRENT JOB 2: Employer name and address Federal Tax ID#",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 19,
+      "section": "STEP 2. Person 4 (continued)",
+      "question_id": "30",
+      "question_text": "Average number of hours worked each WEEK 40",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 19,
+      "section": "STEP 2. Person 4 (continued)",
+      "question_id": "31",
+      "question_text": "Is this person seasonally employed? [/|Yes [_]|No. If Yes, which months does this person work in a calendar year?",
+      "answer_type": "single_or_multi_choice",
+      "options": [
+        "Yes",
+        "No",
+        "March",
+        "May",
+        "June",
+        "July",
+        "August"
+      ],
+      "value": null
+    },
+    {
+      "page": 19,
+      "section": "STEP 2. Person 4 (continued)",
+      "question_id": "32",
+      "question_text": "SELF-EMPLOYMENT: Is this person self-employed? [V|Yes [_]No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 19,
+      "section": "STEP 2. Person 4 (continued)",
+      "question_id": "33",
+      "question_text": "Check all that apply. State the amount and how often this person gets it. NOTE: You do not need to tell us about child support,",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 19,
+      "section": "STEP 2. Person 4 (continued)",
+      "question_id": "a",
+      "question_text": "If Yes, in what state was this person in foster care? MA",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 19,
+      "section": "STEP 2. Person 4 (continued)",
+      "question_id": "a",
+      "question_text": "Wages/tips (before taxes) $ 2450 [_]Weekly [_]Every2 weeks [_|Twicea month [/|Monthly [_] Quarterly",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 19,
+      "section": "STEP 2. Person 4 (continued)",
+      "question_id": "a",
+      "question_text": "Wages/tips (before taxes) $ 2450 []Weekly [_|Every 2 weeks [_]Twiceamonth [/|]Monthly [_] Quarterly",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 19,
+      "section": "STEP 2. Person 4 (continued)",
+      "question_id": "a",
+      "question_text": "If Yes, what type of work does this person do? Sample 380",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 19,
+      "section": "STEP 2. Person 4 (continued)",
+      "question_id": "b",
+      "question_text": "Was this person getting healthcare through a state Medicaid program? [/W|Yes [_]No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 19,
+      "section": "STEP 2. Person 4 (continued)",
+      "question_id": "b",
+      "question_text": "Income effective date 93/01/2026",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 19,
+      "section": "STEP 2. Person 4 (continued)",
+      "question_id": "b",
+      "question_text": "[W)March [/JApril [-]May [_]June [_]July [-]August []Sept. [-]Oct. [-]Nov. [[] De",
+      "answer_type": "single_or_multi_choice",
+      "options": [
+        "March",
+        "May",
+        "June",
+        "July",
+        "August"
+      ],
+      "value": null
+    },
+    {
+      "page": 19,
+      "section": "STEP 2. Person 4 (continued)",
+      "question_id": "b",
+      "question_text": "Income effective date 03/01/2026",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 19,
+      "section": "STEP 2. Person 4 (continued)",
+      "question_id": "b",
+      "question_text": "[W)March [/JApril [_]May [_]June [_]July [_]August [_|Sept. [_]Oct. [-]Nov. [_]De",
+      "answer_type": "single_or_multi_choice",
+      "options": [
+        "March",
+        "May",
+        "June",
+        "July",
+        "August"
+      ],
+      "value": null
+    },
+    {
+      "page": 19,
+      "section": "STEP 2. Person 4 (continued)",
+      "question_id": "b",
+      "question_text": "On average, how much net income (profits or losses after business expenses are paid) will this person get from this self-",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 19,
+      "section": "STEP 2. Person 4 (continued)",
+      "question_id": "c",
+      "question_text": "How many hours does this person work per week? S27? 388",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 20,
+      "section": "STEP 2 Person 4 (continued)",
+      "question_id": "34",
+      "question_text": "Has or will this person receive income during this calendar year as a one-time-only payment? [V|Yes [_]No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 20,
+      "section": "STEP 2 Person 4 (continued)",
+      "question_id": "35",
+      "question_text": "Will this person receive income during the next calendar year as a one-time-only payment? [V|Yes [_|No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 20,
+      "section": "STEP 2 Person 4 (continued)",
+      "question_id": "36",
+      "question_text": "What deductions do they report on their income tax return?",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 20,
+      "section": "STEP 2 Person 4 (continued)",
+      "question_id": "37",
+      "question_text": "What is this person's total expected income for the current calendar year?",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 20,
+      "section": "STEP 2 Person 4 (continued)",
+      "question_id": "38",
+      "question_text": "What is this person's total expected income for next calendar year, if different?",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 21,
+      "section": "Step 4: Previous Medical Bills",
+      "question_id": "d",
+      "question_text": "You may need to give MassHealth proof of income, family size, address, disability, pregnancy, or health insurance during the requested time perio",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": "Alex Carter | 03/01/2026 | [ ] Yes [ ] No |"
+    },
+    {
+      "page": 21,
+      "section": "Step 5: Your Household's Health Coverage",
+      "question_id": "1",
+      "question_text": "Is anyone listed on this application offered health coverage from a job but NOT ENROLLED in it? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 21,
+      "section": "Step 5: Your Household's Health Coverage",
+      "question_id": "2",
+      "question_text": "Does anyone qualify for or is anyone enrolled in any of the following types of health coverage? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 22,
+      "section": "STEP 7) Parental Information",
+      "question_id": "1",
+      "question_text": "Was any child adopted bya single parent? [/|Yes [_]No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 22,
+      "section": "STEP 7) Parental Information",
+      "question_id": "2",
+      "question_text": "Does any child have a parent who has died? [//Yes [_]No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 22,
+      "section": "STEP 7) Parental Information",
+      "question_id": "3",
+      "question_text": "Does any child have a parent whose identity is unknown? [/|Yes [_]No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 23,
+      "section": "page_23",
+      "question_id": "1",
+      "question_text": "MassHealth may require eligible persons to enroll in",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 23,
+      "section": "page_23",
+      "question_id": "2",
+      "question_text": "Employers of eligible persons may be notified and billed in",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 23,
+      "section": "page_23",
+      "question_id": "3",
+      "question_text": "I may have to pay a premium for health coverage for myself",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 23,
+      "section": "page_23",
+      "question_id": "4",
+      "question_text": "MassHealth has the right to pursue and get money",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 23,
+      "section": "page_23",
+      "question_id": "5",
+      "question_text": "A parent and/or guardian of minor children must agree to",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 23,
+      "section": "page_23",
+      "question_id": "6",
+      "question_text": "Eligible persons who are injured in an accident, or in some",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 23,
+      "section": "page_23",
+      "question_id": "7",
+      "question_text": "Eligible persons must tell MassHealth or the Health Safety",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 23,
+      "section": "page_23",
+      "question_id": "8",
+      "question_text": "The status of this application may be shared with a hospital,",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 23,
+      "section": "page_23",
+      "question_id": "9",
+      "question_text": "To the extent permitted by law, after notice and an",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 23,
+      "section": "page_23",
+      "question_id": "10",
+      "question_text": "To the extent permitted by law, and unless exceptions",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 23,
+      "section": "page_23",
+      "question_id": "11",
+      "question_text": "To the extent permitted by law, MassHealth will seek",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 23,
+      "section": "page_23",
+      "question_id": "12",
+      "question_text": "Eligible persons must tell the healthcare program(s) in which",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 23,
+      "section": "page_23",
+      "question_id": "13",
+      "question_text": "MassHealth, the Massachusetts Health Connector, and",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 24,
+      "section": "page_24",
+      "question_id": "14",
+      "question_text": "MassHealth, the Massachusetts Health Connector, and the - providing personal information about them, including",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 24,
+      "section": "page_24",
+      "question_id": "15",
+      "question_text": "In connection with the eligibility and enrollment process, documents and providing information about any change",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 24,
+      "section": "page_24",
+      "question_id": "16",
+      "question_text": "Under federal law, discrimination is not permitted on",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 24,
+      "section": "page_24",
+      "question_id": "17",
+      "question_text": "agree to allow the Massachusetts Health Connector to applicable) about these rights and responsibilities so they",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 24,
+      "section": "page_24",
+      "question_id": "18",
+      "question_text": "agree that MassHealth or anyone acting on its behalf may services;",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 24,
+      "section": "page_24",
+      "question_id": "19",
+      "question_text": "have read or have had read to me the information on this listed on this application.",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 24,
+      "section": "page_24",
+      "question_id": "20",
+      "question_text": "have permission from all persons listed on this application 651) the Social Security Administration at (800) 772-1213,",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 24,
+      "section": "page_24",
+      "question_id": "21",
+      "question_text": "understand my rights and responsibilities and the rights",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 25,
+      "section": "page_25",
+      "question_id": "C",
+      "question_text": "2011-2036) for SNAP and under M.G.L.",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 25,
+      "section": "page_25",
+      "question_id": "c",
+      "question_text": "18 Section 33 for TAFDC and EAED",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 25,
+      "section": "page_25",
+      "question_id": "C",
+      "question_text": "DTA uses SSNs to:",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 27,
+      "section": "page_27",
+      "question_id": "1",
+      "question_text": "Aggravated sexual abuse under section 2241 of title 18, U.S.",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 27,
+      "section": "page_27",
+      "question_id": "1",
+      "question_text": "mail:",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 27,
+      "section": "page_27",
+      "question_id": "2",
+      "question_text": "Murder under section 1111 of title 18, U.S.",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 27,
+      "section": "page_27",
+      "question_id": "2",
+      "question_text": "fax:",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 27,
+      "section": "page_27",
+      "question_id": "3",
+      "question_text": "Any offense under chapter 110 of title 18, U.S.",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 27,
+      "section": "page_27",
+      "question_id": "3",
+      "question_text": "email:",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 27,
+      "section": "page_27",
+      "question_id": "4",
+      "question_text": "A Federal or State offense involving sexual assault, as defined in section 40002(a) of the 1994 VAWA (42 U.S.",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 27,
+      "section": "page_27",
+      "question_id": "5",
+      "question_text": "An offense under State law determined by the Attorney General to be substantially similar to an offense described in this list.",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 27,
+      "section": "page_27",
+      "question_id": "27",
+      "question_text": "pdf, from any USDA office, by calling (833) 620-1071, or by writing a letter addressed to USD",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 27,
+      "section": "page_27",
+      "question_id": "a",
+      "question_text": "gov/sites/default/files/documents/ad-30",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 27,
+      "section": "page_27",
+      "question_id": "A",
+      "question_text": "The letter must contain the complainant\u2019s name, address, telephone number, and a written description of the alleged discriminatory action in sufficient detail to inform the Assistant Secretary for Civil Rights (ASCR) about the nature and date of an alleged civil rights violation. The completed AD-3027 form or letter must be submitted by:",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 27,
+      "section": "page_27",
+      "question_id": "C",
+      "question_text": ";",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 27,
+      "section": "page_27",
+      "question_id": "C",
+      "question_text": "13925a); or",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 28,
+      "section": "STEP 9 Send us your completed application.",
+      "question_id": "a",
+      "question_text": "us](http://se",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 28,
+      "section": "STEP 9 Send us your completed application.",
+      "question_id": "a",
+      "question_text": "us). More information on how to register to vote can also be found at [se",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 28,
+      "section": "STEP 9 Send us your completed application.",
+      "question_id": "a",
+      "question_text": "us). If you have any questions about the voter registration process, or if you need help filling out the form, please visit a local MassHealth Enrollment Center or call the MassHealth Customer Service Center at (800) 841-2900, TDD/TTY: 7",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 28,
+      "section": "STEP 9 Send us your completed application.",
+      "question_id": "c",
+      "question_text": "state.m",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 29,
+      "section": "page_29",
+      "question_id": "0",
+      "question_text": "5x +",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 29,
+      "section": "page_29",
+      "question_id": "0",
+      "question_text": "5 \\). The equation of the line is a linear equation, which means that the value of the function is proportional to the number of iterations. The line is a good fit for the data, as it passes through most of the data points.",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 29,
+      "section": "page_29",
+      "question_id": "1",
+      "question_text": "1 A sample figure from the paper. The figure is a 2D plot of the data, with the x-axis representing the number of iterations and the y-axis representing the value of the function. The data points are shown as black dots, and the line is a best-fit line through the data points. The line is labeled with the equation of the line, which is \\( y =",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "1",
+      "question_text": "Employee name (first, middle, last)",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "2",
+      "question_text": "Employee Social Security number",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "4",
+      "question_text": "Employer name",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "5",
+      "question_text": "Federal Tax ID (if known)",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "6",
+      "question_text": "Employer address",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "7",
+      "question_text": "Employer phone number",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "8",
+      "question_text": "City",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "9",
+      "question_text": "State",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "10",
+      "question_text": "ZIP code",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "11",
+      "question_text": "Who can we contact about employee health coverage at this job?",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "12",
+      "question_text": "Phone number (if different from above)",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "13",
+      "question_text": "Email address",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "16",
+      "question_text": "What change will the employer make for the new plan year (if known)?",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "a",
+      "question_text": "Is at least one person on this application currently eligible for or enrolled in coverage offered by this employer, or will at least one person on this application become eligible within the next 3 months? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "a",
+      "question_text": "What is the name of the lowest cost individual health plan offered to the employee?*",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "a",
+      "question_text": "What is the name of the lowest cost health plan to cover the other household members who qualify through the employer?",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "a",
+      "question_text": "Employer will not offer health coverage. Coverage end date (mm/dd/yyyy)",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "b",
+      "question_text": "If any person is in a waiting or probationary period, when can this person enroll in coverage? (mm/dd/yyyy) __________________",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "b",
+      "question_text": "Does the health plan offered by the employer meet the minimum value standard for coverage? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "b",
+      "question_text": "Does this health plan offered by the employer meet the minimum value standard for coverage? [ ] Yes [ ] No",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "b",
+      "question_text": "The person plans to drop employer\u2019s health coverage. Coverage end date (mm/dd/yyyy)",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "c",
+      "question_text": "How much would this employee pay in premiums for this plan? $ Sample 520",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "c",
+      "question_text": "How much would this employee pay in premiums for this plan? $ Sample 523",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "c",
+      "question_text": "Employer will start offering health coverage to employees or change the premium for the lowest-cost individual or family health plans that are available and meet the minimum value standar",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "d",
+      "question_text": "How often would this employee pay this amount? Monthly __________________",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 30,
+      "section": "page_30",
+      "question_id": "d",
+      "question_text": "* (Premium should reflect the discount for wellness programs.)",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 31,
+      "section": "page_31",
+      "question_id": "1",
+      "question_text": "Name (first, middle, last)|",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 31,
+      "section": "page_31",
+      "question_id": "2",
+      "question_text": "Member of a federally recognized tribe?|",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 31,
+      "section": "page_31",
+      "question_id": "3",
+      "question_text": "Member of a Massachusetts-recognized tribe?|",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 31,
+      "section": "page_31",
+      "question_id": "4",
+      "question_text": "Has this person ever gotten a service from the Indian Health Service, a tribal health program, or Urban Indian Health Program, or through a referral from one of these programs?|",
+      "answer_type": "single_choice_yes_no",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "value": null
+    },
+    {
+      "page": 31,
+      "section": "page_31",
+      "question_id": "5",
+      "question_text": "Certain money received may not be counted for MassHealth. List any income (amount and how often) reported on your application that includes money from|",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 32,
+      "section": "page_32",
+      "question_id": "1",
+      "question_text": "Condition",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 32,
+      "section": "page_32",
+      "question_id": "2",
+      "question_text": "Accommodation",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 33,
+      "section": "page_33",
+      "question_id": "1",
+      "question_text": "An authorized representative can be a friend, family member, relative, or other person or organization of your choosing who agrees to help you. It is up to you to choose an authorized representative if you want one. Neither MassHealth nor the Health Connector will choose an authorized representative for you. You must designate in writing (fill out Section I, Part A) the person or organization who you want to be your authorized representative. Your authorized representative must also fill out Section I, Part",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 33,
+      "section": "page_33",
+      "question_id": "2",
+      "question_text": "If you cannot designate an authorized representative in writing and you do not have an existing authorized representative or other person who is authorized by law to act on your behalf, a person (not an organization) who certifies that they will act responsibly on your behalf can be your authorized representative if that person fills out Section II of this form. We sometimes refer to this person as a \u201cSection II authorized representative.\u201d",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 33,
+      "section": "page_33",
+      "question_id": "3",
+      "question_text": "An authorized representative can also be someone who has been appointed by law to act on your behalf, or on behalf of the estate of an applicant or member who has die",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 33,
+      "section": "page_33",
+      "question_id": "4",
+      "question_text": "A Section III authorized representative may be a legal guardian, conservator, holder of power of attorney, or health care proxy, or, if the applicant or member has died, the personal representative of the estate.",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 33,
+      "section": "page_33",
+      "question_id": "B",
+      "question_text": "We sometimes refer to this person or organization as a \u201cSection I authorized representative.\u201d",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 33,
+      "section": "page_33",
+      "question_id": "d",
+      "question_text": "This person must fill out Section III and either you or this person must submit to us, together with this form, a copy of the applicable legal document stating that this person has authority to represent you, or the estate of a deceased applicant or member. We sometimes refer to this person as a \u201cSection III authorized representative.\u201d",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 34,
+      "section": "page_34",
+      "question_id": "47",
+      "question_text": "10, and 45",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 34,
+      "section": "page_34",
+      "question_id": "55",
+      "question_text": "260(f).",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 34,
+      "section": "page_34",
+      "question_id": "C",
+      "question_text": "F.R. part 431, subpart F, 42",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 34,
+      "section": "page_34",
+      "question_id": "C",
+      "question_text": "F.R. \u00a7 4",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 34,
+      "section": "page_34",
+      "question_id": "C",
+      "question_text": "F.R. \u00a7 1",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 35,
+      "section": "page_35",
+      "question_id": "55",
+      "question_text": "260(f).",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 35,
+      "section": "page_35",
+      "question_id": "77",
+      "question_text": "10, and 45 CFR \u00a71",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    }
+  ],
+  "filled_entries": [
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question": "1",
+      "label": "First name, middle name, last name, and suffix",
+      "value": "Alex M Carter"
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question": "2",
+      "label": "Date of birth",
+      "value": "07/14/1991"
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question": "4",
+      "label": "Street address",
+      "value": "123 Maple Street"
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question": "6",
+      "label": "City",
+      "value": "Boston"
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question": "8",
+      "label": "ZIP code",
+      "value": "02118"
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question": "9",
+      "label": "County",
+      "value": "Suffolk"
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question": "10",
+      "label": "Mailing address",
+      "value": "PO Box 9021"
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question": "12",
+      "label": "City",
+      "value": "Boston"
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question": "14",
+      "label": "ZIP code",
+      "value": "02118"
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question": "15",
+      "label": "County",
+      "value": "Suffolk"
+    },
+    {
+      "page": 3,
+      "section": "STEP 1 Person 1. Tell us about yourself. Please print clearly.",
+      "question": "19",
+      "label": "What is your preferred language, if not English? Spoken",
+      "value": "English"
+    },
+    {
+      "page": 5,
+      "section": "STEP 2 Person 1 (continued)",
+      "question": "c",
+      "label": "Will you claim any dependents on your federal income tax return for the year for which you are applying? [/|Yes [_]No",
+      "value": "Taylor Carter 04/02/2016"
+    },
+    {
+      "page": 18,
+      "section": "Step 2 | Person 4 (continued)",
+      "question": "d",
+      "label": "Will this person be claimed as a dependent on someone else's federal income tax return for the year for which this person is applying? [ ] Yes [ ] No",
+      "value": "Tax filer date of birth 07/14/1991 How is this person related to the tax filer? [ ] Sample 354"
+    },
+    {
+      "page": 21,
+      "section": "Step 4: Previous Medical Bills",
+      "question": "d",
+      "label": "You may need to give MassHealth proof of income, family size, address, disability, pregnancy, or health insurance during the requested time perio",
+      "value": "Alex Carter | 03/01/2026 | [ ] Yes [ ] No |"
+    }
+  ],
+  "checked_options": [
+    {
+      "page": 32,
+      "option": "Blind"
+    },
+    {
+      "page": 32,
+      "option": "Deaf"
+    },
+    {
+      "page": 32,
+      "option": "Developmentally disabled"
+    },
+    {
+      "page": 32,
+      "option": "Hard of hearing"
+    },
+    {
+      "page": 32,
+      "option": "Intellectually disabled"
+    },
+    {
+      "page": 32,
+      "option": "Low vision"
+    },
+    {
+      "page": 32,
+      "option": "Physically disabled"
+    },
+    {
+      "page": 32,
+      "option": "Other (Please explain.)"
+    },
+    {
+      "page": 32,
+      "option": "American Sign Language (ASL) interpreter"
+    },
+    {
+      "page": 32,
+      "option": "Assistive listening device"
+    },
+    {
+      "page": 32,
+      "option": "Communication Access Real-time Translations (CART)"
+    },
+    {
+      "page": 32,
+      "option": "Large print publications"
+    },
+    {
+      "page": 32,
+      "option": "Publications in braille"
+    },
+    {
+      "page": 32,
+      "option": "Publications in electronic format"
+    },
+    {
+      "page": 32,
+      "option": "Text telephone (TDD/TTY)"
+    },
+    {
+      "page": 32,
+      "option": "Video Relay Service (VRS)"
+    }
+  ],
+  "normalized_fields": {
+    "full_name": [
+      "Alex M Carter"
+    ],
+    "date_of_birth": [
+      "07/14/1991"
+    ],
+    "street_address": [
+      "123 Maple Street"
+    ],
+    "city": [
+      "Boston"
+    ],
+    "zip_code": [
+      "02118"
+    ],
+    "county": [
+      "Suffolk"
+    ],
+    "mailing_address": [
+      "PO Box 9021"
+    ],
+    "preferred_language": [
+      "English"
+    ],
+    "checked_options": [
+      "Blind",
+      "Deaf",
+      "Developmentally disabled",
+      "Hard of hearing",
+      "Intellectually disabled",
+      "Low vision",
+      "Physically disabled",
+      "Other (Please explain.)",
+      "American Sign Language (ASL) interpreter",
+      "Assistive listening device",
+      "Communication Access Real-time Translations (CART)",
+      "Large print publications",
+      "Publications in braille",
+      "Publications in electronic format",
+      "Text telephone (TDD/TTY)",
+      "Video Relay Service (VRS)"
+    ]
+  },
+  "extraction_method": "ollama_deepseek:deepseek-ocr:latest",
+  "engine": "ollama_deepseek",
+  "page_count_processed": 38,
+  "warnings": [
+    "timeout: model 'deepseek-ocr:latest' exceeded 15s on page-02.png (attempt 1/1)",
+    "fallback_local_ocr: used tesseract for page-02.png",
+    "timeout: model 'deepseek-ocr:latest' exceeded 15s on page-05.png (attempt 1/1)",
+    "fallback_local_ocr: used tesseract for page-05.png",
+    "timeout: model 'deepseek-ocr:latest' exceeded 15s on page-08.png (attempt 1/1)",
+    "fallback_local_ocr: used tesseract for page-08.png",
+    "timeout: model 'deepseek-ocr:latest' exceeded 15s on page-09.png (attempt 1/1)",
+    "fallback_local_ocr: used tesseract for page-09.png",
+    "timeout: model 'deepseek-ocr:latest' exceeded 15s on page-12.png (attempt 1/1)",
+    "fallback_local_ocr: used tesseract for page-12.png",
+    "timeout: model 'deepseek-ocr:latest' exceeded 15s on page-13.png (attempt 1/1)",
+    "fallback_local_ocr: used tesseract for page-13.png",
+    "timeout: model 'deepseek-ocr:latest' exceeded 15s on page-14.png (attempt 1/1)",
+    "fallback_local_ocr: used tesseract for page-14.png",
+    "timeout: model 'deepseek-ocr:latest' exceeded 15s on page-16.png (attempt 1/1)",
+    "fallback_local_ocr: used tesseract for page-16.png",
+    "timeout: model 'deepseek-ocr:latest' exceeded 15s on page-19.png (attempt 1/1)",
+    "fallback_local_ocr: used tesseract for page-19.png",
+    "timeout: model 'deepseek-ocr:latest' exceeded 15s on page-20.png (attempt 1/1)",
+    "fallback_local_ocr: used tesseract for page-20.png",
+    "timeout: model 'deepseek-ocr:latest' exceeded 15s on page-22.png (attempt 1/1)",
+    "fallback_local_ocr: used tesseract for page-22.png",
+    "timeout: model 'deepseek-ocr:latest' exceeded 15s on page-24.png (attempt 1/1)",
+    "fallback_local_ocr: used tesseract for page-24.png"
+  ]
+}

@@ -33,9 +33,7 @@ export function getDbPool() {
     connectionString,
   })
 
-  if (process.env.NODE_ENV !== "production") {
-    globalForDb.__mhealthDbPool = pool
-  }
+  globalForDb.__mhealthDbPool = pool
 
   return pool
 }
