@@ -10,7 +10,7 @@ import { setLanguage } from "@/lib/redux/features/app-slice"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { isSupportedLanguage, SUPPORTED_LANGUAGES } from "@/lib/i18n/languages"
 import { getMessage, type AppMessageKey } from "@/lib/i18n/messages"
-import { Shield, FileText, Clock, Phone, ChevronRight, Users, CheckCircle2 } from "lucide-react"
+import { Shield, FileText, Clock, Phone, ChevronRight, Users, CheckCircle2, Sparkles } from "lucide-react"
 import { ShieldHeartIcon } from "@/lib/icons"
 import { getSafeSupabaseSession } from "@/lib/supabase/client"
 
@@ -116,6 +116,16 @@ export default function LandingPage() {
                 {t("heroDescription")}
               </p>
               <div className="flex flex-col gap-3 sm:flex-row">
+                <Link href="/prescreener">
+                  <Button
+                    type="button"
+                    size="lg"
+                    className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Check My Eligibility
+                  </Button>
+                </Link>
                 <Button
                   type="button"
                   size="lg"
@@ -195,6 +205,19 @@ export default function LandingPage() {
       <section className="border-b border-border bg-card px-4 py-12">
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Link href="/prescreener" className="group">
+              <Card className="h-full border-primary/30 bg-primary/5 transition-all hover:border-primary hover:shadow-lg">
+                <CardContent className="flex items-center gap-4 p-6">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/20">
+                    <Sparkles className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-card-foreground group-hover:text-primary">Check Eligibility</h3>
+                    <p className="text-sm text-muted-foreground">5-minute pre-screener</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
             <Link href="/application/type" className="group">
               <Card className="h-full border-border bg-card transition-all hover:border-primary/50 hover:shadow-lg">
                 <CardContent className="flex items-center gap-4 p-6">
