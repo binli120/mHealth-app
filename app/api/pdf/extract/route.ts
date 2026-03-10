@@ -8,7 +8,7 @@ export const runtime = "nodejs"
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
 function isUploadedFile(value: FormDataEntryValue | null): value is File {
-  return value instanceof File
+  return value !== null && typeof value !== "string"
 }
 
 function isPdfFile(file: File): boolean {
