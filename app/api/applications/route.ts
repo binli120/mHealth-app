@@ -9,6 +9,20 @@ import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
+function isApplicationDraftAccessError(error: unknown): boolean {
+  return (
+    error instanceof ApplicationDraftAccessError ||
+    (typeof error === "object" &&
+      error !== null &&
+      "name" in error &&
+      (error as { name?: unknown }).name === "ApplicationDraftAccessError")
+  )
+}
+
+function isInvalidApplicationIdError(error: unknown): boolean {
+  return error instanceof Error && error.message.includes("Invalid applicationId")
+}
+
 export async function GET(request: Request) {
   try {
     const authResult = await requireAuthenticatedUser(request)
@@ -39,7 +53,7 @@ export async function GET(request: Request) {
     })
   } catch (error) {
     const isValidationError = error instanceof Error && error.message === "Invalid status filter."
-    const isAccessError = error instanceof ApplicationDraftAccessError
+    const isAccessError = isApplicationDraftAccessError(error)
     const message =
       process.env.NODE_ENV === "development"
         ? error instanceof Error
@@ -86,7 +100,8 @@ export async function POST(request: Request) {
       record,
     })
   } catch (error) {
-    const isAccessError = error instanceof ApplicationDraftAccessError
+    const isAccessError = isApplicationDraftAccessError(error)
+    const isValidationError = isInvalidApplicationIdError(error)
     const message =
       process.env.NODE_ENV === "development"
         ? error instanceof Error
@@ -94,6 +109,9 @@ export async function POST(request: Request) {
           : "Unknown server error"
         : "Failed to create application"
 
-    return NextResponse.json({ ok: false, error: message }, { status: isAccessError ? 403 : 500 })
+    return NextResponse.json(
+      { ok: false, error: message },
+      { status: isValidationError ? 400 : isAccessError ? 403 : 500 },
+    )
   }
 }

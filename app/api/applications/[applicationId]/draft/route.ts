@@ -19,10 +19,26 @@ import {
   STATUS_NOT_FOUND,
 } from "./constants"
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
 interface RouteContext {
   params: Promise<{
     applicationId: string
   }>
+}
+
+function isApplicationDraftAccessError(error: unknown): boolean {
+  return (
+    error instanceof ApplicationDraftAccessError ||
+    (typeof error === "object" &&
+      error !== null &&
+      "name" in error &&
+      (error as { name?: unknown }).name === "ApplicationDraftAccessError")
+  )
+}
+
+function isInvalidApplicationIdError(error: unknown): boolean {
+  return error instanceof Error && error.message.includes("Invalid applicationId")
 }
 
 export async function GET(request: Request, context: RouteContext) {
@@ -33,6 +49,13 @@ export async function GET(request: Request, context: RouteContext) {
     }
 
     const { applicationId } = await context.params
+    if (!UUID_PATTERN.test(applicationId)) {
+      return NextResponse.json(
+        { ok: false, error: "applicationId (UUID) is required." },
+        { status: STATUS_BAD_REQUEST },
+      )
+    }
+
     const record = await getApplicationDraft(authResult.userId, applicationId)
     if (!record) {
       return NextResponse.json(
@@ -69,6 +92,13 @@ export async function PUT(request: Request, context: RouteContext) {
     }
 
     const { applicationId } = await context.params
+    if (!UUID_PATTERN.test(applicationId)) {
+      return NextResponse.json(
+        { ok: false, error: "applicationId (UUID) is required." },
+        { status: STATUS_BAD_REQUEST },
+      )
+    }
+
     const body = (await request.json()) as {
       applicationType?: string
       wizardState?: Record<string, unknown>
@@ -93,7 +123,8 @@ export async function PUT(request: Request, context: RouteContext) {
       record,
     })
   } catch (error) {
-    const isAccessError = error instanceof ApplicationDraftAccessError
+    const isAccessError = isApplicationDraftAccessError(error)
+    const isValidationError = isInvalidApplicationIdError(error)
     const message =
       process.env.NODE_ENV === NODE_ENV_DEVELOPMENT
         ? error instanceof Error
@@ -101,6 +132,15 @@ export async function PUT(request: Request, context: RouteContext) {
           : ERROR_UNKNOWN_SERVER
         : ERROR_SAVE_DRAFT_FAILED
 
-    return NextResponse.json({ ok: false, error: message }, { status: isAccessError ? STATUS_FORBIDDEN : STATUS_INTERNAL_SERVER_ERROR })
+    return NextResponse.json(
+      { ok: false, error: message },
+      {
+        status: isValidationError
+          ? STATUS_BAD_REQUEST
+          : isAccessError
+            ? STATUS_FORBIDDEN
+            : STATUS_INTERNAL_SERVER_ERROR,
+      },
+    )
   }
 }

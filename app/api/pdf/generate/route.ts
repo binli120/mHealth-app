@@ -3,6 +3,7 @@ import { z } from "zod"
 import { generateMassHealthAcaPdf } from "@/lib/pdf/masshealth-aca"
 import { massHealthAcaPayloadSchema } from "@/lib/pdf/masshealth-aca-payload"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
+import { logServerError } from "@/lib/server/logger"
 
 export const runtime = "nodejs"
 
@@ -39,7 +40,10 @@ export async function POST(request: Request) {
       },
     })
   } catch (error) {
-    console.error("Failed to generate PDF from JSON", error)
+    logServerError("Failed to generate PDF from JSON", error, {
+      route: "/api/pdf/generate",
+      method: "POST",
+    })
 
     const isValidationError = error instanceof z.ZodError
 

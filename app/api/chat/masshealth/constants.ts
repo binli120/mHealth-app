@@ -3,6 +3,12 @@ export const CHAT_RUNTIME = "nodejs"
 export const CHAT_MESSAGE_ROLE_USER = "user"
 export const CHAT_MESSAGE_ROLE_ASSISTANT = "assistant"
 export const CHAT_MESSAGE_ROLES = [CHAT_MESSAGE_ROLE_USER, CHAT_MESSAGE_ROLE_ASSISTANT] as const
+export const CHAT_REQUEST_MODE_ASSISTANT = "assistant"
+export const CHAT_REQUEST_MODE_APPLICATION_INTAKE = "application_intake"
+export const CHAT_REQUEST_MODES = [
+  CHAT_REQUEST_MODE_ASSISTANT,
+  CHAT_REQUEST_MODE_APPLICATION_INTAKE,
+] as const
 export const CHAT_MESSAGE_CONTENT_MIN_LENGTH = 1
 export const CHAT_MESSAGE_CONTENT_MAX_LENGTH = 6000
 

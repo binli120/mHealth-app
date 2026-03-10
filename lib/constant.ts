@@ -1,4 +1,4 @@
-import acaSchemaData from "@/config/ACA-03-0325.json"
+import acaSchemaData from "@/config/ACA-3-0325.json"
 import type { AcaSchema, SchemaSection } from "@/components/application/aca3/types"
 
 type Aca3PersonSectionKey = "identity" | "demographics" | "ssn" | "tax" | "coverage" | "income"

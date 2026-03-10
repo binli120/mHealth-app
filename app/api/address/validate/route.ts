@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
+import { logServerError } from "@/lib/server/logger"
 import {
-  ADDRESS_VALIDATE_RUNTIME,
   DEFAULT_ZIP_CODE,
   ERROR_ADDRESS_LOOKUP_UNAVAILABLE,
   ERROR_INVALID_ADDRESS_PAYLOAD,
@@ -22,7 +22,7 @@ import {
   ZIP_CODE_LENGTH,
 } from "./constants"
 
-export const runtime = ADDRESS_VALIDATE_RUNTIME
+export const runtime = "nodejs"
 
 const requestSchema = z.object({
   streetAddress: z.string().trim().min(1),
@@ -62,6 +62,30 @@ interface NormalizedAddress {
   latitude: string
   longitude: string
 }
+
+interface GoogleGeocodeAddressComponent {
+  long_name: string
+  short_name: string
+  types: string[]
+}
+
+interface GoogleGeocodeResult {
+  formatted_address: string
+  address_components?: GoogleGeocodeAddressComponent[]
+  geometry?: {
+    location?: {
+      lat?: number
+      lng?: number
+    }
+  }
+}
+
+interface GoogleGeocodePayload {
+  status?: string
+  results?: GoogleGeocodeResult[]
+}
+
+const GOOGLE_GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
 
 function digitsOnly(value: string): string {
   return value.replace(/\D/g, "")
@@ -119,6 +143,93 @@ function buildSearchUrl(query: string): URL {
   return url
 }
 
+function hasGoogleGeocodingKey(): boolean {
+  return Boolean(process.env.GOOGLE_GEOCODING_API_KEY?.trim())
+}
+
+function getGoogleComponent(
+  result: GoogleGeocodeResult,
+  type: string,
+): GoogleGeocodeAddressComponent | undefined {
+  return result.address_components?.find((component) => component.types.includes(type))
+}
+
+function toNormalizedAddressFromGoogle(result: GoogleGeocodeResult): NormalizedAddress {
+  const streetNumber = getGoogleComponent(result, "street_number")?.long_name ?? ""
+  const route = getGoogleComponent(result, "route")?.long_name ?? ""
+  const locality =
+    getGoogleComponent(result, "locality")?.long_name ??
+    getGoogleComponent(result, "postal_town")?.long_name ??
+    ""
+  const state = getGoogleComponent(result, "administrative_area_level_1")?.short_name?.toUpperCase() ?? ""
+  const zipCode = digitsOnly(getGoogleComponent(result, "postal_code")?.long_name ?? "").slice(0, ZIP_CODE_LENGTH)
+  const county = getGoogleComponent(result, "administrative_area_level_2")?.long_name?.trim() ?? ""
+  const lat = result.geometry?.location?.lat
+  const lng = result.geometry?.location?.lng
+
+  return {
+    streetAddress: [streetNumber, route].filter(Boolean).join(" ").trim(),
+    city: locality,
+    state,
+    zipCode,
+    county,
+    displayName: result.formatted_address ?? "",
+    latitude: Number.isFinite(lat) ? String(lat) : "",
+    longitude: Number.isFinite(lng) ? String(lng) : "",
+  }
+}
+
+async function geocodeWithGoogle(query: string): Promise<NormalizedAddress | null> {
+  const apiKey = process.env.GOOGLE_GEOCODING_API_KEY?.trim()
+  if (!apiKey) {
+    return null
+  }
+
+  const url = new URL(GOOGLE_GEOCODE_URL)
+  url.searchParams.set("address", query)
+  url.searchParams.set("components", "country:US")
+  url.searchParams.set("key", apiKey)
+
+  const response = await fetch(url, {
+    method: "GET",
+    cache: "no-store",
+  })
+
+  if (!response.ok) {
+    throw new TypeError(ERROR_ADDRESS_LOOKUP_UNAVAILABLE)
+  }
+
+  const payload = (await response.json()) as GoogleGeocodePayload
+  if (payload.status !== "OK" || !Array.isArray(payload.results) || payload.results.length === 0) {
+    return null
+  }
+
+  return toNormalizedAddressFromGoogle(payload.results[0])
+}
+
+async function geocodeWithNominatim(query: string): Promise<NormalizedAddress | null> {
+  const searchUrl = buildSearchUrl(query)
+  const response = await fetch(searchUrl, {
+    method: "GET",
+    headers: {
+      "Accept-Language": REQUEST_ACCEPT_LANGUAGE,
+      "User-Agent": REQUEST_USER_AGENT,
+    },
+    cache: "no-store",
+  })
+
+  if (!response.ok) {
+    throw new TypeError(ERROR_ADDRESS_LOOKUP_UNAVAILABLE)
+  }
+
+  const data = (await response.json()) as NominatimResult[]
+  if (!Array.isArray(data) || data.length === 0) {
+    return null
+  }
+
+  return toNormalizedAddress(data[0])
+}
+
 function isAddressMatch(
   normalizedAddress: NormalizedAddress,
   input: z.infer<typeof requestSchema>,
@@ -148,26 +259,11 @@ export async function POST(request: Request) {
       payload.zipCode,
     )
 
-    const searchUrl = buildSearchUrl(query)
-    const response = await fetch(searchUrl, {
-      method: "GET",
-      headers: {
-        "Accept-Language": REQUEST_ACCEPT_LANGUAGE,
-        "User-Agent": REQUEST_USER_AGENT,
-      },
-      cache: "no-store",
-    })
+    const suggestion = hasGoogleGeocodingKey()
+      ? await geocodeWithGoogle(query)
+      : await geocodeWithNominatim(query)
 
-    if (!response.ok) {
-      return NextResponse.json(
-        { ok: false, valid: false, error: ERROR_ADDRESS_LOOKUP_UNAVAILABLE },
-        { status: 502 },
-      )
-    }
-
-    const data = (await response.json()) as NominatimResult[]
-
-    if (!Array.isArray(data) || data.length === 0) {
+    if (!suggestion) {
       return NextResponse.json({
         ok: true,
         valid: false,
@@ -175,7 +271,6 @@ export async function POST(request: Request) {
       })
     }
 
-    const suggestion = toNormalizedAddress(data[0])
     const valid = isAddressMatch(suggestion, payload)
 
     if (valid) {
@@ -198,7 +293,10 @@ export async function POST(request: Request) {
     const isUpstreamFailure = error instanceof TypeError
 
     if (!isValidationError) {
-      console.error(ERROR_LOG_PREFIX, error)
+      logServerError(ERROR_LOG_PREFIX, error, {
+        route: "/api/address/validate",
+        method: "POST",
+      })
     }
 
     return NextResponse.json(
@@ -212,7 +310,7 @@ export async function POST(request: Request) {
             : ERROR_VALIDATE_ADDRESS_FAILED,
       },
       {
-        status: isValidationError ? 400 : isUpstreamFailure ? 503 : 500,
+        status: isValidationError ? 400 : isUpstreamFailure ? 502 : 500,
       },
     )
   }

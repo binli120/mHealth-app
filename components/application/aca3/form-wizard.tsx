@@ -818,6 +818,7 @@ function FormProvider({
   const hydratedRef = useRef(false)
   const hydratedApplicationRef = useRef<string | null>(null)
   const saveTimeoutRef = useRef<number | null>(null)
+  const saveFailureBackoffUntilRef = useRef(0)
 
   useEffect(() => {
     if (!applicationRecord) {
@@ -842,6 +843,10 @@ function FormProvider({
 
   const saveDraftNow = useCallback(
     async (overrideState?: WizardState) => {
+      if (Date.now() < saveFailureBackoffUntilRef.current) {
+        return false
+      }
+
       const sourceState = overrideState ?? state
       const persistedState = {
         ...sourceState,
@@ -866,8 +871,17 @@ function FormProvider({
           },
         )
 
+        if (!response.ok) {
+          if (response.status >= 500 || response.status === 429) {
+            saveFailureBackoffUntilRef.current = Date.now() + 15_000
+          }
+          return false
+        }
+
+        saveFailureBackoffUntilRef.current = 0
         return response.ok
       } catch {
+        saveFailureBackoffUntilRef.current = Date.now() + 15_000
         return false
       }
     },

@@ -9,6 +9,10 @@ type GlobalWithDb = typeof globalThis & {
 const globalForDb = globalThis as GlobalWithDb
 
 function resolveDatabaseUrl() {
+  if (process.env.NODE_ENV === "development") {
+    return process.env.DATABASE_URL_DEV || "postgresql://postgres:postgres@localhost:54322/postgres"
+  }
+
   if (process.env.NODE_ENV === "production") {
     return process.env.DATABASE_URL_PROD || process.env.DATABASE_URL
   }

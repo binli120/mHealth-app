@@ -30,6 +30,15 @@ describe("lib/utils/address-parse", () => {
     })
   })
 
+  it("supports trailing punctuation after ZIP", () => {
+    expect(parsePastedUsAddress("48 Grapevine Ave, Lexington, MA 02421,")).toEqual({
+      streetAddress: "48 Grapevine Ave",
+      city: "Lexington",
+      state: "MA",
+      zipCode: "02421",
+    })
+  })
+
   it("returns null for unsupported formats", () => {
     expect(parsePastedUsAddress("1 Main St Boston MA 02139")).toBeNull()
     expect(parsePastedUsAddress("just text")).toBeNull()

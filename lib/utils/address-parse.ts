@@ -6,7 +6,7 @@ interface ParsedUsAddress {
 }
 
 const US_ADDRESS_PATTERN =
-  /^\s*(.+?),\s*([^,]+),\s*([A-Za-z]{2})(?:\s+(\d{5}(?:-\d{4})?))?(?:,\s*(?:USA|United States))?\s*$/i
+  /^\s*(.+?),\s*([^,]+),\s*([A-Za-z]{2})(?:\s+(\d{5}(?:-\d{4})?))?(?:,\s*(?:USA|United States))?(?:\s*[,\.])?\s*$/i
 
 function normalizeZip(zipCode?: string): string {
   if (!zipCode) {

@@ -1,30 +1,17 @@
 import { NextResponse } from "next/server"
 import { extractPdfJson } from "@/lib/pdf/extract-pdf-json"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
+import { logServerError } from "@/lib/server/logger"
 
 export const runtime = "nodejs"
 
-interface UploadLikeFile {
-  arrayBuffer: () => Promise<ArrayBuffer>
-  size: number
-  type?: string
-  name?: string
-}
-
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
-function isUploadedFile(value: FormDataEntryValue | null): value is UploadLikeFile {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "arrayBuffer" in value &&
-    typeof (value as { arrayBuffer?: unknown }).arrayBuffer === "function" &&
-    "size" in value &&
-    typeof (value as { size?: unknown }).size === "number"
-  )
+function isUploadedFile(value: FormDataEntryValue | null): value is File {
+  return value instanceof File
 }
 
-function isPdfFile(file: UploadLikeFile): boolean {
+function isPdfFile(file: File): boolean {
   if (file.type === "application/pdf") {
     return true
   }
@@ -74,7 +61,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, data })
   } catch (error) {
-    console.error("Failed to extract JSON from PDF", error)
+    logServerError("Failed to extract JSON from PDF", error, {
+      route: "/api/pdf/extract",
+      method: "POST",
+    })
 
     return NextResponse.json(
       {
