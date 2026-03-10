@@ -263,7 +263,9 @@ function getProgress(stepId: string) {
 // ─── Main Component ───────────────────────────────────────────────────────
 
 export default function PreScreenerPage() {
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [
+    { id: uid(), role: "bot", text: STEP_MAP["intro"].botMessage, timestamp: new Date() },
+  ])
   const [currentStepId, setCurrentStepId] = useState("intro")
   const [screenerData, setScreenerData] = useState<Partial<ScreenerData>>({
     livesInMA: true,
@@ -287,18 +289,13 @@ export default function PreScreenerPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, isTyping, report])
 
-  // Send initial bot message on mount
-  useEffect(() => {
-    addBotMessage(STEP_MAP["intro"].botMessage)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
   function addBotMessage(text: string) {
     setMessages((prev) => [
       ...prev,
       { id: uid(), role: "bot", text, timestamp: new Date() },
     ])
   }
+
 
   function addUserMessage(text: string) {
     setMessages((prev) => [

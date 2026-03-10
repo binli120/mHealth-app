@@ -16,6 +16,6 @@ export default defineConfig({
     environment: "jsdom",
     globals: false,
     setupFiles: ["./vitest.setup.ts"],
-    exclude: ["node_modules", ".next", "storybook-static"],
+    exclude: ["node_modules", "**/node_modules/**", ".next", "**/.next/**", "storybook-static", ".claude/worktrees/**"],
   },
 })
