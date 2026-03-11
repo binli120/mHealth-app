@@ -83,9 +83,8 @@ export function evaluateLIHEAP(profile: FamilyProfile, _fplPercent: number): Ben
     priority: 0,
     applicationMethods: ['online', 'phone', 'in_person'],
     applicationUrl: 'https://www.mass.gov/fuel-assistance',
-    applicationPhone: 'Contact your local Community Action Agency (CAA)',
     applicationNote:
-      'Apply through your local Community Action Agency — find yours at mass.gov/fuel-assistance. Open enrollment typically November–April.',
+      'Apply through your local Community Action Agency (CAA) — find yours at mass.gov/fuel-assistance. Open enrollment typically November–April.',
     processingTime: '30–60 days',
     keyRequirements: [
       'MA resident',

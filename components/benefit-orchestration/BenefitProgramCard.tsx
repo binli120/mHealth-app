@@ -199,10 +199,10 @@ export function BenefitProgramCard({ result, isQuickWin, compact }: BenefitProgr
             </Button>
           )}
           {result.applicationPhone && (
-            <Button variant="outline" size="sm" asChild>
-              <a href={`tel:${result.applicationPhone.replace(/[^0-9+]/g, "")}`} className="inline-flex items-center gap-1.5">
-                <Phone className="h-3.5 w-3.5" />
-                {result.applicationPhone}
+            <Button variant="outline" size="sm" asChild className="min-w-0 max-w-full">
+              <a href={`tel:${result.applicationPhone.replace(/[^0-9+]/g, "")}`} className="inline-flex items-center gap-1.5 min-w-0">
+                <Phone className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{result.applicationPhone}</span>
               </a>
             </Button>
           )}

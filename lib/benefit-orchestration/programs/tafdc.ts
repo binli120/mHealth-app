@@ -93,7 +93,7 @@ export function evaluateTAFDC(profile: FamilyProfile, fplPercent: number): Benef
     priority: 0,
     applicationMethods: ['online', 'phone', 'in_person'],
     applicationUrl: 'https://www.dta.mass.gov',
-    applicationPhone: '1-877-382-2363 (DTA Assistance Line)',
+    applicationPhone: '1-877-382-2363',
     processingTime: '30 days',
     keyRequirements: [
       'MA resident',

@@ -99,7 +99,7 @@ export function evaluateWIC(profile: FamilyProfile, fplPercent: number): Benefit
     priority: 0,
     applicationMethods: ['phone', 'in_person'],
     applicationUrl: 'https://www.mass.gov/wic',
-    applicationPhone: '1-800-WIC-1007 (1-800-942-1007)',
+    applicationPhone: '1-800-942-1007',
     applicationNote:
       'WIC is available at local health centers and WIC sites — find yours at mass.gov/wic',
     processingTime: '1–2 weeks',

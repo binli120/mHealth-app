@@ -81,7 +81,7 @@ export function evaluateChildcare(profile: FamilyProfile, _fplPercent: number): 
     priority: 0,
     applicationMethods: ['online', 'phone'],
     applicationUrl: 'https://www.mass.gov/how-to/apply-for-child-care-financial-assistance',
-    applicationPhone: '1-800-DTA-KIDS (1-800-382-5437)',
+    applicationPhone: '1-800-382-5437',
     processingTime: '45 days',
     keyRequirements: [
       'MA resident',
