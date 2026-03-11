@@ -1,8 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -10,14 +9,11 @@ import { setLanguage } from "@/lib/redux/features/app-slice"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { isSupportedLanguage, SUPPORTED_LANGUAGES } from "@/lib/i18n/languages"
 import { getMessage, type AppMessageKey } from "@/lib/i18n/messages"
-import { Shield, FileText, Clock, Phone, ChevronRight, Users, CheckCircle2, Sparkles } from "lucide-react"
+import { Shield, Clock, ChevronRight, Users, CheckCircle2 } from "lucide-react"
 import { ShieldHeartIcon } from "@/lib/icons"
-import { getSafeSupabaseSession } from "@/lib/supabase/client"
 
 export default function LandingPage() {
-  const router = useRouter()
   const dispatch = useAppDispatch()
-  const [pendingRoute, setPendingRoute] = useState<string | null>(null)
   const selectedLanguage = useAppSelector((state) => state.app.language)
   const t = (key: AppMessageKey) => getMessage(selectedLanguage, key)
 
@@ -30,28 +26,6 @@ export default function LandingPage() {
   useEffect(() => {
     document.documentElement.lang = selectedLanguage
   }, [selectedLanguage])
-
-  const handleProtectedAction = async (route: string) => {
-    if (pendingRoute) {
-      return
-    }
-
-    setPendingRoute(route)
-
-    try {
-      const { session } = await getSafeSupabaseSession()
-      if (session) {
-        router.push(route)
-        return
-      }
-    } catch {
-      // Fall through to login redirect.
-    } finally {
-      setPendingRoute(null)
-    }
-
-    router.push(`/auth/login?next=${encodeURIComponent(route)}`)
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -115,48 +89,6 @@ export default function LandingPage() {
               <p className="text-pretty text-lg text-muted-foreground md:text-xl">
                 {t("heroDescription")}
               </p>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Link href="/prescreener">
-                  <Button
-                    type="button"
-                    size="lg"
-                    className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
-                  >
-                    <Sparkles className="h-4 w-4" />
-                    Check My Eligibility
-                  </Button>
-                </Link>
-                <Button
-                  type="button"
-                  size="lg"
-                  className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
-                  disabled={Boolean(pendingRoute)}
-                  onClick={() => void handleProtectedAction("/application/type")}
-                >
-                  {pendingRoute === "/application/type" ? "Checking..." : t("applyForMassHealth")}
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-                <Button
-                  type="button"
-                  size="lg"
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                  disabled={Boolean(pendingRoute)}
-                  onClick={() => void handleProtectedAction("/customer/status")}
-                >
-                  {pendingRoute === "/customer/status" ? "Checking..." : t("continueSavedApplication")}
-                </Button>
-                <Button
-                  type="button"
-                  size="lg"
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                  disabled={Boolean(pendingRoute)}
-                  onClick={() => void handleProtectedAction("/application/check")}
-                >
-                  {pendingRoute === "/application/check" ? "Checking..." : t("checkYourApplication")}
-                </Button>
-              </div>
               <div className="flex items-center gap-6 pt-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-accent" />
@@ -204,33 +136,7 @@ export default function LandingPage() {
       {/* Quick Actions */}
       <section className="border-b border-border bg-card px-4 py-12">
         <div className="mx-auto max-w-7xl">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Link href="/prescreener" className="group">
-              <Card className="h-full border-primary/30 bg-primary/5 transition-all hover:border-primary hover:shadow-lg">
-                <CardContent className="flex items-center gap-4 p-6">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/20">
-                    <Sparkles className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-card-foreground group-hover:text-primary">Check Eligibility</h3>
-                    <p className="text-sm text-muted-foreground">5-minute pre-screener</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-            <Link href="/application/type" className="group">
-              <Card className="h-full border-border bg-card transition-all hover:border-primary/50 hover:shadow-lg">
-                <CardContent className="flex items-center gap-4 p-6">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                    <FileText className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-card-foreground group-hover:text-primary">{t("quickActionNewApplication")}</h3>
-                    <p className="text-sm text-muted-foreground">{t("quickActionStartApplication")}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+          <div className="grid gap-4 sm:grid-cols-3">
             <Link href="/application/renewal" className="group">
               <Card className="h-full border-border bg-card transition-all hover:border-primary/50 hover:shadow-lg">
                 <CardContent className="flex items-center gap-4 p-6">
@@ -244,28 +150,28 @@ export default function LandingPage() {
                 </CardContent>
               </Card>
             </Link>
-            <Link href="/application/household" className="group">
+            <Link href="/auth/login?next=%2Fcustomer%2Fstatus" className="group">
               <Card className="h-full border-border bg-card transition-all hover:border-primary/50 hover:shadow-lg">
                 <CardContent className="flex items-center gap-4 p-6">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-success/10">
-                    <Users className="h-6 w-6 text-success" />
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-warning/10">
+                    <Clock className="h-6 w-6 text-warning" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-card-foreground group-hover:text-primary">{t("quickActionAddMember")}</h3>
-                    <p className="text-sm text-muted-foreground">{t("quickActionAddHouseholdMember")}</p>
+                    <h3 className="font-semibold text-card-foreground group-hover:text-primary">{t("continueSavedApplication")}</h3>
+                    <p className="text-sm text-muted-foreground">Pick up where you left off</p>
                   </div>
                 </CardContent>
               </Card>
             </Link>
-            <Link href="/knowledge-center" className="group">
+            <Link href="/auth/login?next=%2Fcustomer%2Fstatus" className="group">
               <Card className="h-full border-border bg-card transition-all hover:border-primary/50 hover:shadow-lg">
                 <CardContent className="flex items-center gap-4 p-6">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-warning/10">
-                    <Phone className="h-6 w-6 text-warning" />
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-success/10">
+                    <CheckCircle2 className="h-6 w-6 text-success" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-card-foreground group-hover:text-primary">{t("quickActionGetHelp")}</h3>
-                    <p className="text-sm text-muted-foreground">{t("quickActionContactSupport")}</p>
+                    <h3 className="font-semibold text-card-foreground group-hover:text-primary">{t("checkYourApplication")}</h3>
+                    <p className="text-sm text-muted-foreground">View status &amp; documents</p>
                   </div>
                 </CardContent>
               </Card>
