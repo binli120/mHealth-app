@@ -23,6 +23,7 @@ import type {
   RelationshipType,
 } from "@/lib/benefit-orchestration/types"
 import { emptyIncome } from "@/lib/benefit-orchestration/fpl-utils"
+import { getSafeSupabaseSession } from "@/lib/supabase/client"
 
 const STEP_LABELS = [
   { label: "About You", icon: User },
@@ -211,9 +212,17 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
     setSubmitting(true)
     setError(null)
     try {
+      const { session } = await getSafeSupabaseSession()
+      if (!session?.access_token) {
+        setError("You must be signed in to evaluate benefits. Please sign in and try again.")
+        return
+      }
       const res = await fetch("/api/benefit-orchestration/evaluate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify(profile),
       })
       const data = await res.json()
