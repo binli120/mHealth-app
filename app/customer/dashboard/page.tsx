@@ -175,6 +175,12 @@ export default function CustomerDashboardPage() {
               My Applications
             </Link>
             <Link
+              href="/benefit-stack"
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Benefit Stack
+            </Link>
+            <Link
               href="/knowledge-center"
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
@@ -231,6 +237,19 @@ export default function CustomerDashboardPage() {
                 <div>
                   <p className="font-medium text-card-foreground">Track Status</p>
                   <p className="text-sm text-muted-foreground">View application status</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/benefit-stack">
+            <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
+              <CardContent className="flex items-center gap-4 p-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50">
+                  <span className="text-xl">🏛️</span>
+                </div>
+                <div>
+                  <p className="font-medium text-card-foreground">Benefit Stack</p>
+                  <p className="text-sm text-muted-foreground">Find all your benefits</p>
                 </div>
               </CardContent>
             </Card>
