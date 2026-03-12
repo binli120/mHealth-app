@@ -1,11 +1,9 @@
 import "server-only"
 
 import type { CitizenshipStatus, ScreenerData } from "@/lib/eligibility-engine"
-import type { ChatMessage } from "./chat-knowledge"
 import type { SupportedLanguage } from "@/lib/i18n/languages"
-
-const DEFAULT_OLLAMA_BASE_URL = "http://127.0.0.1:11434"
-const OLLAMA_CHAT_ENDPOINT = "/api/chat"
+import { DEFAULT_OLLAMA_BASE_URL, OLLAMA_CHAT_ENDPOINT } from "@/lib/rag/constants"
+import type { ChatMessage, OllamaResponse } from "./types"
 const EXTRACT_MODEL = process.env.OLLAMA_MODEL ?? "llama3.2"
 const EXTRACT_TEMPERATURE = 0
 const EXTRACT_TIMEOUT_MS = 30_000
@@ -49,10 +47,6 @@ function buildFactExtractionPrompt(): string {
 
 function getOllamaBaseUrl(): string {
   return (process.env.OLLAMA_BASE_URL || DEFAULT_OLLAMA_BASE_URL).replace(/\/+$/, "")
-}
-
-interface OllamaResponse {
-  message?: { content?: string }
 }
 
 async function callOllamaForJson(messages: ChatMessage[]): Promise<string> {

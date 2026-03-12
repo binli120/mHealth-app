@@ -3,7 +3,9 @@ import { z } from "zod"
 
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 import { logServerError } from "@/lib/server/logger"
-import { ingestDocument, ingestAllDocuments, POLICY_SOURCES, type DocumentSource } from "@/lib/rag/ingest"
+import { ingestDocument, ingestAllDocuments, POLICY_SOURCES } from "@/lib/rag/ingest"
+import { DOC_TYPES } from "@/lib/rag/constants"
+import type { DocumentSource } from "@/lib/rag/types"
 
 export const runtime = "nodejs"
 // Allow up to 5 minutes — PDF fetch + chunking + embedding can be slow
@@ -24,8 +26,6 @@ export const maxDuration = 300
  * Returns:
  *   { ok: true, ingested: number, totalChunks: number, results: [...] }
  */
-
-const DOC_TYPES = ["member_booklet", "eligibility_guide", "verifications", "transmittal", "faq"] as const
 
 const singleDocSchema = z.object({
   url:      z.string().url(),

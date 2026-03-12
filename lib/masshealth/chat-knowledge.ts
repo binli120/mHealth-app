@@ -1,24 +1,8 @@
 import { type SupportedLanguage } from "@/lib/i18n/languages"
 import type { EligibilityReport, ScreenerData } from "@/lib/eligibility-engine"
+import type { ChatRole, ChatMessage, MassHealthLink, MassHealthFaqItem } from "./types"
 
-export type ChatRole = "user" | "assistant"
-
-export interface ChatMessage {
-  role: ChatRole
-  content: string
-}
-
-export interface MassHealthLink {
-  label: string
-  url: string
-}
-
-export interface MassHealthFaqItem {
-  id: string
-  question: string
-  quickAnswer: string
-  links: MassHealthLink[]
-}
+export type { ChatRole, ChatMessage, MassHealthLink, MassHealthFaqItem }
 
 const MASSHEALTH_KEYWORDS = [
   "masshealth",

@@ -2,15 +2,10 @@ import "server-only"
 
 import { getDbPool } from "@/lib/db/server"
 import { embedText, toVectorLiteral } from "./embed"
+import { RAG_CHUNK_CONTENT_MAX_LEN } from "./constants"
+import type { PolicyChunk } from "./types"
 
-export interface PolicyChunk {
-  id: string
-  documentId: string
-  chunkIndex: number
-  content: string
-  score: number  // cosine similarity (0–1, higher = more relevant)
-  documentTitle?: string
-}
+export type { PolicyChunk }
 
 /**
  * Retrieve the top-K most semantically relevant policy chunks for a query.
@@ -79,7 +74,7 @@ export function formatChunksForPrompt(chunks: PolicyChunk[]): string {
   const lines = chunks.map((chunk, i) => {
     const source = chunk.documentTitle ?? "MassHealth Policy"
     // Trim whitespace and cap length for prompt efficiency
-    const content = chunk.content.replace(/\s+/g, " ").trim().slice(0, 600)
+    const content = chunk.content.replace(/\s+/g, " ").trim().slice(0, RAG_CHUNK_CONTENT_MAX_LEN)
     return `[${i + 1}] ${source}: "${content}"`
   })
 

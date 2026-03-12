@@ -16,33 +16,8 @@ import {
   getMassHealthGreeting,
   getMassHealthOutOfScopeResponse,
   MASSHEALTH_COMMON_QUESTIONS,
-  type ChatMessage,
 } from "@/lib/masshealth/chat-knowledge"
-
-type WidgetView = "faq" | "chat" | "advisor"
-
-interface EligibilityProgram {
-  program: string
-  eligible: boolean
-  reason?: string
-}
-
-interface ChatApiResponse {
-  ok: boolean
-  outOfScope?: boolean
-  reply?: string
-  error?: string
-  factsExtracted?: Record<string, unknown>
-  eligibilityResults?: {
-    programs?: EligibilityProgram[]
-    [key: string]: unknown
-  }
-}
-
-interface WidgetMessage extends ChatMessage {
-  id: string
-  eligibilityResults?: ChatApiResponse["eligibilityResults"]
-}
+import type { WidgetView, ChatApiResponse, WidgetMessage, EligibilityProgram } from "./types"
 
 function createMessageId() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {

@@ -2,20 +2,18 @@ import "server-only"
 
 // RAG Embedding Client — Ollama nomic-embed-text (768-dim)
 // Requires: ollama pull nomic-embed-text
-// Reuses OLLAMA_BASE_URL env var (same as chat route)
 
-const DEFAULT_OLLAMA_BASE_URL = "http://127.0.0.1:11434"
-const EMBED_MODEL = "nomic-embed-text"
-const EMBED_ENDPOINT = "/api/embeddings"
-const EMBED_TIMEOUT_MS = 30_000
+import {
+  DEFAULT_OLLAMA_BASE_URL,
+  EMBED_MODEL,
+  EMBED_TIMEOUT_MS,
+  OLLAMA_EMBED_ENDPOINT,
+} from "./constants"
+import type { OllamaEmbedResponse } from "./types"
 
 function getOllamaBaseUrl(): string {
   const baseUrl = process.env.OLLAMA_BASE_URL || DEFAULT_OLLAMA_BASE_URL
   return baseUrl.replace(/\/+$/, "")
-}
-
-interface OllamaEmbedResponse {
-  embedding?: number[]
 }
 
 /**
@@ -23,7 +21,7 @@ interface OllamaEmbedResponse {
  * Ollama's nomic-embed-text model (fully local, no external API calls).
  */
 export async function embedText(text: string): Promise<number[]> {
-  const url = `${getOllamaBaseUrl()}${EMBED_ENDPOINT}`
+  const url = `${getOllamaBaseUrl()}${OLLAMA_EMBED_ENDPOINT}`
 
   const response = await fetch(url, {
     method: "POST",

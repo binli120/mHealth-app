@@ -2,46 +2,11 @@ import "server-only"
 
 import { getDbPool } from "@/lib/db/server"
 import { embedBatch, toVectorLiteral } from "./embed"
+import { CHUNK_MAX_CHARS, CHUNK_OVERLAP_CHARS, CHUNK_MIN_LENGTH, POLICY_SOURCES } from "./constants"
+import type { DocumentSource, IngestResult } from "./types"
 
-// ── Document source definitions ───────────────────────────────────────────────
-
-export interface DocumentSource {
-  title: string
-  url: string
-  doc_type: "member_booklet" | "eligibility_guide" | "verifications" | "transmittal" | "faq"
-  language: string
-}
-
-/**
- * Priority MassHealth policy documents to ingest.
- * All are publicly accessible Massachusetts state government pages / PDFs.
- */
-export const POLICY_SOURCES: DocumentSource[] = [
-  {
-    title: "MassHealth Member Booklet",
-    url: "https://www.mass.gov/doc/masshealth-member-booklet-2024/download",
-    doc_type: "member_booklet",
-    language: "en",
-  },
-  {
-    title: "MassHealth and Health Connector Acceptable Verifications List",
-    url: "https://www.mass.gov/doc/masshealth-and-health-connector-acceptable-verifications-list/download",
-    doc_type: "verifications",
-    language: "en",
-  },
-  {
-    title: "MassHealth Eligibility — People 65 and Younger",
-    url: "https://www.mass.gov/info-details/learn-if-you-are-eligible-for-a-masshealth-program-for-people-65-and-younger",
-    doc_type: "eligibility_guide",
-    language: "en",
-  },
-  {
-    title: "MassHealth Eligibility — People 65 and Older",
-    url: "https://www.mass.gov/info-details/learn-if-you-are-eligible-for-a-masshealth-program-for-people-aged-65-and-older-and-people-with-certain-disabilities",
-    doc_type: "eligibility_guide",
-    language: "en",
-  },
-]
+export type { DocumentSource, IngestResult }
+export { POLICY_SOURCES }
 
 // ── Text chunking ─────────────────────────────────────────────────────────────
 
@@ -52,8 +17,8 @@ export const POLICY_SOURCES: DocumentSource[] = [
  */
 export function chunkText(
   text: string,
-  maxChars = 1800,
-  overlapChars = 150,
+  maxChars = CHUNK_MAX_CHARS,
+  overlapChars = CHUNK_OVERLAP_CHARS,
 ): string[] {
   // Normalize whitespace
   const normalized = text.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim()
@@ -98,7 +63,7 @@ export function chunkText(
 
   if (current) chunks.push(current)
 
-  return chunks.filter((c) => c.trim().length > 20)  // filter trivially short chunks
+  return chunks.filter((c) => c.trim().length > CHUNK_MIN_LENGTH)
 }
 
 // ── HTML / PDF text extraction ────────────────────────────────────────────────
@@ -200,14 +165,6 @@ function extractTextFromPdfBuffer(buffer: ArrayBuffer): string {
 }
 
 // ── Ingestion pipeline ────────────────────────────────────────────────────────
-
-export interface IngestResult {
-  title: string
-  url: string
-  chunkCount: number
-  skipped?: boolean
-  error?: string
-}
 
 /**
  * Ingest a single policy document: fetch → chunk → embed → upsert.
