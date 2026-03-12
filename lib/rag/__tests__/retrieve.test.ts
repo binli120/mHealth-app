@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 
-import { formatChunksForPrompt } from "@/lib/rag/retrieve"
-import type { PolicyChunk } from "@/lib/rag/types"
+import { formatChunksForPrompt } from "../retrieve"
+import type { PolicyChunk } from "../types"
 
 function makeChunk(overrides: Partial<PolicyChunk> = {}): PolicyChunk {
   return {
@@ -18,59 +18,63 @@ function makeChunk(overrides: Partial<PolicyChunk> = {}): PolicyChunk {
 // ── formatChunksForPrompt ─────────────────────────────────────────────────────
 
 describe("formatChunksForPrompt", () => {
-  it("returns empty string for empty chunk array", () => {
+  it("returns empty string for empty array", () => {
     expect(formatChunksForPrompt([])).toBe("")
   })
 
-  it("formats a single chunk with index 1", () => {
+  it("formats a single chunk with label [1]", () => {
     const result = formatChunksForPrompt([makeChunk()])
     expect(result).toContain("[1]")
     expect(result).toContain("MassHealth Member Booklet")
     expect(result).toContain("MassHealth provides health coverage")
   })
 
-  it("numbers chunks sequentially starting at 1", () => {
+  it("numbers multiple chunks sequentially from 1", () => {
     const chunks = [
-      makeChunk({ id: "a", documentTitle: "Doc A", chunkIndex: 0 }),
-      makeChunk({ id: "b", documentTitle: "Doc B", chunkIndex: 1 }),
-      makeChunk({ id: "c", documentTitle: "Doc C", chunkIndex: 2 }),
+      makeChunk({ id: "a", documentTitle: "Doc A" }),
+      makeChunk({ id: "b", documentTitle: "Doc B" }),
+      makeChunk({ id: "c", documentTitle: "Doc C" }),
     ]
     const result = formatChunksForPrompt(chunks)
     expect(result).toContain("[1]")
     expect(result).toContain("[2]")
     expect(result).toContain("[3]")
+    expect(result).not.toContain("[4]")
   })
 
-  it("separates chunks with double newline", () => {
+  it("separates chunks with a double newline", () => {
     const chunks = [makeChunk({ id: "a" }), makeChunk({ id: "b" })]
-    const result = formatChunksForPrompt(chunks)
-    expect(result).toContain("\n\n")
+    expect(formatChunksForPrompt(chunks)).toContain("\n\n")
   })
 
-  it("falls back to 'MassHealth Policy' when documentTitle is missing", () => {
-    const chunk = makeChunk({ documentTitle: undefined })
-    const result = formatChunksForPrompt([chunk])
+  it("falls back to 'MassHealth Policy' when documentTitle is undefined", () => {
+    const result = formatChunksForPrompt([makeChunk({ documentTitle: undefined })])
     expect(result).toContain("MassHealth Policy")
   })
 
-  it("truncates very long content to at most 600 chars in the prompt", () => {
-    const longContent = "x".repeat(1200)
-    const chunk = makeChunk({ content: longContent })
+  it("truncates content longer than 600 chars", () => {
+    const chunk = makeChunk({ content: "x".repeat(1200) })
     const result = formatChunksForPrompt([chunk])
-    // The content portion inside quotes should not exceed 600 chars
     const match = result.match(/"(.+)"/)
     expect(match?.[1]?.length).toBeLessThanOrEqual(600)
   })
 
   it("wraps content in double quotes", () => {
-    const result = formatChunksForPrompt([makeChunk()])
-    expect(result).toMatch(/"[^"]+"/)
+    expect(formatChunksForPrompt([makeChunk()])).toMatch(/"[^"]+"/)
   })
 
-  it("collapses internal whitespace in content", () => {
+  it("collapses internal whitespace and newlines in content", () => {
     const chunk = makeChunk({ content: "word1   \n\n   word2" })
     const result = formatChunksForPrompt([chunk])
     expect(result).not.toContain("\n")
     expect(result).toContain("word1 word2")
+  })
+
+  it("includes the document title before the content", () => {
+    const chunk = makeChunk({ documentTitle: "Eligibility Guide", content: "Income limits apply." })
+    const result = formatChunksForPrompt([chunk])
+    const titleIndex = result.indexOf("Eligibility Guide")
+    const contentIndex = result.indexOf("Income limits apply.")
+    expect(titleIndex).toBeLessThan(contentIndex)
   })
 })
