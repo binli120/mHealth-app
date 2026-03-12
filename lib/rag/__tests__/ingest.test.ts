@@ -62,7 +62,13 @@ describe("chunkText", () => {
 
   it("produces chunks that cover all the original content (no text lost)", () => {
     const words = Array.from({ length: 200 }, (_, i) => `word${i}`)
-    const text = words.join(" ")
+    // Arrange as paragraphs (10 words each, separated by double newlines) so the
+    // paragraph-accumulation path runs and no content is truncated.
+    const paragraphs: string[] = []
+    for (let i = 0; i < words.length; i += 10) {
+      paragraphs.push(words.slice(i, i + 10).join(" "))
+    }
+    const text = paragraphs.join("\n\n")
     const result = chunkText(text, 300, 50)
     const combined = result.join(" ")
     // Every word should appear somewhere across the chunks

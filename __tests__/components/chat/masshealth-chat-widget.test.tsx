@@ -4,7 +4,7 @@ import { Provider } from "react-redux"
 import { configureStore } from "@reduxjs/toolkit"
 
 import { MassHealthChatWidget } from "@/components/chat/masshealth-chat-widget"
-import appReducer from "@/lib/redux/features/app-slice"
+import { appReducer } from "@/lib/redux/features/app-slice"
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
@@ -34,6 +34,8 @@ function renderWidget() {
 describe("MassHealthChatWidget", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // jsdom does not implement scrollIntoView — stub it to prevent TypeError
+    Element.prototype.scrollIntoView = vi.fn()
   })
 
   it("renders the chat button (closed state)", () => {
@@ -70,7 +72,8 @@ describe("MassHealthChatWidget", () => {
   it("shows the advisor greeting by default when opened", () => {
     renderWidget()
     fireEvent.click(screen.getByRole("button", { name: /open masshealth assistant/i }))
-    expect(screen.getByText(/Benefit Advisor/i)).toBeInTheDocument()
+    // "Benefit Advisor" appears in both the tab button and the greeting bubble
+    expect(screen.getAllByText(/Benefit Advisor/i).length).toBeGreaterThanOrEqual(1)
     expect(
       screen.getByText(/Tell me about yourself/i),
     ).toBeInTheDocument()
