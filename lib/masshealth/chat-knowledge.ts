@@ -1,4 +1,5 @@
 import { type SupportedLanguage } from "@/lib/i18n/languages"
+import type { EligibilityReport, ScreenerData } from "@/lib/eligibility-engine"
 
 export type ChatRole = "user" | "assistant"
 
@@ -369,4 +370,159 @@ export function buildMassHealthIntakeSystemPrompt(
     "",
     "If the user asks for policy specifics, provide official MassHealth references and suggest verifying with MassHealth support.",
   ].join("\n")
+}
+
+// ── RAG-augmented prompt builders (new) ───────────────────────────────────────
+
+/**
+ * Build the assistant system prompt with dynamically retrieved policy context
+ * from the RAG vector store, replacing the static FAQ block.
+ *
+ * Falls back gracefully to the static FAQ when ragContext is empty.
+ */
+export function buildMassHealthSystemPromptWithContext(
+  language: SupportedLanguage,
+  ragContext: string,
+): string {
+  if (!ragContext.trim()) {
+    // No RAG context available — use the existing static prompt as-is
+    return buildMassHealthSystemPrompt(language)
+  }
+
+  const outOfScopeResponse = getMassHealthOutOfScopeResponse(language)
+  const responseLanguage = LANGUAGE_RESPONSE_HINT[language] ?? LANGUAGE_RESPONSE_HINT.en
+
+  return [
+    "You are a MassHealth-only virtual assistant.",
+    "Follow these rules strictly:",
+    "1) Answer only questions related to MassHealth programs, eligibility, enrollment, renewal, benefits, and member services.",
+    `2) If the question is outside this scope, respond exactly with: ${outOfScopeResponse}`,
+    "3) Ground your answers in the policy references provided below. Do not invent thresholds or rules not present in these references.",
+    "4) Keep answers concise, practical, and clear. Include official links when relevant.",
+    "5) Mention this is informational support and users should verify final decisions with MassHealth.",
+    `6) Respond in ${responseLanguage}.`,
+    "",
+    "Relevant MassHealth policy references (retrieved from official documents):",
+    ragContext,
+    "",
+    "MassHealth support contact:",
+    "MassHealth Customer Service Center: (800) 841-2900, TTY: 711",
+    "Self-service is available 24/7 in English and Spanish. Live services are typically Monday-Friday, 8:00 a.m.-5:00 p.m.",
+  ].join("\n")
+}
+
+/**
+ * Build the system prompt for the benefit_advisor chat mode.
+ *
+ * When eligibilityResults is provided (facts were sufficient for evaluation),
+ * the prompt instructs the LLM to explain results and next steps.
+ *
+ * When eligibilityResults is null (still collecting facts), the prompt
+ * instructs the LLM to ask for the next missing piece of information
+ * in a friendly, conversational way.
+ */
+export function buildBenefitAdvisorSystemPrompt(
+  language: SupportedLanguage,
+  facts: Partial<ScreenerData>,
+  eligibilityResults: EligibilityReport | null,
+  ragContext: string,
+): string {
+  const responseLanguage = LANGUAGE_RESPONSE_HINT[language] ?? LANGUAGE_RESPONSE_HINT.en
+
+  const factsSection = buildFactsSummary(facts)
+
+  if (eligibilityResults) {
+    // ── Full evaluation mode ───────────────────────────────────────────────
+    const resultsSummary = buildResultsSummary(eligibilityResults)
+
+    return [
+      "You are a MassHealth and public benefits advisor.",
+      "The eligibility rule engine has evaluated this user's situation. Your job is to EXPLAIN",
+      "the results clearly in plain language — do NOT re-evaluate or override these results.",
+      "",
+      "Rules:",
+      "1) Explain each program result in plain language — what it is, why they qualify, and how much it's worth.",
+      "2) Highlight the most actionable next step (what to apply for first).",
+      "3) Mention relevant documents or requirements from the results.",
+      "4) Cite the policy references below when relevant (e.g. 'according to the MassHealth Member Booklet...').",
+      "5) Close with: 'These estimates are based on your responses. Contact MassHealth at (800) 841-2900 for official determination.'",
+      `6) Respond in ${responseLanguage}.`,
+      "",
+      factsSection,
+      "",
+      "Eligibility rule engine results (authoritative — do not modify):",
+      resultsSummary,
+      ragContext ? "\nSupporting policy references:" : "",
+      ragContext,
+    ].filter(Boolean).join("\n")
+  }
+
+  // ── Fact-gathering mode ────────────────────────────────────────────────────
+  const missingFields = getMissingRequiredFields(facts)
+
+  return [
+    "You are a friendly MassHealth benefits advisor.",
+    "You are helping a user find out what health and social services programs they qualify for.",
+    "You are collecting a few facts to run an eligibility estimate.",
+    "",
+    "Rules:",
+    "1) Ask for ONLY ONE missing piece of information per message. Be conversational and warm.",
+    "2) Do not ask for information already listed in the facts below.",
+    "3) Do not make eligibility determinations yet — just collect the missing facts.",
+    "4) If the user asks a policy question, answer briefly using the references below, then return to collecting facts.",
+    `5) Respond in ${responseLanguage}.`,
+    "",
+    factsSection,
+    missingFields.length > 0
+      ? `\nNext fact to collect: ${missingFields[0]} — ask for this now, conversationally.`
+      : "\nAll required facts collected — the rule engine will evaluate in the next step.",
+    ragContext ? "\nMassHealth policy references for context:" : "",
+    ragContext,
+  ].filter(Boolean).join("\n")
+}
+
+// ── Helpers for prompt builders ───────────────────────────────────────────────
+
+function buildFactsSummary(facts: Partial<ScreenerData>): string {
+  if (Object.keys(facts).length === 0) {
+    return "User facts: None collected yet."
+  }
+
+  const lines = ["User facts (extracted from conversation):"]
+  if (facts.livesInMA !== undefined) lines.push(`  - Lives in MA: ${facts.livesInMA ? "Yes" : "No"}`)
+  if (facts.age !== undefined) lines.push(`  - Age: ${facts.age}`)
+  if (facts.householdSize !== undefined) lines.push(`  - Household size: ${facts.householdSize}`)
+  if (facts.annualIncome !== undefined) lines.push(`  - Annual income: $${facts.annualIncome.toLocaleString()}`)
+  if (facts.isPregnant) lines.push("  - Pregnant: Yes")
+  if (facts.hasDisability) lines.push("  - Has documented disability / SSI / SSDI: Yes")
+  if (facts.hasMedicare) lines.push("  - Has Medicare: Yes")
+  if (facts.hasEmployerInsurance) lines.push("  - Has employer insurance: Yes")
+  if (facts.citizenshipStatus) lines.push(`  - Citizenship: ${facts.citizenshipStatus}`)
+
+  return lines.join("\n")
+}
+
+function buildResultsSummary(report: EligibilityReport): string {
+  const lines: string[] = [
+    `FPL: ${report.fplPercent}% (Annual FPL for this household: $${report.annualFPL.toLocaleString()})`,
+  ]
+
+  for (const result of report.results) {
+    lines.push(`\nProgram: ${result.program}`)
+    lines.push(`  Status: ${result.status}`)
+    lines.push(`  ${result.tagline}`)
+    lines.push(`  ${result.details.slice(0, 300)}`)
+    lines.push(`  Apply: ${result.actionHref}`)
+  }
+
+  return lines.join("\n")
+}
+
+function getMissingRequiredFields(facts: Partial<ScreenerData>): string[] {
+  const missing: string[] = []
+  if (facts.livesInMA === undefined) missing.push("whether they live in Massachusetts")
+  if (facts.age === undefined) missing.push("their age")
+  if (facts.householdSize === undefined) missing.push("how many people are in their household")
+  if (facts.annualIncome === undefined) missing.push("their approximate annual household income")
+  return missing
 }

@@ -5,9 +5,11 @@ export const CHAT_MESSAGE_ROLE_ASSISTANT = "assistant"
 export const CHAT_MESSAGE_ROLES = [CHAT_MESSAGE_ROLE_USER, CHAT_MESSAGE_ROLE_ASSISTANT] as const
 export const CHAT_REQUEST_MODE_ASSISTANT = "assistant"
 export const CHAT_REQUEST_MODE_APPLICATION_INTAKE = "application_intake"
+export const CHAT_REQUEST_MODE_BENEFIT_ADVISOR = "benefit_advisor"
 export const CHAT_REQUEST_MODES = [
   CHAT_REQUEST_MODE_ASSISTANT,
   CHAT_REQUEST_MODE_APPLICATION_INTAKE,
+  CHAT_REQUEST_MODE_BENEFIT_ADVISOR,
 ] as const
 export const CHAT_MESSAGE_CONTENT_MIN_LENGTH = 1
 export const CHAT_MESSAGE_CONTENT_MAX_LENGTH = 6000
@@ -22,6 +24,11 @@ export const OLLAMA_CHAT_ENDPOINT = "/api/chat"
 export const DEFAULT_OLLAMA_MODEL = "llama3.2"
 export const OLLAMA_TIMEOUT_MS = 45_000
 export const OLLAMA_TEMPERATURE = 0.2
+
+// RAG + Benefit Advisor constants
+export const OLLAMA_EMBED_MODEL = "nomic-embed-text"
+export const RAG_TOP_K = 4          // number of policy chunks to retrieve
+export const RAG_TOP_K_ADVISOR = 3  // fewer chunks for benefit_advisor (saves context)
 
 export const DEFAULT_CHAT_LANGUAGE = "en"
 

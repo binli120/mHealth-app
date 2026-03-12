@@ -3,12 +3,21 @@ import { z } from "zod"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 
 import {
+  buildBenefitAdvisorSystemPrompt,
   buildMassHealthIntakeSystemPrompt,
   buildMassHealthSystemPrompt,
+  buildMassHealthSystemPromptWithContext,
   getMassHealthOutOfScopeResponse,
   isMassHealthTopic,
   type ChatMessage,
 } from "@/lib/masshealth/chat-knowledge"
+import {
+  applyFactDefaults,
+  extractEligibilityFacts,
+  isSufficientForEvaluation,
+} from "@/lib/masshealth/fact-extraction"
+import { runEligibilityCheck } from "@/lib/eligibility-engine"
+import { retrieveRelevantChunks, formatChunksForPrompt } from "@/lib/rag/retrieve"
 import { extractHouseholdRelationshipHints } from "@/lib/masshealth/household-relationships"
 import { logServerError } from "@/lib/server/logger"
 import { isSupportedLanguage, type SupportedLanguage } from "@/lib/i18n/languages"
@@ -18,6 +27,7 @@ import {
   CHAT_MESSAGE_ROLE_USER,
   CHAT_MESSAGE_ROLES,
   CHAT_REQUEST_MODE_APPLICATION_INTAKE,
+  CHAT_REQUEST_MODE_BENEFIT_ADVISOR,
   CHAT_REQUEST_MODES,
   CHAT_REQUEST_MAX_MESSAGES,
   CHAT_REQUEST_MIN_MESSAGES,
@@ -35,6 +45,8 @@ import {
   OLLAMA_MESSAGES_CONTEXT_LIMIT,
   OLLAMA_TEMPERATURE,
   OLLAMA_TIMEOUT_MS,
+  RAG_TOP_K,
+  RAG_TOP_K_ADVISOR,
 } from "./constants"
 
 export const runtime = "nodejs"
@@ -165,6 +177,97 @@ export async function POST(request: Request) {
     }
 
     const isIntakeMode = mode === CHAT_REQUEST_MODE_APPLICATION_INTAKE
+    const isBenefitAdvisorMode = mode === CHAT_REQUEST_MODE_BENEFIT_ADVISOR
+
+    // ── benefit_advisor mode ─────────────────────────────────────────────────
+    // LLM extracts facts → rule engine evaluates → LLM explains with RAG backing
+    if (isBenefitAdvisorMode) {
+      // 1. Extract structured eligibility facts from conversation (LLM JSON extraction)
+      const facts = await extractEligibilityFacts(payload.messages, language)
+
+      let eligibilityReport = null
+      let ragQuery = lastUserMessage.content
+
+      if (isSufficientForEvaluation(facts)) {
+        // 2. Run the rule engine (synchronous, pure logic — not LLM)
+        const screenerData = applyFactDefaults(facts)
+        eligibilityReport = runEligibilityCheck(screenerData)
+
+        // Build a focused RAG query from the top matched programs
+        const topPrograms = eligibilityReport.results
+          .slice(0, 3)
+          .map((r) => r.program)
+          .join(", ")
+        ragQuery = topPrograms || lastUserMessage.content
+      }
+
+      // 3. Retrieve relevant policy chunks
+      const ragChunks = await retrieveRelevantChunks(ragQuery, RAG_TOP_K_ADVISOR).catch(() => [])
+      const ragContext = formatChunksForPrompt(ragChunks)
+
+      // 4. Build system prompt with facts + rule engine results + policy context
+      const advisorSystemPrompt = buildBenefitAdvisorSystemPrompt(
+        language,
+        facts,
+        eligibilityReport,
+        ragContext,
+      )
+
+      // 5. Call Ollama to generate the explanation / next question
+      const advisorOllamaResponse = await fetch(`${getOllamaBaseUrl()}${OLLAMA_CHAT_ENDPOINT}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        signal: AbortSignal.timeout(OLLAMA_TIMEOUT_MS),
+        body: JSON.stringify({
+          model: process.env.OLLAMA_MODEL || DEFAULT_OLLAMA_MODEL,
+          stream: false,
+          options: { temperature: OLLAMA_TEMPERATURE },
+          messages: [
+            { role: "system", content: advisorSystemPrompt },
+            ...buildOllamaMessages(payload.messages),
+          ],
+        }),
+      })
+
+      if (!advisorOllamaResponse.ok) {
+        const detail = await advisorOllamaResponse.text().catch(() => "")
+        return NextResponse.json({ ok: false, error: ERROR_OLLAMA_RESPONSE, detail }, { status: 502 })
+      }
+
+      const advisorData = (await advisorOllamaResponse.json()) as OllamaResponsePayload
+      const advisorReply = advisorData.message?.content?.trim()
+
+      if (!advisorReply) {
+        return NextResponse.json({ ok: false, error: ERROR_OLLAMA_EMPTY_RESPONSE }, { status: 502 })
+      }
+
+      return NextResponse.json({
+        ok: true,
+        outOfScope: false,
+        reply: advisorReply,
+        // Include structured data for UI consumption (optional rendering)
+        factsExtracted: facts,
+        eligibilityResults: eligibilityReport
+          ? {
+              fplPercent: eligibilityReport.fplPercent,
+              annualFPL: eligibilityReport.annualFPL,
+              summary: eligibilityReport.summary,
+              results: eligibilityReport.results.map((r) => ({
+                program: r.program,
+                status: r.status,
+                tagline: r.tagline,
+                actionLabel: r.actionLabel,
+                actionHref: r.actionHref,
+                color: r.color,
+              })),
+            }
+          : null,
+      })
+    }
+
+    // ── Existing modes (assistant + application_intake) ───────────────────────
+
     const intakeHouseholdHintsMessage = isIntakeMode
       ? buildIntakeHouseholdHintsMessage(lastUserMessage.content)
       : null
@@ -175,6 +278,19 @@ export async function POST(request: Request) {
         outOfScope: true,
         reply: getMassHealthOutOfScopeResponse(language),
       })
+    }
+
+    // For assistant mode: augment with RAG context if available
+    let assistantSystemPrompt: string
+    if (isIntakeMode) {
+      assistantSystemPrompt = buildMassHealthIntakeSystemPrompt(language, payload.applicationType)
+    } else {
+      // Retrieve policy chunks semantically relevant to the user's question
+      const ragChunks = await retrieveRelevantChunks(lastUserMessage.content, RAG_TOP_K).catch(() => [])
+      const ragContext = formatChunksForPrompt(ragChunks)
+      assistantSystemPrompt = ragContext
+        ? buildMassHealthSystemPromptWithContext(language, ragContext)
+        : buildMassHealthSystemPrompt(language)
     }
 
     const model = process.env.OLLAMA_MODEL || DEFAULT_OLLAMA_MODEL
@@ -194,9 +310,7 @@ export async function POST(request: Request) {
         messages: [
           {
             role: "system",
-            content: isIntakeMode
-              ? buildMassHealthIntakeSystemPrompt(language, payload.applicationType)
-              : buildMassHealthSystemPrompt(language),
+            content: assistantSystemPrompt,
           },
           ...(intakeHouseholdHintsMessage
             ? [
