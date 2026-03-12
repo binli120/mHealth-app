@@ -103,7 +103,7 @@ export function MassHealthChatWidget() {
   const dispatch = useAppDispatch()
   const selectedLanguage = useAppSelector((state) => state.app.language)
   const [open, setOpen] = useState(false)
-  const [view, setView] = useState<WidgetView>("faq")
+  const [view, setView] = useState<WidgetView>("advisor")
 
   // Regular chat messages
   const [messages, setMessages] = useState<WidgetMessage[]>([
@@ -215,7 +215,7 @@ export function MassHealthChatWidget() {
     setMessages([{ id: createMessageId(), role: "assistant", content: greeting }])
     setAdvisorMessages([{ id: createMessageId(), role: "assistant", content: ADVISOR_GREETING }])
     setDraft("")
-    setView("faq")
+    setView("advisor")
   }
 
   const activeMessages = isAdvisorView ? advisorMessages : messages
@@ -281,6 +281,14 @@ export function MassHealthChatWidget() {
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 size="sm"
+                variant={view === "advisor" ? "default" : "outline"}
+                onClick={() => setView("advisor")}
+              >
+                <ShieldCheck className="h-4 w-4" />
+                Benefit Advisor
+              </Button>
+              <Button
+                size="sm"
                 variant={view === "faq" ? "default" : "outline"}
                 onClick={() => setView("faq")}
               >
@@ -294,14 +302,6 @@ export function MassHealthChatWidget() {
               >
                 <MessageCircle className="h-4 w-4" />
                 Chat
-              </Button>
-              <Button
-                size="sm"
-                variant={view === "advisor" ? "default" : "outline"}
-                onClick={() => setView("advisor")}
-              >
-                <ShieldCheck className="h-4 w-4" />
-                Benefit Advisor
               </Button>
               <Button size="sm" variant="ghost" onClick={handleResetChat} className="ml-auto">
                 Reset
