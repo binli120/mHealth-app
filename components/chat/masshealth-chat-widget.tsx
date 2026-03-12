@@ -296,12 +296,12 @@ export function MassHealthChatWidget() {
                 Common Questions
               </Button>
               <Button
-                size="sm"
+                size="icon-sm"
                 variant={view === "chat" ? "default" : "outline"}
+                aria-label="Chat"
                 onClick={() => setView("chat")}
               >
                 <MessageCircle className="h-4 w-4" />
-                Chat
               </Button>
               <Button size="sm" variant="ghost" onClick={handleResetChat} className="ml-auto">
                 Reset
