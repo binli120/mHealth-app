@@ -1,6 +1,16 @@
 import aca3Raw from '@/data/aca_3-0235.json';
 import { AnswerType } from './types';
 
+// Re-export ACA-3 question types so existing consumers keep working.
+export type {
+  Aca3QuestionInputType,
+  Aca3WorkflowStep,
+  Aca3QuestionResponseValue,
+  Aca3QuestionResponses,
+  Aca3RequiredQuestion,
+  Aca3RequiredQuestionSection,
+} from './types';
+
 type RawAnswerType =
   | 'text'
   | 'text_or_unknown'
@@ -19,35 +29,6 @@ interface RawFormItem {
 
 interface RawAca3Payload {
   form_items?: RawFormItem[];
-}
-
-export type Aca3QuestionInputType =
-  | 'text'
-  | 'date'
-  | 'yes_no'
-  | 'single_choice'
-  | 'multi_choice';
-
-export type Aca3WorkflowStep = 1 | 2 | 3 | 4 | 5;
-
-export type Aca3QuestionResponseValue = string | string[];
-export type Aca3QuestionResponses = Record<string, Aca3QuestionResponseValue>;
-
-export interface Aca3RequiredQuestion {
-  key: string;
-  page: number;
-  section: string;
-  questionId: string;
-  questionText: string;
-  inputType: Aca3QuestionInputType;
-  options: string[];
-  workflowStep: Aca3WorkflowStep;
-}
-
-export interface Aca3RequiredQuestionSection {
-  id: string;
-  title: string;
-  questions: Aca3RequiredQuestion[];
 }
 
 const rawPayload = aca3Raw as RawAca3Payload;

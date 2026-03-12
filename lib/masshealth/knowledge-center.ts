@@ -1,28 +1,8 @@
 import { type SupportedLanguage } from "@/lib/i18n/languages"
 
-export interface KnowledgeVideo {
-  id: string
-  title: string
-  description: string
-  youtubeId: string
-  youtubeUrl: string
-  sourceUrl: string
-  availableLanguages: SupportedLanguage[]
-}
-
-export interface KnowledgeArticle {
-  id: string
-  title: string
-  description: string
-  url: string
-}
-
-export interface KnowledgeDocument {
-  id: string
-  title: string
-  description: string
-  url: string
-}
+// Types are defined in types.ts; re-exported here for backward compatibility.
+export type { KnowledgeVideo, KnowledgeArticle, KnowledgeDocument } from "./types"
+import type { KnowledgeVideo, KnowledgeArticle, KnowledgeDocument } from "./types"
 
 export const KNOWLEDGE_VIDEOS: KnowledgeVideo[] = [
   {

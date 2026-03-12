@@ -1,13 +1,5 @@
-export type MassHealthApplicationType = "aca3" | "aca3ap" | "saca2" | "msp"
-
-export interface MassHealthApplicationTypeOption {
-  id: MassHealthApplicationType
-  title: string
-  shortLabel: string
-  description: string
-  formCode: string
-  referenceUrl: string
-}
+// Types are defined in types.ts; re-exported here for backward compatibility.
+export type { MassHealthApplicationType, MassHealthApplicationTypeOption } from "./types"
 
 export const MASSHEALTH_APPLICATION_TYPES: MassHealthApplicationTypeOption[] = [
   {

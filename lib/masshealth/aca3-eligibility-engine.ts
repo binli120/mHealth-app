@@ -1,92 +1,26 @@
-export type CitizenshipStatus =
-  | "US_CITIZEN"
-  | "NATIONAL"
-  | "QUALIFIED_NONCITIZEN"
-  | "LEGAL_PERMANENT_RESIDENT"
-  | "REFUGEE"
-  | "ASYLEE"
-  | "TPS"
-  | "UNDOCUMENTED"
+import { FPL_TABLE_2026, FPL_INCREMENT_AFTER_4 } from "./constants"
+import type {
+  CitizenshipStatus,
+  EligibilityIncomeInput,
+  Aca3EligibilityApplicantInput,
+  EligibilityFindingLevel,
+  EligibilityFinding,
+  EligibilityRuleStatus,
+  EligibilityRuleResult,
+  Aca3EligibilityResult,
+} from "./types"
 
-export interface EligibilityIncomeInput {
-  wages?: number
-  selfEmployment?: number
-  unemployment?: number
-  socialSecurityTaxable?: number
-  rentalIncome?: number
-  interest?: number
-  pension?: number
-  childSupport?: number
-  veteransBenefits?: number
-  supplementalSecurityIncome?: number
+// Re-export so existing consumers (`form-wizard.tsx`, etc.) keep working unchanged.
+export type {
+  CitizenshipStatus,
+  EligibilityIncomeInput,
+  Aca3EligibilityApplicantInput,
+  EligibilityFindingLevel,
+  EligibilityFinding,
+  EligibilityRuleStatus,
+  EligibilityRuleResult,
+  Aca3EligibilityResult,
 }
-
-export interface Aca3EligibilityApplicantInput {
-  applicantId: string
-  age: number
-  stateResident: string
-  identityVerified: boolean
-  citizenshipStatus: CitizenshipStatus
-  married: boolean
-  taxDependents: number
-  taxFiler: boolean
-  pregnant: boolean
-  unbornChildren: number
-  disabled: boolean
-  medicalVerification: boolean
-  hasOtherInsurance: boolean
-  income: EligibilityIncomeInput
-  verification: {
-    ssnVerified: boolean
-    incomeVerified: boolean
-    immigrationVerified: boolean
-  }
-}
-
-export type EligibilityFindingLevel = "error" | "warning" | "info" | "success"
-
-export interface EligibilityFinding {
-  code: string
-  level: EligibilityFindingLevel
-  message: string
-}
-
-export type EligibilityRuleStatus = "pass" | "fail" | "warning"
-
-export interface EligibilityRuleResult {
-  id: string
-  label: string
-  status: EligibilityRuleStatus
-  message: string
-}
-
-export interface Aca3EligibilityResult {
-  applicant_id: string
-  household_size: number
-  income: number
-  fpl_percent: number
-  eligible_program: string
-  status:
-    | "APPROVED"
-    | "DENIED"
-    | "LIMITED_COVERAGE"
-    | "PENDING_VERIFICATION"
-    | "PENDING_DOCUMENTS"
-    | "TPL_REQUIRED"
-    | "REDIRECT_ACA2"
-  required_documents: string[]
-  findings: EligibilityFinding[]
-  rule_results: EligibilityRuleResult[]
-}
-
-const FPL_TABLE_2026: Record<number, number> = {
-  1: 15060,
-  2: 20440,
-  3: 25820,
-  4: 31200,
-}
-
-const FPL_INCREMENT_AFTER_4 = 5380
 
 function clampNonNegativeInteger(value: number): number {
   if (!Number.isFinite(value) || value <= 0) {

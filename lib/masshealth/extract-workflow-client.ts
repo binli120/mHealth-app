@@ -1,28 +1,11 @@
-export interface ExtractWorkflowPayload {
-  userId: string
-  file: File
-}
+// Types are defined in types.ts; re-exported here for backward compatibility.
+export type { ExtractWorkflowPayload, ExtractWorkflowResponse } from "./types"
+import type { ExtractWorkflowPayload, ExtractWorkflowResponse } from "./types"
 
-export interface ExtractWorkflowResponse {
-  status: string
-  user_id: string
-  source_pdf: string
-  application?: string
-  detected_form_variant?: string
-  workflow_json_path?: string
-  workflow_data: Record<string, unknown>
-  extraction?: {
-    engine?: string
-    extraction_method?: string
-    page_count_processed?: number
-    warnings?: string[]
-    [key: string]: unknown
-  }
-  [key: string]: unknown
-}
-
-const DEFAULT_DEV_BASE_URL = "http://localhost:8000"
-const EXTRACT_WORKFLOW_PATH = "/masshealth/forms/extract-workflow"
+import {
+  MASSHEALTH_FORMS_DEV_BASE_URL,
+  MASSHEALTH_FORMS_EXTRACT_PATH,
+} from "./constants"
 
 function getMasshealthFormsBaseUrl(): string {
   const configured = process.env.NEXT_PUBLIC_MASSHEALTH_FORMS_BASE_URL?.trim()
@@ -31,7 +14,7 @@ function getMasshealthFormsBaseUrl(): string {
   }
 
   if (process.env.NODE_ENV !== "production") {
-    return DEFAULT_DEV_BASE_URL
+    return MASSHEALTH_FORMS_DEV_BASE_URL
   }
 
   throw new Error(
@@ -66,7 +49,7 @@ export async function extractMasshealthWorkflow({
   userId,
   file,
 }: ExtractWorkflowPayload): Promise<ExtractWorkflowResponse> {
-  const endpoint = `${getMasshealthFormsBaseUrl()}${EXTRACT_WORKFLOW_PATH}`
+  const endpoint = `${getMasshealthFormsBaseUrl()}${MASSHEALTH_FORMS_EXTRACT_PATH}`
   const formData = new FormData()
   formData.append("user_id", userId)
   formData.append("async_request", "false")

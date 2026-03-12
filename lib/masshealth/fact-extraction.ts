@@ -4,11 +4,13 @@ import type { CitizenshipStatus, ScreenerData } from "@/lib/eligibility-engine"
 import type { SupportedLanguage } from "@/lib/i18n/languages"
 import { DEFAULT_OLLAMA_BASE_URL, OLLAMA_CHAT_ENDPOINT } from "@/lib/rag/constants"
 import type { ChatMessage, OllamaResponse } from "./types"
+import {
+  EXTRACT_TEMPERATURE,
+  EXTRACT_TIMEOUT_MS,
+  EXTRACT_MESSAGE_WINDOW,
+} from "./constants"
+
 const EXTRACT_MODEL = process.env.OLLAMA_MODEL ?? "llama3.2"
-const EXTRACT_TEMPERATURE = 0
-const EXTRACT_TIMEOUT_MS = 30_000
-// Use last N messages to keep extraction prompt focused
-const EXTRACT_MESSAGE_WINDOW = 10
 
 // ── Prompt ────────────────────────────────────────────────────────────────────
 

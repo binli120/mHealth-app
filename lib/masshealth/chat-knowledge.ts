@@ -1,6 +1,7 @@
 import { type SupportedLanguage } from "@/lib/i18n/languages"
 import type { EligibilityReport, ScreenerData } from "@/lib/eligibility-engine"
 import type { ChatRole, ChatMessage, MassHealthLink, MassHealthFaqItem } from "./types"
+import { MASSHEALTH_PHONE, MASSHEALTH_TTY, MASSHEALTH_SERVICE_HOURS } from "./constants"
 
 export type { ChatRole, ChatMessage, MassHealthLink, MassHealthFaqItem }
 
@@ -315,8 +316,8 @@ export function buildMassHealthSystemPrompt(language: SupportedLanguage): string
     formatKnowledgeBaseForPrompt(),
     "",
     "MassHealth support contact:",
-    "MassHealth Customer Service Center: (800) 841-2900, TTY: 711",
-    "Self-service is available 24/7 in English and Spanish. Live services are typically Monday-Friday, 8:00 a.m.-5:00 p.m.",
+    `MassHealth Customer Service Center: ${MASSHEALTH_PHONE}, TTY: ${MASSHEALTH_TTY}`,
+    `Self-service is available 24/7 in English and Spanish. Live services are typically ${MASSHEALTH_SERVICE_HOURS}.`,
   ].join("\n")
 }
 
@@ -390,8 +391,8 @@ export function buildMassHealthSystemPromptWithContext(
     ragContext,
     "",
     "MassHealth support contact:",
-    "MassHealth Customer Service Center: (800) 841-2900, TTY: 711",
-    "Self-service is available 24/7 in English and Spanish. Live services are typically Monday-Friday, 8:00 a.m.-5:00 p.m.",
+    `MassHealth Customer Service Center: ${MASSHEALTH_PHONE}, TTY: ${MASSHEALTH_TTY}`,
+    `Self-service is available 24/7 in English and Spanish. Live services are typically ${MASSHEALTH_SERVICE_HOURS}.`,
   ].join("\n")
 }
 

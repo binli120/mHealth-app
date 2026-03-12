@@ -1,7 +1,5 @@
-export interface HouseholdRelationshipHint {
-  relationship: string
-  memberName?: string
-}
+// Type is defined in types.ts; re-exported here for backward compatibility.
+export type { HouseholdRelationshipHint } from "./types"
 
 const HOUSEHOLD_RELATIONSHIP_ALIASES: Record<string, string> = {
   wife: "spouse",
