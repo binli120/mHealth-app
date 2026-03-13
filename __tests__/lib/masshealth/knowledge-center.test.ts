@@ -49,7 +49,7 @@ describe("lib/masshealth/knowledge-center", () => {
     it("returns Simplified Chinese copy for 'zh-CN'", () => {
       const copy = getKnowledgeCenterCopy("zh-CN")
       expect(copy.pageTitle).toContain("MassHealth")
-      expect(copy.sectionVideos).toBe("Shipin")
+      expect(copy.sectionVideos).toBe("视频")
     })
 
     it("falls back to English for an unsupported language code", () => {
