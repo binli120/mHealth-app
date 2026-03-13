@@ -198,11 +198,11 @@ export default function LandingPage() {
   }, [selectedLanguage])
 
   // animated stats
-  const statsSection = useInView(0.3)
-  const programs  = useCounter(9,    statsSection.inView)
-  const languages = useCounter(6,    statsSection.inView)
-  const minutes   = useCounter(15,   statsSection.inView)
-  const savings   = useCounter(2400, statsSection.inView, 2200)
+  const { ref: statsRef, inView: statsInView } = useInView(0.3)
+  const programs  = useCounter(9,    statsInView)
+  const languages = useCounter(6,    statsInView)
+  const minutes   = useCounter(15,   statsInView)
+  const savings   = useCounter(2400, statsInView, 2200)
 
   return (
     <>
@@ -433,7 +433,7 @@ export default function LandingPage() {
 
         {/* ── Stats ───────────────────────────────────────────────────────────── */}
         <section className="border-y border-border bg-primary px-4 py-16">
-          <div ref={statsSection.ref} className="mx-auto max-w-7xl">
+          <div ref={statsRef} className="mx-auto max-w-7xl">
             <div className="grid gap-8 text-center md:grid-cols-4">
               {[
                 { value: programs,  suffix: "+",    prefix: "",  label: "Benefit programs checked"  },
