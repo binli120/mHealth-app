@@ -1,0 +1,689 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "mHealth API",
+    "description": "Complete API collection for the mHealth MassHealth benefits platform.\n\n**Setup:**\n1. Set `baseUrl` variable to your running server (default: `http://localhost:3000`)\n2. Set `authToken` to a valid Supabase JWT (`Authorization: Bearer <token>`)\n3. For dev-only auth endpoints, no token is needed.\n\n**Dev auth quick-start:**\n- POST `/api/auth/dev-register` → copy the returned token → paste into the `authToken` collection variable",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string",
+      "description": "Supabase JWT — paste the token returned by POST /api/auth/dev-register"
+    },
+    {
+      "key": "applicationId",
+      "value": "00000000-0000-0000-0000-000000000001",
+      "type": "string",
+      "description": "UUID of an existing application draft"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{authToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Health",
+      "description": "Liveness and readiness checks.",
+      "item": [
+        {
+          "name": "DB Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health/db",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "health", "db"]
+            },
+            "description": "Verifies the database connection is live. Returns `{ ok: true }` on success."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth (Dev Only)",
+      "description": "Development-only helpers for creating and confirming test accounts. Not available in production.",
+      "item": [
+        {
+          "name": "Register Dev User",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"dev-test@example.com\",\n  \"password\": \"Test1234!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/dev-register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "dev-register"]
+            },
+            "description": "Creates a new Supabase user and returns a JWT token. Copy the `token` into the `authToken` collection variable."
+          },
+          "response": [
+            {
+              "name": "200 Created",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n  \"userId\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Auto-Confirm Dev User",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"dev-test@example.com\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/dev-auto-confirm",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "dev-auto-confirm"]
+            },
+            "description": "Bypasses email confirmation for a dev user. Call after `dev-register` if email confirmation is enabled in Supabase."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Applications",
+      "description": "Application draft lifecycle: create, list, fetch, and update wizard state.",
+      "item": [
+        {
+          "name": "List Application Drafts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications?status=draft&page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications"],
+              "query": [
+                { "key": "status", "value": "draft", "description": "Filter by status (draft, submitted, approved, denied)" },
+                { "key": "q", "value": "", "disabled": true, "description": "Optional search query" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            },
+            "description": "Returns a paginated list of application drafts for the authenticated user."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"applications\": [\n    {\n      \"id\": \"00000000-0000-0000-0000-000000000001\",\n      \"status\": \"draft\",\n      \"createdAt\": \"2026-03-13T00:00:00Z\",\n      \"updatedAt\": \"2026-03-13T00:00:00Z\"\n    }\n  ],\n  \"total\": 1,\n  \"page\": 1,\n  \"limit\": 20\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Application Draft",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"applicationId\": \"00000000-0000-0000-0000-000000000001\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications"]
+            },
+            "description": "Creates a new application draft. Provide a client-generated UUID for `applicationId`."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"applicationId\": \"00000000-0000-0000-0000-000000000001\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Application Draft",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/draft",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", "{{applicationId}}", "draft"]
+            },
+            "description": "Fetches the wizard state for a specific application draft."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"applicationId\": \"00000000-0000-0000-0000-000000000001\",\n  \"wizardState\": {\n    \"currentStep\": 3,\n    \"formData\": { \"firstName\": \"Jane\", \"lastName\": \"Doe\" }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Application Draft",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"wizardState\": {\n    \"currentStep\": 3,\n    \"formData\": {\n      \"firstName\": \"Jane\",\n      \"lastName\": \"Doe\",\n      \"dob\": \"1990-06-15\",\n      \"address\": \"45 Tremont St\",\n      \"city\": \"Boston\",\n      \"state\": \"MA\",\n      \"zip\": \"02108\"\n    }\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/draft",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", "{{applicationId}}", "draft"]
+            },
+            "description": "Saves the current wizard state (step + formData). Call on each step transition."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Address",
+      "description": "Address validation via Nominatim (OSM) or Google Geocoding API.",
+      "item": [
+        {
+          "name": "Validate Address",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"streetAddress\": \"45 Tremont St\",\n  \"city\": \"Boston\",\n  \"state\": \"MA\",\n  \"zipCode\": \"02108\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/address/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "address", "validate"]
+            },
+            "description": "Geocodes and validates a US address. Returns `valid: true/false` plus a normalized suggestion and coordinates."
+          },
+          "response": [
+            {
+              "name": "200 Valid",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"valid\": true,\n  \"message\": \"Address verified.\",\n  \"suggestion\": \"45 Tremont St, Boston, MA 02108, United States\",\n  \"coordinates\": { \"lat\": 42.3584, \"lng\": -71.0598 }\n}"
+            },
+            {
+              "name": "200 Invalid",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"valid\": false,\n  \"message\": \"Address could not be verified.\",\n  \"suggestion\": null\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Chat — MassHealth",
+      "description": "Conversational AI powered by Ollama (llama3.2) with three operating modes:\n\n| Mode | Purpose |\n|---|---|\n| `assistant` | General MassHealth Q&A with RAG policy context |\n| `application_intake` | Guided conversational application intake |\n| `benefit_advisor` | **Extract structured eligibility facts + run rule engine + explain results** |\n\nAll requests require `Authorization: Bearer {{authToken}}`.",
+      "item": [
+        {
+          "name": "Assistant — General Q&A",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"assistant\",\n  \"language\": \"en\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"What is MassHealth CarePlus and who qualifies for it?\"\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/masshealth",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chat", "masshealth"]
+            },
+            "description": "General MassHealth policy Q&A. Uses RAG to retrieve relevant policy chunks before answering. Rejects off-topic messages with `outOfScope: true`.\n\n**Supported languages:** `en`, `es`, `pt`, `zh`, `vi`, `ht`"
+          },
+          "response": [
+            {
+              "name": "200 On-topic",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"outOfScope\": false,\n  \"reply\": \"MassHealth CarePlus covers adults aged 21–64 with incomes up to 133% FPL...\"\n}"
+            },
+            {
+              "name": "200 Out of scope",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"outOfScope\": true,\n  \"reply\": \"I can only help with MassHealth and health coverage questions.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Application Intake — Guided Interview",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"application_intake\",\n  \"language\": \"en\",\n  \"applicationType\": \"MassHealth\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"I want to apply for MassHealth.\"\n    },\n    {\n      \"role\": \"assistant\",\n      \"content\": \"I'd be happy to help you apply. What is your date of birth (MM/DD/YYYY)?\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"My name is Jane Doe, born 06/15/1990. I live in Boston with my husband.\"\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/masshealth",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chat", "masshealth"]
+            },
+            "description": "Conversational intake that guides the user through a MassHealth application question by question. Extracts household relationship hints from user messages to avoid repeating questions.\n\n**applicationType** (optional): `MassHealth`, `SNAP`, `ConnectorCare`, etc."
+          },
+          "response": [
+            {
+              "name": "200 Next question",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"outOfScope\": false,\n  \"reply\": \"Thanks, I have your husband's relationship noted. What is his date of birth (MM/DD/YYYY)?\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Extract Structured Eligibility Facts",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"benefit_advisor\",\n  \"language\": \"en\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"I am 34 years old. I live in Boston. My household has 3 people and we earn about $3,500 a month. I am a US citizen and I have no other insurance.\"\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/masshealth",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chat", "masshealth"]
+            },
+            "description": "**Structured eligibility extraction + rule engine evaluation.**\n\nUses `mode: \"benefit_advisor\"` which runs three steps:\n1. LLM extracts structured eligibility facts (`factsExtracted`) from the conversation\n2. If sufficient facts are present, the rule engine runs and produces program-level eligibility results\n3. LLM generates a natural-language explanation grounded by RAG policy context\n\n**Extracted fact fields:**\n- `livesInMA` — boolean\n- `age` — integer years\n- `householdSize` — integer\n- `annualIncome` — USD (converts monthly × 12 automatically)\n- `isPregnant` — boolean\n- `hasDisability` — boolean (true if applicant receives SSI/SSDI)\n- `hasMedicare` — boolean\n- `hasEmployerInsurance` — boolean\n- `citizenshipStatus` — `citizen` | `qualified_immigrant` | `undocumented` | `other`\n\n**Minimum facts for rule engine:** `age`, `householdSize`, `annualIncome`.\nIf minimum facts are absent, `eligibilityResults` is `null` and the LLM asks follow-up questions.\n\n**Use-case:** Call this at the end of a benefit_advisor conversation to get a machine-readable eligibility summary alongside the human-readable reply."
+          },
+          "response": [
+            {
+              "name": "200 — Facts extracted + rule engine ran",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"outOfScope\": false,\n  \"reply\": \"Based on what you've shared, it looks like you may qualify for MassHealth CarePlus. Your household of 3 with $42,000 annual income is at approximately 155% FPL, which falls within the CarePlus limit of 133% FPL for adults...\",\n  \"factsExtracted\": {\n    \"livesInMA\": true,\n    \"age\": 34,\n    \"householdSize\": 3,\n    \"annualIncome\": 42000,\n    \"citizenshipStatus\": \"citizen\",\n    \"hasEmployerInsurance\": false\n  },\n  \"eligibilityResults\": {\n    \"fplPercent\": 155,\n    \"annualFPL\": 27120,\n    \"summary\": \"Income is 155% FPL — likely eligible for MassHealth CarePlus\",\n    \"results\": [\n      {\n        \"program\": \"MassHealth CarePlus\",\n        \"status\": \"likely_eligible\",\n        \"tagline\": \"Full coverage for adults 21–64 up to 133% FPL\",\n        \"actionLabel\": \"Apply Now\",\n        \"actionHref\": \"/apply/masshealth\",\n        \"color\": \"green\"\n      },\n      {\n        \"program\": \"ConnectorCare\",\n        \"status\": \"likely_eligible\",\n        \"tagline\": \"Subsidized coverage 100–300% FPL\",\n        \"actionLabel\": \"View Plans\",\n        \"actionHref\": \"/apply/connector-care\",\n        \"color\": \"green\"\n      },\n      {\n        \"program\": \"SNAP\",\n        \"status\": \"review_needed\",\n        \"tagline\": \"Food assistance — income and asset review required\",\n        \"actionLabel\": \"Check Eligibility\",\n        \"actionHref\": \"/prescreener\",\n        \"color\": \"yellow\"\n      }\n    ]\n  }\n}"
+            },
+            {
+              "name": "200 — Insufficient facts (asks follow-up)",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"outOfScope\": false,\n  \"reply\": \"To check your eligibility I'll need a few details. How old are you, and how many people are in your household?\",\n  \"factsExtracted\": {},\n  \"eligibilityResults\": null\n}"
+            },
+            {
+              "name": "400 Validation error",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": false,\n  \"error\": \"Invalid request payload.\"\n}"
+            },
+            {
+              "name": "502 Ollama unreachable",
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": false,\n  \"error\": \"Ollama returned an error.\",\n  \"detail\": \"connect ECONNREFUSED 127.0.0.1:11434\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Benefit Advisor — Full Conversation",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"benefit_advisor\",\n  \"language\": \"en\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"What benefits am I eligible for?\"\n    },\n    {\n      \"role\": \"assistant\",\n      \"content\": \"I can help with that! How old are you, and how many people are in your household?\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"I'm 28. Just me and my daughter, so household of 2. We earn about $2,200 a month. I'm a US citizen.\"\n    },\n    {\n      \"role\": \"assistant\",\n      \"content\": \"Thanks! Are you pregnant or do you have a documented disability?\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"No to both. And I don't have any health insurance right now.\"\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/masshealth",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chat", "masshealth"]
+            },
+            "description": "Multi-turn benefit advisor conversation. Pass the full message history on each turn — the server is stateless. The `factsExtracted` field accumulates across turns as the user provides more information.\n\nSame `mode: \"benefit_advisor\"` as **Extract Structured Eligibility Facts**, shown here with a realistic multi-turn history."
+          },
+          "response": [
+            {
+              "name": "200 Multi-turn result",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"outOfScope\": false,\n  \"reply\": \"With a household of 2 and $26,400 annual income (about 153% FPL), you're likely eligible for MassHealth CarePlus for yourself and MassHealth Standard for your daughter. You may also qualify for SNAP food assistance. Would you like to start an application?\",\n  \"factsExtracted\": {\n    \"livesInMA\": true,\n    \"age\": 28,\n    \"householdSize\": 2,\n    \"annualIncome\": 26400,\n    \"citizenshipStatus\": \"citizen\",\n    \"isPregnant\": false,\n    \"hasDisability\": false,\n    \"hasEmployerInsurance\": false\n  },\n  \"eligibilityResults\": {\n    \"fplPercent\": 153,\n    \"annualFPL\": 17280,\n    \"summary\": \"Income is 153% FPL\",\n    \"results\": [\n      { \"program\": \"MassHealth CarePlus\", \"status\": \"likely_eligible\", \"color\": \"green\" },\n      { \"program\": \"SNAP\", \"status\": \"likely_eligible\", \"color\": \"green\" }\n    ]\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Benefit Orchestration",
+      "description": "Multi-program benefit stack evaluation. Evaluates a `FamilyProfile` against 9 MA benefit programs simultaneously using a rule engine (no LLM).",
+      "item": [
+        {
+          "name": "Get Family Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/benefit-orchestration/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "benefit-orchestration", "profile"]
+            },
+            "description": "Retrieves the current user's saved family profile. Returns `null` if no profile exists yet."
+          },
+          "response": [
+            {
+              "name": "200 Existing profile",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"profileId\": \"abc123\",\n  \"profile\": {\n    \"age\": 34,\n    \"householdSize\": 3,\n    \"annualIncome\": 42000,\n    \"citizenshipStatus\": \"citizen\",\n    \"householdMembers\": [\n      { \"age\": 32, \"relationship\": \"spouse\" },\n      { \"age\": 7, \"relationship\": \"child\" }\n    ]\n  },\n  \"updatedAt\": \"2026-03-13T00:00:00Z\"\n}"
+            },
+            {
+              "name": "200 No profile yet",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"profileId\": null,\n  \"profile\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Save Family Profile",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"age\": 34,\n  \"householdSize\": 3,\n  \"annualIncome\": 42000,\n  \"citizenshipStatus\": \"citizen\",\n  \"isPregnant\": false,\n  \"hasDisability\": false,\n  \"hasMedicare\": false,\n  \"hasEmployerInsurance\": false,\n  \"householdMembers\": [\n    { \"age\": 32, \"relationship\": \"spouse\", \"isPregnant\": false, \"hasDisability\": false },\n    { \"age\": 7, \"relationship\": \"child\", \"isPregnant\": false, \"hasDisability\": false }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/benefit-orchestration/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "benefit-orchestration", "profile"]
+            },
+            "description": "Creates or updates the family profile for the authenticated user (upsert). Does not run the rule engine — use `/evaluate` for that.\n\n**citizenshipStatus:** `citizen` | `qualified_immigrant` | `undocumented` | `other`"
+          },
+          "response": [
+            {
+              "name": "200 Saved",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"profileId\": \"abc123\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Evaluate Benefit Stack",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"age\": 34,\n  \"householdSize\": 3,\n  \"annualIncome\": 42000,\n  \"citizenshipStatus\": \"citizen\",\n  \"isPregnant\": false,\n  \"hasDisability\": false,\n  \"hasMedicare\": false,\n  \"hasEmployerInsurance\": false,\n  \"householdMembers\": [\n    { \"age\": 32, \"relationship\": \"spouse\", \"isPregnant\": false, \"hasDisability\": false },\n    { \"age\": 7, \"relationship\": \"child\", \"isPregnant\": false, \"hasDisability\": false }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/benefit-orchestration/evaluate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "benefit-orchestration", "evaluate"]
+            },
+            "description": "Saves the family profile and immediately runs the benefit stack rule engine across 9 programs: MassHealth, MSP, SNAP, EITC, Section 8, Child Care, LIHEAP, WIC, TAFDC/EAEDC.\n\nReturns per-program eligibility with status, estimated value, and action links. Persists the result for audit history."
+          },
+          "response": [
+            {
+              "name": "200 Stack evaluated",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"profileId\": \"abc123\",\n  \"stackResultId\": \"def456\",\n  \"stack\": {\n    \"profileId\": \"abc123\",\n    \"fplPercent\": 155,\n    \"annualFPL\": 27120,\n    \"programs\": [\n      {\n        \"program\": \"MassHealth CarePlus\",\n        \"status\": \"likely_eligible\",\n        \"tagline\": \"Full coverage for adults 21–64 up to 133% FPL\",\n        \"estimatedMonthlyValue\": 450,\n        \"actionLabel\": \"Apply Now\",\n        \"actionHref\": \"/apply/masshealth\",\n        \"color\": \"green\"\n      },\n      {\n        \"program\": \"SNAP\",\n        \"status\": \"likely_eligible\",\n        \"tagline\": \"Up to $975/month for household of 3\",\n        \"estimatedMonthlyValue\": 488,\n        \"actionLabel\": \"Apply\",\n        \"actionHref\": \"/apply/snap\",\n        \"color\": \"green\"\n      }\n    ]\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "PDF",
+      "description": "PDF extraction and generation.",
+      "item": [
+        {
+          "name": "Extract PDF to JSON",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "",
+                  "description": "PDF file to extract (max 10 MB)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/pdf/extract",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pdf", "extract"]
+            },
+            "description": "Uploads a PDF and extracts its content as structured JSON. Uses `multipart/form-data` with field name `file`.\n\n**Limits:** 10 MB max. PDF files only (by MIME type or `.pdf` extension)."
+          },
+          "response": [
+            {
+              "name": "200 Extracted",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"data\": {\n    \"pages\": 2,\n    \"text\": \"Form ACA-3 Rev. 03/2025...\",\n    \"fields\": {}\n  }\n}"
+            },
+            {
+              "name": "400 Not a PDF",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": \"Uploaded file must be a PDF.\"\n}"
+            },
+            {
+              "name": "413 Too large",
+              "status": "Payload Too Large",
+              "code": 413,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": \"Uploaded file exceeds the 10 MB limit.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Generate PDF",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"templateId\": \"aca-3-0325\",\n  \"data\": {\n    \"firstName\": \"Jane\",\n    \"lastName\": \"Doe\",\n    \"dateOfBirth\": \"06/15/1990\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/pdf/generate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pdf", "generate"]
+            },
+            "description": "Generates a filled PDF from a named template and field data. Returns a binary PDF stream (`application/pdf`)."
+          },
+          "response": [
+            {
+              "name": "200 PDF binary",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/pdf" }],
+              "body": "<binary PDF data>"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Forms",
+      "description": "Pre-built form filling for specific MA benefit forms.",
+      "item": [
+        {
+          "name": "Fill ACA-3 Form (Rev. 03/2025)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Doe\",\n  \"dateOfBirth\": \"06/15/1990\",\n  \"email\": \"jane.doe@example.com\",\n  \"ssn\": \"XXX-XX-1234\",\n  \"streetAddress\": \"45 Tremont St\",\n  \"city\": \"Boston\",\n  \"state\": \"MA\",\n  \"zipCode\": \"02108\",\n  \"householdSize\": 3,\n  \"citizenship\": \"citizen\",\n  \"employerName\": \"Boston Medical Center\",\n  \"monthlyIncome\": 3500,\n  \"annualIncome\": 42000,\n  \"signatureName\": \"Jane Doe\",\n  \"signatureDate\": \"03/13/2026\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/forms/aca-3-0325/fill",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "forms", "aca-3-0325", "fill"]
+            },
+            "description": "Fills and returns a completed ACA-3 (Rev. 03/2025) MassHealth application form as a PDF. Accepts a flat JSON payload matching the ACA-3 field schema.\n\nSee `samples/aca-3-0325-payload.sample.json` for the full field reference."
+          },
+          "response": [
+            {
+              "name": "200 Filled PDF",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/pdf" }],
+              "body": "<binary PDF — filled ACA-3 form>"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "RAG — Document Ingestion",
+      "description": "Staff-only endpoint for ingesting policy documents into the pgvector RAG store. Requires an ingest secret key in addition to authentication.",
+      "item": [
+        {
+          "name": "Ingest Policy Sources (All)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Ingest-Key", "value": "{{ragIngestKey}}", "description": "Must match RAG_INGEST_SECRET env var" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/rag/ingest",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rag", "ingest"]
+            },
+            "description": "Fetches, chunks, and embeds all configured `POLICY_SOURCES` into the pgvector store. This is a long-running operation (up to 5 minutes). Run after deploying new policy documents.\n\n**Requires:** `X-Ingest-Key` header matching the `RAG_INGEST_SECRET` environment variable."
+          },
+          "response": [
+            {
+              "name": "200 Ingested",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"results\": [\n    { \"source\": \"masshealth-eligibility-2026.pdf\", \"chunks\": 47 },\n    { \"source\": \"snap-policy-2026.pdf\", \"chunks\": 31 }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Ingest Custom Document",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Ingest-Key", "value": "{{ragIngestKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://www.mass.gov/doc/masshealth-program-guide/download\",\n  \"title\": \"MassHealth Program Guide 2026\",\n  \"doc_type\": \"policy\",\n  \"language\": \"en\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/rag/ingest",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rag", "ingest"]
+            },
+            "description": "Ingests a single custom document by URL into the RAG store. Useful for one-off policy additions without re-ingesting all sources."
+          },
+          "response": [
+            {
+              "name": "200 Ingested",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"results\": [\n    { \"source\": \"MassHealth Program Guide 2026\", \"chunks\": 53 }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
