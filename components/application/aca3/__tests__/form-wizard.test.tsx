@@ -1,0 +1,63 @@
+import { describe, it, expect, vi, beforeEach } from "vitest"
+import { render, screen } from "@testing-library/react"
+import { Provider } from "react-redux"
+import { configureStore } from "@reduxjs/toolkit"
+
+import { appReducer } from "@/lib/redux/features/app-slice"
+import { applicationReducer } from "@/lib/redux/features/application-slice"
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+}))
+vi.mock("@/lib/supabase/authenticated-fetch", () => ({
+  authenticatedFetch: vi.fn(),
+}))
+vi.mock("@/lib/supabase/client", () => ({
+  getSafeSupabaseSession: vi.fn().mockResolvedValue({ session: null }),
+  supabase: { auth: { getSession: vi.fn().mockResolvedValue({ data: { session: null } }) } },
+}))
+
+import { FormWizard } from "@/components/application/aca3/form-wizard"
+
+function makeStore() {
+  return configureStore({
+    reducer: { app: appReducer, application: applicationReducer },
+  })
+}
+
+function renderWizard(applicationId?: string) {
+  return render(
+    <Provider store={makeStore()}>
+      <FormWizard applicationId={applicationId} />
+    </Provider>,
+  )
+}
+
+describe("FormWizard", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("renders without crashing", () => {
+    const { container } = renderWizard()
+    expect(container.firstChild).toBeTruthy()
+  })
+
+  it("renders a Next or navigation button", () => {
+    renderWizard()
+    // The wizard should have navigation controls
+    const buttons = screen.getAllByRole("button")
+    expect(buttons.length).toBeGreaterThan(0)
+  })
+
+  it("renders step progress indicator", () => {
+    renderWizard()
+    // WizardLayout renders a step counter
+    expect(screen.getByText(/step/i)).toBeInTheDocument()
+  })
+
+  it("renders the MassHealth branding", () => {
+    renderWizard()
+    expect(screen.getByText("MassHealth")).toBeInTheDocument()
+  })
+})

@@ -4,9 +4,14 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { MASSHEALTH_APPLICATION_TYPES } from "@/lib/masshealth/application-types"
 import { type ApplicationStatus } from "@/lib/application-status"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
+import { setLanguage } from "@/lib/redux/features/app-slice"
+import { isSupportedLanguage, SUPPORTED_LANGUAGES } from "@/lib/i18n/languages"
+import { getMessage } from "@/lib/i18n/messages"
 import {
   AlertCircle,
   Bell,
@@ -17,6 +22,7 @@ import {
   Clock,
   FileText,
   LogOut,
+  Scale,
   Upload,
   } from "lucide-react"
 import { getSafeSupabaseUser } from "@/lib/supabase/client"
@@ -44,17 +50,14 @@ interface ApplicationListApiResponse {
   error?: string
 }
 
-const statusConfig: Record<
-  DashboardStatus,
-  { label: string; color: string; icon: typeof FileText }
-> = {
-  draft: { label: "Draft", color: "bg-secondary text-secondary-foreground", icon: FileText },
-  submitted: { label: "Submitted", color: "bg-primary/10 text-primary", icon: Clock },
-  ai_extracted: { label: "AI Extracted", color: "bg-accent/10 text-accent", icon: Clock },
-  needs_review: { label: "Under Review", color: "bg-accent/10 text-accent", icon: Clock },
-  rfi_requested: { label: "Info Needed", color: "bg-warning/10 text-warning", icon: AlertCircle },
-  approved: { label: "Approved", color: "bg-success/10 text-success", icon: CheckCircle2 },
-  denied: { label: "Denied", color: "bg-destructive/10 text-destructive", icon: AlertCircle },
+const STATUS_META: Record<DashboardStatus, { color: string; icon: typeof FileText }> = {
+  draft: { color: "bg-secondary text-secondary-foreground", icon: FileText },
+  submitted: { color: "bg-primary/10 text-primary", icon: Clock },
+  ai_extracted: { color: "bg-accent/10 text-accent", icon: Clock },
+  needs_review: { color: "bg-accent/10 text-accent", icon: Clock },
+  rfi_requested: { color: "bg-warning/10 text-warning", icon: AlertCircle },
+  approved: { color: "bg-success/10 text-success", icon: CheckCircle2 },
+  denied: { color: "bg-destructive/10 text-destructive", icon: AlertCircle },
 }
 
 const APPLICATION_TYPE_LABELS = new Map<string, string>(
@@ -87,10 +90,35 @@ function getApplicationTypeLabel(type: string | null): string {
 }
 
 export default function CustomerDashboardPage() {
+  const dispatch = useAppDispatch()
+  const language = useAppSelector((state) => state.app.language)
+
   const [applications, setApplications] = useState<ApplicationListRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [firstName, setFirstName] = useState("")
+
+  const handleLanguageChange = (value: string) => {
+    if (isSupportedLanguage(value)) dispatch(setLanguage(value))
+  }
+
+  useEffect(() => {
+    document.documentElement.lang = language
+  }, [language])
+
+  // Translated status config, recomputed when language changes
+  const statusConfig = useMemo(
+    () => ({
+      draft: { ...STATUS_META.draft, label: getMessage(language, "dashboardStatusDraft") },
+      submitted: { ...STATUS_META.submitted, label: getMessage(language, "dashboardStatusSubmitted") },
+      ai_extracted: { ...STATUS_META.ai_extracted, label: getMessage(language, "dashboardStatusAiExtracted") },
+      needs_review: { ...STATUS_META.needs_review, label: getMessage(language, "dashboardStatusNeedsReview") },
+      rfi_requested: { ...STATUS_META.rfi_requested, label: getMessage(language, "dashboardStatusRfiRequested") },
+      approved: { ...STATUS_META.approved, label: getMessage(language, "dashboardStatusApproved") },
+      denied: { ...STATUS_META.denied, label: getMessage(language, "dashboardStatusDenied") },
+    }),
+    [language],
+  )
 
   const loadApplications = useCallback(async () => {
     setIsLoading(true)
@@ -166,28 +194,44 @@ export default function CustomerDashboardPage() {
           </div>
           <nav className="hidden items-center gap-6 md:flex">
             <Link href="/customer/dashboard" className="text-sm font-medium text-foreground">
-              Dashboard
+              {getMessage(language, "dashboardNav")}
             </Link>
             <Link
               href="/customer/status"
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              My Applications
+              {getMessage(language, "dashboardNavApplications")}
             </Link>
             <Link
               href="/benefit-stack"
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              Benefit Stack
+              {getMessage(language, "dashboardNavBenefitStack")}
             </Link>
             <Link
               href="/knowledge-center"
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              Knowledge Center
+              {getMessage(language, "dashboardNavKnowledgeCenter")}
+            </Link>
+            <Link
+              href="/appeal-assistant"
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {getMessage(language, "dashboardNavAppealAssistant")}
             </Link>
           </nav>
           <div className="flex items-center gap-3">
+            <Select value={language} onValueChange={handleLanguageChange}>
+              <SelectTrigger className="w-[140px] border-border bg-card text-foreground">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SUPPORTED_LANGUAGES.map((l) => (
+                  <SelectItem key={l.code} value={l.code}>{l.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
               <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] text-destructive-foreground">
@@ -208,9 +252,11 @@ export default function CustomerDashboardPage() {
 
       <main className="mx-auto max-w-7xl px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-foreground md:text-3xl">{`Welcome back, ${greetingName}`}</h1>
+          <h1 className="text-2xl font-bold text-foreground md:text-3xl">
+            {`${getMessage(language, "dashboardWelcomeBack")}, ${greetingName}`}
+          </h1>
           <p className="mt-1 text-muted-foreground">
-            Manage your MassHealth applications and coverage
+            {getMessage(language, "dashboardSubtitle")}
           </p>
         </div>
 
@@ -222,8 +268,8 @@ export default function CustomerDashboardPage() {
                   <FileText className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="font-medium text-card-foreground">New Application</p>
-                  <p className="text-sm text-muted-foreground">Start a new application</p>
+                  <p className="font-medium text-card-foreground">{getMessage(language, "dashboardNewApp")}</p>
+                  <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardNewAppDesc")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -235,8 +281,8 @@ export default function CustomerDashboardPage() {
                   <Clock className="h-5 w-5 text-accent" />
                 </div>
                 <div>
-                  <p className="font-medium text-card-foreground">Track Status</p>
-                  <p className="text-sm text-muted-foreground">View application status</p>
+                  <p className="font-medium text-card-foreground">{getMessage(language, "dashboardTrackStatus")}</p>
+                  <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardTrackStatusDesc")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -248,8 +294,8 @@ export default function CustomerDashboardPage() {
                   <span className="text-xl">🏛️</span>
                 </div>
                 <div>
-                  <p className="font-medium text-card-foreground">Benefit Stack</p>
-                  <p className="text-sm text-muted-foreground">Find all your benefits</p>
+                  <p className="font-medium text-card-foreground">{getMessage(language, "dashboardNavBenefitStack")}</p>
+                  <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardBenefitStackDesc")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -260,8 +306,8 @@ export default function CustomerDashboardPage() {
                 <Upload className="h-5 w-5 text-success" />
               </div>
               <div>
-                <p className="font-medium text-card-foreground">Upload Documents</p>
-                <p className="text-sm text-muted-foreground">Submit required docs</p>
+                <p className="font-medium text-card-foreground">{getMessage(language, "dashboardUploadDocs")}</p>
+                <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardUploadDocsDesc")}</p>
               </div>
             </CardContent>
           </Card>
@@ -272,8 +318,21 @@ export default function CustomerDashboardPage() {
                   <BookOpenText className="h-5 w-5 text-warning" />
                 </div>
                 <div>
-                  <p className="font-medium text-card-foreground">Knowledge Center</p>
-                  <p className="text-sm text-muted-foreground">Official resources</p>
+                  <p className="font-medium text-card-foreground">{getMessage(language, "dashboardNavKnowledgeCenter")}</p>
+                  <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardKnowledgeCenterDesc")}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/appeal-assistant">
+            <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
+              <CardContent className="flex items-center gap-4 p-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-destructive/10">
+                  <Scale className="h-5 w-5 text-destructive" />
+                </div>
+                <div>
+                  <p className="font-medium text-card-foreground">{getMessage(language, "dashboardAppealAssistant")}</p>
+                  <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardAppealAssistantDesc")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -286,12 +345,12 @@ export default function CustomerDashboardPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-card-foreground">My Applications</CardTitle>
-                    <CardDescription>Your recent applications and their status</CardDescription>
+                    <CardTitle className="text-card-foreground">{getMessage(language, "dashboardMyApplicationsTitle")}</CardTitle>
+                    <CardDescription>{getMessage(language, "dashboardMyApplicationsDesc")}</CardDescription>
                   </div>
                   <Link href="/customer/status">
                     <Button variant="ghost" size="sm" className="gap-1">
-                      View All
+                      {getMessage(language, "dashboardViewAll")}
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </Link>
@@ -299,18 +358,18 @@ export default function CustomerDashboardPage() {
               </CardHeader>
               <CardContent>
                 {isLoading ? (
-                  <p className="text-sm text-muted-foreground">Loading your applications...</p>
+                  <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardLoadingApps")}</p>
                 ) : loadError ? (
                   <div className="space-y-3">
                     <p className="text-sm text-destructive">{loadError}</p>
                     <Button type="button" variant="outline" size="sm" onClick={() => void loadApplications()}>
-                      Retry
+                      {getMessage(language, "dashboardRetry")}
                     </Button>
                   </div>
                 ) : applications.length === 0 ? (
                   <div className="rounded-lg border border-dashed border-border p-4">
                     <p className="text-sm text-muted-foreground">
-                      No saved applications yet. Start a new application to begin.
+                      {getMessage(language, "dashboardNoApps")}
                     </p>
                   </div>
                 ) : (
@@ -346,7 +405,7 @@ export default function CustomerDashboardPage() {
                                 {status.label}
                               </span>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                Updated {formatDate(app.lastSavedAt ?? app.updatedAt)}
+                                {getMessage(language, "dashboardUpdated")} {formatDate(app.lastSavedAt ?? app.updatedAt)}
                               </p>
                             </div>
                           </div>
@@ -364,14 +423,14 @@ export default function CustomerDashboardPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base text-card-foreground">
                   <AlertCircle className="h-5 w-5 text-warning" />
-                  Action Required
+                  {getMessage(language, "dashboardActionRequired")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {needsActionApp ? (
                   <>
                     <p className="mb-3 text-sm text-muted-foreground">
-                      Application {needsActionApp.id} requires additional information.
+                      Application {needsActionApp.id} {getMessage(language, "dashboardActionRequiredDesc")}
                     </p>
                     <Link href={`/customer/status/${needsActionApp.id}`}>
                       <Button
@@ -379,13 +438,13 @@ export default function CustomerDashboardPage() {
                         className="w-full gap-2 bg-warning text-warning-foreground hover:bg-warning/90"
                       >
                         <Upload className="h-4 w-4" />
-                        Review Request
+                        {getMessage(language, "dashboardReviewRequest")}
                       </Button>
                     </Link>
                   </>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    No outstanding requests right now.
+                    {getMessage(language, "dashboardNoActionRequired")}
                   </p>
                 )}
               </CardContent>
@@ -395,12 +454,12 @@ export default function CustomerDashboardPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base text-card-foreground">
                   <Calendar className="h-5 w-5 text-primary" />
-                  Latest Activity
+                  {getMessage(language, "dashboardLatestActivity")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {applications.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No recent activity.</p>
+                  <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardNoActivity")}</p>
                 ) : (
                   <div className="space-y-3">
                     {applications.slice(0, 2).map((app) => (
@@ -425,11 +484,11 @@ export default function CustomerDashboardPage() {
 
             <Card className="border-border bg-card">
               <CardHeader className="pb-3">
-                <CardTitle className="text-base text-card-foreground">Need Help?</CardTitle>
+                <CardTitle className="text-base text-card-foreground">{getMessage(language, "dashboardNeedHelp")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  Our support team is available Monday-Friday, 8am-5pm.
+                  {getMessage(language, "dashboardSupportHours")}
                 </p>
                 <div className="text-sm">
                   <p className="font-medium text-foreground">1-800-841-2900</p>
