@@ -39,7 +39,7 @@ function getOllamaBaseUrl(): string {
   return baseUrl.replace(/\/+$/, "")
 }
 
-function parseAppealAnalysis(raw: string): AppealAnalysis {
+function parseAppealAnalysis(raw: string): AppealAnalysis | null {
   // Strip markdown fences if the model wrapped the JSON
   const cleaned = raw
     .replace(/^```json\s*/i, "")
@@ -57,8 +57,7 @@ function parseAppealAnalysis(raw: string): AppealAnalysis {
 
     return { explanation, appealLetter, evidenceChecklist }
   } catch {
-    // Graceful fallback: return raw content as explanation
-    return { explanation: cleaned, appealLetter: "", evidenceChecklist: [] }
+    return null
   }
 }
 
@@ -116,6 +115,9 @@ export async function POST(request: Request) {
     }
 
     const analysis = parseAppealAnalysis(rawContent)
+    if (!analysis) {
+      return NextResponse.json({ ok: false, error: ERROR_APPEAL_OLLAMA_FAILED }, { status: 502 })
+    }
 
     return NextResponse.json({ ok: true, analysis }, { status: 200 })
   } catch (error) {

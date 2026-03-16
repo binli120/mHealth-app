@@ -62,7 +62,29 @@
       "Bash(PATH=\"/Users/blee/.nvm/versions/node/v20.12.2/bin:/usr/bin:/usr/local/bin:/bin:/sbin:$PATH\" rm /Users/blee/dev/bin/mHealth-app/vitest.config.ts)",
       "Bash(/Users/blee/.nvm/versions/node/v20.12.2/bin/node -e \"const fs = require\\(''fs''\\); fs.unlinkSync\\(''/Users/blee/dev/bin/mHealth-app/vitest.config.ts''\\); console.log\\(''deleted''\\);\")",
       "Bash(PATH=\"/Users/blee/.nvm/versions/node/v20.12.2/bin:/usr/bin:/usr/local/bin:/bin:/sbin:$PATH\" /Users/blee/Library/pnpm/pnpm test)",
-      "Bash(PATH=\"/Users/blee/.nvm/versions/node/v20.12.2/bin:/usr/bin:/usr/local/bin:/bin:/sbin:$PATH\" /Users/blee/Library/pnpm/pnpm install)"
+      "Bash(PATH=\"/Users/blee/.nvm/versions/node/v20.12.2/bin:/usr/bin:/usr/local/bin:/bin:/sbin:$PATH\" /Users/blee/Library/pnpm/pnpm install)",
+      "Bash(pnpm add:*)",
+      "Bash(/Users/blee/.nvm/versions/node/v20.12.2/bin/pnpm add:*)",
+      "Bash(PATH=\"/Users/blee/.nvm/versions/node/v20.12.2/bin:$PATH\" pnpm add pdf-parse)",
+      "Bash(PATH=\"/Users/blee/.nvm/versions/node/v20.12.2/bin:$PATH\" pnpm add -w pdf-parse)",
+      "Bash(PATH=\"/Users/blee/.nvm/versions/node/v22.15.1/bin:$PATH\" pnpm add -w pdf-parse)",
+      "Bash(PATH=\"/Users/blee/.nvm/versions/node/v22.15.1/bin:$PATH\" pnpm config get store-dir)",
+      "Bash(pnpm --version)",
+      "Bash(PATH=\"/Users/blee/.nvm/versions/node/v22.15.1/bin:$PATH\" /Users/blee/.nvm/versions/node/v22.15.1/bin/pnpm --version)",
+      "Bash(/Users/blee/.nvm/versions/node/v22.15.1/bin/pnpm config:*)",
+      "Read(//Users/blee/Library/pnpm/store/**)",
+      "Bash(/Users/blee/.nvm/versions/node/v20.12.2/bin/pnpm --version)",
+      "Bash(NODE_PATH=\"/Users/blee/.nvm/versions/node/v20.12.2/lib/node_modules\" /Users/blee/.nvm/versions/node/v20.12.2/bin/node /Users/blee/.nvm/versions/node/v20.12.2/lib/node_modules/pnpm/bin/pnpm.cjs --version)",
+      "Bash(/Users/blee/.nvm/versions/node/v20.12.2/bin/node /Users/blee/.nvm/versions/node/v20.12.2/lib/node_modules/pnpm/bin/pnpm.cjs add pdf-parse)",
+      "Bash(/Users/blee/.nvm/versions/node/v20.12.2/bin/node /Users/blee/.nvm/versions/node/v20.12.2/lib/node_modules/pnpm/bin/pnpm.cjs add -w pdf-parse)",
+      "Bash(/Users/blee/.nvm/versions/node/v20.12.2/bin/node /Users/blee/.nvm/versions/node/v20.12.2/lib/node_modules/pnpm/bin/pnpm.cjs add -wD @types/pdf-parse)",
+      "Read(//usr/local/bin/**)",
+      "Read(//Users/blee/Library/pnpm/**)",
+      "Bash(/opt/homebrew/bin/pnpm --version)",
+      "Bash(/opt/homebrew/bin/pnpm add:*)",
+      "Bash(/Users/blee/.nvm/versions/node/v22.15.1/bin/node /opt/homebrew/bin/pnpm --version)",
+      "Bash(/Users/blee/.nvm/versions/node/v22.15.1/bin/node /opt/homebrew/bin/pnpm add -w pdf-parse)",
+      "Bash(/Users/blee/.nvm/versions/node/v22.15.1/bin/node /opt/homebrew/bin/pnpm add -wD @types/pdf-parse)"
     ]
   }
 }

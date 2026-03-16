@@ -37,8 +37,14 @@ function isUploadedFile(value: FormDataEntryValue | null): value is File {
   return value !== null && typeof value !== "string"
 }
 
-function isImageMimeType(mimeType: string): boolean {
-  return (ACCEPTED_IMAGE_MIME_TYPES as readonly string[]).includes(mimeType)
+function isImageMimeType(mimeType: string, fileName: string): boolean {
+  if ((ACCEPTED_IMAGE_MIME_TYPES as readonly string[]).includes(mimeType)) return true
+  // Fall back to extension when MIME type is absent or generic (e.g. application/octet-stream)
+  if (!mimeType || mimeType === "application/octet-stream") {
+    const lower = fileName.toLowerCase()
+    return lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png") || lower.endsWith(".webp")
+  }
+  return false
 }
 
 function isAcceptedMimeType(mimeType: string, fileName: string): boolean {
@@ -108,6 +114,10 @@ function formatPdfExtraction(
   if (pdfData.pageCount) {
     parts.push(`Pages: ${pdfData.pageCount}`)
   }
+  if (pdfData.pageText) {
+    parts.push("Document text:\n" + pdfData.pageText)
+  }
+
   if (pdfData.formFields.length > 0) {
     const fieldLines = pdfData.formFields
       .filter((f) => f.value !== null && f.value !== "" && f.value !== false)
@@ -147,7 +157,7 @@ export async function POST(request: Request) {
 
     let extractedText = ""
 
-    if (isImageMimeType(mimeType)) {
+    if (isImageMimeType(mimeType, uploaded.name)) {
       // Convert image bytes to base64 and send to Ollama vision model
       const base64 = Buffer.from(bytes).toString("base64")
       extractedText = await extractTextFromImage(base64, mimeType)

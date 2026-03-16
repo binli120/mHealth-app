@@ -1,4 +1,5 @@
 import { PDFDocument } from "pdf-lib"
+import pdfParse from "pdf-parse"
 
 interface ExtractPdfJsonInput {
   bytes: Uint8Array
@@ -81,7 +82,12 @@ function getFieldValue(field: unknown): ExtractedField {
 }
 
 export async function extractPdfJson({ bytes, fileName, fileSize }: ExtractPdfJsonInput) {
-  const pdfDoc = await PDFDocument.load(bytes, { ignoreEncryption: true })
+  const buffer = Buffer.from(bytes)
+  const [pdfDoc, parsed] = await Promise.all([
+    PDFDocument.load(bytes, { ignoreEncryption: true }),
+    pdfParse(buffer).catch(() => null),
+  ])
+
   const form = pdfDoc.getForm()
   const fields = form.getFields().map(getFieldValue)
 
@@ -89,6 +95,7 @@ export async function extractPdfJson({ bytes, fileName, fileSize }: ExtractPdfJs
     fileName: fileName ?? null,
     fileSize: fileSize ?? bytes.byteLength,
     pageCount: pdfDoc.getPageCount(),
+    pageText: parsed?.text?.trim() ?? null,
     metadata: {
       title: pdfDoc.getTitle() ?? null,
       author: pdfDoc.getAuthor() ?? null,

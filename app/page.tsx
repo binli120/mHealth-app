@@ -10,7 +10,7 @@ import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { isSupportedLanguage, SUPPORTED_LANGUAGES } from "@/lib/i18n/languages"
 import {
   AlertCircle, Bot, CheckCircle2, ChevronRight, ClipboardList,
-  FileCheck, Globe, Layers, Lock, Search, Sparkles, Zap,
+  FileCheck, Globe, Layers, Lock, Scale, Search, Sparkles, Zap,
 } from "lucide-react"
 import { ShieldHeartIcon } from "@/lib/icons"
 
@@ -243,6 +243,10 @@ export default function LandingPage() {
               <a href="#problems"     className="text-sm text-muted-foreground transition-colors hover:text-foreground">The Problem</a>
               <a href="#how-it-works" className="text-sm text-muted-foreground transition-colors hover:text-foreground">How It Works</a>
               <a href="#why-us"       className="text-sm text-muted-foreground transition-colors hover:text-foreground">Why Us</a>
+              <a href="#appeal" className="flex items-center gap-1 text-sm font-medium text-primary transition-colors hover:text-primary/80">
+                Appeal Help
+                <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">NEW</span>
+              </a>
               <Link href="/knowledge-center" className="text-sm text-muted-foreground transition-colors hover:text-foreground">Resources</Link>
             </nav>
             <div className="flex items-center gap-3">
@@ -414,6 +418,7 @@ export default function LandingPage() {
                 { icon: <Bot />,      color: "text-primary", bg: "bg-primary/10", title: "AI Chat Assistant",     body: "Ask questions any time. Our MassHealth assistant explains programs, deadlines, and next steps in plain language.", delay: 300 },
                 { icon: <Globe />,    color: "text-accent",  bg: "bg-accent/10",  title: "6 Languages",           body: "Full support for English, 简体中文, Español, Português, Kreyòl ayisyen, and Tiếng Việt.", delay: 400 },
                 { icon: <Lock />,     color: "text-success", bg: "bg-success/10", title: "Private & Secure",      body: "Your data is encrypted end-to-end and never sold. You control what you share and with whom.", delay: 500 },
+                { icon: <Scale />,    color: "text-accent",  bg: "bg-accent/10",  title: "Appeal Assistance",    body: "Denied? Our AI helps you draft appeal letters, prep for hearings, and track deadlines — turning a 'no' into a 'yes'.", delay: 600, isNew: true },
               ].map((item) => (
                 <FadeUp key={item.title} delay={item.delay}>
                   <Card className="group h-full border-border bg-background transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg">
@@ -421,7 +426,12 @@ export default function LandingPage() {
                       <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110 ${item.bg}`}>
                         <span className={`[&>svg]:h-6 [&>svg]:w-6 ${item.color}`}>{item.icon}</span>
                       </div>
-                      <h3 className="mb-2 font-semibold text-foreground">{item.title}</h3>
+                      <div className="mb-2 flex items-center gap-2">
+                        <h3 className="font-semibold text-foreground">{item.title}</h3>
+                        {"isNew" in item && item.isNew && (
+                          <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-accent-foreground">NEW</span>
+                        )}
+                      </div>
                       <p className="text-sm leading-relaxed text-muted-foreground">{item.body}</p>
                     </CardContent>
                   </Card>
@@ -448,6 +458,78 @@ export default function LandingPage() {
                   <div className="text-sm text-primary-foreground/70">{stat.label}</div>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Appeal Assistance ───────────────────────────────────────────────── */}
+        <section id="appeal" className="relative overflow-hidden bg-gradient-to-br from-accent/5 via-background to-primary/5 px-4 py-20 md:py-28">
+          <div className="pointer-events-none absolute -left-40 bottom-0 h-96 w-96 rounded-full bg-accent/8 blur-3xl" />
+          <div className="pointer-events-none absolute -right-40 top-0 h-96 w-96 rounded-full bg-primary/8 blur-3xl" />
+          <div className="relative mx-auto max-w-7xl">
+            <div className="grid items-center gap-14 lg:grid-cols-2">
+              {/* left copy */}
+              <FadeUp className="space-y-6">
+                <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-4 py-1.5 text-sm font-semibold text-accent">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  New Feature
+                </div>
+                <h2 className="text-balance text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+                  Got denied? We&apos;ll help you{" "}
+                  <span className="text-accent">fight back</span>
+                </h2>
+                <p className="max-w-lg text-pretty text-lg text-muted-foreground">
+                  A denial isn&apos;t the end. Our AI-powered Appeal Assistance guides you through the
+                  MassHealth appeal process step-by-step — helping you build a stronger case, meet
+                  deadlines, and understand your rights.
+                </p>
+                <ul className="space-y-3 text-sm text-muted-foreground">
+                  {[
+                    "Plain-language explanation of your denial reason",
+                    "Personalized appeal letter drafting",
+                    "Document checklist for your hearing",
+                    "Deadline tracking so you never miss a filing window",
+                  ].map((item) => (
+                    <li key={item} className="flex items-start gap-2">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex flex-wrap gap-3 pt-2">
+                  <Link href="/auth/register">
+                    <Button size="lg" className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90">
+                      Start My Appeal
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                  <Link href="/knowledge-center">
+                    <Button size="lg" variant="outline">Learn About Appeals</Button>
+                  </Link>
+                </div>
+              </FadeUp>
+
+              {/* right – feature cards */}
+              <FadeUp delay={200}>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {[
+                    { icon: <Scale className="h-5 w-5" />, color: "text-accent", bg: "bg-accent/10", title: "Know Your Rights", body: "Understand exactly why you were denied and what grounds you can appeal on." },
+                    { icon: <FileCheck className="h-5 w-5" />, color: "text-primary", bg: "bg-primary/10", title: "AI-Drafted Letters", body: "Generate a compelling, personalized appeal letter in minutes." },
+                    { icon: <ClipboardList className="h-5 w-5" />, color: "text-success", bg: "bg-success/10", title: "Hearing Prep", body: "Get a tailored checklist of documents and tips for your fair hearing." },
+                    { icon: <Zap className="h-5 w-5" />, color: "text-warning", bg: "bg-warning/10", title: "Deadline Alerts", body: "You have 30 days to appeal. We track it and remind you before time runs out." },
+                  ].map((card) => (
+                    <Card key={card.title} className="border-border bg-card transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
+                      <CardContent className="p-5">
+                        <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${card.bg}`}>
+                          <span className={card.color}>{card.icon}</span>
+                        </div>
+                        <h3 className="mb-1.5 font-semibold text-foreground">{card.title}</h3>
+                        <p className="text-xs leading-relaxed text-muted-foreground">{card.body}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </FadeUp>
             </div>
           </div>
         </section>
@@ -546,6 +628,12 @@ export default function LandingPage() {
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   <li><Link href="/prescreener" className="hover:text-foreground">Eligibility Checker</Link></li>
                   <li><Link href="/benefit-stack" className="hover:text-foreground">Benefit Stack Tool</Link></li>
+                  <li>
+                    <Link href="/auth/register" className="inline-flex items-center gap-1.5 hover:text-foreground">
+                      Appeal Assistance
+                      <span className="rounded-full bg-accent px-1.5 py-0.5 text-[9px] font-bold text-accent-foreground">NEW</span>
+                    </Link>
+                  </li>
                   <li><Link href="/knowledge-center" className="hover:text-foreground">Knowledge Center</Link></li>
                   <li><Link href="/auth/register" className="hover:text-foreground">Create Account</Link></li>
                 </ul>
