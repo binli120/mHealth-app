@@ -93,7 +93,31 @@
       "Read(//Applications/Postgres.app/Contents/**)",
       "Read(//usr/local/**)",
       "Bash(/opt/homebrew/bin/psql \"postgresql://postgres:postgres@localhost:54322/postgres\" -c \"ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT DEFAULT NULL;\")",
-      "Bash(/opt/homebrew/bin/psql \"postgresql://postgres:postgres@localhost:54322/postgres\" -c \"\\\\d user_profiles\")"
+      "Bash(/opt/homebrew/bin/psql \"postgresql://postgres:postgres@localhost:54322/postgres\" -c \"\\\\d user_profiles\")",
+      "Bash(npm install:*)",
+      "Bash(source ~/.zshrc)",
+      "Read(//Users/blee/.nvm/versions/node/v20.12.2/bin/**)",
+      "Bash(PATH=\"/Users/blee/.nvm/versions/node/v20.12.2/bin:$PATH\" pnpm add -D @playwright/test@latest)",
+      "Bash(PATH=\"/Users/blee/.nvm/versions/node/v20.12.2/bin:$PATH\" pnpm add -D @playwright/test@latest -w)",
+      "Bash(PATH=\"/Users/blee/.nvm/versions/node/v20.12.2/bin:$PATH\" pnpm add -D @playwright/test@latest --ignore-workspace-root-check)",
+      "Bash(PATH=\"/Users/blee/.nvm/versions/node/v20.12.2/bin:$PATH\" pnpm install)",
+      "Bash(PATH=\"/Users/blee/.nvm/versions/node/v20.12.2/bin:/opt/homebrew/bin:$PATH\" pnpm --version)",
+      "Bash(PATH=\"/Users/blee/.nvm/versions/node/v20.12.2/bin:/opt/homebrew/bin:$PATH\" pnpm add -D @playwright/test@latest)",
+      "Bash(PATH=\"/Users/blee/.nvm/versions/node/v20.12.2/bin:/opt/homebrew/bin:$PATH\" pnpm add -D @playwright/test@latest -w)",
+      "Bash(PATH=\"/Users/blee/.nvm/versions/node/v20.12.2/bin:/opt/homebrew/bin:$PATH\" pnpm install)",
+      "Bash(PATH=\"/Users/blee/.nvm/versions/node/v20.12.2/bin:/opt/homebrew/bin:$PATH\" pnpm install --yes)",
+      "Bash(PATH=\"/Users/blee/.nvm/versions/node/v20.12.2/bin:/opt/homebrew/bin:$PATH\" echo \"y\")",
+      "Bash(pnpm install:*)",
+      "Bash(PATH=\"/Users/blee/.nvm/versions/node/v20.12.2/bin:/opt/homebrew/bin:$PATH\" printf 'y\\\\n')",
+      "Bash(/opt/homebrew/bin/pnpm install:*)",
+      "Read(//opt/homebrew/Cellar/pnpm/10.30.1/libexec/lib/node_modules/pnpm/bin/**)",
+      "Bash(/opt/homebrew/bin/pnpm env:*)",
+      "Bash(printf 'y\\\\n')",
+      "Bash(export PATH=\"/Users/blee/.nvm/versions/node/v20.12.2/bin:/usr/bin:/bin:$PATH\")",
+      "Bash(npx playwright:*)",
+      "Bash(node -e \"require\\(''''./playwright.config.ts''''\\)\")",
+      "Bash(node --input-type=module --eval \"import\\(''''./playwright.config.ts''''\\)\")",
+      "Bash(find /Users/blee/dev/bin/mHealth-app -type f -name *appeal*)"
     ]
   }
 }
