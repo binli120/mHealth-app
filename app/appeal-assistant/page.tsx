@@ -1,12 +1,14 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
-import { AlertCircle, ArrowLeft, Scale } from "lucide-react"
+import { Scale } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { DenialInputForm } from "@/components/appeals/DenialInputForm"
 import { AppealResultView } from "@/components/appeals/AppealResultView"
+import { PageHeader } from "@/components/shared/PageHeader"
+import { PageIntro } from "@/components/shared/PageIntro"
+import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton"
+import { ErrorCard } from "@/components/shared/ErrorCard"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { APPEAL_DENIAL_REASONS } from "@/lib/appeals/constants"
 import type { AppealAnalysis, AppealRequest } from "@/lib/appeals/types"
@@ -67,72 +69,39 @@ export default function AppealAssistantPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="border-b border-gray-200 bg-white px-4 py-4">
-        <div className="mx-auto flex max-w-3xl items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/customer/dashboard"
-              className="flex items-center gap-1.5 text-sm text-gray-500 transition-colors hover:text-gray-800"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Dashboard
-            </Link>
-            <span className="text-gray-300">/</span>
-            <span className="text-sm font-medium text-gray-900">Appeal Assistant</span>
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        backHref="/customer/dashboard"
+        backLabel="Dashboard"
+        breadcrumbs={[{ label: "Appeal Assistant" }]}
+        maxWidth="max-w-3xl"
+      />
 
       <main className="mx-auto max-w-3xl px-4 py-8">
-        {/* Page intro — shown on form and loading states */}
         {(pageState === "form" || pageState === "loading") && (
-          <div className="mb-8 text-center">
-            <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-              <Scale className="h-6 w-6 text-red-600" />
-            </div>
-            <h1 className="mb-2 text-2xl font-bold text-gray-900">
-              Appeal Your MassHealth Denial
-            </h1>
-            <p className="mx-auto max-w-lg text-gray-500">
-              Select your denial reason and we&apos;ll generate a personalized explanation, formal
-              appeal letter, and evidence checklist — ready to submit.
-            </p>
-          </div>
+          <PageIntro
+            icon={<Scale className="h-6 w-6 text-red-600" />}
+            iconBg="bg-red-100"
+            title="Appeal Your MassHealth Denial"
+            description="Select your denial reason and we'll generate a personalized explanation, formal appeal letter, and evidence checklist — ready to submit."
+          />
         )}
 
-        {/* Loading skeleton */}
         {pageState === "loading" && (
-          <div className="space-y-4">
-            <div className="h-6 w-48 animate-pulse rounded-lg bg-gray-200" />
-            <div className="h-28 animate-pulse rounded-lg bg-gray-200" />
-            <div className="h-52 animate-pulse rounded-lg bg-gray-200" />
-            <div className="h-36 animate-pulse rounded-lg bg-gray-200" />
-          </div>
+          <LoadingSkeleton blocks={["h-6 w-48", "h-28", "h-52", "h-36"]} />
         )}
 
-        {/* Form */}
         {pageState === "form" && (
           <DenialInputForm onSubmit={handleSubmit} isLoading={false} />
         )}
 
-        {/* Error */}
         {pageState === "error" && (
-          <Card className="border-destructive/50 bg-destructive/5">
-            <CardContent className="flex flex-col items-center gap-4 py-8 text-center">
-              <AlertCircle className="h-10 w-10 text-destructive" />
-              <div>
-                <p className="font-medium text-destructive">Analysis failed</p>
-                <p className="mt-1 text-sm text-gray-600">{errorMessage}</p>
-              </div>
-              <Button variant="outline" onClick={() => setPageState("form")}>
-                Try Again
-              </Button>
-            </CardContent>
-          </Card>
+          <ErrorCard
+            title="Analysis failed"
+            message={errorMessage ?? "An unexpected error occurred."}
+            onRetry={() => setPageState("form")}
+          />
         )}
 
-        {/* Result */}
         {pageState === "result" && analysis && (
           <AppealResultView
             analysis={analysis}

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
+import { useStepWizard } from "@/hooks/use-step-wizard"
 import { Plus, Trash2, ChevronRight, ChevronLeft, Loader2, Users, DollarSign, Home, FileCheck, User, Star } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -11,6 +12,16 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
+import { CurrencyInput } from "@/components/shared/CurrencyInput"
+import { InfoBox } from "@/components/shared/InfoBox"
+import {
+  CITIZENSHIP_OPTIONS,
+  EMPLOYMENT_OPTIONS,
+  HOUSING_OPTIONS,
+  FILING_STATUS_OPTIONS,
+  RELATIONSHIP_OPTIONS,
+  UTILITY_OPTIONS,
+} from "@/lib/constants/form-options"
 import type {
   FamilyProfile,
   HouseholdMemberProfile,
@@ -33,90 +44,6 @@ const STEP_LABELS = [
   { label: "Assets", icon: FileCheck },
   { label: "Review", icon: Star },
 ]
-
-const CITIZENSHIP_OPTIONS: { value: CitizenshipStatus; label: string }[] = [
-  { value: "citizen", label: "US Citizen or US National" },
-  { value: "qualified_immigrant", label: "Qualified Immigrant (LPR, refugee, asylee, etc.)" },
-  { value: "other", label: "Other immigration status" },
-  { value: "undocumented", label: "Undocumented / No immigration status" },
-]
-
-const EMPLOYMENT_OPTIONS: { value: EmploymentStatus; label: string }[] = [
-  { value: "employed", label: "Employed (W-2)" },
-  { value: "self_employed", label: "Self-employed / Freelance" },
-  { value: "unemployed", label: "Unemployed / Looking for work" },
-  { value: "student", label: "Student" },
-  { value: "retired", label: "Retired" },
-  { value: "not_working", label: "Not currently working" },
-]
-
-const HOUSING_OPTIONS: { value: HousingStatus; label: string }[] = [
-  { value: "renter", label: "Renter" },
-  { value: "owner", label: "Homeowner" },
-  { value: "living_with_family", label: "Living with family / others (no rent)" },
-  { value: "homeless", label: "Experiencing homelessness" },
-  { value: "shelter", label: "In a shelter or transitional housing" },
-  { value: "other", label: "Other" },
-]
-
-const FILING_STATUS_OPTIONS: { value: TaxFilingStatus; label: string }[] = [
-  { value: "single", label: "Single" },
-  { value: "head_of_household", label: "Head of Household" },
-  { value: "married_filing_jointly", label: "Married Filing Jointly" },
-  { value: "married_filing_separately", label: "Married Filing Separately" },
-  { value: "qualifying_widow", label: "Qualifying Surviving Spouse" },
-]
-
-const RELATIONSHIP_OPTIONS: { value: RelationshipType; label: string }[] = [
-  { value: "spouse", label: "Spouse" },
-  { value: "partner", label: "Domestic partner" },
-  { value: "child", label: "Child" },
-  { value: "stepchild", label: "Stepchild" },
-  { value: "grandchild", label: "Grandchild" },
-  { value: "parent", label: "Parent" },
-  { value: "sibling", label: "Sibling" },
-  { value: "grandparent", label: "Grandparent" },
-  { value: "other_relative", label: "Other relative" },
-  { value: "non_relative", label: "Non-relative" },
-]
-
-const UTILITY_OPTIONS: { value: UtilityType; label: string }[] = [
-  { value: "heat", label: "Heating (oil, gas, wood)" },
-  { value: "electricity", label: "Electricity" },
-  { value: "gas", label: "Natural gas" },
-  { value: "other", label: "Other utility" },
-]
-
-function CurrencyInput({
-  label,
-  value,
-  onChange,
-  description,
-}: {
-  label: string
-  value: number
-  onChange: (v: number) => void
-  description?: string
-}) {
-  return (
-    <div className="space-y-1">
-      <Label className="text-xs font-medium text-gray-700">{label}</Label>
-      {description && <p className="text-xs text-gray-400">{description}</p>}
-      <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-        <Input
-          type="number"
-          min={0}
-          step={1}
-          value={value || ""}
-          onChange={(e) => onChange(Math.max(0, Number(e.target.value) || 0))}
-          className="pl-7 text-sm"
-          placeholder="0"
-        />
-      </div>
-    </div>
-  )
-}
 
 function IncomeSection({ income, onChange, label }: { income: IncomeBreakdown; onChange: (v: IncomeBreakdown) => void; label: string }) {
   const update = (key: keyof IncomeBreakdown, value: number) => onChange({ ...income, [key]: value })
@@ -180,7 +107,7 @@ interface FamilyProfileWizardProps {
 }
 
 export function FamilyProfileWizard({ initialProfile, onComplete, loading }: FamilyProfileWizardProps) {
-  const [step, setStep] = useState(0)
+  const { step, goNext, goPrev, goTo, isFirst } = useStepWizard(STEP_LABELS.length)
   const [profile, setProfile] = useState<ReturnType<typeof defaultProfile>>({
     ...defaultProfile(),
     ...initialProfile,
@@ -256,7 +183,7 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
             <button
               key={i}
               type="button"
-              onClick={() => setStep(i)}
+              onClick={() => goTo(i)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
                 i === step
                   ? "bg-blue-600 text-white"
@@ -414,9 +341,9 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
               <p className="text-sm text-gray-500">Enter approximate monthly amounts. Leave blank if $0.</p>
               <IncomeSection income={profile.income} onChange={(v) => update("income", v)} label="Primary applicant income" />
               {totalMonthly > 0 && (
-                <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2">
-                  <p className="text-sm text-blue-800 font-medium">Your monthly income total: ${totalMonthly.toLocaleString()}/month</p>
-                </div>
+                <InfoBox variant="info">
+                  <span className="font-medium">Your monthly income total: ${totalMonthly.toLocaleString()}/month</span>
+                </InfoBox>
               )}
               <Separator />
               <div className="space-y-2">
@@ -485,9 +412,9 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
                 <CurrencyInput label="Real estate (not your home)" value={profile.assets.realEstate} onChange={(v) => update("assets", { ...profile.assets, realEstate: v })} />
                 <CurrencyInput label="Other assets" value={profile.assets.other} onChange={(v) => update("assets", { ...profile.assets, other: v })} />
               </div>
-              <div className="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2">
-                <p className="text-xs text-gray-500">Note: Most MassHealth and SNAP programs do not count your primary home, one vehicle, or retirement accounts as assets.</p>
-              </div>
+              <InfoBox className="text-xs">
+                Note: Most MassHealth and SNAP programs do not count your primary home, one vehicle, or retirement accounts as assets.
+              </InfoBox>
             </>
           )}
 
@@ -518,9 +445,7 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
               </div>
 
               {error && (
-                <div className="rounded-md bg-red-50 border border-red-200 px-3 py-2">
-                  <p className="text-sm text-red-700">{error}</p>
-                </div>
+                <InfoBox variant="error">{error}</InfoBox>
               )}
 
               <Button className="w-full" size="lg" onClick={handleSubmit} disabled={submitting || loading}>
@@ -540,11 +465,11 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
 
       {/* Navigation */}
       <div className="flex justify-between">
-        <Button variant="outline" onClick={() => setStep((s) => s - 1)} disabled={step === 0}>
+        <Button variant="outline" onClick={goPrev} disabled={isFirst}>
           <ChevronLeft className="h-4 w-4 mr-1" /> Back
         </Button>
         {step < 5 && (
-          <Button onClick={() => setStep((s) => s + 1)}>
+          <Button onClick={goNext}>
             Next <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         )}

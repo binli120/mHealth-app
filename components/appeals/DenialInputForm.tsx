@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useState } from "react"
 import {
   AlertCircle,
   CheckCircle2,
@@ -27,18 +27,12 @@ import {
   MAX_DOCUMENT_UPLOAD_BYTES,
 } from "@/lib/appeals/constants"
 import type { AppealRequest, DenialReasonId } from "@/lib/appeals/types"
-import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { useDocumentUpload } from "@/hooks/use-document-upload"
 
 interface DenialInputFormProps {
   onSubmit: (request: AppealRequest) => void
   isLoading: boolean
 }
-
-type DocumentState =
-  | { status: "idle" }
-  | { status: "extracting"; fileName: string }
-  | { status: "ready"; fileName: string; extractedText: string }
-  | { status: "error"; fileName: string; message: string }
 
 const ACCEPTED_MIME_STRING = [...ACCEPTED_DOCUMENT_MIME_TYPES].join(",")
 
@@ -46,58 +40,15 @@ const ACCEPTED_MIME_STRING = [...ACCEPTED_DOCUMENT_MIME_TYPES].join(",")
 export function DenialInputForm({ onSubmit, isLoading }: DenialInputFormProps) {
   const [denialReasonId, setDenialReasonId] = useState<DenialReasonId | "">("")
   const [denialDetails, setDenialDetails] = useState("")
-  const [documentState, setDocumentState] = useState<DocumentState>({ status: "idle" })
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { state: documentState, fileInputRef, handleFile, clear: handleClearDocument } = useDocumentUpload({
+    extractEndpoint: "/api/appeals/extract-document",
+    maxBytes: MAX_DOCUMENT_UPLOAD_BYTES,
+  })
 
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-
-    // Reset input so the same file can be re-selected after clearing
-    if (fileInputRef.current) fileInputRef.current.value = ""
-
-    if (file.size > MAX_DOCUMENT_UPLOAD_BYTES) {
-      setDocumentState({ status: "error", fileName: file.name, message: "File exceeds 10 MB limit." })
-      return
-    }
-
-    setDocumentState({ status: "extracting", fileName: file.name })
-
-    try {
-      const formData = new FormData()
-      formData.append("file", file)
-
-      const response = await authenticatedFetch("/api/appeals/extract-document", {
-        method: "POST",
-        body: formData,
-      })
-
-      const payload = (await response.json()) as
-        | { ok: true; extractedText: string }
-        | { ok: false; error: string }
-
-      if (!payload.ok) {
-        setDocumentState({ status: "error", fileName: file.name, message: payload.error })
-        return
-      }
-
-      setDocumentState({
-        status: "ready",
-        fileName: file.name,
-        extractedText: payload.extractedText,
-      })
-    } catch {
-      setDocumentState({
-        status: "error",
-        fileName: file.name,
-        message: "Upload failed. Please try again.",
-      })
-    }
-  }
-
-  function handleClearDocument() {
-    setDocumentState({ status: "idle" })
-    if (fileInputRef.current) fileInputRef.current.value = ""
+    void handleFile(file)
   }
 
   function handleSubmit(e: React.FormEvent) {

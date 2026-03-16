@@ -1,6 +1,6 @@
 "use client"
 
-import { type FormEvent, useEffect, useMemo, useRef, useState } from "react"
+import { type FormEvent, useEffect, useMemo, useState } from "react"
 import { ExternalLink, ListChecks, Loader2, MessageCircle, SendHorizontal, ShieldCheck, X } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -12,6 +12,7 @@ import { isSupportedLanguage, SUPPORTED_LANGUAGES } from "@/lib/i18n/languages"
 import { setLanguage } from "@/lib/redux/features/app-slice"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { useAutoScroll } from "@/hooks/use-auto-scroll"
 import {
   getMassHealthGreeting,
   getMassHealthOutOfScopeResponse,
@@ -91,7 +92,7 @@ export function MassHealthChatWidget() {
 
   const [draft, setDraft] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const bottomAnchorRef = useRef<HTMLDivElement | null>(null)
+  const bottomAnchorRef = useAutoScroll([messages, advisorMessages, isLoading, open, view])
 
   const faqs = useMemo(() => MASSHEALTH_COMMON_QUESTIONS, [])
   const greeting = useMemo(() => getMassHealthGreeting(selectedLanguage), [selectedLanguage])
@@ -99,10 +100,6 @@ export function MassHealthChatWidget() {
     () => getMassHealthOutOfScopeResponse(selectedLanguage),
     [selectedLanguage],
   )
-
-  useEffect(() => {
-    bottomAnchorRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages, advisorMessages, isLoading, open, view])
 
   useEffect(() => {
     setMessages((previous) => {

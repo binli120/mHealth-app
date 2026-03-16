@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useAsyncData } from "@/hooks/use-async-data"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -27,6 +28,7 @@ import {
   } from "lucide-react"
 import { getSafeSupabaseUser } from "@/lib/supabase/client"
 import { ShieldHeartIcon, UserBadgeIcon } from "@/lib/icons"
+import { formatDate } from "@/lib/utils/format"
 
 type DashboardStatus = ApplicationStatus
 
@@ -64,23 +66,6 @@ const APPLICATION_TYPE_LABELS = new Map<string, string>(
   MASSHEALTH_APPLICATION_TYPES.map((item) => [item.id, item.shortLabel]),
 )
 
-function formatDate(value: string | null): string {
-  if (!value) {
-    return "-"
-  }
-
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return "-"
-  }
-
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-  })
-}
-
 function getApplicationTypeLabel(type: string | null): string {
   if (!type) {
     return "Application"
@@ -93,10 +78,21 @@ export default function CustomerDashboardPage() {
   const dispatch = useAppDispatch()
   const language = useAppSelector((state) => state.app.language)
 
-  const [applications, setApplications] = useState<ApplicationListRecord[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
   const [firstName, setFirstName] = useState("")
+
+  const applicationsFetcher = useCallback(async () => {
+    const response = await authenticatedFetch("/api/applications?limit=6", {
+      method: "GET",
+      cache: "no-store",
+    })
+    const payload = (await response.json().catch(() => ({}))) as ApplicationListApiResponse
+    if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load applications")
+    return payload.records ?? []
+  }, [])
+
+  const { data: applicationsData, isLoading, error: loadError, reload: loadApplications } =
+    useAsyncData(applicationsFetcher)
+  const applications = useMemo(() => applicationsData ?? [], [applicationsData])
 
   const handleLanguageChange = (value: string) => {
     if (isSupportedLanguage(value)) dispatch(setLanguage(value))
@@ -119,35 +115,6 @@ export default function CustomerDashboardPage() {
     }),
     [language],
   )
-
-  const loadApplications = useCallback(async () => {
-    setIsLoading(true)
-    setLoadError(null)
-
-    try {
-      const response = await authenticatedFetch("/api/applications?limit=6", {
-        method: "GET",
-        cache: "no-store",
-      })
-
-      const payload = (await response.json().catch(() => ({}))) as ApplicationListApiResponse
-
-      if (!response.ok || !payload.ok) {
-        throw new Error(payload.error || "Failed to load applications")
-      }
-
-      setApplications(payload.records ?? [])
-    } catch (error) {
-      setLoadError(error instanceof Error ? error.message : "Failed to load applications")
-      setApplications([])
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    void loadApplications()
-  }, [loadApplications])
 
   useEffect(() => {
     let mounted = true

@@ -1,6 +1,9 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
+import { useAsyncData } from "@/hooks/use-async-data"
+import { useDebounce } from "@/hooks/use-debounce"
+import { formatDate } from "@/lib/utils/format"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -60,23 +63,6 @@ const APPLICATION_TYPE_LABELS = new Map<string, string>(
   MASSHEALTH_APPLICATION_TYPES.map((item) => [item.id, item.shortLabel]),
 )
 
-function formatDate(value: string | null): string {
-  if (!value) {
-    return "—"
-  }
-
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return "—"
-  }
-
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-  })
-}
-
 function getApplicationTypeLabel(type: string | null): string {
   if (!type) {
     return "Application"
@@ -86,54 +72,30 @@ function getApplicationTypeLabel(type: string | null): string {
 }
 
 export default function StatusListPage() {
-  const [applications, setApplications] = useState<ApplicationListRecord[]>([])
   const [searchInput, setSearchInput] = useState("")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
-  const [isLoading, setIsLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
 
-  const loadApplications = useCallback(async () => {
-    setIsLoading(true)
-    setLoadError(null)
+  // Debounce search so we don't fire on every keystroke
+  const debouncedSearch = useDebounce(searchInput, 250)
 
-    try {
-      const params = new URLSearchParams()
-      params.set("limit", "100")
-      if (statusFilter !== "all") {
-        params.set("status", statusFilter)
-      }
-      if (searchInput.trim()) {
-        params.set("q", searchInput.trim())
-      }
+  const fetcher = useCallback(async () => {
+    const params = new URLSearchParams()
+    params.set("limit", "100")
+    if (statusFilter !== "all") params.set("status", statusFilter)
+    if (debouncedSearch.trim()) params.set("q", debouncedSearch.trim())
 
-      const response = await authenticatedFetch(`/api/applications?${params.toString()}`, {
-        method: "GET",
-        cache: "no-store",
-      })
-      const payload = (await response.json().catch(() => ({}))) as ApplicationListApiResponse
+    const response = await authenticatedFetch(`/api/applications?${params.toString()}`, {
+      method: "GET",
+      cache: "no-store",
+    })
+    const payload = (await response.json().catch(() => ({}))) as ApplicationListApiResponse
+    if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load applications")
+    return payload.records ?? []
+  }, [debouncedSearch, statusFilter])
 
-      if (!response.ok || !payload.ok) {
-        throw new Error(payload.error || "Failed to load applications")
-      }
-
-      setApplications(payload.records ?? [])
-    } catch (error) {
-      setLoadError(error instanceof Error ? error.message : "Failed to load applications")
-      setApplications([])
-    } finally {
-      setIsLoading(false)
-    }
-  }, [searchInput, statusFilter])
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void loadApplications()
-    }, 250)
-
-    return () => {
-      window.clearTimeout(timer)
-    }
-  }, [loadApplications])
+  const { data: applicationsData, isLoading, error: loadError, reload: loadApplications } =
+    useAsyncData(fetcher)
+  const applications = useMemo(() => applicationsData ?? [], [applicationsData])
 
   const draftsCount = useMemo(
     () => applications.filter((app) => app.status === "draft").length,

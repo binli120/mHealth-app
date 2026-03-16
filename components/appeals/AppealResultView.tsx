@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
 import { AlertCircle, CheckCircle2, ClipboardCheck, Copy, FileText, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { AppealAnalysis } from "@/lib/appeals/types"
+import { useClipboard } from "@/hooks/use-clipboard"
 
 interface AppealResultViewProps {
   analysis: AppealAnalysis
@@ -13,17 +13,7 @@ interface AppealResultViewProps {
 }
 
 export function AppealResultView({ analysis, denialReasonLabel, onReset }: AppealResultViewProps) {
-  const [copied, setCopied] = useState(false)
-
-  async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(analysis.appealLetter)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // clipboard not available — silent fail
-    }
-  }
+  const { copied, copy } = useClipboard()
 
   return (
     <div className="space-y-6">
@@ -60,7 +50,7 @@ export function AppealResultView({ analysis, denialReasonLabel, onReset }: Appea
             <Button
               variant="outline"
               size="sm"
-              onClick={handleCopy}
+              onClick={() => void copy(analysis.appealLetter)}
               className="h-8 gap-1.5 text-xs"
             >
               {copied ? (

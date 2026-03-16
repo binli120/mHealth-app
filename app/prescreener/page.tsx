@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useRef } from "react"
+import { useAutoScroll } from "@/hooks/use-auto-scroll"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -279,15 +280,10 @@ export default function PreScreenerPage() {
   const [report, setReport] = useState<EligibilityReport | null>(null)
   const [isComplete, setIsComplete] = useState(false)
 
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesEndRef = useAutoScroll([messages, isTyping, report])
   const inputRef = useRef<HTMLInputElement>(null)
 
   const currentStep = STEP_MAP[currentStepId]
-
-  // Auto-scroll to bottom
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages, isTyping, report])
 
   function addBotMessage(text: string) {
     setMessages((prev) => [
