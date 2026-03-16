@@ -1,5 +1,13 @@
 import aca3Raw from '@/data/aca_3-0235.json';
 import { AnswerType } from './types';
+import type {
+  Aca3QuestionInputType,
+  Aca3WorkflowStep,
+  Aca3QuestionResponseValue,
+  Aca3QuestionResponses,
+  Aca3RequiredQuestion,
+  Aca3RequiredQuestionSection,
+} from './types';
 
 // Re-export ACA-3 question types so existing consumers keep working.
 export type {
@@ -9,7 +17,7 @@ export type {
   Aca3QuestionResponses,
   Aca3RequiredQuestion,
   Aca3RequiredQuestionSection,
-} from './types';
+};
 
 type RawAnswerType =
   | 'text'

@@ -1,5 +1,6 @@
 // Types are defined in types.ts; re-exported here for backward compatibility.
-export type { MassHealthApplicationType, MassHealthApplicationTypeOption } from "./types"
+import type { MassHealthApplicationType, MassHealthApplicationTypeOption } from "./types"
+export type { MassHealthApplicationType, MassHealthApplicationTypeOption }
 
 export const MASSHEALTH_APPLICATION_TYPES: MassHealthApplicationTypeOption[] = [
   {

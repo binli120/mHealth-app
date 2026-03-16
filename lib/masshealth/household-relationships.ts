@@ -1,5 +1,6 @@
 // Type is defined in types.ts; re-exported here for backward compatibility.
-export type { HouseholdRelationshipHint } from "./types"
+import type { HouseholdRelationshipHint } from "./types"
+export type { HouseholdRelationshipHint }
 
 const HOUSEHOLD_RELATIONSHIP_ALIASES: Record<string, string> = {
   wife: "spouse",

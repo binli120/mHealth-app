@@ -25,9 +25,11 @@ import {
   LogOut,
   Scale,
   Upload,
+  UserCircle,
   } from "lucide-react"
 import { getSafeSupabaseUser } from "@/lib/supabase/client"
-import { ShieldHeartIcon, UserBadgeIcon } from "@/lib/icons"
+import { ShieldHeartIcon } from "@/lib/icons"
+import { UserAvatar } from "@/components/shared/UserAvatar"
 import { formatDate } from "@/lib/utils/format"
 
 type DashboardStatus = ApplicationStatus
@@ -77,6 +79,7 @@ function getApplicationTypeLabel(type: string | null): string {
 export default function CustomerDashboardPage() {
   const dispatch = useAppDispatch()
   const language = useAppSelector((state) => state.app.language)
+  const userProfile = useAppSelector((state) => state.userProfile.profile)
 
   const [firstName, setFirstName] = useState("")
 
@@ -187,6 +190,12 @@ export default function CustomerDashboardPage() {
             >
               {getMessage(language, "dashboardNavAppealAssistant")}
             </Link>
+            <Link
+              href="/customer/profile"
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              My Profile
+            </Link>
           </nav>
           <div className="flex items-center gap-3">
             <Select value={language} onValueChange={handleLanguageChange}>
@@ -205,9 +214,15 @@ export default function CustomerDashboardPage() {
                 {needsActionApp ? "1" : "0"}
               </span>
             </Button>
-            <Button variant="ghost" size="icon">
-              <UserBadgeIcon color="currentColor" className="h-5 w-5" />
-            </Button>
+            <Link href="/customer/profile" aria-label="My Profile">
+              <UserAvatar
+                avatarUrl={userProfile?.avatarUrl}
+                firstName={userProfile?.firstName ?? firstName}
+                lastName={userProfile?.lastName}
+                size="sm"
+                className="cursor-pointer ring-2 ring-transparent transition-all hover:ring-primary/40"
+              />
+            </Link>
             <Link href="/">
               <Button variant="ghost" size="icon">
                 <LogOut className="h-5 w-5" />
@@ -300,6 +315,19 @@ export default function CustomerDashboardPage() {
                 <div>
                   <p className="font-medium text-card-foreground">{getMessage(language, "dashboardAppealAssistant")}</p>
                   <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardAppealAssistantDesc")}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/customer/profile">
+            <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
+              <CardContent className="flex items-center gap-4 p-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <UserCircle className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium text-card-foreground">My Profile</p>
+                  <p className="text-sm text-muted-foreground">Personal info, language &amp; notifications</p>
                 </div>
               </CardContent>
             </Card>

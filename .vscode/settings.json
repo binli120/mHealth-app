@@ -1,3 +1,4 @@
 {
-  "cSpell.words": ["Ollama"]
+  "cSpell.words": ["Ollama", "Prefs"],
+  "git.ignoreLimitWarning": true
 }

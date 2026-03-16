@@ -84,7 +84,16 @@
       "Bash(/opt/homebrew/bin/pnpm add:*)",
       "Bash(/Users/blee/.nvm/versions/node/v22.15.1/bin/node /opt/homebrew/bin/pnpm --version)",
       "Bash(/Users/blee/.nvm/versions/node/v22.15.1/bin/node /opt/homebrew/bin/pnpm add -w pdf-parse)",
-      "Bash(/Users/blee/.nvm/versions/node/v22.15.1/bin/node /opt/homebrew/bin/pnpm add -wD @types/pdf-parse)"
+      "Bash(/Users/blee/.nvm/versions/node/v22.15.1/bin/node /opt/homebrew/bin/pnpm add -wD @types/pdf-parse)",
+      "Bash(grep -r \"family_profiles\\\\|benefit_stack\" /Users/blee/dev/bin/mHealth-app/database --include=*.sql)",
+      "Bash(PATH=\"/Users/blee/.nvm/versions/node/v22.15.1/bin:$PATH\" /Users/blee/.nvm/versions/node/v22.15.1/bin/node /opt/homebrew/bin/pnpm exec tsc --noEmit)",
+      "Bash(PATH=\"/Users/blee/.nvm/versions/node/v22.15.1/bin:$PATH\" /Users/blee/.nvm/versions/node/v22.15.1/bin/node /Users/blee/dev/bin/mHealth-app/node_modules/typescript/bin/tsc --noEmit)",
+      "Bash(find /Users/blee/dev/bin/mHealth-app -name .env* -type f)",
+      "Bash(psql \"postgresql://postgres:postgres@localhost:54322/postgres\" -c \"ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT DEFAULT NULL;\")",
+      "Read(//Applications/Postgres.app/Contents/**)",
+      "Read(//usr/local/**)",
+      "Bash(/opt/homebrew/bin/psql \"postgresql://postgres:postgres@localhost:54322/postgres\" -c \"ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT DEFAULT NULL;\")",
+      "Bash(/opt/homebrew/bin/psql \"postgresql://postgres:postgres@localhost:54322/postgres\" -c \"\\\\d user_profiles\")"
     ]
   }
 }

@@ -1,5 +1,16 @@
 import { PDFDocument } from "pdf-lib"
-import pdfParse from "pdf-parse"
+import _pdfParse from "pdf-parse"
+
+// pdf-parse ships CJS. In some environments (jsdom, SSR) the module resolves to
+// undefined or wraps the callable under .default — resolve whichever is callable.
+type PdfParseFn = (buf: Buffer) => Promise<{ text: string }>
+const _mod = _pdfParse as unknown
+const pdfParse: PdfParseFn | null =
+  typeof _mod === "function"
+    ? (_mod as PdfParseFn)
+    : typeof (_mod as { default?: unknown })?.default === "function"
+    ? ((_mod as { default: PdfParseFn }).default)
+    : null
 
 interface ExtractPdfJsonInput {
   bytes: Uint8Array
@@ -85,7 +96,7 @@ export async function extractPdfJson({ bytes, fileName, fileSize }: ExtractPdfJs
   const buffer = Buffer.from(bytes)
   const [pdfDoc, parsed] = await Promise.all([
     PDFDocument.load(bytes, { ignoreEncryption: true }),
-    pdfParse(buffer).catch(() => null),
+    pdfParse ? pdfParse(buffer).catch(() => null) : Promise.resolve(null),
   ])
 
   const form = pdfDoc.getForm()
