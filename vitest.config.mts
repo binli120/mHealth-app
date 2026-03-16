@@ -25,6 +25,7 @@ export default defineConfig({
       "**/.next/**",
       "storybook-static",
       ".claude/worktrees/**",
+      "e2e/**",
     ],
   },
 })

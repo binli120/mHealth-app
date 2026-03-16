@@ -2,10 +2,9 @@ import { test, expect } from "@playwright/test"
 import { ReviewerPage } from "../pages/reviewer.page"
 import * as path from "path"
 
-// Reviewer portal — uses same user for now (reviewer auth is role-based server-side)
-test.use({ storageState: path.join(__dirname, "../.auth/user.json") })
-
 test.describe("Reviewer / Staff Portal", () => {
+  // Reviewer portal — uses same user for now (reviewer auth is role-based server-side)
+  test.use({ storageState: path.join(__dirname, "../.auth/user.json") })
   let reviewer: ReviewerPage
 
   test.beforeEach(({ page }) => {
