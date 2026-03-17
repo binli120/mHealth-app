@@ -5,11 +5,113 @@ export type { KnowledgeVideo, KnowledgeArticle, KnowledgeDocument } from "./type
 import type { KnowledgeVideo, KnowledgeArticle, KnowledgeDocument } from "./types"
 
 export const KNOWLEDGE_VIDEOS: KnowledgeVideo[] = [
+  // --- Member actions & renewals (short, patient-facing) ---
+  {
+    id: "renewals-what-why-when",
+    title: "MassHealth Renewals 101: The What, Why and When",
+    description:
+      "Quick overview of why renewals happen, when to expect them, and what members need to do.",
+    youtubeId: "FyeCQhHhCTk",
+    youtubeUrl: "https://www.youtube.com/watch?v=FyeCQhHhCTk",
+    sourceUrl: "https://www.mass.gov/how-to/renew-your-masshealth-coverage",
+    availableLanguages: ["en"],
+  },
+  {
+    id: "renewals-blue-envelope",
+    title: "MassHealth Renewals 101: What to do if you get a Blue Envelope",
+    description:
+      "Step-by-step guidance for members who receive a blue renewal envelope in the mail.",
+    youtubeId: "oBFtv5ly04s",
+    youtubeUrl: "https://www.youtube.com/watch?v=oBFtv5ly04s",
+    sourceUrl: "https://www.mass.gov/how-to/renew-your-masshealth-coverage",
+    availableLanguages: ["en"],
+  },
+  {
+    id: "update-information",
+    title: "How to Update Your Information with MassHealth",
+    description:
+      "How to report address, income, or household changes so your coverage stays accurate.",
+    youtubeId: "ULoCcsm4Yl4",
+    youtubeUrl: "https://www.youtube.com/watch?v=ULoCcsm4Yl4",
+    sourceUrl: "https://www.mass.gov/how-to/report-changes-to-masshealth",
+    availableLanguages: ["en"],
+  },
+  {
+    id: "what-to-do-lose-masshealth",
+    title: "What to do if You Lose MassHealth",
+    description:
+      "Options and next steps if your MassHealth coverage ends or is terminated.",
+    youtubeId: "DZIOdk3sPfI",
+    youtubeUrl: "https://www.youtube.com/watch?v=DZIOdk3sPfI",
+    sourceUrl: "https://www.mass.gov/how-to/renew-your-masshealth-coverage",
+    availableLanguages: ["en"],
+  },
+  {
+    id: "act-now-stay-covered",
+    title: "MassHealth – Act Now, Stay Covered",
+    description:
+      "Reminder video encouraging members to respond to renewal notices to keep their coverage.",
+    youtubeId: "pj_Qzx0o6YY",
+    youtubeUrl: "https://www.youtube.com/watch?v=pj_Qzx0o6YY",
+    sourceUrl: "https://www.mass.gov/how-to/renew-your-masshealth-coverage",
+    availableLanguages: ["en"],
+  },
+  {
+    id: "renewals-where-to-get-help",
+    title: "MassHealth Renewals 101: Where to Get Help",
+    description:
+      "Explains the different places members can go for assistance with their renewal.",
+    youtubeId: "9DCpbh-iqAo",
+    youtubeUrl: "https://www.youtube.com/watch?v=9DCpbh-iqAo",
+    sourceUrl: "https://www.mass.gov/how-to/renew-your-masshealth-coverage",
+    availableLanguages: ["en"],
+  },
+  {
+    id: "renewals-how-to-prepare",
+    title: "MassHealth Renewals 101: How to Prepare",
+    description:
+      "What documents and information to gather before completing your MassHealth renewal.",
+    youtubeId: "T3jS1P1d3Ao",
+    youtubeUrl: "https://www.youtube.com/watch?v=T3jS1P1d3Ao",
+    sourceUrl: "https://www.mass.gov/how-to/renew-your-masshealth-coverage",
+    availableLanguages: ["en"],
+  },
+  {
+    id: "renewals-initiate-early",
+    title: "MassHealth Renewals 101: Initiating a Renewal Before you Receive a Blue Envelope",
+    description:
+      "How to proactively start your renewal before the official notice arrives.",
+    youtubeId: "OkmoR1TNLGY",
+    youtubeUrl: "https://www.youtube.com/watch?v=OkmoR1TNLGY",
+    sourceUrl: "https://www.mass.gov/how-to/renew-your-masshealth-coverage",
+    availableLanguages: ["en"],
+  },
+  {
+    id: "renewals-final-tips",
+    title: "MassHealth Renewals 101: Final Tips",
+    description:
+      "Key reminders and final tips to ensure a smooth MassHealth renewal process.",
+    youtubeId: "wgHnioGm-fY",
+    youtubeUrl: "https://www.youtube.com/watch?v=wgHnioGm-fY",
+    sourceUrl: "https://www.mass.gov/how-to/renew-your-masshealth-coverage",
+    availableLanguages: ["en"],
+  },
+  {
+    id: "disabilities-renewals",
+    title: "Supporting Members with Disabilities with MassHealth Renewals",
+    description:
+      "Guidance on renewal accommodations and support for members with disabilities.",
+    youtubeId: "3NMgWZGrqlo",
+    youtubeUrl: "https://www.youtube.com/watch?v=3NMgWZGrqlo",
+    sourceUrl: "https://www.mass.gov/how-to/renew-your-masshealth-coverage",
+    availableLanguages: ["en"],
+  },
+  // --- Claims & benefits ---
   {
     id: "what-is-pca",
     title: "What is a MassHealth PCA?",
     description:
-      "Official MassHealth video introducing the Personal Care Attendant program.",
+      "Introduces the Personal Care Attendant program for members who need in-home assistance.",
     youtubeId: "afD72HhNTFc",
     youtubeUrl: "https://www.youtube.com/watch?v=afD72HhNTFc",
     sourceUrl: "https://www.mass.gov/what-is-a-masshealth-pca",
@@ -17,49 +119,50 @@ export const KNOWLEDGE_VIDEOS: KnowledgeVideo[] = [
   },
   {
     id: "claim-status",
-    title: "How to check a claim status",
+    title: "How to Check a Claim Status",
     description:
-      "Official walkthrough for checking MassHealth claim status.",
+      "Official walkthrough for checking MassHealth claim status online.",
     youtubeId: "4FR5_n_8IDg",
     youtubeUrl: "https://www.youtube.com/watch?v=4FR5_n_8IDg",
     sourceUrl: "https://www.mass.gov/info-details/how-to-check-a-masshealth-claim-status",
     availableLanguages: ["en"],
   },
+  // --- MassHealth 101 Webinar Series ---
   {
-    id: "homeless-webinar-1",
-    title: "MassHealth Application, Eligibility and Enrollment",
+    id: "webinar-1-eligibility",
+    title: "MassHealth 101 Webinar Series 1 – Eligibility and Enrollment",
     description:
-      "Webinar for agencies working with people experiencing homelessness.",
+      "In-depth webinar covering MassHealth eligibility rules and enrollment processes.",
     youtubeId: "-6rromEb5R8",
     youtubeUrl: "https://www.youtube.com/watch?v=-6rromEb5R8",
     sourceUrl: "https://www.mass.gov/info-details/masshealth-webinars-for-homeless-providers",
     availableLanguages: ["en"],
   },
   {
-    id: "homeless-webinar-2",
-    title: "Webinar 2: MassHealth Long Term Services and Supports",
+    id: "webinar-2-ltss",
+    title: "MassHealth 101 Webinar Series 2 – Long Term Services and Supports",
     description:
-      "Official MassHealth webinar on long-term services and supports.",
+      "Covers LTSS options including home and community-based services available through MassHealth.",
     youtubeId: "I9KoDRwOB7k",
     youtubeUrl: "https://www.youtube.com/watch?v=I9KoDRwOB7k",
     sourceUrl: "https://www.mass.gov/info-details/masshealth-webinars-for-homeless-providers",
     availableLanguages: ["en"],
   },
   {
-    id: "homeless-webinar-3",
-    title: "Webinar 3: Substance Use Disorders and Addiction Services",
+    id: "webinar-3-substance-use",
+    title: "MassHealth 101 Webinar Series 3 – Substance Use Disorders",
     description:
-      "Official MassHealth webinar on substance use and addiction treatment services.",
+      "Webinar on substance use disorder treatment and addiction services available through MassHealth.",
     youtubeId: "4EE3krwQkvY",
     youtubeUrl: "https://www.youtube.com/watch?v=4EE3krwQkvY",
     sourceUrl: "https://www.mass.gov/info-details/masshealth-webinars-for-homeless-providers",
     availableLanguages: ["en"],
   },
   {
-    id: "homeless-webinar-4",
-    title: "MassHealth 101 Webinar Series 4 - Behavioral Health",
+    id: "webinar-4-behavioral-health",
+    title: "MassHealth 101 Webinar Series 4 – Behavioral Health",
     description:
-      "Official MassHealth webinar on behavioral health support services.",
+      "Webinar on behavioral health support services and mental health coverage through MassHealth.",
     youtubeId: "1UBQXp8kOF4",
     youtubeUrl: "https://www.youtube.com/watch?v=1UBQXp8kOF4",
     sourceUrl: "https://www.mass.gov/info-details/masshealth-webinars-for-homeless-providers",
@@ -76,11 +179,18 @@ export const KNOWLEDGE_ARTICLES: KnowledgeArticle[] = [
     url: "https://www.mass.gov/how-to/renew-your-masshealth-coverage",
   },
   {
-    id: "changes",
-    title: "Report household changes to MassHealth",
+    id: "apply",
+    title: "Apply for MassHealth, the Health Safety Net, or CMSP",
     description:
-      "How to report income, address, and household updates to MassHealth.",
-    url: "https://www.mass.gov/how-to/report-changes-to-masshealth",
+      "Application guidance and eligibility details for major coverage pathways.",
+    url: "https://www.mass.gov/how-to/apply-for-masshealth-the-health-safety-net-or-the-childrens-medical-security-plan",
+  },
+  {
+    id: "covered-services",
+    title: "Learn about MassHealth covered services",
+    description:
+      "Official guidance on covered services and program differences.",
+    url: "https://www.mass.gov/info-details/masshealth-covered-services",
   },
   {
     id: "contact",
@@ -88,6 +198,13 @@ export const KNOWLEDGE_ARTICLES: KnowledgeArticle[] = [
     description:
       "Official support channels and member contact information.",
     url: "https://www.mass.gov/info-details/contact-masshealth-information-for-members",
+  },
+  {
+    id: "changes",
+    title: "Report household changes to MassHealth",
+    description:
+      "How to report income, address, and household updates to MassHealth.",
+    url: "https://www.mass.gov/how-to/report-changes-to-masshealth",
   },
   {
     id: "faq-under-65",
@@ -111,18 +228,32 @@ export const KNOWLEDGE_ARTICLES: KnowledgeArticle[] = [
     url: "https://www.mass.gov/how-to/how-to-appeal-a-masshealth-decision",
   },
   {
-    id: "covered-services",
-    title: "Learn about MassHealth covered services",
+    id: "applicant-info",
+    title: "Information for MassHealth applicants",
     description:
-      "Official guidance on covered services and program differences.",
-    url: "https://www.mass.gov/info-details/masshealth-covered-services",
+      "Overview of what to expect when applying, including required documents and timelines.",
+    url: "https://www.mass.gov/information-for-masshealth-applicants",
   },
   {
-    id: "apply",
-    title: "Apply for MassHealth, the Health Safety Net, or CMSP",
+    id: "covered-services-chart",
+    title: "Chart of MassHealth covered services",
     description:
-      "Application guidance and eligibility details for major coverage pathways.",
-    url: "https://www.mass.gov/how-to/apply-for-masshealth-the-health-safety-net-or-the-childrens-medical-security-plan",
+      "Side-by-side chart of benefits by MassHealth coverage type — Standard, CarePlus, CommonHealth, and more.",
+    url: "https://www.mass.gov/info-details/chart-of-masshealth-covered-services",
+  },
+  {
+    id: "online-account",
+    title: "MassHealth MA Login accounts",
+    description:
+      "How to create and use your online account to manage benefits, view letters, and update information.",
+    url: "https://www.mass.gov/masshealth-ma-login-accounts",
+  },
+  {
+    id: "hipaa-info",
+    title: "HIPAA information for MassHealth members",
+    description:
+      "Member privacy rights, how your health information is protected, and how to file a privacy complaint.",
+    url: "https://www.mass.gov/hipaa-information-for-masshealth-members",
   },
 ]
 
@@ -150,10 +281,10 @@ export const KNOWLEDGE_DOCUMENTS: KnowledgeDocument[] = [
   },
   {
     id: "doc-hipaa-forms",
-    title: "MassHealth HIPAA Member Privacy Forms",
+    title: "HIPAA Forms for MassHealth Members",
     description:
       "Privacy and authorization forms for members and authorized representatives.",
-    url: "https://www.mass.gov/lists/masshealth-hipaa-member-privacy-forms",
+    url: "https://www.mass.gov/lists/hipaa-forms-for-masshealth-members",
   },
 ]
 

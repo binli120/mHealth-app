@@ -237,7 +237,7 @@ export default function LandingPage() {
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
                 <ShieldHeartIcon color="currentColor" className="h-5 w-5 text-primary-foreground" />
               </div>
-              <span className="text-xl font-semibold text-foreground">BenefitPath</span>
+              <span className="text-xl font-semibold text-foreground">HealthCompass MA</span>
             </div>
             <nav className="hidden items-center gap-6 md:flex">
               <a href="#problems"     className="text-sm text-muted-foreground transition-colors hover:text-foreground">The Problem</a>
@@ -288,7 +288,7 @@ export default function LandingPage() {
                 </h1>
                 <p className="max-w-lg text-pretty text-lg text-muted-foreground md:text-xl">
                   Massachusetts residents miss thousands in annual benefits because the system is too complex.
-                  BenefitPath checks 9+ programs at once and guides you through every application — for free.
+                  HealthCompass MA checks 9+ programs at once and guides you through every application — for free.
                 </p>
                 <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
                   {["Free to use", "9+ programs", "6 languages", "~15 min to apply"].map((tag) => (
@@ -401,7 +401,7 @@ export default function LandingPage() {
         <section id="why-us" className="bg-card px-4 py-20 md:py-28">
           <div className="mx-auto max-w-7xl">
             <FadeUp className="mb-14 text-center">
-              <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-primary">Why BenefitPath</p>
+              <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-primary">Why HealthCompass MA</p>
               <h2 className="text-3xl font-bold text-foreground md:text-4xl">
                 Built for real Massachusetts families
               </h2>
@@ -545,7 +545,7 @@ export default function LandingPage() {
             </FadeUp>
             <div className="grid gap-6 md:grid-cols-3">
               {[
-                { quote: "I had no idea I qualified for SNAP on top of MassHealth. BenefitPath found $600/month I was leaving on the table.", name: "Maria S.", location: "Worcester, MA", delay: 0 },
+                { quote: "I had no idea I qualified for SNAP on top of MassHealth. HealthCompass MA found $600/month I was leaving on the table.", name: "Maria S.", location: "Worcester, MA", delay: 0 },
                 { quote: "The step-by-step guidance made the whole process so much less intimidating. I finished everything in under 20 minutes.", name: "James T.", location: "Boston, MA", delay: 150 },
                 { quote: "As a social worker, I recommend this to every client. It surfaces programs I wouldn't have thought to check.", name: "Priya K.", location: "Springfield, MA", delay: 300 },
               ].map((t) => (
@@ -608,7 +608,7 @@ export default function LandingPage() {
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
                     <ShieldHeartIcon color="currentColor" className="h-4 w-4 text-primary-foreground" />
                   </div>
-                  <span className="font-semibold text-foreground">BenefitPath</span>
+                  <span className="font-semibold text-foreground">HealthCompass MA</span>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Helping Massachusetts residents discover and access the health and social benefits they deserve.
@@ -648,7 +648,7 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="mt-8 border-t border-border pt-8 text-center text-sm text-muted-foreground">
-              <p>© 2026 BenefitPath. Not affiliated with the Commonwealth of Massachusetts. All rights reserved.</p>
+              <p>© 2026 HealthCompass MA. Not affiliated with the Commonwealth of Massachusetts. All rights reserved.</p>
             </div>
           </div>
         </footer>

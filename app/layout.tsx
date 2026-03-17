@@ -10,8 +10,8 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: 'MassHealth - Apply for Health Coverage',
-  description: 'Apply for MassHealth coverage, check your application status, or manage your benefits online.',
+  title: 'HealthCompass MA - Apply for Health Coverage',
+  description: 'Navigate MassHealth and other MA benefits with HealthCompass MA. Check eligibility, apply, and manage your coverage online.',
   icons: {
     icon: '/favicon.svg?v=2',
     shortcut: '/favicon.svg?v=2',

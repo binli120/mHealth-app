@@ -13,7 +13,7 @@ export class AppealPage {
     const reasonSelect = this.page.getByLabel(/denial reason|reason.*denied/i)
     if (await reasonSelect.isVisible()) {
       await reasonSelect.selectOption({ value: data.denial_reason }).catch(async () => {
-        await reasonSelect.selectOption({ label: /income/i })
+        await reasonSelect.selectOption({ label: "income" })
       })
     }
 

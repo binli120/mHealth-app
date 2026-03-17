@@ -1,4 +1,11 @@
 {
-  "cSpell.words": ["Ollama", "Prefs"],
+  "cSpell.words": [
+    "fontkit",
+    "masshealth",
+    "Ollama",
+    "Prefs",
+    "prescreener",
+    "supabase"
+  ],
   "git.ignoreLimitWarning": true
 }

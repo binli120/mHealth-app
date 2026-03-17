@@ -262,7 +262,7 @@ function RegisterPageContent() {
               <ShieldHeartIcon color="currentColor" className="h-6 w-6 text-primary-foreground" />
             </div>
             <h1 className="text-2xl font-bold text-foreground">Create Account</h1>
-            <p className="mt-1 text-muted-foreground">Start your MassHealth application</p>
+            <p className="mt-1 text-muted-foreground">Start your HealthCompass MA application</p>
           </div>
 
           {step === "form" ? (

@@ -25,11 +25,12 @@ import {
   LogOut,
   Scale,
   Upload,
-  UserCircle,
-  } from "lucide-react"
+} from "lucide-react"
 import { getSafeSupabaseUser } from "@/lib/supabase/client"
 import { ShieldHeartIcon } from "@/lib/icons"
 import { UserAvatar } from "@/components/shared/UserAvatar"
+import { ThemeToggle } from "@/components/shared/ThemeToggle"
+import { IdleTimeoutGuard } from "@/components/shared/IdleTimeoutGuard"
 import { formatDate } from "@/lib/utils/format"
 
 type DashboardStatus = ApplicationStatus
@@ -154,50 +155,51 @@ export default function CustomerDashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <IdleTimeoutGuard />
       <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
               <ShieldHeartIcon color="currentColor" className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-semibold text-foreground">MassHealth</span>
+            <span className="whitespace-nowrap text-xl font-semibold text-foreground">HealthCompass MA</span>
           </div>
-          <nav className="hidden items-center gap-6 md:flex">
-            <Link href="/customer/dashboard" className="text-sm font-medium text-foreground">
+          <nav className="hidden min-w-0 shrink items-center gap-4 md:flex">
+            <Link href="/customer/dashboard" className="shrink-0 whitespace-nowrap text-sm font-medium text-foreground">
               {getMessage(language, "dashboardNav")}
             </Link>
             <Link
               href="/customer/status"
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+              className="shrink-0 whitespace-nowrap text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               {getMessage(language, "dashboardNavApplications")}
             </Link>
             <Link
               href="/benefit-stack"
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+              className="shrink-0 whitespace-nowrap text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               {getMessage(language, "dashboardNavBenefitStack")}
             </Link>
             <Link
               href="/knowledge-center"
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+              className="shrink-0 whitespace-nowrap text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               {getMessage(language, "dashboardNavKnowledgeCenter")}
             </Link>
             <Link
               href="/appeal-assistant"
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+              className="shrink-0 whitespace-nowrap text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               {getMessage(language, "dashboardNavAppealAssistant")}
             </Link>
             <Link
               href="/customer/profile"
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+              className="shrink-0 whitespace-nowrap text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               My Profile
             </Link>
           </nav>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-3">
             <Select value={language} onValueChange={handleLanguageChange}>
               <SelectTrigger className="w-[140px] border-border bg-card text-foreground">
                 <SelectValue />
@@ -208,6 +210,7 @@ export default function CustomerDashboardPage() {
                 ))}
               </SelectContent>
             </Select>
+            <ThemeToggle />
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
               <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] text-destructive-foreground">
@@ -242,7 +245,8 @@ export default function CustomerDashboardPage() {
           </p>
         </div>
 
-        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Row 1: primary actions */}
+        <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Link href="/application/type">
             <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
               <CardContent className="flex items-center gap-4 p-4">
@@ -252,19 +256,6 @@ export default function CustomerDashboardPage() {
                 <div>
                   <p className="font-medium text-card-foreground">{getMessage(language, "dashboardNewApp")}</p>
                   <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardNewAppDesc")}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-          <Link href="/customer/status">
-            <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
-              <CardContent className="flex items-center gap-4 p-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10">
-                  <Clock className="h-5 w-5 text-accent" />
-                </div>
-                <div>
-                  <p className="font-medium text-card-foreground">{getMessage(language, "dashboardTrackStatus")}</p>
-                  <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardTrackStatusDesc")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -282,30 +273,6 @@ export default function CustomerDashboardPage() {
               </CardContent>
             </Card>
           </Link>
-          <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-success/10">
-                <Upload className="h-5 w-5 text-success" />
-              </div>
-              <div>
-                <p className="font-medium text-card-foreground">{getMessage(language, "dashboardUploadDocs")}</p>
-                <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardUploadDocsDesc")}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Link href="/knowledge-center">
-            <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
-              <CardContent className="flex items-center gap-4 p-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-warning/10">
-                  <BookOpenText className="h-5 w-5 text-warning" />
-                </div>
-                <div>
-                  <p className="font-medium text-card-foreground">{getMessage(language, "dashboardNavKnowledgeCenter")}</p>
-                  <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardKnowledgeCenterDesc")}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
           <Link href="/appeal-assistant">
             <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
               <CardContent className="flex items-center gap-4 p-4">
@@ -319,15 +286,43 @@ export default function CustomerDashboardPage() {
               </CardContent>
             </Card>
           </Link>
-          <Link href="/customer/profile">
+          <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
+            <CardContent className="flex items-center gap-4 p-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-success/10">
+                <Upload className="h-5 w-5 text-success" />
+              </div>
+              <div>
+                <p className="font-medium text-card-foreground">{getMessage(language, "dashboardUploadDocs")}</p>
+                <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardUploadDocsDesc")}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Row 2: secondary actions */}
+        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Link href="/customer/status">
             <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
               <CardContent className="flex items-center gap-4 p-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                  <UserCircle className="h-5 w-5 text-primary" />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10">
+                  <Clock className="h-5 w-5 text-accent" />
                 </div>
                 <div>
-                  <p className="font-medium text-card-foreground">My Profile</p>
-                  <p className="text-sm text-muted-foreground">Personal info, language &amp; notifications</p>
+                  <p className="font-medium text-card-foreground">{getMessage(language, "dashboardTrackStatus")}</p>
+                  <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardTrackStatusDesc")}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/knowledge-center">
+            <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
+              <CardContent className="flex items-center gap-4 p-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-warning/10">
+                  <BookOpenText className="h-5 w-5 text-warning" />
+                </div>
+                <div>
+                  <p className="font-medium text-card-foreground">{getMessage(language, "dashboardNavKnowledgeCenter")}</p>
+                  <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardKnowledgeCenterDesc")}</p>
                 </div>
               </CardContent>
             </Card>

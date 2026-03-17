@@ -125,7 +125,7 @@ export default function AuditLogPage() {
                 <ShieldHeartIcon color="currentColor" className="h-5 w-5 text-sidebar-primary-foreground" />
               </div>
               <div>
-                <span className="text-lg font-semibold text-sidebar-foreground">MassHealth</span>
+                <span className="text-lg font-semibold text-sidebar-foreground">HealthCompass MA</span>
                 <span className="ml-2 rounded-full bg-sidebar-accent px-2 py-0.5 text-xs font-medium text-sidebar-accent-foreground">
                   Reviewer Portal
                 </span>

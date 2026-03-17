@@ -191,6 +191,43 @@ export interface ExtractWorkflowPayload {
   file: File
 }
 
+// ── Extract auto ──────────────────────────────────────────────────────────────
+
+export type ExtractAutoPdfType = "electronic_filled" | "electronic_blank" | "scanned" | "mixed"
+export type ExtractAutoMethod = "workflow" | "structured"
+
+export interface ExtractAutoScan {
+  pdf_type: ExtractAutoPdfType
+  [key: string]: unknown
+}
+
+export interface ExtractAutoResultWorkflow {
+  workflow_data: Record<string, unknown>
+  [key: string]: unknown
+}
+
+export interface ExtractAutoResultStructured {
+  sections: unknown[]
+  pages: unknown[]
+  [key: string]: unknown
+}
+
+export type ExtractAutoResult = ExtractAutoResultWorkflow | ExtractAutoResultStructured
+
+export interface ExtractAutoResponse {
+  scan: ExtractAutoScan
+  extraction_method: ExtractAutoMethod
+  result: ExtractAutoResult
+  ocr_page_count?: number
+  [key: string]: unknown
+}
+
+export interface ExtractAutoPayload {
+  userId: string
+  file: File
+  documentType?: string
+}
+
 export interface ExtractWorkflowResponse {
   status: string
   user_id: string

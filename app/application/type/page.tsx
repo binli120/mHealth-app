@@ -72,7 +72,7 @@ export default function ApplicationTypePage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <ShieldHeartIcon color="currentColor" className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-semibold text-foreground">MassHealth</span>
+            <span className="font-semibold text-foreground">HealthCompass MA</span>
           </div>
         </div>
       </header>

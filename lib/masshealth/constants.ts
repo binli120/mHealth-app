@@ -39,3 +39,6 @@ export const MASSHEALTH_FORMS_DEV_BASE_URL = "http://localhost:8000"
 
 /** Path to the MassHealth forms extract-workflow endpoint. */
 export const MASSHEALTH_FORMS_EXTRACT_PATH = "/masshealth/forms/extract-workflow"
+
+/** Path to the MassHealth analysis service auto-extraction endpoint. */
+export const MASSHEALTH_ANALYSIS_EXTRACT_AUTO_PATH = "/masshealth/extract/auto"

@@ -48,7 +48,7 @@ export default function KnowledgeCenterArticlesPage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <ShieldHeartIcon color="currentColor" className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-semibold text-foreground">MassHealth</span>
+            <span className="font-semibold text-foreground">HealthCompass MA</span>
           </div>
           <Select value={selectedLanguage} onValueChange={handleLanguageChange}>
             <SelectTrigger className="w-[190px] border-border bg-card text-foreground">

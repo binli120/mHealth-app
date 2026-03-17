@@ -118,7 +118,19 @@
       "Bash(node -e \"require\\(''''./playwright.config.ts''''\\)\")",
       "Bash(node --input-type=module --eval \"import\\(''''./playwright.config.ts''''\\)\")",
       "Bash(find /Users/blee/dev/bin/mHealth-app -type f -name *appeal*)",
-      "Bash(node -e \"const p=require\\(''./package.json''\\); console.log\\(JSON.stringify\\({scripts:p.scripts,jest:p.jest,vitest:p.vitest},null,2\\)\\)\")"
+      "Bash(node -e \"const p=require\\(''./package.json''\\); console.log\\(JSON.stringify\\({scripts:p.scripts,jest:p.jest,vitest:p.vitest},null,2\\)\\)\")",
+      "WebFetch(domain:www.youtube.com)",
+      "WebFetch(domain:www.mass.gov)",
+      "WebSearch",
+      "WebFetch(domain:www.mahealthconnector.org)",
+      "Bash(node -e \":*)",
+      "Bash(sed -i '' 's/Sign in to your MassHealth account/Sign in to your HealthCompass MA account/' /Users/blee/dev/bin/mHealth-app/app/auth/login/page.tsx)",
+      "Bash(sed -i '' 's/Start your MassHealth application/Start your HealthCompass MA application/' /Users/blee/dev/bin/mHealth-app/app/auth/register/page.tsx)",
+      "Bash(/Users/blee/.nvm/versions/node/v20.12.2/bin/node:*)",
+      "Bash(~/.local/share/pnpm/pnpm tsc:*)",
+      "Bash(PATH=\"$HOME/.nvm/versions/node/v20.12.2/bin:$PATH\" npx tsc --noEmit)",
+      "Bash(PATH=\"$HOME/.nvm/versions/node/v20.12.2/bin:$PATH\" node_modules/.bin/tsc --noEmit)",
+      "Bash(PATH=\"$PATH:/Users/blee/.nvm/versions/node/v20.12.2/bin\" npx vitest run hooks/__tests__/use-idle-timeout.test.ts)"
     ]
   }
 }

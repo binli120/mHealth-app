@@ -90,7 +90,7 @@ export default function CustomerProfilePage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
               <ShieldHeartIcon color="currentColor" className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-semibold text-foreground">MassHealth</span>
+            <span className="text-xl font-semibold text-foreground">HealthCompass MA</span>
           </div>
           <Link href="/customer/dashboard">
             <Button variant="ghost" size="sm" className="gap-1.5">

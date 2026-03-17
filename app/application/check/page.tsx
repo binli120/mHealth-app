@@ -19,6 +19,11 @@ import { Progress } from "@/components/ui/progress"
 import { Textarea } from "@/components/ui/textarea"
 import { validateStepWithWizardRules } from "@/components/application/aca3/form-wizard"
 import type { FormRecord, PersonState, WizardData } from "@/components/application/aca3/types"
+import {
+  runApplicationChecks,
+  type ApplicationCheckResult,
+  type CheckSeverity,
+} from "@/lib/masshealth/application-checks"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import {
   requestExtractWorkflow,
@@ -327,6 +332,110 @@ function mapWorkflowToWizardData(workflowData: Record<string, unknown>): WizardD
   }
 }
 
+const CHECK_CATEGORY_LABELS: Record<string, string> = {
+  income_consistency: "Income Consistency",
+  ssn_coverage: "Social Security Numbers",
+  immigration_status: "Immigration Status",
+  form_supplements: "Required Supplements",
+  age_thresholds: "Age & Program Thresholds",
+}
+
+const SEVERITY_STYLES: Record<CheckSeverity, { row: string; badge: string; label: string }> = {
+  error: {
+    row: "border-destructive/40 bg-destructive/5",
+    badge: "bg-destructive/15 text-destructive",
+    label: "Error",
+  },
+  warning: {
+    row: "border-warning/40 bg-warning/5",
+    badge: "bg-warning/15 text-warning",
+    label: "Warning",
+  },
+  info: {
+    row: "border-blue-500/30 bg-blue-500/5",
+    badge: "bg-blue-500/15 text-blue-600",
+    label: "Info",
+  },
+}
+
+function ApplicationChecksPanel({ results }: { results: ApplicationCheckResult[] }) {
+  const errorCount = results.filter((r) => r.severity === "error").length
+  const warnCount = results.filter((r) => r.severity === "warning").length
+  const infoCount = results.filter((r) => r.severity === "info").length
+
+  // Group by category for display
+  const byCategory = new Map<string, ApplicationCheckResult[]>()
+  for (const result of results) {
+    const list = byCategory.get(result.category) ?? []
+    list.push(result)
+    byCategory.set(result.category, list)
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-secondary/20 p-4 space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-sm font-semibold text-foreground">Business Rule Checks</p>
+        <div className="flex gap-2 text-xs">
+          {errorCount > 0 ? (
+            <span className="rounded-full px-2 py-0.5 bg-destructive/15 text-destructive font-medium">
+              {errorCount} error{errorCount !== 1 ? "s" : ""}
+            </span>
+          ) : null}
+          {warnCount > 0 ? (
+            <span className="rounded-full px-2 py-0.5 bg-warning/15 text-warning font-medium">
+              {warnCount} warning{warnCount !== 1 ? "s" : ""}
+            </span>
+          ) : null}
+          {infoCount > 0 ? (
+            <span className="rounded-full px-2 py-0.5 bg-blue-500/15 text-blue-600 font-medium">
+              {infoCount} note{infoCount !== 1 ? "s" : ""}
+            </span>
+          ) : null}
+          {results.length === 0 ? (
+            <span className="rounded-full px-2 py-0.5 bg-success/15 text-success font-medium">
+              All checks passed
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      {Array.from(byCategory.entries()).map(([category, items]) => (
+        <div key={category} className="space-y-2">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {CHECK_CATEGORY_LABELS[category] ?? category}
+          </p>
+          <div className="space-y-2">
+            {items.map((result) => {
+              const styles = SEVERITY_STYLES[result.severity]
+              return (
+                <div
+                  key={result.id}
+                  className={cn("rounded-lg border px-3 py-2.5 text-sm", styles.row)}
+                >
+                  <div className="flex items-start gap-2">
+                    <span
+                      className={cn(
+                        "mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-xs font-medium",
+                        styles.badge,
+                      )}
+                    >
+                      {styles.label}
+                    </span>
+                    <div>
+                      <p className="font-medium text-foreground">{result.title}</p>
+                      <p className="mt-0.5 text-muted-foreground">{result.message}</p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function inferStepFromErrorKey(errorKey: string): number | null {
   const match = /^step(\d+)\./.exec(errorKey)
   if (!match) {
@@ -347,6 +456,7 @@ export default function CheckApplicationPage() {
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
   const [validationSummary, setValidationSummary] = useState<ValidationSummary | null>(null)
   const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([])
+  const [appCheckResults, setAppCheckResults] = useState<ApplicationCheckResult[]>([])
 
   const data = extractState.data
   const isSubmitting = extractState.status === "loading"
@@ -401,6 +511,7 @@ export default function CheckApplicationPage() {
 
     setValidationSummary(null)
     setValidationIssues([])
+    setAppCheckResults([])
     const extracted = await dispatch(requestExtractWorkflow({ file }))
     if (!extracted?.workflow_data) {
       return
@@ -462,6 +573,13 @@ export default function CheckApplicationPage() {
       wizardRuleErrors: issues.length,
       valid: issues.length === 0,
     })
+
+    const checkResults = runApplicationChecks({
+      contact: wizardData.contact,
+      persons: wizardData.persons,
+      detectedFormVariant: data?.detected_form_variant,
+    })
+    setAppCheckResults(checkResults)
   }
 
   const openUploader = () => {
@@ -482,7 +600,7 @@ export default function CheckApplicationPage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <ShieldHeartIcon color="currentColor" className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-semibold text-foreground">MassHealth</span>
+            <span className="font-semibold text-foreground">HealthCompass MA</span>
           </div>
         </div>
       </header>
@@ -525,6 +643,7 @@ export default function CheckApplicationPage() {
                     setLocalError(null)
                     setValidationSummary(null)
                     setValidationIssues([])
+                    setAppCheckResults([])
                     setFile(nextFile)
                     setFieldValues({})
                     dispatch(resetExtractWorkflowState())
@@ -553,6 +672,7 @@ export default function CheckApplicationPage() {
                       setLocalError(null)
                       setValidationSummary(null)
                       setValidationIssues([])
+                      setAppCheckResults([])
                       setFile(null)
                       setFieldValues({})
                       dispatch(resetExtractWorkflowState())
@@ -702,6 +822,10 @@ export default function CheckApplicationPage() {
                     ))}
                   </ul>
                 </div>
+              ) : null}
+
+              {appCheckResults.length > 0 ? (
+                <ApplicationChecksPanel results={appCheckResults} />
               ) : null}
 
               {warnings.length > 0 ? (

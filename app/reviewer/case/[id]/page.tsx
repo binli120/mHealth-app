@@ -94,7 +94,7 @@ export default function CaseDetailPage({ params }: PageProps) {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary">
               <ShieldHeartIcon color="currentColor" className="h-4 w-4 text-sidebar-primary-foreground" />
             </div>
-            <span className="font-semibold text-sidebar-foreground">MassHealth</span>
+            <span className="font-semibold text-sidebar-foreground">HealthCompass MA</span>
             <span className="rounded-full bg-sidebar-accent px-2 py-0.5 text-xs font-medium text-sidebar-accent-foreground">
               Reviewer
             </span>

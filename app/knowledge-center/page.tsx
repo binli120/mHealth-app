@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowLeft, BookOpenText, Download, ExternalLink, FileText, Newspaper, Video } from "lucide-react"
+import { ArrowLeft, BookOpenText, ChevronDown, ChevronUp, Download, ExternalLink, FileText, Newspaper, Video } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,13 +21,22 @@ import {
   KNOWLEDGE_DOCUMENTS,
 } from "@/lib/masshealth/knowledge-center"
 
+const VIDEO_PREVIEW_COUNT = 6
+const ARTICLE_PREVIEW_COUNT = 4
+
 export default function KnowledgeCenterPage() {
   const dispatch = useAppDispatch()
   const selectedLanguage = useAppSelector((state) => state.app.language)
   const copy = getKnowledgeCenterCopy(selectedLanguage)
 
-  const videos = useMemo(() => getVideosForLanguage(selectedLanguage).slice(0, 6), [selectedLanguage])
-  const articles = useMemo(() => KNOWLEDGE_ARTICLES.slice(0, 4), [])
+  const [videosExpanded, setVideosExpanded] = useState(false)
+  const [articlesExpanded, setArticlesExpanded] = useState(false)
+
+  const allVideos = useMemo(() => getVideosForLanguage(selectedLanguage), [selectedLanguage])
+  const allArticles = useMemo(() => KNOWLEDGE_ARTICLES, [])
+
+  const videos = videosExpanded ? allVideos : allVideos.slice(0, VIDEO_PREVIEW_COUNT)
+  const articles = articlesExpanded ? allArticles : allArticles.slice(0, ARTICLE_PREVIEW_COUNT)
 
   const handleLanguageChange = (value: string) => {
     if (isSupportedLanguage(value)) {
@@ -54,7 +63,7 @@ export default function KnowledgeCenterPage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <ShieldHeartIcon color="currentColor" className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-semibold text-foreground">MassHealth</span>
+            <span className="font-semibold text-foreground">HealthCompass MA</span>
           </div>
           <Select value={selectedLanguage} onValueChange={handleLanguageChange}>
             <SelectTrigger className="w-[190px] border-border bg-card text-foreground">
@@ -86,6 +95,7 @@ export default function KnowledgeCenterPage() {
             <h2 className="flex items-center gap-2 text-xl font-semibold text-foreground">
               <Video className="h-5 w-5 text-primary" />
               {copy.sectionVideos}
+              <span className="text-sm font-normal text-muted-foreground">({allVideos.length})</span>
             </h2>
             <Link href="/knowledge-center/videos">
               <Button variant="outline" size="sm">
@@ -128,6 +138,23 @@ export default function KnowledgeCenterPage() {
               </Card>
             ))}
           </div>
+
+          {allVideos.length > VIDEO_PREVIEW_COUNT && (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setVideosExpanded((v) => !v)}
+                className="gap-2"
+              >
+                {videosExpanded ? (
+                  <>Show less <ChevronUp className="h-4 w-4" /></>
+                ) : (
+                  <>Show {allVideos.length - VIDEO_PREVIEW_COUNT} more videos <ChevronDown className="h-4 w-4" /></>
+                )}
+              </Button>
+            </div>
+          )}
         </section>
 
         <section className="space-y-4">
@@ -135,6 +162,7 @@ export default function KnowledgeCenterPage() {
             <h2 className="flex items-center gap-2 text-xl font-semibold text-foreground">
               <Newspaper className="h-5 w-5 text-primary" />
               {copy.sectionArticles}
+              <span className="text-sm font-normal text-muted-foreground">({allArticles.length})</span>
             </h2>
             <Link href="/knowledge-center/articles">
               <Button variant="outline" size="sm">
@@ -168,6 +196,23 @@ export default function KnowledgeCenterPage() {
               </Card>
             ))}
           </div>
+
+          {allArticles.length > ARTICLE_PREVIEW_COUNT && (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setArticlesExpanded((v) => !v)}
+                className="gap-2"
+              >
+                {articlesExpanded ? (
+                  <>Show less <ChevronUp className="h-4 w-4" /></>
+                ) : (
+                  <>Show {allArticles.length - ARTICLE_PREVIEW_COUNT} more articles <ChevronDown className="h-4 w-4" /></>
+                )}
+              </Button>
+            </div>
+          )}
         </section>
 
         <section className="space-y-4">

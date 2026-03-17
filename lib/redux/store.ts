@@ -5,6 +5,7 @@ import { appReducer } from "@/lib/redux/features/app-slice"
 import { extractWorkflowReducer } from "@/lib/redux/features/extract-workflow-slice"
 import { benefitOrchestrationReducer } from "@/lib/redux/features/benefit-orchestration-slice"
 import { userProfileReducer } from "@/lib/redux/features/user-profile-slice"
+import { extractAutoReducer } from "@/lib/redux/features/extract-auto-slice"
 
 export const makeStore = () =>
   configureStore({
@@ -15,6 +16,7 @@ export const makeStore = () =>
       extractWorkflow: extractWorkflowReducer,
       benefitOrchestration: benefitOrchestrationReducer,
       userProfile: userProfileReducer,
+      extractAuto: extractAutoReducer,
     },
   })
 
