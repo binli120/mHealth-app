@@ -16,6 +16,13 @@ export interface EligibilityProgram {
   reason?: string
 }
 
+export type WidgetSystemMessageKey =
+  | "chatGreeting"
+  | "advisorGreeting"
+  | "outOfScope"
+  | "requestFailed"
+  | "serviceUnavailable"
+
 export interface ChatApiResponse {
   ok: boolean
   outOfScope?: boolean
@@ -33,4 +40,5 @@ export interface ChatApiResponse {
 export interface WidgetMessage extends ChatMessage {
   id: string
   eligibilityResults?: ChatApiResponse["eligibilityResults"]
+  systemKey?: WidgetSystemMessageKey
 }

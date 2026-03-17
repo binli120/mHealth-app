@@ -3766,7 +3766,7 @@ function FormWizardBody() {
   }, [dispatch, state.currentStep])
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" })
+    window.scrollTo?.({ top: 0, behavior: "smooth" })
   }, [state.currentStep, currentStepActiveTab])
 
   useEffect(() => {

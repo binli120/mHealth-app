@@ -48,20 +48,29 @@ export const MASSHEALTH_OUT_OF_SCOPE_RESPONSE =
 
 const OUT_OF_SCOPE_BY_LANGUAGE: Record<SupportedLanguage, string> = {
   en: "Sorry, I can only answer MassHealth-related questions.",
-  "zh-CN": "Sorry, I can only answer MassHealth-related questions.",
+  "zh-CN": "抱歉，我只能回答与 MassHealth 相关的问题。",
   ht: "Padon, mwen ka reponn selman kestyon ki gen rapo ak MassHealth.",
-  "pt-BR": "Desculpe, so posso responder perguntas relacionadas ao MassHealth.",
+  "pt-BR": "Desculpe, só posso responder perguntas relacionadas ao MassHealth.",
   es: "Lo siento, solo puedo responder preguntas relacionadas con MassHealth.",
-  vi: "Xin loi, toi chi co the tra loi cac cau hoi lien quan den MassHealth.",
+  vi: "Xin lỗi, tôi chỉ có thể trả lời các câu hỏi liên quan đến MassHealth.",
 }
 
 const CHAT_GREETING_BY_LANGUAGE: Record<SupportedLanguage, string> = {
   en: "Hi, I'm your MassHealth assistant. Ask me about eligibility, applications, renewals, covered services, documents, or appeals.",
-  "zh-CN": "Hi, I'm your MassHealth assistant. Ask me about eligibility, applications, renewals, covered services, documents, or appeals.",
+  "zh-CN": "您好，我是您的 MassHealth 助手。您可以询问资格、申请、续保、承保服务、所需文件或申诉等问题。",
   ht: "Bonjou, mwen se asistan MassHealth ou. Mande m sou kalifikasyon, aplikasyon, renouvelman, benefis, dokiman, oswa apel.",
-  "pt-BR": "Ola, sou seu assistente MassHealth. Pergunte sobre elegibilidade, inscricao, renovacao, servicos cobertos, documentos ou recursos.",
+  "pt-BR": "Olá, sou seu assistente MassHealth. Pergunte sobre elegibilidade, inscrição, renovação, serviços cobertos, documentos ou recursos.",
   es: "Hola, soy su asistente de MassHealth. Pregunte sobre elegibilidad, solicitud, renovacion, servicios cubiertos, documentos o apelaciones.",
-  vi: "Xin chao, toi la tro ly MassHealth cua ban. Hay hoi ve dieu kien, nop don, gia han, dich vu duoc bao hiem, tai lieu hoac khieu nai.",
+  vi: "Xin chào, tôi là trợ lý MassHealth của bạn. Hãy hỏi về điều kiện, nộp đơn, gia hạn, dịch vụ được chi trả, tài liệu hoặc kháng nghị.",
+}
+
+const BENEFIT_ADVISOR_GREETING_BY_LANGUAGE: Record<SupportedLanguage, string> = {
+  en: "Hi! I'm your MassHealth Benefit Advisor. Tell me about yourself, your household size, and your approximate income, and I'll check which programs you may qualify for.",
+  "zh-CN": "您好！我是您的 MassHealth 福利顾问。请告诉我您的基本情况、家庭人数和大致收入，我会帮您查看您可能符合哪些项目。",
+  ht: "Bonjou! Mwen se konseye benefis MassHealth ou. Di m kèk detay sou ou menm, kantite moun nan kay la, ak revni apeprè ou, epi m ap verifye ki pwogram ou ka kalifye pou yo.",
+  "pt-BR": "Olá! Sou seu consultor de benefícios do MassHealth. Fale sobre você, o tamanho da sua família e sua renda aproximada, e eu vou verificar para quais programas você pode se qualificar.",
+  es: "Hola. Soy su asesor de beneficios de MassHealth. Cuénteme sobre usted, el tamaño de su hogar y su ingreso aproximado, y revisaré para qué programas podría calificar.",
+  vi: "Xin chào. Tôi là cố vấn phúc lợi MassHealth của bạn. Hãy cho tôi biết về bạn, số người trong hộ gia đình và thu nhập ước tính, rồi tôi sẽ kiểm tra những chương trình bạn có thể đủ điều kiện nhận.",
 }
 
 const LANGUAGE_RESPONSE_HINT: Record<SupportedLanguage, string> = {
@@ -232,6 +241,296 @@ export const MASSHEALTH_COMMON_QUESTIONS: MassHealthFaqItem[] = [
   },
 ]
 
+type LocalizedFaqCopy = Pick<MassHealthFaqItem, "id" | "question" | "quickAnswer">
+
+const LOCALIZED_MASSHEALTH_COMMON_QUESTION_COPY: Partial<Record<SupportedLanguage, LocalizedFaqCopy[]>> = {
+  "zh-CN": [
+    {
+      id: "apply",
+      question: "我该如何申请 MassHealth 保险？",
+      quickAnswer: "您可以通过 MA Login 在线申请。您也可以在同一申请流程中申请 Health Safety Net 和 CMSP 等相关项目。",
+    },
+    {
+      id: "docs",
+      question: "申请时通常需要哪些文件？",
+      quickAnswer: "申请人通常需要提供社会安全号码（如有）、报税和收入信息，以及公民身份或移民身份信息。",
+    },
+    {
+      id: "renewal",
+      question: "我该如何续保 MassHealth？",
+      quickAnswer: "MassHealth 需要定期续保。您可以通过官方续保渠道办理，并应尽快回应续保通知。",
+    },
+    {
+      id: "changes",
+      question: "我该如何报告收入、地址或家庭情况的变化？",
+      quickAnswer: "您应尽快报告重要的家庭变化，以确保资格和福利信息保持准确。",
+    },
+    {
+      id: "eligibility-u65",
+      question: "65 岁以下成人和家庭的资格如何判定？",
+      quickAnswer: "资格取决于家庭人数、年龄、残障状态以及各项目适用的收入规则等因素。",
+    },
+    {
+      id: "eligibility-senior",
+      question: "老年人或长期护理申请人的 MassHealth 规则是否不同？",
+      quickAnswer: "是的。老年人和需要长期护理服务的人可能适用不同的资格路径和申请支持渠道。",
+    },
+    {
+      id: "services",
+      question: "MassHealth 覆盖哪些服务？",
+      quickAnswer: "承保服务取决于您的 MassHealth 计划和资格类别。官方服务页面列出了覆盖内容和各项目具体福利。",
+    },
+    {
+      id: "card",
+      question: "我的 MassHealth 卡丢了，如何补办？",
+      quickAnswer: "您可以通过 MassHealth 官方支持渠道申请补卡。部分会员会根据项目类型收到不同的保险凭证。",
+    },
+    {
+      id: "help",
+      question: "我可以在哪里获得申请帮助？",
+      quickAnswer: "MassHealth 提供电话和线下帮助，包括投保协助人员以及语言支持服务。",
+    },
+    {
+      id: "appeal",
+      question: "我该如何对 MassHealth 的决定提出申诉？",
+      quickAnswer: "如果您不同意某项决定，请按照通知中提供的官方申诉流程和截止日期办理。",
+    },
+    {
+      id: "commonhealth",
+      question: "什么是 MassHealth CommonHealth？",
+      quickAnswer: "MassHealth CommonHealth 是为残障人士设计的项目，适用于那些可能不符合标准收入路径的人群。",
+    },
+  ],
+  ht: [
+    {
+      id: "apply",
+      question: "Kijan pou mwen aplike pou kouvèti MassHealth?",
+      quickAnswer: "Ou ka aplike sou entènèt atravè MA Login. Ou ka aplike tou pou pwogram ki gen rapò tankou Health Safety Net ak CMSP nan menm pwosesis la.",
+    },
+    {
+      id: "docs",
+      question: "Ki dokiman mwen konn bezwen lè m ap aplike?",
+      quickAnswer: "An jeneral, yo mande nimewo Sekirite Sosyal (si ou genyen youn), enfòmasyon sou taks ak revni, ansanm ak enfòmasyon sou sitwayènte oswa imigrasyon.",
+    },
+    {
+      id: "renewal",
+      question: "Kijan pou mwen renouvle kouvèti MassHealth mwen an?",
+      quickAnswer: "Renouvèlman MassHealth fèt detanzantan. Ou ka renouvle atravè chanèl ofisyèl yo epi ou ta dwe reponn avi renouvèlman yo vit.",
+    },
+    {
+      id: "changes",
+      question: "Kijan pou mwen rapòte yon chanjman nan revni, adrès, oswa moun lakay mwen?",
+      quickAnswer: "Ou ta dwe rapòte gwo chanjman lakay ou pi vit posib pou kalifikasyon ak benefis ou rete egzak.",
+    },
+    {
+      id: "eligibility-u65",
+      question: "Kijan yo deside kalifikasyon pou granmoun ak fanmi ki poko gen 65 an?",
+      quickAnswer: "Kalifikasyon depann de gwosè kay la, laj, estati andikap, ak règ revni pou chak kategori pwogram.",
+    },
+    {
+      id: "eligibility-senior",
+      question: "Èske MassHealth diferan pou granmoun aje oswa moun k ap mande swen alontèm?",
+      quickAnswer: "Wi. Granmoun aje ak moun ki bezwen sèvis swen alontèm ka gen chemen kalifikasyon ak sipò aplikasyon ki diferan.",
+    },
+    {
+      id: "services",
+      question: "Ki sèvis MassHealth kouvri?",
+      quickAnswer: "Sèvis yo depann de plan MassHealth ou ak kategori kalifikasyon ou. Paj ofisyèl yo montre sèvis ki kouvri ak benefis espesifik yo.",
+    },
+    {
+      id: "card",
+      question: "Kijan pou mwen ranplase yon kat MassHealth mwen pèdi?",
+      quickAnswer: "Ou ka mande yon kat ranplasman atravè resous sipò MassHealth yo. Gen kèk manm ki resevwa lòt kalite dokiman selon pwogram yo.",
+    },
+    {
+      id: "help",
+      question: "Ki kote mwen ka jwenn èd pou aplikasyon mwen an?",
+      quickAnswer: "MassHealth ofri èd pa telefòn ak an pèsòn, tankou asistan enskripsyon ak sèvis sipò lang.",
+    },
+    {
+      id: "appeal",
+      question: "Kijan pou mwen fè apèl kont yon desizyon MassHealth?",
+      quickAnswer: "Si ou pa dakò ak yon desizyon, swiv pwosesis apèl ofisyèl la ak dat limit ki ekri nan avi ou a.",
+    },
+    {
+      id: "commonhealth",
+      question: "Kisa MassHealth CommonHealth ye?",
+      quickAnswer: "MassHealth CommonHealth se yon pwogram pou moun ki gen andikap ki ka pa kalifye anba règ revni nòmal yo.",
+    },
+  ],
+  "pt-BR": [
+    {
+      id: "apply",
+      question: "Como faço para solicitar cobertura do MassHealth?",
+      quickAnswer: "Você pode solicitar online pelo MA Login. Também pode solicitar programas relacionados, como Health Safety Net e CMSP, no mesmo fluxo.",
+    },
+    {
+      id: "docs",
+      question: "Quais documentos eu normalmente preciso ao solicitar?",
+      quickAnswer: "Normalmente pedem número do Social Security (se disponível), informações de renda e impostos, além de dados de cidadania ou imigração.",
+    },
+    {
+      id: "renewal",
+      question: "Como faço para renovar minha cobertura do MassHealth?",
+      quickAnswer: "As renovações do MassHealth acontecem periodicamente. Você pode renovar pelos canais oficiais e deve responder rapidamente aos avisos de renovação.",
+    },
+    {
+      id: "changes",
+      question: "Como informo mudança de renda, endereço ou composição familiar?",
+      quickAnswer: "Você deve informar mudanças importantes na família o quanto antes para manter a elegibilidade e os benefícios corretos.",
+    },
+    {
+      id: "eligibility-u65",
+      question: "Como a elegibilidade é decidida para adultos e famílias com menos de 65 anos?",
+      quickAnswer: "A elegibilidade depende de fatores como tamanho da família, idade, deficiência e regras de renda de cada categoria de programa.",
+    },
+    {
+      id: "eligibility-senior",
+      question: "O MassHealth é diferente para idosos ou para quem solicita cuidados de longo prazo?",
+      quickAnswer: "Sim. Idosos e pessoas que precisam de cuidados de longo prazo podem ter caminhos de elegibilidade e apoio à inscrição diferentes.",
+    },
+    {
+      id: "services",
+      question: "Quais serviços o MassHealth cobre?",
+      quickAnswer: "Os serviços cobertos dependem do seu plano MassHealth e da sua categoria de elegibilidade. As páginas oficiais mostram os benefícios cobertos por programa.",
+    },
+    {
+      id: "card",
+      question: "Como substituo um cartão MassHealth perdido?",
+      quickAnswer: "Você pode pedir um cartão de reposição pelos recursos oficiais de suporte do MassHealth. Alguns membros recebem documentos diferentes conforme o programa.",
+    },
+    {
+      id: "help",
+      question: "Onde posso obter ajuda com minha solicitação?",
+      quickAnswer: "O MassHealth oferece ajuda por telefone e presencialmente, incluindo assistentes de inscrição e serviços de apoio em outros idiomas.",
+    },
+    {
+      id: "appeal",
+      question: "Como faço para recorrer de uma decisão do MassHealth?",
+      quickAnswer: "Se você discordar de uma decisão, siga o processo oficial de recurso e os prazos informados no seu aviso.",
+    },
+    {
+      id: "commonhealth",
+      question: "O que é o MassHealth CommonHealth?",
+      quickAnswer: "O MassHealth CommonHealth é um programa voltado para pessoas com deficiência que talvez não se qualifiquem pelas regras padrão de renda.",
+    },
+  ],
+  es: [
+    {
+      id: "apply",
+      question: "¿Cómo solicito la cobertura de MassHealth?",
+      quickAnswer: "Puede solicitarla en línea por medio de MA Login. También puede solicitar programas relacionados, como Health Safety Net y CMSP, en el mismo proceso.",
+    },
+    {
+      id: "docs",
+      question: "¿Qué documentos normalmente necesito al solicitar?",
+      quickAnswer: "Por lo general le pedirán número de Seguro Social (si lo tiene), información de impuestos e ingresos, y datos de ciudadanía o inmigración.",
+    },
+    {
+      id: "renewal",
+      question: "¿Cómo renuevo mi cobertura de MassHealth?",
+      quickAnswer: "Las renovaciones de MassHealth son periódicas. Puede renovar por los canales oficiales y debe responder con rapidez a los avisos de renovación.",
+    },
+    {
+      id: "changes",
+      question: "¿Cómo reporto un cambio de ingresos, dirección o hogar?",
+      quickAnswer: "Debe reportar los cambios importantes del hogar lo antes posible para que su elegibilidad y beneficios sigan siendo correctos.",
+    },
+    {
+      id: "eligibility-u65",
+      question: "¿Cómo se decide la elegibilidad para adultos y familias menores de 65 años?",
+      quickAnswer: "La elegibilidad depende de factores como el tamaño del hogar, la edad, la discapacidad y las reglas de ingresos de cada programa.",
+    },
+    {
+      id: "eligibility-senior",
+      question: "¿MassHealth es diferente para personas mayores o solicitantes de cuidado a largo plazo?",
+      quickAnswer: "Sí. Las personas mayores y quienes necesitan servicios de cuidado a largo plazo pueden tener vías de elegibilidad y apoyo de solicitud diferentes.",
+    },
+    {
+      id: "services",
+      question: "¿Qué servicios cubre MassHealth?",
+      quickAnswer: "Los servicios cubiertos dependen de su plan de MassHealth y su categoría de elegibilidad. Las páginas oficiales muestran los beneficios cubiertos y específicos del programa.",
+    },
+    {
+      id: "card",
+      question: "¿Cómo reemplazo una tarjeta de MassHealth perdida?",
+      quickAnswer: "Puede solicitar una tarjeta de reemplazo mediante los recursos oficiales de MassHealth. Algunos miembros reciben documentación distinta según su programa.",
+    },
+    {
+      id: "help",
+      question: "¿Dónde puedo obtener ayuda con mi solicitud?",
+      quickAnswer: "MassHealth ofrece ayuda por teléfono y en persona, incluidos asistentes de inscripción y servicios de apoyo en otros idiomas.",
+    },
+    {
+      id: "appeal",
+      question: "¿Cómo apelo una decisión de MassHealth?",
+      quickAnswer: "Si no está de acuerdo con una decisión, siga el proceso oficial de apelación y los plazos indicados en su aviso.",
+    },
+    {
+      id: "commonhealth",
+      question: "¿Qué es MassHealth CommonHealth?",
+      quickAnswer: "MassHealth CommonHealth es un programa diseñado para personas con discapacidades que quizá no califiquen bajo las reglas estándar basadas en ingresos.",
+    },
+  ],
+  vi: [
+    {
+      id: "apply",
+      question: "Tôi nộp đơn xin bảo hiểm MassHealth như thế nào?",
+      quickAnswer: "Bạn có thể nộp đơn trực tuyến qua MA Login. Bạn cũng có thể nộp cho các chương trình liên quan như Health Safety Net và CMSP trong cùng quy trình.",
+    },
+    {
+      id: "docs",
+      question: "Khi nộp đơn tôi thường cần những giấy tờ gì?",
+      quickAnswer: "Người nộp đơn thường được yêu cầu cung cấp số An sinh Xã hội (nếu có), thông tin thuế và thu nhập, cùng thông tin về quốc tịch hoặc di trú.",
+    },
+    {
+      id: "renewal",
+      question: "Tôi gia hạn bảo hiểm MassHealth như thế nào?",
+      quickAnswer: "MassHealth yêu cầu gia hạn định kỳ. Bạn có thể gia hạn qua các kênh chính thức và nên phản hồi nhanh các thông báo gia hạn.",
+    },
+    {
+      id: "changes",
+      question: "Tôi báo thay đổi về thu nhập, địa chỉ hoặc hộ gia đình như thế nào?",
+      quickAnswer: "Bạn nên báo các thay đổi quan trọng trong hộ gia đình càng sớm càng tốt để điều kiện và quyền lợi luôn chính xác.",
+    },
+    {
+      id: "eligibility-u65",
+      question: "Điều kiện cho người lớn và gia đình dưới 65 tuổi được xác định như thế nào?",
+      quickAnswer: "Điều kiện phụ thuộc vào các yếu tố như số người trong hộ, tuổi, tình trạng khuyết tật và quy định về thu nhập của từng chương trình.",
+    },
+    {
+      id: "eligibility-senior",
+      question: "MassHealth có khác cho người cao tuổi hoặc người xin dịch vụ chăm sóc dài hạn không?",
+      quickAnswer: "Có. Người cao tuổi và người cần dịch vụ chăm sóc dài hạn có thể có lộ trình điều kiện và hỗ trợ nộp đơn khác nhau.",
+    },
+    {
+      id: "services",
+      question: "MassHealth chi trả những dịch vụ nào?",
+      quickAnswer: "Dịch vụ được chi trả phụ thuộc vào gói MassHealth và nhóm điều kiện của bạn. Các trang chính thức liệt kê quyền lợi được chi trả theo từng chương trình.",
+    },
+    {
+      id: "card",
+      question: "Tôi thay thẻ MassHealth bị mất như thế nào?",
+      quickAnswer: "Bạn có thể yêu cầu cấp lại thẻ qua các kênh hỗ trợ chính thức của MassHealth. Một số thành viên sẽ nhận giấy tờ bảo hiểm khác tùy chương trình.",
+    },
+    {
+      id: "help",
+      question: "Tôi có thể nhận trợ giúp cho hồ sơ của mình ở đâu?",
+      quickAnswer: "MassHealth cung cấp hỗ trợ qua điện thoại và trực tiếp, bao gồm nhân viên hỗ trợ ghi danh và dịch vụ hỗ trợ ngôn ngữ.",
+    },
+    {
+      id: "appeal",
+      question: "Tôi kháng nghị quyết định của MassHealth như thế nào?",
+      quickAnswer: "Nếu bạn không đồng ý với một quyết định, hãy làm theo quy trình kháng nghị chính thức và thời hạn ghi trong thông báo của bạn.",
+    },
+    {
+      id: "commonhealth",
+      question: "MassHealth CommonHealth là gì?",
+      quickAnswer: "MassHealth CommonHealth là chương trình dành cho người khuyết tật, những người có thể không đủ điều kiện theo lộ trình tiêu chuẩn dựa trên thu nhập.",
+    },
+  ],
+}
+
 function normalizeText(input: string): string {
   return input.toLowerCase().replace(/\s+/g, " ").trim()
 }
@@ -282,6 +581,32 @@ export function getMassHealthOutOfScopeResponse(language: SupportedLanguage): st
 
 export function getMassHealthGreeting(language: SupportedLanguage): string {
   return CHAT_GREETING_BY_LANGUAGE[language] ?? CHAT_GREETING_BY_LANGUAGE.en
+}
+
+export function getBenefitAdvisorGreeting(language: SupportedLanguage): string {
+  return BENEFIT_ADVISOR_GREETING_BY_LANGUAGE[language] ?? BENEFIT_ADVISOR_GREETING_BY_LANGUAGE.en
+}
+
+export function getMassHealthCommonQuestions(language: SupportedLanguage): MassHealthFaqItem[] {
+  const localizedQuestions = LOCALIZED_MASSHEALTH_COMMON_QUESTION_COPY[language]
+  if (!localizedQuestions || localizedQuestions.length === 0) {
+    return MASSHEALTH_COMMON_QUESTIONS
+  }
+
+  const localizedById = new Map(
+    localizedQuestions.map((faq) => [faq.id, faq] as const),
+  )
+
+  return MASSHEALTH_COMMON_QUESTIONS.map((faq) => {
+    const localized = localizedById.get(faq.id)
+    if (!localized) return faq
+
+    return {
+      ...faq,
+      question: localized.question,
+      quickAnswer: localized.quickAnswer,
+    }
+  })
 }
 
 function formatKnowledgeBaseForPrompt(): string {

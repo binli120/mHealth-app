@@ -130,7 +130,10 @@
       "Bash(~/.local/share/pnpm/pnpm tsc:*)",
       "Bash(PATH=\"$HOME/.nvm/versions/node/v20.12.2/bin:$PATH\" npx tsc --noEmit)",
       "Bash(PATH=\"$HOME/.nvm/versions/node/v20.12.2/bin:$PATH\" node_modules/.bin/tsc --noEmit)",
-      "Bash(PATH=\"$PATH:/Users/blee/.nvm/versions/node/v20.12.2/bin\" npx vitest run hooks/__tests__/use-idle-timeout.test.ts)"
+      "Bash(PATH=\"$PATH:/Users/blee/.nvm/versions/node/v20.12.2/bin\" npx vitest run hooks/__tests__/use-idle-timeout.test.ts)",
+      "Bash(grep -r \"MassHealthChatWidget\\\\|benefit.*advisor\\\\|BenefitAdvisor\" /Users/blee/dev/bin/mHealth-app --include=\"*.tsx\" --include=\"*.ts\" ! -path \"*/node_modules/*\" ! -path \"*/.next/*\" ! -path \"*/.claude/worktrees/*\")",
+      "Bash(grep -r \"MassHealthChatWidget\" /Users/blee/dev/bin/mHealth-app --include=\"*.tsx\" --include=\"*.ts\" ! -path \"*/node_modules/*\" ! -path \"*/.next/*\" ! -path \"*/.claude/worktrees/*\")",
+      "Bash(xargs ls:*)"
     ]
   }
 }

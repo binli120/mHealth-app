@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent } from "@testing-library/react"
+import { act, render, screen, fireEvent } from "@testing-library/react"
 import { Provider } from "react-redux"
 import { configureStore } from "@reduxjs/toolkit"
 
 import { MassHealthChatWidget } from "@/components/chat/masshealth-chat-widget"
-import { appReducer } from "@/lib/redux/features/app-slice"
+import { appReducer, setLanguage } from "@/lib/redux/features/app-slice"
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
@@ -22,11 +22,13 @@ function makeStore() {
 
 function renderWidget() {
   const store = makeStore()
-  return render(
+  const view = render(
     <Provider store={store}>
       <MassHealthChatWidget />
     </Provider>,
   )
+
+  return { store, ...view }
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -131,5 +133,22 @@ describe("MassHealthChatWidget", () => {
     fireEvent.click(screen.getByRole("button", { name: /reset/i }))
     // Should be back on advisor
     expect(screen.getByText(/Tell me about yourself/i)).toBeInTheDocument()
+  })
+
+  it("updates widget copy and seeded assistant messages when language changes", () => {
+    const { store } = renderWidget()
+
+    fireEvent.click(screen.getByRole("button", { name: /open masshealth assistant/i }))
+    expect(screen.getByText("MassHealth AI Assistant")).toBeInTheDocument()
+    expect(screen.getByText(/tell me about yourself/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/tell me your age/i)).toBeInTheDocument()
+
+    act(() => {
+      store.dispatch(setLanguage("es"))
+    })
+
+    expect(screen.getByText("Asistente de IA de MassHealth")).toBeInTheDocument()
+    expect(screen.getByText(/soy su asesor de beneficios de masshealth/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/dígame su edad/i)).toBeInTheDocument()
   })
 })
