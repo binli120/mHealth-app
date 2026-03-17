@@ -133,7 +133,9 @@
       "Bash(PATH=\"$PATH:/Users/blee/.nvm/versions/node/v20.12.2/bin\" npx vitest run hooks/__tests__/use-idle-timeout.test.ts)",
       "Bash(grep -r \"MassHealthChatWidget\\\\|benefit.*advisor\\\\|BenefitAdvisor\" /Users/blee/dev/bin/mHealth-app --include=\"*.tsx\" --include=\"*.ts\" ! -path \"*/node_modules/*\" ! -path \"*/.next/*\" ! -path \"*/.claude/worktrees/*\")",
       "Bash(grep -r \"MassHealthChatWidget\" /Users/blee/dev/bin/mHealth-app --include=\"*.tsx\" --include=\"*.ts\" ! -path \"*/node_modules/*\" ! -path \"*/.next/*\" ! -path \"*/.claude/worktrees/*\")",
-      "Bash(xargs ls:*)"
+      "Bash(xargs ls:*)",
+      "Bash(git log:*)",
+      "Bash(grep -l \"setLanguage\\\\|handleLanguageChange\" /Users/blee/dev/bin/mHealth-app/app/**/*.tsx)"
     ]
   }
 }

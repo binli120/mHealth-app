@@ -5,14 +5,12 @@ import { useAsyncData } from "@/hooks/use-async-data"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { MASSHEALTH_APPLICATION_TYPES } from "@/lib/masshealth/application-types"
 import { type ApplicationStatus } from "@/lib/application-status"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
-import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
-import { setLanguage } from "@/lib/redux/features/app-slice"
-import { isSupportedLanguage, SUPPORTED_LANGUAGES } from "@/lib/i18n/languages"
+import { useAppSelector } from "@/lib/redux/hooks"
 import { getMessage } from "@/lib/i18n/messages"
+import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher"
 import {
   AlertCircle,
   Bell,
@@ -78,7 +76,6 @@ function getApplicationTypeLabel(type: string | null): string {
 }
 
 export default function CustomerDashboardPage() {
-  const dispatch = useAppDispatch()
   const language = useAppSelector((state) => state.app.language)
   const userProfile = useAppSelector((state) => state.userProfile.profile)
 
@@ -97,14 +94,6 @@ export default function CustomerDashboardPage() {
   const { data: applicationsData, isLoading, error: loadError, reload: loadApplications } =
     useAsyncData(applicationsFetcher)
   const applications = useMemo(() => applicationsData ?? [], [applicationsData])
-
-  const handleLanguageChange = (value: string) => {
-    if (isSupportedLanguage(value)) dispatch(setLanguage(value))
-  }
-
-  useEffect(() => {
-    document.documentElement.lang = language
-  }, [language])
 
   // Translated status config, recomputed when language changes
   const statusConfig = useMemo(
@@ -200,16 +189,7 @@ export default function CustomerDashboardPage() {
             </Link>
           </nav>
           <div className="flex shrink-0 items-center gap-3">
-            <Select value={language} onValueChange={handleLanguageChange}>
-              <SelectTrigger className="w-[140px] border-border bg-card text-foreground">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SUPPORTED_LANGUAGES.map((l) => (
-                  <SelectItem key={l.code} value={l.code}>{l.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <LanguageSwitcher />
             <ThemeToggle />
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />

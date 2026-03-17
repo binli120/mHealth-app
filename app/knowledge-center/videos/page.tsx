@@ -1,34 +1,21 @@
 "use client"
 
-import { useEffect, useMemo } from "react"
+import { useMemo } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { ArrowLeft, ExternalLink, Video } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { setLanguage } from "@/lib/redux/features/app-slice"
-import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
-import { isSupportedLanguage, SUPPORTED_LANGUAGES } from "@/lib/i18n/languages"
+import { useAppSelector } from "@/lib/redux/hooks"
+import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher"
 import { getKnowledgeCenterCopy, getVideosForLanguage, getYouTubeThumbnailUrl } from "@/lib/masshealth/knowledge-center"
 import { ShieldHeartIcon } from "@/lib/icons"
 
 export default function KnowledgeCenterVideosPage() {
-  const dispatch = useAppDispatch()
   const selectedLanguage = useAppSelector((state) => state.app.language)
   const copy = getKnowledgeCenterCopy(selectedLanguage)
   const videos = useMemo(() => getVideosForLanguage(selectedLanguage), [selectedLanguage])
-
-  const handleLanguageChange = (value: string) => {
-    if (isSupportedLanguage(value)) {
-      dispatch(setLanguage(value))
-    }
-  }
-
-  useEffect(() => {
-    document.documentElement.lang = selectedLanguage
-  }, [selectedLanguage])
 
   return (
     <div className="min-h-screen bg-background">
@@ -47,18 +34,7 @@ export default function KnowledgeCenterVideosPage() {
             </div>
             <span className="font-semibold text-foreground">HealthCompass MA</span>
           </div>
-          <Select value={selectedLanguage} onValueChange={handleLanguageChange}>
-            <SelectTrigger className="w-[190px] border-border bg-card text-foreground">
-              <SelectValue placeholder={copy.languageLabel} />
-            </SelectTrigger>
-            <SelectContent>
-              {SUPPORTED_LANGUAGES.map((language) => (
-                <SelectItem key={language.code} value={language.code}>
-                  {language.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <LanguageSwitcher className="w-[190px] border-border bg-card text-foreground" />
         </div>
       </header>
 

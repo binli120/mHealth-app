@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { BenefitProgramCard } from "./BenefitProgramCard"
 import type { BenefitStack } from "@/lib/benefit-orchestration/types"
+import { getMessage } from "@/lib/i18n/messages"
+import { useAppSelector } from "@/lib/redux/hooks"
 
 interface BenefitStackViewProps {
   stack: BenefitStack
@@ -14,6 +16,8 @@ interface BenefitStackViewProps {
 }
 
 export function BenefitStackView({ stack, onUpdateProfile }: BenefitStackViewProps) {
+  const language = useAppSelector((state) => state.app.language)
+
   return (
     <div className="space-y-8">
       {/* Summary Banner */}
@@ -22,36 +26,36 @@ export function BenefitStackView({ stack, onUpdateProfile }: BenefitStackViewPro
           <div>
             <div className="flex items-center gap-2 mb-1">
               <TrendingUp className="h-5 w-5 text-blue-200" />
-              <p className="text-sm font-medium text-blue-200 uppercase tracking-wide">Your Benefit Stack</p>
+              <p className="text-sm font-medium text-blue-200 uppercase tracking-wide">{getMessage(language, "bsSummaryTitle")}</p>
             </div>
             {stack.totalEstimatedMonthlyValue > 0 ? (
               <>
                 <p className="text-3xl font-bold mt-1">
-                  ${Math.round(stack.totalEstimatedMonthlyValue).toLocaleString()}<span className="text-blue-200 text-xl font-normal">/month</span>
+                  ${Math.round(stack.totalEstimatedMonthlyValue).toLocaleString()}<span className="text-blue-200 text-xl font-normal">{getMessage(language, "bsMonthSuffix")}</span>
                 </p>
                 <p className="text-blue-200 text-sm mt-1">
-                  ~${Math.round(stack.totalEstimatedAnnualValue).toLocaleString()}/year in benefits your household likely qualifies for
+                  ~${Math.round(stack.totalEstimatedAnnualValue).toLocaleString()}{getMessage(language, "bsAnnualEstimate")}
                 </p>
               </>
             ) : (
-              <p className="text-xl font-semibold mt-1">Benefits analysis complete</p>
+              <p className="text-xl font-semibold mt-1">{getMessage(language, "bsAnalysisComplete")}</p>
             )}
           </div>
           <div className="text-right text-sm text-blue-200 shrink-0">
-            <p>Household of {stack.householdSize}</p>
-            <p>{stack.fplPercent}% FPL</p>
+            <p>{getMessage(language, "bsHouseholdOf")} {stack.householdSize}</p>
+            <p>{stack.fplPercent}{getMessage(language, "bsFplLabel")}</p>
           </div>
         </div>
 
         <div className="mt-4 flex flex-wrap gap-3 text-sm">
           {stack.likelyPrograms.length > 0 && (
             <span className="bg-white/15 rounded-full px-3 py-1">
-              ✓ {stack.likelyPrograms.length} programs you likely qualify for
+              ✓ {stack.likelyPrograms.length} {getMessage(language, "bsLikelyQualify")}
             </span>
           )}
           {stack.possiblePrograms.length > 0 && (
             <span className="bg-white/15 rounded-full px-3 py-1">
-              ~ {stack.possiblePrograms.length} programs to explore
+              ~ {stack.possiblePrograms.length} {getMessage(language, "bsPossibleExplore")}
             </span>
           )}
         </div>
@@ -62,8 +66,8 @@ export function BenefitStackView({ stack, onUpdateProfile }: BenefitStackViewPro
       {/* Quick Wins */}
       {stack.quickWins.length > 0 && (
         <section>
-          <h2 className="text-lg font-semibold text-gray-900 mb-1">Start Here — Quick Wins</h2>
-          <p className="text-sm text-gray-500 mb-4">Highest-value programs you likely qualify for, with straightforward applications.</p>
+          <h2 className="text-lg font-semibold text-gray-900 mb-1">{getMessage(language, "bsQuickWinsTitle")}</h2>
+          <p className="text-sm text-gray-500 mb-4">{getMessage(language, "bsQuickWinsDesc")}</p>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {stack.quickWins.map((result) => (
               <BenefitProgramCard key={result.programId} result={result} isQuickWin />
@@ -75,8 +79,8 @@ export function BenefitStackView({ stack, onUpdateProfile }: BenefitStackViewPro
       {/* Application Bundles */}
       {stack.bundles.length > 0 && (
         <section>
-          <h2 className="text-lg font-semibold text-gray-900 mb-1">Apply Together &amp; Save Time</h2>
-          <p className="text-sm text-gray-500 mb-4">These programs share a single application — one form, multiple benefits.</p>
+          <h2 className="text-lg font-semibold text-gray-900 mb-1">{getMessage(language, "bsBundlesTitle")}</h2>
+          <p className="text-sm text-gray-500 mb-4">{getMessage(language, "bsBundlesDesc")}</p>
           <div className="grid gap-4 sm:grid-cols-2">
             {stack.bundles.map((bundle) => (
               <Card key={bundle.bundleId} className="border-2 border-dashed border-blue-200 bg-blue-50">
@@ -97,7 +101,7 @@ export function BenefitStackView({ stack, onUpdateProfile }: BenefitStackViewPro
                   </div>
                   {bundle.totalEstimatedMonthlyValue > 0 && (
                     <p className="text-sm font-semibold text-gray-800">
-                      Total: ~${bundle.totalEstimatedMonthlyValue.toLocaleString()}/month
+                      {getMessage(language, "bsTotalLabel")} ~${bundle.totalEstimatedMonthlyValue.toLocaleString()}{getMessage(language, "bsMonthSuffix")}
                     </p>
                   )}
                   <div className="flex flex-wrap gap-2">
@@ -123,7 +127,7 @@ export function BenefitStackView({ stack, onUpdateProfile }: BenefitStackViewPro
                       </Button>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500">Estimated time: {bundle.estimatedTime}</p>
+                  <p className="text-xs text-gray-500">{getMessage(language, "bsEstimatedTime")} {bundle.estimatedTime}</p>
                 </CardContent>
               </Card>
             ))}
@@ -135,8 +139,8 @@ export function BenefitStackView({ stack, onUpdateProfile }: BenefitStackViewPro
       <section>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">All Programs — Ranked by Priority</h2>
-            <p className="text-sm text-gray-500">{stack.results.length} programs evaluated</p>
+            <h2 className="text-lg font-semibold text-gray-900">{getMessage(language, "bsAllProgramsTitle")}</h2>
+            <p className="text-sm text-gray-500">{stack.results.length} {getMessage(language, "bsProgramsEvaluated")}</p>
           </div>
         </div>
 
@@ -144,7 +148,7 @@ export function BenefitStackView({ stack, onUpdateProfile }: BenefitStackViewPro
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-3">
               <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
-              <h3 className="text-sm font-medium text-gray-700">Likely Eligible ({stack.likelyPrograms.length})</h3>
+              <h3 className="text-sm font-medium text-gray-700">{getMessage(language, "bsSectionLikely")} ({stack.likelyPrograms.length})</h3>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               {stack.likelyPrograms.map((result) => (
@@ -159,7 +163,7 @@ export function BenefitStackView({ stack, onUpdateProfile }: BenefitStackViewPro
             <Separator className="mb-6" />
             <div className="flex items-center gap-2 mb-3">
               <span className="inline-block w-2 h-2 rounded-full bg-amber-500" />
-              <h3 className="text-sm font-medium text-gray-700">May Qualify — Worth Exploring ({stack.possiblePrograms.length})</h3>
+              <h3 className="text-sm font-medium text-gray-700">{getMessage(language, "bsSectionPossible")} ({stack.possiblePrograms.length})</h3>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               {stack.possiblePrograms.map((result) => (
@@ -173,10 +177,7 @@ export function BenefitStackView({ stack, onUpdateProfile }: BenefitStackViewPro
       {/* Disclaimer */}
       <div className="rounded-lg bg-gray-50 border border-gray-200 px-4 py-3">
         <p className="text-xs text-gray-500 leading-relaxed">
-          <strong className="text-gray-600">Important:</strong> These results are estimates based on your responses and are not a guarantee of eligibility.
-          Official eligibility is determined by each program at the time of application. Benefit amounts are approximations
-          based on 2026 federal and state program guidelines. Income limits, asset rules, and benefit amounts may vary.
-          Contact the administering agency for a definitive determination.
+          <strong className="text-gray-600">{getMessage(language, "bsDisclaimerTitle")}</strong> {getMessage(language, "bsDisclaimerBody")}
         </p>
       </div>
 
@@ -184,7 +185,7 @@ export function BenefitStackView({ stack, onUpdateProfile }: BenefitStackViewPro
       <div className="text-center">
         <Button variant="ghost" size="sm" onClick={onUpdateProfile} className="text-gray-500">
           <RefreshCw className="h-4 w-4 mr-1.5" />
-          Update my information
+          {getMessage(language, "bsUpdateProfile")}
         </Button>
       </div>
     </div>

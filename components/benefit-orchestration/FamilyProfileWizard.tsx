@@ -34,31 +34,44 @@ import type {
   RelationshipType,
 } from "@/lib/benefit-orchestration/types"
 import { emptyIncome } from "@/lib/benefit-orchestration/fpl-utils"
+import { type SupportedLanguage } from "@/lib/i18n/languages"
+import { getMessage } from "@/lib/i18n/messages"
+import { useAppSelector } from "@/lib/redux/hooks"
 import { getSafeSupabaseSession } from "@/lib/supabase/client"
 
 const STEP_LABELS = [
-  { label: "About You", icon: User },
-  { label: "Household", icon: Users },
-  { label: "Your Income", icon: DollarSign },
-  { label: "Housing", icon: Home },
-  { label: "Assets", icon: FileCheck },
-  { label: "Review", icon: Star },
-]
+  { key: "bsStep0", icon: User },
+  { key: "bsStep1", icon: Users },
+  { key: "bsStep2", icon: DollarSign },
+  { key: "bsStep3", icon: Home },
+  { key: "bsStep4", icon: FileCheck },
+  { key: "bsStep5", icon: Star },
+] as const
 
-function IncomeSection({ income, onChange, label }: { income: IncomeBreakdown; onChange: (v: IncomeBreakdown) => void; label: string }) {
+function IncomeSection({
+  income,
+  language,
+  onChange,
+  label,
+}: {
+  income: IncomeBreakdown
+  language: SupportedLanguage
+  onChange: (v: IncomeBreakdown) => void
+  label: string
+}) {
   const update = (key: keyof IncomeBreakdown, value: number) => onChange({ ...income, [key]: value })
   return (
     <div className="space-y-3">
       <p className="text-sm font-medium text-gray-800">{label}</p>
       <div className="grid grid-cols-2 gap-3">
-        <CurrencyInput label="Wages / Salary" value={income.wages} onChange={(v) => update("wages", v)} description="Monthly gross (before taxes)" />
-        <CurrencyInput label="Self-employment" value={income.selfEmployment} onChange={(v) => update("selfEmployment", v)} description="Monthly net income" />
-        <CurrencyInput label="Social Security" value={income.socialSecurity} onChange={(v) => update("socialSecurity", v)} />
-        <CurrencyInput label="SSI" value={income.ssi} onChange={(v) => update("ssi", v)} />
-        <CurrencyInput label="Unemployment" value={income.unemployment} onChange={(v) => update("unemployment", v)} />
-        <CurrencyInput label="Pension / Retirement" value={income.pension} onChange={(v) => update("pension", v)} />
-        <CurrencyInput label="Child Support received" value={income.childSupport} onChange={(v) => update("childSupport", v)} />
-        <CurrencyInput label="Other income" value={income.other} onChange={(v) => update("other", v)} />
+        <CurrencyInput label={getMessage(language, "bsWagesSalary")} value={income.wages} onChange={(v) => update("wages", v)} description={getMessage(language, "bsWagesDesc")} />
+        <CurrencyInput label={getMessage(language, "bsSelfEmployment")} value={income.selfEmployment} onChange={(v) => update("selfEmployment", v)} description={getMessage(language, "bsSelfEmploymentDesc")} />
+        <CurrencyInput label={getMessage(language, "bsSocialSecurity")} value={income.socialSecurity} onChange={(v) => update("socialSecurity", v)} />
+        <CurrencyInput label={getMessage(language, "bsSsiLabel")} value={income.ssi} onChange={(v) => update("ssi", v)} />
+        <CurrencyInput label={getMessage(language, "bsUnemploymentLabel")} value={income.unemployment} onChange={(v) => update("unemployment", v)} />
+        <CurrencyInput label={getMessage(language, "bsPensionLabel")} value={income.pension} onChange={(v) => update("pension", v)} />
+        <CurrencyInput label={getMessage(language, "bsChildSupportLabel")} value={income.childSupport} onChange={(v) => update("childSupport", v)} />
+        <CurrencyInput label={getMessage(language, "bsOtherIncomeLabel")} value={income.other} onChange={(v) => update("other", v)} />
       </div>
     </div>
   )
@@ -107,6 +120,7 @@ interface FamilyProfileWizardProps {
 }
 
 export function FamilyProfileWizard({ initialProfile, onComplete, loading }: FamilyProfileWizardProps) {
+  const language = useAppSelector((state) => state.app.language)
   const { step, goNext, goPrev, goTo, isFirst } = useStepWizard(STEP_LABELS.length)
   const [profile, setProfile] = useState<ReturnType<typeof defaultProfile>>({
     ...defaultProfile(),
@@ -141,7 +155,7 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
     try {
       const { session } = await getSafeSupabaseSession()
       if (!session?.access_token) {
-        setError("You must be signed in to evaluate benefits. Please sign in and try again.")
+        setError(getMessage(language, "bsSignInRequired"))
         return
       }
       const res = await fetch("/api/benefit-orchestration/evaluate", {
@@ -170,7 +184,7 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
       <div>
         <div className="flex justify-between text-xs text-gray-500 mb-2">
           <span>Step {step + 1} of {STEP_LABELS.length}</span>
-          <span>{STEP_LABELS[step].label}</span>
+          <span>{getMessage(language, STEP_LABELS[step].key)}</span>
         </div>
         <Progress value={((step + 1) / STEP_LABELS.length) * 100} className="h-1.5" />
       </div>
@@ -193,7 +207,7 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
               }`}
             >
               <Icon className="h-3.5 w-3.5" />
-              {s.label}
+              {getMessage(language, s.key)}
             </button>
           )
         })}
@@ -204,14 +218,14 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
           {/* ── Step 0: About You ── */}
           {step === 0 && (
             <>
-              <h2 className="text-base font-semibold text-gray-900">Tell us about yourself</h2>
+              <h2 className="text-base font-semibold text-gray-900">{getMessage(language, "bsAboutYouTitle")}</h2>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="age" className="text-sm">Your age</Label>
+                  <Label htmlFor="age" className="text-sm">{getMessage(language, "bsYourAge")}</Label>
                   <Input id="age" type="number" min={0} max={120} value={profile.age || ""} onChange={(e) => update("age", Number(e.target.value) || 0)} placeholder="e.g. 32" className="mt-1" />
                 </div>
                 <div>
-                  <Label className="text-sm">Citizenship status</Label>
+                  <Label className="text-sm">{getMessage(language, "bsCitizenshipStatus")}</Label>
                   <Select value={profile.citizenshipStatus} onValueChange={(v) => update("citizenshipStatus", v as CitizenshipStatus)}>
                     <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                     <SelectContent>{CITIZENSHIP_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
@@ -220,7 +234,7 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
               </div>
 
               <div>
-                <Label className="text-sm">Employment status</Label>
+                <Label className="text-sm">{getMessage(language, "bsEmploymentStatus")}</Label>
                 <Select value={profile.employmentStatus} onValueChange={(v) => update("employmentStatus", v as EmploymentStatus)}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>{EMPLOYMENT_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
@@ -229,16 +243,16 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
 
               <Separator />
               <div className="space-y-3">
-                <p className="text-sm font-medium text-gray-700">Your situation (check all that apply)</p>
+                <p className="text-sm font-medium text-gray-700">{getMessage(language, "bsYourSituation")}</p>
                 {[
-                  { key: "pregnant", label: "I am currently pregnant" },
-                  { key: "disabled", label: "I have a documented disability or receive SSI/SSDI" },
-                  { key: "blind", label: "I am legally blind" },
-                  { key: "over65", label: "I am 65 or older" },
-                  { key: "hasMedicare", label: "I am enrolled in Medicare" },
-                  { key: "hasEmployerInsurance", label: "I have insurance through an employer" },
-                  { key: "hasPrivateInsurance", label: "I have other private health insurance" },
-                  { key: "stateResident", label: "I live in Massachusetts" },
+                  { key: "pregnant", label: getMessage(language, "bsPregnantCheck") },
+                  { key: "disabled", label: getMessage(language, "bsDisabilityCheck") },
+                  { key: "blind", label: getMessage(language, "bsBlindCheck") },
+                  { key: "over65", label: getMessage(language, "bsOver65Check") },
+                  { key: "hasMedicare", label: getMessage(language, "bsMedicareCheck") },
+                  { key: "hasEmployerInsurance", label: getMessage(language, "bsEmployerInsCheck") },
+                  { key: "hasPrivateInsurance", label: getMessage(language, "bsPrivateInsCheck") },
+                  { key: "stateResident", label: getMessage(language, "bsMaResidentCheck") },
                 ].map(({ key, label }) => (
                   <div key={key} className="flex items-center gap-2">
                     <Checkbox
@@ -256,11 +270,11 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
           {/* ── Step 1: Household ── */}
           {step === 1 && (
             <>
-              <h2 className="text-base font-semibold text-gray-900">Who else lives in your household?</h2>
-              <p className="text-sm text-gray-500">Include everyone who lives with you and shares expenses — spouse, children, parents, etc.</p>
+              <h2 className="text-base font-semibold text-gray-900">{getMessage(language, "bsHouseholdTitle")}</h2>
+              <p className="text-sm text-gray-500">{getMessage(language, "bsHouseholdDesc")}</p>
 
               {profile.householdMembers.length === 0 && (
-                <p className="text-sm text-gray-400 italic">No household members added yet. Click below to add someone.</p>
+                <p className="text-sm text-gray-400 italic">{getMessage(language, "bsNoMembers")}</p>
               )}
 
               <div className="space-y-4">
@@ -268,29 +282,29 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
                   <Card key={member.id} className="border border-gray-200">
                     <CardContent className="pt-4 space-y-3">
                       <div className="flex justify-between items-center">
-                        <p className="text-sm font-medium text-gray-800">{member.firstName || "Household member"}</p>
+                        <p className="text-sm font-medium text-gray-800">{member.firstName || getMessage(language, "bsMemberLabel")}</p>
                         <Button variant="ghost" size="sm" onClick={() => removeMember(member.id)} className="text-red-500 hover:text-red-700 h-7 px-2">
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <Label className="text-xs">First name (optional)</Label>
+                          <Label className="text-xs">{getMessage(language, "bsFirstNameOptional")}</Label>
                           <Input value={member.firstName ?? ""} onChange={(e) => updateMember(member.id, { firstName: e.target.value })} placeholder="Name" className="mt-1 text-sm" />
                         </div>
                         <div>
-                          <Label className="text-xs">Age</Label>
+                          <Label className="text-xs">{getMessage(language, "bsAgeLabel")}</Label>
                           <Input type="number" min={0} max={120} value={member.age || ""} onChange={(e) => updateMember(member.id, { age: Number(e.target.value) || 0 })} className="mt-1 text-sm" />
                         </div>
                         <div>
-                          <Label className="text-xs">Relationship to you</Label>
+                          <Label className="text-xs">{getMessage(language, "bsRelationshipLabel")}</Label>
                           <Select value={member.relationship} onValueChange={(v) => updateMember(member.id, { relationship: v as RelationshipType })}>
                             <SelectTrigger className="mt-1 text-sm"><SelectValue /></SelectTrigger>
                             <SelectContent>{RELATIONSHIP_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
                           </Select>
                         </div>
                         <div>
-                          <Label className="text-xs">Citizenship status</Label>
+                          <Label className="text-xs">{getMessage(language, "bsCitizenshipStatus")}</Label>
                           <Select value={member.citizenshipStatus} onValueChange={(v) => updateMember(member.id, { citizenshipStatus: v as CitizenshipStatus })}>
                             <SelectTrigger className="mt-1 text-sm"><SelectValue /></SelectTrigger>
                             <SelectContent>{CITIZENSHIP_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
@@ -299,12 +313,12 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
                       </div>
                       <div className="flex flex-wrap gap-3 text-sm">
                         {[
-                          { key: "pregnant", label: "Pregnant" },
-                          { key: "disabled", label: "Disabled" },
-                          { key: "over65", label: "Age 65+" },
-                          { key: "hasMedicare", label: "Has Medicare" },
-                          { key: "isTaxDependent", label: "Tax dependent" },
-                          { key: "isStudent", label: "Full-time student" },
+                          { key: "pregnant", label: getMessage(language, "bsMemberPregnant") },
+                          { key: "disabled", label: getMessage(language, "bsMemberDisabled") },
+                          { key: "over65", label: getMessage(language, "bsMemberOver65") },
+                          { key: "hasMedicare", label: getMessage(language, "bsMemberMedicare") },
+                          { key: "isTaxDependent", label: getMessage(language, "bsMemberTaxDependent") },
+                          { key: "isStudent", label: getMessage(language, "bsMemberStudent") },
                         ].map(({ key, label }) => (
                           <div key={key} className="flex items-center gap-1.5">
                             <Checkbox
@@ -317,10 +331,10 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
                         ))}
                       </div>
                       <div>
-                        <Label className="text-xs text-gray-600">Monthly income (if any)</Label>
+                        <Label className="text-xs text-gray-600">{getMessage(language, "bsMemberMonthlyIncome")}</Label>
                         <div className="grid grid-cols-2 gap-2 mt-1">
-                          <CurrencyInput label="Wages" value={member.income.wages} onChange={(v) => updateMember(member.id, { income: { ...member.income, wages: v } })} />
-                          <CurrencyInput label="SS / SSI / Other" value={member.income.socialSecurity + member.income.ssi + member.income.other} onChange={(v) => updateMember(member.id, { income: { ...member.income, other: v } })} />
+                          <CurrencyInput label={getMessage(language, "bsMemberWages")} value={member.income.wages} onChange={(v) => updateMember(member.id, { income: { ...member.income, wages: v } })} />
+                          <CurrencyInput label={getMessage(language, "bsMemberSsSsi")} value={member.income.socialSecurity + member.income.ssi + member.income.other} onChange={(v) => updateMember(member.id, { income: { ...member.income, other: v } })} />
                         </div>
                       </div>
                     </CardContent>
@@ -329,7 +343,7 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
               </div>
 
               <Button variant="outline" onClick={addMember} className="w-full border-dashed">
-                <Plus className="h-4 w-4 mr-2" /> Add household member
+                <Plus className="h-4 w-4 mr-2" /> {getMessage(language, "bsAddMember")}
               </Button>
             </>
           )}
@@ -337,23 +351,23 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
           {/* ── Step 2: Your Income ── */}
           {step === 2 && (
             <>
-              <h2 className="text-base font-semibold text-gray-900">Your monthly income</h2>
-              <p className="text-sm text-gray-500">Enter approximate monthly amounts. Leave blank if $0.</p>
-              <IncomeSection income={profile.income} onChange={(v) => update("income", v)} label="Primary applicant income" />
+              <h2 className="text-base font-semibold text-gray-900">{getMessage(language, "bsIncomeTitle")}</h2>
+              <p className="text-sm text-gray-500">{getMessage(language, "bsIncomeDesc")}</p>
+              <IncomeSection income={profile.income} language={language} onChange={(v) => update("income", v)} label={getMessage(language, "bsPrimaryIncomeLabel")} />
               {totalMonthly > 0 && (
                 <InfoBox variant="info">
-                  <span className="font-medium">Your monthly income total: ${totalMonthly.toLocaleString()}/month</span>
+                  <span className="font-medium">{getMessage(language, "bsMonthlyTotal")} ${totalMonthly.toLocaleString()}{getMessage(language, "bsMonthSuffix")}</span>
                 </InfoBox>
               )}
               <Separator />
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Checkbox id="taxFiler" checked={profile.taxFiler} onCheckedChange={(v) => update("taxFiler", !!v)} />
-                  <label htmlFor="taxFiler" className="text-sm cursor-pointer">I file a federal tax return</label>
+                  <label htmlFor="taxFiler" className="text-sm cursor-pointer">{getMessage(language, "bsTaxFilerCheck")}</label>
                 </div>
                 {profile.taxFiler && (
                   <div>
-                    <Label className="text-sm">Filing status</Label>
+                    <Label className="text-sm">{getMessage(language, "bsFilingStatusLabel")}</Label>
                     <Select value={profile.filingStatus ?? ""} onValueChange={(v) => update("filingStatus", v as TaxFilingStatus)}>
                       <SelectTrigger className="mt-1"><SelectValue placeholder="Select filing status" /></SelectTrigger>
                       <SelectContent>{FILING_STATUS_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
@@ -367,9 +381,9 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
           {/* ── Step 3: Housing ── */}
           {step === 3 && (
             <>
-              <h2 className="text-base font-semibold text-gray-900">Housing &amp; utilities</h2>
+              <h2 className="text-base font-semibold text-gray-900">{getMessage(language, "bsHousingTitle")}</h2>
               <div>
-                <Label className="text-sm">Current housing situation</Label>
+                <Label className="text-sm">{getMessage(language, "bsCurrentHousing")}</Label>
                 <Select value={profile.housingStatus} onValueChange={(v) => update("housingStatus", v as HousingStatus)}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>{HOUSING_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
@@ -378,7 +392,7 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
 
               {(profile.housingStatus === "renter") && (
                 <div>
-                  <Label className="text-sm">Monthly rent</Label>
+                  <Label className="text-sm">{getMessage(language, "bsMonthlyRent")}</Label>
                   <div className="relative mt-1">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
                     <Input type="number" min={0} value={profile.monthlyRent || ""} onChange={(e) => update("monthlyRent", Number(e.target.value) || 0)} className="pl-7" placeholder="e.g. 1500" />
@@ -388,7 +402,7 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
 
               <Separator />
               <div>
-                <p className="text-sm font-medium text-gray-700 mb-3">Which utilities does your household pay? (check all that apply)</p>
+                <p className="text-sm font-medium text-gray-700 mb-3">{getMessage(language, "bsUtilitiesQuestion")}</p>
                 <div className="space-y-2">
                   {UTILITY_OPTIONS.map((u) => (
                     <div key={u.value} className="flex items-center gap-2">
@@ -404,13 +418,13 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
           {/* ── Step 4: Assets ── */}
           {step === 4 && (
             <>
-              <h2 className="text-base font-semibold text-gray-900">Assets &amp; savings</h2>
-              <p className="text-sm text-gray-500">Some programs consider assets. Enter approximate current values.</p>
+              <h2 className="text-base font-semibold text-gray-900">{getMessage(language, "bsAssetsTitle")}</h2>
+              <p className="text-sm text-gray-500">{getMessage(language, "bsAssetsDesc")}</p>
               <div className="grid grid-cols-2 gap-4">
-                <CurrencyInput label="Bank accounts (checking + savings)" value={profile.assets.bankAccounts} onChange={(v) => update("assets", { ...profile.assets, bankAccounts: v })} />
-                <CurrencyInput label="Investments (stocks, retirement)" value={profile.assets.investments} onChange={(v) => update("assets", { ...profile.assets, investments: v })} />
-                <CurrencyInput label="Real estate (not your home)" value={profile.assets.realEstate} onChange={(v) => update("assets", { ...profile.assets, realEstate: v })} />
-                <CurrencyInput label="Other assets" value={profile.assets.other} onChange={(v) => update("assets", { ...profile.assets, other: v })} />
+                <CurrencyInput label={getMessage(language, "bsBankAccounts")} value={profile.assets.bankAccounts} onChange={(v) => update("assets", { ...profile.assets, bankAccounts: v })} />
+                <CurrencyInput label={getMessage(language, "bsInvestments")} value={profile.assets.investments} onChange={(v) => update("assets", { ...profile.assets, investments: v })} />
+                <CurrencyInput label={getMessage(language, "bsRealEstate")} value={profile.assets.realEstate} onChange={(v) => update("assets", { ...profile.assets, realEstate: v })} />
+                <CurrencyInput label={getMessage(language, "bsOtherAssets")} value={profile.assets.other} onChange={(v) => update("assets", { ...profile.assets, other: v })} />
               </div>
               <InfoBox className="text-xs">
                 Note: Most MassHealth and SNAP programs do not count your primary home, one vehicle, or retirement accounts as assets.
@@ -421,8 +435,8 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
           {/* ── Step 5: Review ── */}
           {step === 5 && (
             <>
-              <h2 className="text-base font-semibold text-gray-900">Review your information</h2>
-              <p className="text-sm text-gray-500">Check your answers before we evaluate your benefit eligibility.</p>
+              <h2 className="text-base font-semibold text-gray-900">{getMessage(language, "bsReviewTitle")}</h2>
+              <p className="text-sm text-gray-500">{getMessage(language, "bsReviewDesc")}</p>
               <div className="rounded-lg bg-gray-50 border border-gray-200 divide-y divide-gray-200 text-sm">
                 {[
                   { label: "Age", value: profile.age },
@@ -452,11 +466,11 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
                 {submitting ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Evaluating your benefits...</>
                 ) : (
-                  "See My Benefits Stack"
+                  getMessage(language, "bsSeeMyBenefits")
                 )}
               </Button>
               <p className="text-xs text-gray-400 text-center">
-                Your information is saved securely and only used to evaluate your eligibility.
+                {getMessage(language, "bsPrivacyNote")}
               </p>
             </>
           )}
@@ -466,11 +480,11 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
       {/* Navigation */}
       <div className="flex justify-between">
         <Button variant="outline" onClick={goPrev} disabled={isFirst}>
-          <ChevronLeft className="h-4 w-4 mr-1" /> Back
+          <ChevronLeft className="h-4 w-4 mr-1" /> {getMessage(language, "bsBack")}
         </Button>
         {step < 5 && (
           <Button onClick={goNext}>
-            Next <ChevronRight className="h-4 w-4 ml-1" />
+            {getMessage(language, "bsNext")} <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         )}
       </div>

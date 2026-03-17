@@ -4,10 +4,8 @@ import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { setLanguage } from "@/lib/redux/features/app-slice"
-import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
-import { isSupportedLanguage, SUPPORTED_LANGUAGES } from "@/lib/i18n/languages"
+import { useAppSelector } from "@/lib/redux/hooks"
+import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher"
 import {
   AlertCircle, Bot, CheckCircle2, ChevronRight, ClipboardList,
   FileCheck, Globe, Layers, Lock, Scale, Search, Sparkles, Zap,
@@ -186,16 +184,7 @@ function HowItWorksSteps() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function LandingPage() {
-  const dispatch = useAppDispatch()
   const selectedLanguage = useAppSelector((state) => state.app.language)
-
-  const handleLanguageChange = (value: string) => {
-    if (isSupportedLanguage(value)) dispatch(setLanguage(value))
-  }
-
-  useEffect(() => {
-    document.documentElement.lang = selectedLanguage
-  }, [selectedLanguage])
 
   // animated stats
   const { ref: statsRef, inView: statsInView } = useInView(0.3)
@@ -250,16 +239,7 @@ export default function LandingPage() {
               <Link href="/knowledge-center" className="text-sm text-muted-foreground transition-colors hover:text-foreground">Resources</Link>
             </nav>
             <div className="flex items-center gap-3">
-              <Select value={selectedLanguage} onValueChange={handleLanguageChange}>
-                <SelectTrigger className="w-[160px] border-border bg-card text-foreground">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SUPPORTED_LANGUAGES.map((l) => (
-                    <SelectItem key={l.code} value={l.code}>{l.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <LanguageSwitcher className="w-[160px] border-border bg-card text-foreground" />
               <Link href="/auth/login">
                 <Button variant="outline" size="sm" className="hidden sm:flex">Sign In</Button>
               </Link>

@@ -4,6 +4,11 @@ import { render, screen, fireEvent } from "@testing-library/react"
 import { BenefitProgramCard } from "@/components/benefit-orchestration/BenefitProgramCard"
 import type { BenefitResult } from "@/lib/benefit-orchestration/types"
 
+vi.mock("@/lib/redux/hooks", () => ({
+  useAppSelector: (selector: (state: { app: { language: "en" } }) => unknown) =>
+    selector({ app: { language: "en" } }),
+}))
+
 const baseResult: BenefitResult = {
   programId: "snap",
   programName: "SNAP (Food Stamps)",

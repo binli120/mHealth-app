@@ -3,6 +3,8 @@
 import { useCallback, useMemo, useState } from "react"
 import { useAsyncData } from "@/hooks/use-async-data"
 import { useDebounce } from "@/hooks/use-debounce"
+import { getMessage } from "@/lib/i18n/messages"
+import { type SupportedLanguage } from "@/lib/i18n/languages"
 import { formatDate } from "@/lib/utils/format"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -23,6 +25,7 @@ import {
 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ShieldHeartIcon } from "@/lib/icons"
+import { useAppSelector } from "@/lib/redux/hooks"
 
 type StatusFilter = "all" | ApplicationStatus
 
@@ -46,34 +49,35 @@ interface ApplicationListApiResponse {
   error?: string
 }
 
-const statusConfig: Record<
-  ApplicationStatus,
-  { label: string; color: string; icon: typeof FileText }
-> = {
-  draft: { label: "Draft", color: "bg-secondary text-secondary-foreground", icon: FileText },
-  submitted: { label: "Submitted", color: "bg-primary/10 text-primary", icon: Clock },
-  ai_extracted: { label: "AI Extracted", color: "bg-accent/10 text-accent", icon: Clock },
-  needs_review: { label: "Under Review", color: "bg-accent/10 text-accent", icon: Clock },
-  rfi_requested: { label: "Info Needed", color: "bg-warning/10 text-warning", icon: AlertCircle },
-  approved: { label: "Approved", color: "bg-success/10 text-success", icon: CheckCircle2 },
-  denied: { label: "Denied", color: "bg-destructive/10 text-destructive", icon: AlertCircle },
-}
-
 const APPLICATION_TYPE_LABELS = new Map<string, string>(
   MASSHEALTH_APPLICATION_TYPES.map((item) => [item.id, item.shortLabel]),
 )
 
-function getApplicationTypeLabel(type: string | null): string {
+function getApplicationTypeLabel(type: string | null, language: SupportedLanguage): string {
   if (!type) {
-    return "Application"
+    return getMessage(language, "statusListApplicationFallback")
   }
 
   return APPLICATION_TYPE_LABELS.get(type) ?? type.toUpperCase()
 }
 
 export default function StatusListPage() {
+  const language = useAppSelector((state) => state.app.language)
   const [searchInput, setSearchInput] = useState("")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
+
+  const statusConfig = useMemo<Record<ApplicationStatus, { label: string; color: string; icon: typeof FileText }>>(
+    () => ({
+      draft: { label: getMessage(language, "dashboardStatusDraft"), color: "bg-secondary text-secondary-foreground", icon: FileText },
+      submitted: { label: getMessage(language, "dashboardStatusSubmitted"), color: "bg-primary/10 text-primary", icon: Clock },
+      ai_extracted: { label: getMessage(language, "dashboardStatusAiExtracted"), color: "bg-accent/10 text-accent", icon: Clock },
+      needs_review: { label: getMessage(language, "dashboardStatusNeedsReview"), color: "bg-accent/10 text-accent", icon: Clock },
+      rfi_requested: { label: getMessage(language, "dashboardStatusRfiRequested"), color: "bg-warning/10 text-warning", icon: AlertCircle },
+      approved: { label: getMessage(language, "dashboardStatusApproved"), color: "bg-success/10 text-success", icon: CheckCircle2 },
+      denied: { label: getMessage(language, "dashboardStatusDenied"), color: "bg-destructive/10 text-destructive", icon: AlertCircle },
+    }),
+    [language],
+  )
 
   // Debounce search so we don't fire on every keystroke
   const debouncedSearch = useDebounce(searchInput, 250)
@@ -89,9 +93,9 @@ export default function StatusListPage() {
       cache: "no-store",
     })
     const payload = (await response.json().catch(() => ({}))) as ApplicationListApiResponse
-    if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load applications")
+    if (!response.ok || !payload.ok) throw new Error(payload.error || getMessage(language, "dashboardLoadingApps"))
     return payload.records ?? []
-  }, [debouncedSearch, statusFilter])
+  }, [debouncedSearch, language, statusFilter])
 
   const { data: applicationsData, isLoading, error: loadError, reload: loadApplications } =
     useAsyncData(fetcher)
@@ -111,7 +115,7 @@ export default function StatusListPage() {
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span className="text-sm">Back to Dashboard</span>
+            <span className="text-sm">{getMessage(language, "statusListBackToDashboard")}</span>
           </Link>
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
@@ -124,9 +128,9 @@ export default function StatusListPage() {
 
       <main className="mx-auto max-w-4xl px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-foreground md:text-3xl">My Applications</h1>
+          <h1 className="text-2xl font-bold text-foreground md:text-3xl">{getMessage(language, "statusListTitle")}</h1>
           <p className="mt-1 text-muted-foreground">
-            Track and manage all your MassHealth applications
+            {getMessage(language, "statusListSubtitle")}
           </p>
         </div>
 
@@ -140,7 +144,7 @@ export default function StatusListPage() {
                   onChange={(event) => {
                     setSearchInput(event.target.value)
                   }}
-                  placeholder="Search by Application ID or applicant name..."
+                  placeholder={getMessage(language, "statusListSearchPlaceholder")}
                   className="border-input bg-background pl-9 text-foreground"
                 />
               </div>
@@ -152,17 +156,17 @@ export default function StatusListPage() {
               >
                 <SelectTrigger className="w-full border-input bg-background text-foreground sm:w-[180px]">
                   <Filter className="mr-2 h-4 w-4" />
-                  <SelectValue placeholder="Filter by status" />
+                  <SelectValue placeholder={getMessage(language, "statusListFilterPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="submitted">Submitted</SelectItem>
-                  <SelectItem value="ai_extracted">AI Extracted</SelectItem>
-                  <SelectItem value="needs_review">Under Review</SelectItem>
-                  <SelectItem value="rfi_requested">Info Needed</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="denied">Denied</SelectItem>
+                  <SelectItem value="all">{getMessage(language, "statusListAllStatus")}</SelectItem>
+                  <SelectItem value="draft">{getMessage(language, "dashboardStatusDraft")}</SelectItem>
+                  <SelectItem value="submitted">{getMessage(language, "dashboardStatusSubmitted")}</SelectItem>
+                  <SelectItem value="ai_extracted">{getMessage(language, "dashboardStatusAiExtracted")}</SelectItem>
+                  <SelectItem value="needs_review">{getMessage(language, "dashboardStatusNeedsReview")}</SelectItem>
+                  <SelectItem value="rfi_requested">{getMessage(language, "dashboardStatusRfiRequested")}</SelectItem>
+                  <SelectItem value="approved">{getMessage(language, "dashboardStatusApproved")}</SelectItem>
+                  <SelectItem value="denied">{getMessage(language, "dashboardStatusDenied")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -173,7 +177,7 @@ export default function StatusListPage() {
           {isLoading ? (
             <Card className="border-border bg-card">
               <CardContent className="p-4 text-sm text-muted-foreground">
-                Loading applications...
+                {getMessage(language, "statusListLoading")}
               </CardContent>
             </Card>
           ) : loadError ? (
@@ -181,14 +185,14 @@ export default function StatusListPage() {
               <CardContent className="space-y-3 p-4">
                 <p className="text-sm text-destructive">{loadError}</p>
                 <Button type="button" variant="outline" size="sm" onClick={() => void loadApplications()}>
-                  Retry
+                  {getMessage(language, "statusListRetry")}
                 </Button>
               </CardContent>
             </Card>
           ) : applications.length === 0 ? (
             <Card className="border-border bg-card">
               <CardContent className="p-4 text-sm text-muted-foreground">
-                No applications found for the selected filters.
+                {getMessage(language, "statusListEmpty")}
               </CardContent>
             </Card>
           ) : (
@@ -219,25 +223,25 @@ export default function StatusListPage() {
                           <div>
                             <div className="flex items-center gap-2">
                               <h3 className="font-semibold text-foreground">
-                                {getApplicationTypeLabel(app.applicationType)}
+                                {getApplicationTypeLabel(app.applicationType, language)}
                               </h3>
                               {needsAction ? (
                                 <span className="rounded-full bg-warning px-2 py-0.5 text-xs font-medium text-warning-foreground">
-                                  Action Required
+                                  {getMessage(language, "statusListActionRequired")}
                                 </span>
                               ) : null}
                               {app.status === "draft" ? (
                                 <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
-                                  Continue
+                                  {getMessage(language, "statusListContinue")}
                                 </span>
                               ) : null}
                             </div>
                             <p className="mt-1 font-mono text-sm text-muted-foreground">{app.id}</p>
                             <div className="mt-2 flex flex-wrap gap-4 text-xs text-muted-foreground">
-                              <span>Updated: {formatDate(app.lastSavedAt ?? app.updatedAt)}</span>
-                              <span>Submitted: {formatDate(app.submittedAt)}</span>
+                              <span>{getMessage(language, "statusListUpdated")}: {formatDate(app.lastSavedAt ?? app.updatedAt)}</span>
+                              <span>{getMessage(language, "statusListSubmitted")}: {formatDate(app.submittedAt)}</span>
                               <span>
-                                Household:{" "}
+                                {getMessage(language, "statusListHousehold")}:{" "}
                                 {typeof app.householdSize === "number" ? app.householdSize : "—"}
                               </span>
                             </div>
@@ -255,13 +259,13 @@ export default function StatusListPage() {
 
         <Card className="mt-8 border-border bg-secondary/30">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base text-card-foreground">Need Help?</CardTitle>
+            <CardTitle className="text-base text-card-foreground">{getMessage(language, "statusListNeedHelp")}</CardTitle>
             <CardDescription>
-              {`Active drafts: ${draftsCount}. Contact support if you need help finishing or submitting.`}
+              {`${getMessage(language, "statusListActiveDraftsPrefix")} ${draftsCount}. ${getMessage(language, "statusListActiveDraftsSuffix")}`}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="outline">Contact Support: 1-800-841-2900</Button>
+            <Button variant="outline">{getMessage(language, "statusListContactSupport")}</Button>
           </CardContent>
         </Card>
       </main>

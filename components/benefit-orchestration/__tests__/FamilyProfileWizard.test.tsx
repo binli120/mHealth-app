@@ -3,6 +3,11 @@ import { render, screen, fireEvent } from "@testing-library/react"
 
 import { FamilyProfileWizard } from "@/components/benefit-orchestration/FamilyProfileWizard"
 
+vi.mock("@/lib/redux/hooks", () => ({
+  useAppSelector: (selector: (state: { app: { language: "en" } }) => unknown) =>
+    selector({ app: { language: "en" } }),
+}))
+
 vi.mock("@/lib/supabase/client", () => ({
   getSafeSupabaseSession: vi.fn().mockResolvedValue({ session: null }),
 }))

@@ -7,8 +7,11 @@ import { BenefitStackView } from "@/components/benefit-orchestration/BenefitStac
 import { PageHeader } from "@/components/shared/PageHeader"
 import { PageIntro } from "@/components/shared/PageIntro"
 import type { BenefitStack } from "@/lib/benefit-orchestration/types"
+import { getMessage } from "@/lib/i18n/messages"
+import { useAppSelector } from "@/lib/redux/hooks"
 
 export default function BenefitStackPage() {
+  const language = useAppSelector((state) => state.app.language)
   const [stack, setStack] = useState<BenefitStack | null>(null)
   const [showWizard, setShowWizard] = useState(true)
 
@@ -25,8 +28,8 @@ export default function BenefitStackPage() {
     <div className="min-h-screen bg-gray-50">
       <PageHeader
         backHref="/customer/dashboard"
-        backLabel="Dashboard"
-        breadcrumbs={[{ label: "Benefit Stack" }]}
+        backLabel={getMessage(language, "bsDashboardLink")}
+        breadcrumbs={[{ label: getMessage(language, "bsBenefitStackLink") }]}
       />
 
       <main className="mx-auto max-w-4xl px-4 py-8">
@@ -34,8 +37,8 @@ export default function BenefitStackPage() {
           <PageIntro
             icon={<span className="text-2xl">🏛️</span>}
             iconBg="bg-blue-100"
-            title="Find All Your Benefits"
-            description="Answer a few questions once and we'll check your eligibility across all major MA safety-net programs — MassHealth, SNAP, EITC, childcare, housing, utilities, and more."
+            title={getMessage(language, "bsPageTitle")}
+            description={getMessage(language, "bsPageDesc")}
           />
         )}
 

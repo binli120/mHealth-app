@@ -26,18 +26,22 @@ import {
   APPEAL_DETAILS_MAX_LENGTH,
   MAX_DOCUMENT_UPLOAD_BYTES,
 } from "@/lib/appeals/constants"
+import { getAppealAssistantCopy } from "@/lib/appeals/copy"
 import type { AppealRequest, DenialReasonId } from "@/lib/appeals/types"
+import type { SupportedLanguage } from "@/lib/i18n/languages"
 import { useDocumentUpload } from "@/hooks/use-document-upload"
 
 interface DenialInputFormProps {
   onSubmit: (request: AppealRequest) => void
   isLoading: boolean
+  language?: SupportedLanguage
 }
 
 const ACCEPTED_MIME_STRING = [...ACCEPTED_DOCUMENT_MIME_TYPES].join(",")
 
 
-export function DenialInputForm({ onSubmit, isLoading }: DenialInputFormProps) {
+export function DenialInputForm({ onSubmit, isLoading, language = "en" }: DenialInputFormProps) {
+  const copy = getAppealAssistantCopy(language)
   const [denialReasonId, setDenialReasonId] = useState<DenialReasonId | "">("")
   const [denialDetails, setDenialDetails] = useState("")
   const { state: documentState, fileInputRef, handleFile, clear: handleClearDocument } = useDocumentUpload({
@@ -68,21 +72,21 @@ export function DenialInputForm({ onSubmit, isLoading }: DenialInputFormProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Tell us about your denial</CardTitle>
+        <CardTitle className="text-lg">{copy.formTitle}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Denial reason */}
           <div className="space-y-2">
             <Label htmlFor="denial-reason" className="text-sm font-medium text-gray-700">
-              Reason for denial <span className="text-destructive">*</span>
+              {copy.denialReason} <span className="text-destructive">*</span>
             </Label>
             <Select
               value={denialReasonId}
               onValueChange={(v) => setDenialReasonId(v as DenialReasonId)}
             >
               <SelectTrigger id="denial-reason" className="w-full">
-                <SelectValue placeholder="Select the reason your application was denied…" />
+                <SelectValue placeholder={copy.denialReasonPlaceholder} />
               </SelectTrigger>
               <SelectContent>
                 {APPEAL_DENIAL_REASONS.map((reason) => (
@@ -97,12 +101,11 @@ export function DenialInputForm({ onSubmit, isLoading }: DenialInputFormProps) {
           {/* Document upload */}
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700">
-              Upload denial letter{" "}
-              <span className="font-normal text-muted-foreground">(optional)</span>
+              {copy.uploadLetter}{" "}
+              <span className="font-normal text-muted-foreground">({copy.optional})</span>
             </Label>
             <p className="text-xs text-muted-foreground">
-              Attach a photo or scan of your denial letter so the AI can read the specific
-              details. Accepted: JPEG, PNG, WEBP, PDF (max 10 MB).
+              {copy.uploadHelp}
             </p>
 
             {/* Idle — show upload button */}
@@ -127,7 +130,7 @@ export function DenialInputForm({ onSubmit, isLoading }: DenialInputFormProps) {
                   }
                 >
                   <Paperclip className="h-4 w-4 shrink-0" />
-                  Click to attach denial letter…
+                  {copy.attachLetter}
                 </Label>
               </div>
             )}
@@ -140,7 +143,7 @@ export function DenialInputForm({ onSubmit, isLoading }: DenialInputFormProps) {
                   <p className="truncate text-sm font-medium text-gray-700">
                     {documentState.fileName}
                   </p>
-                  <p className="text-xs text-muted-foreground">Extracting document content…</p>
+                  <p className="text-xs text-muted-foreground">{copy.extracting}</p>
                 </div>
               </div>
             )}
@@ -158,18 +161,18 @@ export function DenialInputForm({ onSubmit, isLoading }: DenialInputFormProps) {
                       type="button"
                       onClick={handleClearDocument}
                       className="shrink-0 text-emerald-600 hover:text-emerald-800"
-                      aria-label="Remove document"
+                      aria-label={copy.removeDocument}
                     >
                       <X className="h-4 w-4" />
                     </button>
                   </div>
                   {documentState.extractedText ? (
                     <p className="text-xs text-emerald-700">
-                      Document read successfully — AI will use it to personalise your appeal.
+                      {copy.uploadSuccess}
                     </p>
                   ) : (
                     <p className="text-xs text-amber-700">
-                      No text could be extracted. The appeal will use the reason you selected above.
+                      {copy.uploadEmpty}
                     </p>
                   )}
                 </div>
@@ -189,7 +192,7 @@ export function DenialInputForm({ onSubmit, isLoading }: DenialInputFormProps) {
                       type="button"
                       onClick={handleClearDocument}
                       className="shrink-0 text-destructive/70 hover:text-destructive"
-                      aria-label="Dismiss error"
+                      aria-label={copy.dismissError}
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -207,7 +210,7 @@ export function DenialInputForm({ onSubmit, isLoading }: DenialInputFormProps) {
                 className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
               >
                 <FileText className="h-3.5 w-3.5" />
-                Replace with a different file
+                {copy.replaceFile}
               </button>
             )}
           </div>
@@ -215,12 +218,12 @@ export function DenialInputForm({ onSubmit, isLoading }: DenialInputFormProps) {
           {/* Additional details */}
           <div className="space-y-2">
             <Label htmlFor="denial-details" className="text-sm font-medium text-gray-700">
-              Additional details{" "}
-              <span className="font-normal text-muted-foreground">(optional)</span>
+              {copy.additionalDetails}{" "}
+              <span className="font-normal text-muted-foreground">({copy.optional})</span>
             </Label>
             <Textarea
               id="denial-details"
-              placeholder="Any extra context — e.g. the letter date, specific wording, or details not shown in the document…"
+              placeholder={copy.additionalDetailsPlaceholder}
               value={denialDetails}
               onChange={(e) =>
                 setDenialDetails(e.target.value.slice(0, APPEAL_DETAILS_MAX_LENGTH))
@@ -241,10 +244,10 @@ export function DenialInputForm({ onSubmit, isLoading }: DenialInputFormProps) {
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Analyzing…
+                {copy.analyzing}
               </>
             ) : (
-              "Analyze My Denial"
+              copy.analyzeMyDenial
             )}
           </Button>
         </form>

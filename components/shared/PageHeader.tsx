@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import type { ReactNode } from "react"
+import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher"
 
 interface BreadcrumbItem {
   label: string
@@ -56,7 +57,10 @@ export function PageHeader({
             </span>
           ))}
         </div>
-        {actions && <div>{actions}</div>}
+        <div className="flex items-center gap-2">
+          <LanguageSwitcher className="w-[130px] border-border bg-card text-foreground" />
+          {actions && <div>{actions}</div>}
+        </div>
       </div>
     </header>
   )

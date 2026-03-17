@@ -3,16 +3,20 @@
 import { AlertCircle, CheckCircle2, ClipboardCheck, Copy, FileText, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { getAppealAssistantCopy } from "@/lib/appeals/copy"
 import type { AppealAnalysis } from "@/lib/appeals/types"
+import type { SupportedLanguage } from "@/lib/i18n/languages"
 import { useClipboard } from "@/hooks/use-clipboard"
 
 interface AppealResultViewProps {
   analysis: AppealAnalysis
   denialReasonLabel: string
   onReset: () => void
+  language?: SupportedLanguage
 }
 
-export function AppealResultView({ analysis, denialReasonLabel, onReset }: AppealResultViewProps) {
+export function AppealResultView({ analysis, denialReasonLabel, onReset, language = "en" }: AppealResultViewProps) {
+  const copyText = getAppealAssistantCopy(language)
   const { copied, copy } = useClipboard()
 
   return (
@@ -21,8 +25,8 @@ export function AppealResultView({ analysis, denialReasonLabel, onReset }: Appea
       <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
         <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
         <div>
-          <p className="text-sm font-medium text-emerald-800">Appeal analysis complete</p>
-          <p className="text-xs text-emerald-600">Denial reason: {denialReasonLabel}</p>
+          <p className="text-sm font-medium text-emerald-800">{copyText.success}</p>
+          <p className="text-xs text-emerald-600">{copyText.denialReasonPrefix} {denialReasonLabel}</p>
         </div>
       </div>
 
@@ -31,7 +35,7 @@ export function AppealResultView({ analysis, denialReasonLabel, onReset }: Appea
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <AlertCircle className="h-5 w-5 text-amber-500" />
-            What This Means
+            {copyText.meaningTitle}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -45,7 +49,7 @@ export function AppealResultView({ analysis, denialReasonLabel, onReset }: Appea
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-base">
               <FileText className="h-5 w-5 text-blue-500" />
-              Your Appeal Letter
+              {copyText.letterTitle}
             </CardTitle>
             <Button
               variant="outline"
@@ -56,12 +60,12 @@ export function AppealResultView({ analysis, denialReasonLabel, onReset }: Appea
               {copied ? (
                 <>
                   <ClipboardCheck className="h-3.5 w-3.5 text-emerald-600" />
-                  <span className="text-emerald-600">Copied!</span>
+                  <span className="text-emerald-600">{copyText.copied}</span>
                 </>
               ) : (
                 <>
                   <Copy className="h-3.5 w-3.5" />
-                  Copy Letter
+                  {copyText.copyLetter}
                 </>
               )}
             </Button>
@@ -74,7 +78,7 @@ export function AppealResultView({ analysis, denialReasonLabel, onReset }: Appea
             </pre>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Appeal letter could not be generated. Please try again.
+              {copyText.letterFallback}
             </p>
           )}
         </CardContent>
@@ -86,7 +90,7 @@ export function AppealResultView({ analysis, denialReasonLabel, onReset }: Appea
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
               <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-              Evidence to Gather
+              {copyText.evidenceTitle}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -110,11 +114,10 @@ export function AppealResultView({ analysis, denialReasonLabel, onReset }: Appea
       <div className="space-y-3">
         <Button variant="outline" className="w-full gap-2" onClick={onReset}>
           <RefreshCw className="h-4 w-4" />
-          Start Over
+          {copyText.startOver}
         </Button>
         <p className="text-center text-xs text-gray-400">
-          This analysis is AI-generated and is not legal advice. For complex cases, consider
-          consulting a benefits attorney or legal aid organization.
+          {copyText.disclaimer}
         </p>
       </div>
     </div>

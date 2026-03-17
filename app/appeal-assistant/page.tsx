@@ -9,9 +9,11 @@ import { PageHeader } from "@/components/shared/PageHeader"
 import { PageIntro } from "@/components/shared/PageIntro"
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton"
 import { ErrorCard } from "@/components/shared/ErrorCard"
+import { getAppealAssistantCopy } from "@/lib/appeals/copy"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { APPEAL_DENIAL_REASONS } from "@/lib/appeals/constants"
 import type { AppealAnalysis, AppealRequest } from "@/lib/appeals/types"
+import { useAppSelector } from "@/lib/redux/hooks"
 
 type PageState = "form" | "loading" | "result" | "error"
 
@@ -26,6 +28,8 @@ interface AppealApiErrorResponse {
 }
 
 export default function AppealAssistantPage() {
+  const language = useAppSelector((state) => state.app.language)
+  const copy = getAppealAssistantCopy(language)
   const [pageState, setPageState] = useState<PageState>("form")
   const [analysis, setAnalysis] = useState<AppealAnalysis | null>(null)
   const [selectedReasonLabel, setSelectedReasonLabel] = useState("")
@@ -55,7 +59,7 @@ export default function AppealAssistantPage() {
       setAnalysis(payload.analysis)
       setPageState("result")
     } catch {
-      setErrorMessage("Could not connect to the server. Please try again.")
+      setErrorMessage(copy.serverError)
       setPageState("error")
     }
   }
@@ -71,8 +75,8 @@ export default function AppealAssistantPage() {
     <div className="min-h-screen bg-gray-50">
       <PageHeader
         backHref="/customer/dashboard"
-        backLabel="Dashboard"
-        breadcrumbs={[{ label: "Appeal Assistant" }]}
+        backLabel={copy.dashboard}
+        breadcrumbs={[{ label: copy.appealAssistant }]}
         maxWidth="max-w-3xl"
       />
 
@@ -81,8 +85,8 @@ export default function AppealAssistantPage() {
           <PageIntro
             icon={<Scale className="h-6 w-6 text-red-600" />}
             iconBg="bg-red-100"
-            title="Appeal Your MassHealth Denial"
-            description="Select your denial reason and we'll generate a personalized explanation, formal appeal letter, and evidence checklist — ready to submit."
+            title={copy.pageTitle}
+            description={copy.pageDescription}
           />
         )}
 
@@ -91,14 +95,15 @@ export default function AppealAssistantPage() {
         )}
 
         {pageState === "form" && (
-          <DenialInputForm onSubmit={handleSubmit} isLoading={false} />
+          <DenialInputForm onSubmit={handleSubmit} isLoading={false} language={language} />
         )}
 
         {pageState === "error" && (
           <ErrorCard
-            title="Analysis failed"
-            message={errorMessage ?? "An unexpected error occurred."}
+            title={copy.analysisFailed}
+            message={errorMessage ?? copy.unexpectedError}
             onRetry={() => setPageState("form")}
+            retryLabel={copy.retry}
           />
         )}
 
@@ -107,6 +112,7 @@ export default function AppealAssistantPage() {
             analysis={analysis}
             denialReasonLabel={selectedReasonLabel}
             onReset={handleReset}
+            language={language}
           />
         )}
       </main>

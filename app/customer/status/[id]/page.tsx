@@ -4,9 +4,12 @@ import { use, useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { getMessage } from "@/lib/i18n/messages"
+import { type SupportedLanguage } from "@/lib/i18n/languages"
 import { MASSHEALTH_APPLICATION_TYPES } from "@/lib/masshealth/application-types"
 import { type ApplicationStatus } from "@/lib/application-status"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { useAppSelector } from "@/lib/redux/hooks"
 import { ShieldHeartIcon, UserBadgeIcon } from "@/lib/icons"
 import {
   AlertCircle,
@@ -51,28 +54,11 @@ interface TimelineEvent {
   state: "completed" | "current" | "pending"
 }
 
-const statusConfig: Record<
-  ApplicationStatus,
-  {
-    label: string
-    color: string
-    icon: typeof FileText
-  }
-> = {
-  draft: { label: "Draft", color: "bg-secondary text-secondary-foreground", icon: FileText },
-  submitted: { label: "Submitted", color: "bg-primary/10 text-primary", icon: Clock },
-  ai_extracted: { label: "AI Extracted", color: "bg-accent/10 text-accent", icon: Clock },
-  needs_review: { label: "Under Review", color: "bg-accent/10 text-accent", icon: Clock },
-  rfi_requested: { label: "Info Needed", color: "bg-warning/10 text-warning", icon: AlertCircle },
-  approved: { label: "Approved", color: "bg-success/10 text-success", icon: CheckCircle2 },
-  denied: { label: "Denied", color: "bg-destructive/10 text-destructive", icon: AlertCircle },
-}
-
 const APPLICATION_TYPE_LABELS = new Map<string, string>(
   MASSHEALTH_APPLICATION_TYPES.map((item) => [item.id, item.shortLabel]),
 )
 
-function formatDate(value: string | null): string {
+function formatDate(value: string | null, locale: string): string {
   if (!value) {
     return "—"
   }
@@ -82,14 +68,14 @@ function formatDate(value: string | null): string {
     return "—"
   }
 
-  return date.toLocaleDateString("en-US", {
+  return date.toLocaleDateString(locale, {
     month: "short",
     day: "2-digit",
     year: "numeric",
   })
 }
 
-function formatDateTime(value: string | null): string {
+function formatDateTime(value: string | null, locale: string): string {
   if (!value) {
     return "—"
   }
@@ -99,7 +85,7 @@ function formatDateTime(value: string | null): string {
     return "—"
   }
 
-  return date.toLocaleString("en-US", {
+  return date.toLocaleString(locale, {
     month: "short",
     day: "2-digit",
     year: "numeric",
@@ -142,7 +128,7 @@ function readCurrentIncome(record: ApplicationDraftRecord | null): string {
   return "—"
 }
 
-function buildTimeline(record: ApplicationDraftRecord | null): TimelineEvent[] {
+function buildTimeline(record: ApplicationDraftRecord | null, language: SupportedLanguage): TimelineEvent[] {
   if (!record) {
     return []
   }
@@ -150,9 +136,9 @@ function buildTimeline(record: ApplicationDraftRecord | null): TimelineEvent[] {
   const events: TimelineEvent[] = [
     {
       id: "started",
-      title: "Application Started",
-      description: "Draft was created and can be resumed anytime.",
-      date: formatDateTime(record.createdAt),
+      title: getMessage(language, "statusDetailStartedTitle"),
+      description: getMessage(language, "statusDetailStartedDesc"),
+      date: formatDateTime(record.createdAt, language),
       state: "completed",
     },
   ]
@@ -160,9 +146,9 @@ function buildTimeline(record: ApplicationDraftRecord | null): TimelineEvent[] {
   if (record.lastSavedAt) {
     events.push({
       id: "saved",
-      title: "Draft Saved",
-      description: `Progress saved up to step ${record.draftStep ?? "—"}.`,
-      date: formatDateTime(record.lastSavedAt),
+      title: getMessage(language, "statusDetailSavedTitle"),
+      description: `${getMessage(language, "statusDetailSavedDescPrefix")} ${record.draftStep ?? "—"}.`,
+      date: formatDateTime(record.lastSavedAt, language),
       state: record.status === "draft" ? "current" : "completed",
     })
   }
@@ -170,9 +156,9 @@ function buildTimeline(record: ApplicationDraftRecord | null): TimelineEvent[] {
   if (record.submittedAt || record.status !== "draft") {
     events.push({
       id: "submitted",
-      title: "Application Submitted",
-      description: "Application submitted for review.",
-      date: formatDateTime(record.submittedAt),
+      title: getMessage(language, "statusDetailSubmittedTitle"),
+      description: getMessage(language, "statusDetailSubmittedDesc"),
+      date: formatDateTime(record.submittedAt, language),
       state:
         record.status === "draft"
           ? "pending"
@@ -187,28 +173,48 @@ function buildTimeline(record: ApplicationDraftRecord | null): TimelineEvent[] {
 
   events.push({
     id: "decision",
-    title: "Decision",
-    description: "Final determination by MassHealth.",
-    date: record.status === "approved" || record.status === "denied" ? "Completed" : "Pending",
+    title: getMessage(language, "statusDetailDecisionTitle"),
+    description: getMessage(language, "statusDetailDecisionDesc"),
+    date: record.status === "approved" || record.status === "denied"
+      ? getMessage(language, "statusDetailCompleted")
+      : getMessage(language, "statusDetailPending"),
     state: record.status === "approved" || record.status === "denied" ? "completed" : "pending",
   })
 
   return events
 }
 
-function getApplicationTypeLabel(type: string | null): string {
+function getApplicationTypeLabel(type: string | null, language: SupportedLanguage): string {
   if (!type) {
-    return "Application"
+    return getMessage(language, "statusListApplicationFallback")
   }
 
   return APPLICATION_TYPE_LABELS.get(type) ?? type.toUpperCase()
 }
 
 export default function StatusDetailPage({ params }: PageProps) {
+  const language = useAppSelector((state) => state.app.language)
   const { id } = use(params)
   const [record, setRecord] = useState<ApplicationDraftRecord | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+
+  const statusConfig = useMemo<Record<ApplicationStatus, {
+    label: string
+    color: string
+    icon: typeof FileText
+  }>>(
+    () => ({
+      draft: { label: getMessage(language, "dashboardStatusDraft"), color: "bg-secondary text-secondary-foreground", icon: FileText },
+      submitted: { label: getMessage(language, "dashboardStatusSubmitted"), color: "bg-primary/10 text-primary", icon: Clock },
+      ai_extracted: { label: getMessage(language, "dashboardStatusAiExtracted"), color: "bg-accent/10 text-accent", icon: Clock },
+      needs_review: { label: getMessage(language, "dashboardStatusNeedsReview"), color: "bg-accent/10 text-accent", icon: Clock },
+      rfi_requested: { label: getMessage(language, "dashboardStatusRfiRequested"), color: "bg-warning/10 text-warning", icon: AlertCircle },
+      approved: { label: getMessage(language, "dashboardStatusApproved"), color: "bg-success/10 text-success", icon: CheckCircle2 },
+      denied: { label: getMessage(language, "dashboardStatusDenied"), color: "bg-destructive/10 text-destructive", icon: AlertCircle },
+    }),
+    [language],
+  )
 
   const loadRecord = useCallback(async () => {
     setIsLoading(true)
@@ -221,23 +227,23 @@ export default function StatusDetailPage({ params }: PageProps) {
       const payload = (await response.json().catch(() => ({}))) as DraftApiResponse
 
       if (!response.ok || !payload.ok || !payload.record) {
-        throw new Error(payload.error || "Application was not found.")
+        throw new Error(payload.error || getMessage(language, "statusDetailNotFound"))
       }
 
       setRecord(payload.record)
     } catch (error) {
-      setLoadError(error instanceof Error ? error.message : "Application was not found.")
+      setLoadError(error instanceof Error ? error.message : getMessage(language, "statusDetailNotFound"))
       setRecord(null)
     } finally {
       setIsLoading(false)
     }
-  }, [id])
+  }, [id, language])
 
   useEffect(() => {
     void loadRecord()
   }, [loadRecord])
 
-  const timelineSteps = useMemo(() => buildTimeline(record), [record])
+  const timelineSteps = useMemo(() => buildTimeline(record, language), [language, record])
   const applicantName = useMemo(() => readContactField(record, "p1_name"), [record])
   const householdSize = useMemo(() => readHouseholdSize(record), [record])
   const monthlyIncome = useMemo(() => readCurrentIncome(record), [record])
@@ -255,7 +261,7 @@ export default function StatusDetailPage({ params }: PageProps) {
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span className="text-sm">Back to Applications</span>
+            <span className="text-sm">{getMessage(language, "statusDetailBackToApplications")}</span>
           </Link>
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
@@ -270,7 +276,7 @@ export default function StatusDetailPage({ params }: PageProps) {
         {isLoading ? (
           <Card className="border-border bg-card">
             <CardContent className="p-4 text-sm text-muted-foreground">
-              Loading application details...
+              {getMessage(language, "statusDetailLoading")}
             </CardContent>
           </Card>
         ) : loadError ? (
@@ -278,7 +284,7 @@ export default function StatusDetailPage({ params }: PageProps) {
             <CardContent className="space-y-3 p-4">
               <p className="text-sm text-destructive">{loadError}</p>
               <Button type="button" variant="outline" size="sm" onClick={() => void loadRecord()}>
-                Retry
+                {getMessage(language, "statusListRetry")}
               </Button>
             </CardContent>
           </Card>
@@ -289,7 +295,7 @@ export default function StatusDetailPage({ params }: PageProps) {
                 <div>
                   <div className="flex items-center gap-3">
                     <h1 className="text-2xl font-bold text-foreground">
-                      {getApplicationTypeLabel(record.applicationType)}
+                      {getApplicationTypeLabel(record.applicationType, language)}
                     </h1>
                     <span
                       className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${status.color}`}
@@ -304,7 +310,7 @@ export default function StatusDetailPage({ params }: PageProps) {
                   <Link href={editHref}>
                     <Button variant="outline" size="sm" className="gap-2">
                       <Edit3 className="h-4 w-4" />
-                      {record.status === "draft" ? "Continue Draft" : "Edit"}
+                      {record.status === "draft" ? getMessage(language, "statusDetailContinueDraft") : getMessage(language, "statusDetailEdit")}
                     </Button>
                   </Link>
                 </div>
@@ -315,8 +321,8 @@ export default function StatusDetailPage({ params }: PageProps) {
               <div className="space-y-6 lg:col-span-2">
                 <Card className="border-border bg-card">
                   <CardHeader>
-                    <CardTitle className="text-card-foreground">Application Timeline</CardTitle>
-                    <CardDescription>Track your application progress</CardDescription>
+                    <CardTitle className="text-card-foreground">{getMessage(language, "statusDetailTimelineTitle")}</CardTitle>
+                    <CardDescription>{getMessage(language, "statusDetailTimelineDesc")}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="relative">
@@ -372,17 +378,17 @@ export default function StatusDetailPage({ params }: PageProps) {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-card-foreground">
                         <AlertCircle className="h-5 w-5 text-warning" />
-                        Additional Information Requested
+                        {getMessage(language, "statusDetailAdditionalInfoTitle")}
                       </CardTitle>
                       <CardDescription>
-                        Please review your case and upload requested documents.
+                        {getMessage(language, "statusDetailAdditionalInfoDesc")}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <Link href={editHref}>
                         <Button size="sm" variant="outline" className="gap-2">
                           <Upload className="h-4 w-4" />
-                          Open Application
+                          {getMessage(language, "statusDetailOpenApplication")}
                         </Button>
                       </Link>
                     </CardContent>
@@ -394,7 +400,7 @@ export default function StatusDetailPage({ params }: PageProps) {
                 <Card className="border-border bg-card">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base text-card-foreground">
-                      Application Summary
+                      {getMessage(language, "statusDetailSummaryTitle")}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -403,7 +409,7 @@ export default function StatusDetailPage({ params }: PageProps) {
                         <UserBadgeIcon color="currentColor" className="h-4 w-4 text-primary" />
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Applicant</p>
+                        <p className="text-xs text-muted-foreground">{getMessage(language, "statusDetailApplicant")}</p>
                         <p className="text-sm font-medium text-foreground">
                           {applicantName || "—"}
                         </p>
@@ -414,7 +420,7 @@ export default function StatusDetailPage({ params }: PageProps) {
                         <Users className="h-4 w-4 text-accent" />
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Household Size</p>
+                        <p className="text-xs text-muted-foreground">{getMessage(language, "statusDetailHouseholdSize")}</p>
                         <p className="text-sm font-medium text-foreground">
                           {householdSize ? `${householdSize} member${householdSize > 1 ? "s" : ""}` : "—"}
                         </p>
@@ -425,7 +431,7 @@ export default function StatusDetailPage({ params }: PageProps) {
                         <DollarSign className="h-4 w-4 text-success" />
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Income (Current Year)</p>
+                        <p className="text-xs text-muted-foreground">{getMessage(language, "statusDetailIncomeCurrentYear")}</p>
                         <p className="text-sm font-medium text-foreground">{monthlyIncome}</p>
                       </div>
                     </div>
@@ -434,9 +440,9 @@ export default function StatusDetailPage({ params }: PageProps) {
                         <Calendar className="h-4 w-4 text-warning" />
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Last Saved</p>
+                        <p className="text-xs text-muted-foreground">{getMessage(language, "statusDetailLastSaved")}</p>
                         <p className="text-sm font-medium text-foreground">
-                          {formatDate(record.lastSavedAt ?? record.updatedAt)}
+                          {formatDate(record.lastSavedAt ?? record.updatedAt, language)}
                         </p>
                       </div>
                     </div>
@@ -445,12 +451,12 @@ export default function StatusDetailPage({ params }: PageProps) {
 
                 <Card className="border-border bg-card">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base text-card-foreground">Dates</CardTitle>
+                    <CardTitle className="text-base text-card-foreground">{getMessage(language, "statusDetailDatesTitle")}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm text-muted-foreground">
-                    <p>Created: {formatDate(record.createdAt)}</p>
-                    <p>Submitted: {formatDate(record.submittedAt)}</p>
-                    <p>Draft Step: {record.draftStep ?? "—"}</p>
+                    <p>{getMessage(language, "statusDetailCreated")}: {formatDate(record.createdAt, language)}</p>
+                    <p>{getMessage(language, "statusListSubmitted")}: {formatDate(record.submittedAt, language)}</p>
+                    <p>{getMessage(language, "statusDetailDraftStep")}: {record.draftStep ?? "—"}</p>
                   </CardContent>
                 </Card>
               </div>
