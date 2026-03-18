@@ -1,13 +1,22 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
 
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 import { logServerError } from "@/lib/server/logger"
 import { updateAvatarUrl } from "@/lib/db/user-profile"
+import {
+  uploadToStorage,
+  deleteFromStorage,
+  listStorageFolder,
+  buildAvatarStoragePath,
+  getSignedDocumentUrl,
+} from "@/lib/supabase/storage"
 
 export const runtime = "nodejs"
 
-const BUCKET = "profile-avatars"
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
 const MAX_BYTES = 5 * 1024 * 1024 // 5 MB
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"])
 const EXT_MAP: Record<string, string> = {
@@ -17,53 +26,22 @@ const EXT_MAP: Record<string, string> = {
   "image/gif": "gif",
 }
 
-/** Build a per-request Supabase client that carries the user's JWT so Storage
- *  RLS policies can validate the uploader's identity. */
-function makeStorageClient(accessToken: string) {
-  const preferLocal = process.env.NODE_ENV !== "production"
-  const url =
-    (preferLocal
-      ? process.env.NEXT_PUBLIC_SUPABASE_URL_LOCAL
-      : undefined) ?? process.env.NEXT_PUBLIC_SUPABASE_URL
-
-  // Prefer service-role key when available (bypasses RLS on Storage).
-  // Falls back to the anon key with the user's JWT, which requires proper
-  // bucket RLS policies (see database/migrations/add_avatar_url.sql).
-  const key =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ??
-    (preferLocal
-      ? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY_LOCAL ??
-        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY_LOCAL
-      : undefined) ??
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-
-  if (!url || !key) throw new Error("Missing Supabase env vars for storage.")
-
-  return createClient(url, key, {
-    global: { headers: { Authorization: `Bearer ${accessToken}` } },
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-  })
-}
-
-function extractBearerToken(request: Request): string | null {
+function extractBearerToken(request: Request): string | undefined {
   const header = request.headers.get("authorization") ?? ""
   const [scheme, token] = header.trim().split(/\s+/, 2)
-  if (!scheme || !token || scheme.toLowerCase() !== "bearer") return null
-  return token
+  return scheme?.toLowerCase() === "bearer" && token ? token : undefined
 }
 
-// ── POST /api/user-profile/avatar ─────────────────────────────────────────────
-
+// ---------------------------------------------------------------------------
+// POST /api/user-profile/avatar
+// Uploads an avatar image to masshealth-dev/{userId}/avatar/avatar.{ext}
+// Stores the storage PATH in the DB (not a URL — see getUserProfile for how
+// a signed URL is generated on read).
+// ---------------------------------------------------------------------------
 export async function POST(request: Request) {
   try {
     const authResult = await requireAuthenticatedUser(request)
     if (!authResult.ok) return authResult.response
-
-    const accessToken = extractBearerToken(request)
-    if (!accessToken) {
-      return NextResponse.json({ ok: false, error: "Bearer token required for storage upload." }, { status: 401 })
-    }
 
     const formData = await request.formData().catch(() => null)
     const file = formData?.get("image")
@@ -86,59 +64,59 @@ export async function POST(request: Request) {
     }
 
     const ext = EXT_MAP[file.type] ?? "jpg"
-    const storagePath = `${authResult.userId}/avatar.${ext}`
-    const bytes = await file.arrayBuffer()
+    // Path: {userId}/avatar/avatar.{ext}  (fixed name → upsert replaces previous)
+    const storagePath = buildAvatarStoragePath(authResult.userId, ext)
+    const fileBuffer = Buffer.from(await file.arrayBuffer())
+    const accessToken = extractBearerToken(request)
 
-    const supabase = makeStorageClient(accessToken)
-    const { error: uploadError } = await supabase.storage
-      .from(BUCKET)
-      .upload(storagePath, bytes, {
-        contentType: file.type,
-        upsert: true,
-      })
+    // Upload (upsert: true so changing JPEG → PNG replaces the old file cleanly)
+    await uploadToStorage({
+      accessToken,
+      fileBuffer,
+      mimeType: file.type,
+      storagePath,
+      upsert: true,
+    })
 
-    if (uploadError) {
-      logServerError("[avatar-upload]", uploadError, { userId: authResult.userId })
-      return NextResponse.json({ ok: false, error: "Failed to upload image." }, { status: 500 })
+    // Persist the storage PATH (not a URL) so getUserProfile can always
+    // generate a fresh signed URL on demand, regardless of expiry.
+    await updateAvatarUrl(authResult.userId, storagePath)
+
+    // Return a short-lived signed URL so the UI can display the new avatar immediately
+    const accessToken2 = extractBearerToken(request)
+    let signedUrl: string | null = null
+    try {
+      signedUrl = await getSignedDocumentUrl({ accessToken: accessToken2, storagePath })
+    } catch {
+      // Non-fatal — client can re-fetch the profile to get a fresh URL
     }
 
-    // Build a cache-busted public URL so browsers fetch the new image immediately.
-    const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(storagePath)
-    const avatarUrl = `${urlData.publicUrl}?v=${Date.now()}`
-
-    await updateAvatarUrl(authResult.userId, avatarUrl)
-
-    return NextResponse.json({ ok: true, avatarUrl }, { status: 200 })
+    return NextResponse.json({ ok: true, avatarUrl: signedUrl ?? storagePath }, { status: 200 })
   } catch (error) {
     logServerError("[avatar-upload]", error, { route: "POST /api/user-profile/avatar" })
     return NextResponse.json({ ok: false, error: "Failed to upload avatar." }, { status: 500 })
   }
 }
 
-// ── DELETE /api/user-profile/avatar ───────────────────────────────────────────
-
+// ---------------------------------------------------------------------------
+// DELETE /api/user-profile/avatar
+// Removes all avatar files for this user and clears the DB record.
+// ---------------------------------------------------------------------------
 export async function DELETE(request: Request) {
   try {
     const authResult = await requireAuthenticatedUser(request)
     if (!authResult.ok) return authResult.response
 
     const accessToken = extractBearerToken(request)
-    if (!accessToken) {
-      return NextResponse.json({ ok: false, error: "Bearer token required." }, { status: 401 })
+    const avatarFolder = `${authResult.userId}/avatar`
+
+    // List and delete all files under {userId}/avatar/
+    const paths = await listStorageFolder({ accessToken, folderPath: avatarFolder })
+    if (paths.length > 0) {
+      await deleteFromStorage({ accessToken, storagePaths: paths })
     }
 
-    const supabase = makeStorageClient(accessToken)
-
-    // Remove all avatar files for this user (any extension).
-    const { data: listed } = await supabase.storage
-      .from(BUCKET)
-      .list(authResult.userId)
-
-    if (listed && listed.length > 0) {
-      const paths = listed.map((f) => `${authResult.userId}/${f.name}`)
-      await supabase.storage.from(BUCKET).remove(paths)
-    }
-
+    // Clear the stored path in the DB
     await updateAvatarUrl(authResult.userId, null)
 
     return NextResponse.json({ ok: true }, { status: 200 })

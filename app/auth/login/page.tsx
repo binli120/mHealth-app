@@ -62,6 +62,12 @@ function LoginPageContent() {
         return
       }
 
+      // Clear any stale local session before attempting sign-in.
+      // This prevents "Invalid Refresh Token" console errors that appear when
+      // localStorage still holds a refresh token from a previous session that
+      // is no longer valid server-side (e.g. after a DB reset or long inactivity).
+      await supabase.auth.signOut({ scope: "local" })
+
       const tryDevRepairAndSignIn = async (params: { email: string; password: string }) => {
         if (!localAuthHelperEnabled) {
           return { ok: false as const, error: "Local auth helper is disabled." }

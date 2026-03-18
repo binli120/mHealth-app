@@ -26,7 +26,13 @@ describe("lib/supabase/client", () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co"
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon"
 
-    const fakeClient = { from: vi.fn() }
+    const fakeClient = {
+      from: vi.fn(),
+      auth: {
+        getSession: vi.fn().mockResolvedValue({ error: null }),
+        signOut: vi.fn().mockResolvedValue({}),
+      },
+    }
     createClientMock.mockReturnValue(fakeClient)
 
     const { getSupabaseClient } = await import("@/lib/supabase/client")

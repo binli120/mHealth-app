@@ -10,6 +10,28 @@ import type {
   StoredBankData,
 } from "@/lib/user-profile/types"
 import type { CitizenshipStatus } from "@/lib/benefit-orchestration/types"
+import { getSignedDocumentUrl } from "@/lib/supabase/storage"
+
+// ---------------------------------------------------------------------------
+// Internal helper: resolve an avatar_url DB value into a displayable URL.
+//
+// Historical rows may contain a full public URL (http://...) from the old
+// profile-avatars bucket.  New rows store a bare storage path such as
+// "{userId}/avatar/avatar.jpg".  We detect which case we have and either
+// return the legacy URL as-is or generate a fresh signed URL from the path.
+// ---------------------------------------------------------------------------
+async function resolveAvatarUrl(raw: string | null): Promise<string | null> {
+  if (!raw) return null
+  // Legacy public URL — return unchanged
+  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw
+  // Storage path — generate a signed URL (1-hour TTL; no access token needed
+  // because the server client uses the service-role key)
+  try {
+    return await getSignedDocumentUrl({ storagePath: raw })
+  } catch {
+    return null
+  }
+}
 
 // ── Internal helpers ───────────────────────────────────────────────────────────
 
@@ -86,6 +108,10 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     ...(row.profile_data ?? {}),
   }
 
+  // Resolve the raw DB value (storage path or legacy public URL) into a
+  // usable URL the browser can load directly.
+  const avatarUrl = await resolveAvatarUrl(row.avatar_url)
+
   return {
     firstName: row.first_name,
     lastName: row.last_name,
@@ -98,7 +124,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     zip: row.zip,
     citizenshipStatus: row.citizenship_status,
     profileData,
-    avatarUrl: row.avatar_url ?? null,
+    avatarUrl,
     hasBankAccount: !!bank?.routingNumberEncrypted,
     bankLastFour: bank?.lastFourDigits ?? null,
     bankName: bank?.bankName ?? null,

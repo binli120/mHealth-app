@@ -8,7 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { MASSHEALTH_APPLICATION_TYPES } from "@/lib/masshealth/application-types"
 import { type ApplicationStatus } from "@/lib/application-status"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
-import { useAppSelector } from "@/lib/redux/hooks"
+import { useAppSelector, useAppDispatch } from "@/lib/redux/hooks"
+import { setProfile } from "@/lib/redux/features/user-profile-slice"
+import type { UserProfile } from "@/lib/user-profile/types"
 import { getMessage } from "@/lib/i18n/messages"
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher"
 import {
@@ -76,10 +78,34 @@ function getApplicationTypeLabel(type: string | null): string {
 }
 
 export default function CustomerDashboardPage() {
+  const dispatch = useAppDispatch()
   const language = useAppSelector((state) => state.app.language)
   const userProfile = useAppSelector((state) => state.userProfile.profile)
 
   const [firstName, setFirstName] = useState("")
+
+  // Fetch the user profile on mount if Redux doesn't already have it.
+  // This ensures the navbar avatar always shows even when the user lands
+  // on the dashboard directly (without visiting the profile page first).
+  useEffect(() => {
+    if (userProfile) return // already loaded — no need to fetch again
+
+    let cancelled = false
+    authenticatedFetch("/api/user-profile", { cache: "no-store" })
+      .then((res) => res.json().catch(() => ({})))
+      .then((payload: { ok?: boolean; profile?: UserProfile }) => {
+        if (!cancelled && payload.ok && payload.profile) {
+          dispatch(setProfile(payload.profile))
+        }
+      })
+      .catch(() => {
+        // Non-fatal — avatar simply won't show until the user visits the profile page
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [dispatch, userProfile])
 
   const applicationsFetcher = useCallback(async () => {
     const response = await authenticatedFetch("/api/applications?limit=6", {

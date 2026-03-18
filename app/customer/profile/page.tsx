@@ -78,7 +78,13 @@ export default function CustomerProfilePage() {
   useEffect(() => { void loadProfile() }, [loadProfile])
 
   const handleSectionSave = (updated: Partial<UserProfile>) => {
-    setLocalProfile((prev) => (prev ? { ...prev, ...updated } : prev))
+    setLocalProfile((prev) => {
+      const next = prev ? { ...prev, ...updated } : prev
+      // Keep Redux in sync so the dashboard navbar avatar updates immediately
+      // without requiring a page reload or a separate profile fetch.
+      if (next) dispatch(setProfile(next))
+      return next
+    })
   }
 
   return (

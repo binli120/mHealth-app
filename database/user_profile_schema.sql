@@ -13,6 +13,9 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   profile_data  JSONB       NOT NULL DEFAULT '{}',
   -- AES-256-GCM encrypted bank routing/account numbers + masked last-4
   bank_data     JSONB       NOT NULL DEFAULT '{}',
+  -- Supabase Storage path: {userId}/avatar/avatar.{ext}
+  -- Legacy rows may hold a full public URL (http://...); new rows use the storage path.
+  avatar_url    TEXT,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (applicant_id)  -- one profile per applicant

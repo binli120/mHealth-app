@@ -26,6 +26,23 @@ export function getSupabaseClient() {
   }
 
   supabaseClient = createClient(supabaseUrl, supabaseAnonKey)
+
+  // ── Eager stale-session recovery ──────────────────────────────────────────
+  // The Supabase SDK schedules a background auto-refresh as soon as the client
+  // is created.  If localStorage holds an expired / invalid refresh token (e.g.
+  // after a DB reset or a long time between logins), that background refresh
+  // fires, gets a 400 from the server, and the SDK logs an AuthApiError to the
+  // console BEFORE any of our safe-wrapper code runs.
+  //
+  // Calling getSession() eagerly here races ahead of the background timer,
+  // detects the bad token first, and wipes it via signOut({ scope: "local" })
+  // so the SDK never attempts the doomed background refresh.
+  void supabaseClient.auth.getSession().then(({ error }) => {
+    if (error && isInvalidRefreshTokenError(error.message)) {
+      void supabaseClient?.auth.signOut({ scope: "local" })
+    }
+  })
+
   return supabaseClient
 }
 
