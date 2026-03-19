@@ -1,4 +1,9 @@
 /**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
+/**
  * Shared constants for the MassHealth modules.
  */
 

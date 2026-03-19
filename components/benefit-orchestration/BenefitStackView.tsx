@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 "use client"
 
 import { ExternalLink, Phone, RefreshCw, TrendingUp } from "lucide-react"

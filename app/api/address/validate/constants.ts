@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 export const ADDRESS_VALIDATE_RUNTIME = "nodejs"
 
 export const STATE_CODE_LENGTH = 2

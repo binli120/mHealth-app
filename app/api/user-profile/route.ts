@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import { NextResponse } from "next/server"
 import { z } from "zod"
 

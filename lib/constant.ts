@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import acaSchemaData from "@/config/ACA-3-0325.json"
 import type { AcaSchema, SchemaSection } from "@/components/application/aca3/types"
 

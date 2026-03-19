@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 // Childcare Financial Assistance (CCFA) evaluator
 // MA Department of Early Education and Care (EEC) / DTA
 // https://www.mass.gov/child-care-financial-assistance

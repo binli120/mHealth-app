@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 // MassHealth Conversational Eligibility Pre-screener
 // Rule Engine based on 2026 Federal Poverty Level Guidelines & MassHealth Regulations
 

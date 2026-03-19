@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit"
 import type { AppDispatch, RootState } from "@/lib/redux/store"
 import { getSafeSupabaseUser } from "@/lib/supabase/client"

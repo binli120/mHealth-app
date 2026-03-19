@@ -1,4 +1,9 @@
 /**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
+/**
  * Full Happy Path Demo Tour
  *
  * Designed for investor/customer demos. Runs in headed mode with slow motion.

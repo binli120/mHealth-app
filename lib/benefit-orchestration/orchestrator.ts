@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 // Cross-Program Benefit Orchestration Engine
 // Single intake → evaluate all MA safety-net programs → ranked benefit stack
 

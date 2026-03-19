@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 interface AamvaFieldMap {
   [code: string]: string
 }

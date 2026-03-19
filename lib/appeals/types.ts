@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 export type DenialReasonId =
   | "missing_disability_proof"
   | "income_exceeds_limit"

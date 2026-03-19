@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 

@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import { configureStore } from "@reduxjs/toolkit"
 
 import { applicationReducer } from "@/lib/redux/features/application-slice"

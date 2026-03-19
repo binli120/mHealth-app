@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 export const SUPPORTED_LANGUAGES = [
   { code: "en", label: "English" },
   { code: "zh-CN", label: "简体中文" },

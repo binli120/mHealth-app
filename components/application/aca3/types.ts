@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import type { Dispatch } from "react"
 import type { ConditionalRule } from "@/hooks/use-conditional"
 import type { EligibilityFinding, EligibilityRuleResult } from "@/lib/masshealth/aca3-eligibility-engine"

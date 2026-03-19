@@ -1,4 +1,9 @@
 /**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
+/**
  * TypeScript Utility Types Library
  * 
  * A collection of commonly used utility types for TypeScript projects.

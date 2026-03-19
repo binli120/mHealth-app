@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 export { evaluateBenefitStack } from './orchestrator'
 export { computeDerivedFields, computeTotalMonthlyIncome, computeEarnedIncome, emptyIncome, sumIncome } from './fpl-utils'
 export type {

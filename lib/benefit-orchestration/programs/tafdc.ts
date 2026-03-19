@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 // TAFDC (Transitional Aid to Families with Dependent Children) evaluator
 // MA DTA — cash assistance for families with children under 18
 // https://www.mass.gov/tafdc

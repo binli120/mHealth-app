@@ -1,4 +1,9 @@
 /**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
+/**
  * Demo data used across all E2E tests and investor demos.
  * The demo user is created once in global.setup.ts via the dev-register API.
  */

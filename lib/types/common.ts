@@ -1,4 +1,9 @@
 /**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
+/**
  * Generic API response shape used across all API routes.
  *
  * Success:  { ok: true;  data: T }

@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 function onlyDigits(value: string): string {
   return value.replace(/\D/g, "")
 }

@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 // ── Notification types ─────────────────────────────────────────────────────────
 
 export type NotificationType =

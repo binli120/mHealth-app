@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import { test, expect } from "@playwright/test"
 import { BenefitStackPage } from "../pages/benefit-stack.page"
 import * as path from "path"

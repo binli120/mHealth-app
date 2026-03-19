@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 // Medicare Savings Program evaluator
 import type { FamilyProfile, BenefitResult } from '../types'
 import { getAnnualFPL } from '../fpl-utils'

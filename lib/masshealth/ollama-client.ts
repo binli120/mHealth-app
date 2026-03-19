@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import "server-only"
 
 import { DEFAULT_OLLAMA_BASE_URL, OLLAMA_CHAT_ENDPOINT } from "@/lib/rag/constants"

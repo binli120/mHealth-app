@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import { PDFDocument } from "pdf-lib"
 import _pdfParse from "pdf-parse"
 

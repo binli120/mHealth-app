@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import { FPL_TABLE_2026, FPL_INCREMENT_AFTER_4 } from "./constants"
 import type {
   CitizenshipStatus,

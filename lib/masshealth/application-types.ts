@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 // Types are defined in types.ts; re-exported here for backward compatibility.
 import type { MassHealthApplicationType, MassHealthApplicationTypeOption } from "./types"
 export type { MassHealthApplicationType, MassHealthApplicationTypeOption }

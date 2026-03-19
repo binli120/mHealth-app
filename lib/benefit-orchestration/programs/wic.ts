@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 // WIC (Women, Infants, Children) evaluator
 // USDA program administered by MA DPH
 // https://www.mass.gov/wic

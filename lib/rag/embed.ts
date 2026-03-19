@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import "server-only"
 
 // RAG Embedding Client — Ollama nomic-embed-text (768-dim)

@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const queryMock = vi.fn()

@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import { describe, expect, it } from "vitest"
 
 import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, isSupportedLanguage } from "@/lib/i18n/languages"

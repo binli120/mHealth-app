@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 export const ERROR_APPLICATION_DRAFT_NOT_FOUND = "Application draft not found."
 export const ERROR_WIZARD_STATE_REQUIRED = "wizardState object is required."
 export const ERROR_UNKNOWN_SERVER = "Unknown server error"

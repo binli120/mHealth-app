@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 // LIHEAP / Fuel Assistance evaluator
 // Low Income Home Energy Assistance Program — administered by DHCD in MA
 // https://www.mass.gov/fuel-assistance

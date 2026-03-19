@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib"

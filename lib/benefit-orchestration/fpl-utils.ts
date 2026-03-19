@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 // Re-export FPL utilities from the existing engine and add profile-level helpers
 export {
   getAnnualFPL,

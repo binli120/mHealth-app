@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 export const APPLICATION_STATUSES = [
   "draft",
   "submitted",

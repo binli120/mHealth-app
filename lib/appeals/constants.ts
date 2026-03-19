@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import type { DenialReasonOption } from "./types"
 
 export const APPEAL_DENIAL_REASONS: DenialReasonOption[] = [

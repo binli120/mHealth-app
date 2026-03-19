@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 // EAEDC (Emergency Aid to the Elderly, Disabled and Children) evaluator
 // MA DTA — cash assistance for those not eligible for TAFDC
 // https://www.mass.gov/eaedc

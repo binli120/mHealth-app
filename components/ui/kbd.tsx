@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import { cn } from '@/lib/utils'
 
 function Kbd({ className, ...props }: React.ComponentProps<'kbd'>) {

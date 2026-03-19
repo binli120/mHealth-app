@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 // SNAP (Supplemental Nutrition Assistance Program) evaluator
 // Administered by MA DTA — dta.mass.gov
 import type { FamilyProfile, BenefitResult } from '../types'

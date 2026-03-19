@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 "use client"
 
 import { AlertCircle, CheckCircle2, ClipboardCheck, Copy, FileText, RefreshCw } from "lucide-react"

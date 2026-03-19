@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 export const MAX_REASONABLE_AGE_YEARS = 120
 
 interface DobValidationResult {

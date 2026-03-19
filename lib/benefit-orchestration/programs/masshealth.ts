@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 // MassHealth evaluator — covers all tracks based on age, income, and circumstances
 import type { FamilyProfile, BenefitResult } from '../types'
 import { getAnnualFPL, computeMAGIMonthly } from '../fpl-utils'

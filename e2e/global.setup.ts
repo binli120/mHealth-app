@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import { test as setup, expect } from "@playwright/test"
 import { DEMO_USER, REVIEWER_USER } from "./fixtures/demo-data"
 import * as fs from "fs"

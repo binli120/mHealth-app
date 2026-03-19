@@ -1,4 +1,9 @@
 /**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
+/**
  * scripts/ingest-rag.mjs
  *
  * Standalone Node.js (ESM) script to ingest MassHealth policy documents

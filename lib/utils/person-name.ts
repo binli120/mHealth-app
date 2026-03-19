@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 const NAME_PART_PATTERN = /[\p{L}\p{M}]/u
 
 function getNamePartCount(value: string): number {

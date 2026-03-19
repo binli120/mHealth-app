@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 // Cross-Program Benefit Orchestration — Core Types
 // Single intake → evaluate all MA safety-net programs simultaneously
 

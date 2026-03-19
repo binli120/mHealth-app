@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import { test, expect } from "@playwright/test"
 import { AuthPage } from "../pages/auth.page"
 import { DEMO_USER } from "../fixtures/demo-data"

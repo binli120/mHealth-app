@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 // Type is defined in types.ts; re-exported here for backward compatibility.
 import type { HouseholdRelationshipHint } from "./types"
 export type { HouseholdRelationshipHint }

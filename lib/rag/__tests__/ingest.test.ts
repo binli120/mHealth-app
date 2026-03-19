@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import { describe, it, expect } from "vitest"
 
 import { chunkText } from "../ingest"

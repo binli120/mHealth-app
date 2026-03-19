@@ -1,4 +1,9 @@
 /**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
+/**
  * Client-safe utilities for form section tracking and progress computation.
  * No server-only imports — safe to use in Client Components.
  */

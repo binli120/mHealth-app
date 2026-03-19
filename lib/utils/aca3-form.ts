@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import { DATE_PATTERN, MAX_DOB_AGE_YEARS } from "@/lib/constant"
 
 export interface NameDobEntry {

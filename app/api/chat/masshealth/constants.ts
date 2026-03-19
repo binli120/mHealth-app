@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 export const CHAT_RUNTIME = "nodejs"
 
 export const CHAT_MESSAGE_ROLE_USER = "user"

@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import type { Preview } from "@storybook/nextjs"
 
 import "../app/globals.css"

@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import type { Meta, StoryObj } from "@storybook/nextjs"
 
 import { Button } from "./button"

@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import { describe, expect, it } from "vitest"
 
 import { parsePastedUsAddress } from "@/lib/utils/address-parse"

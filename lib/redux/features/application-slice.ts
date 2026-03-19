@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit"
 import type { MassHealthApplicationType } from "@/lib/masshealth/application-types"
 

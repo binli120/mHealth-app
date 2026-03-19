@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import { z } from "zod"
 
 export const massHealthAcaPayloadSchema = z.object({

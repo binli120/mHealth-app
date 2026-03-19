@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 // EITC evaluator — Federal Earned Income Tax Credit + MA EITC (40% of federal)
 // Both are annual credits filed with tax return; MA credit refundable
 import type { FamilyProfile, BenefitResult } from '../types'

@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import { createClient, type Session, type SupabaseClient, type User } from "@supabase/supabase-js"
 
 let supabaseClient: SupabaseClient | null = null

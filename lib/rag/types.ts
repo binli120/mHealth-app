@@ -1,4 +1,9 @@
 /**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
+/**
  * Shared type definitions for the RAG (Retrieval-Augmented Generation) module.
  */
 

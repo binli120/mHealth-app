@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 // Section 8 / Housing Choice Voucher (HCV) evaluator
 // Administered by local MA Housing Authorities under HUD
 import type { FamilyProfile, BenefitResult } from '../types'

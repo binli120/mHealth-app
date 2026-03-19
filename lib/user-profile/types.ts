@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import type { CitizenshipStatus } from "@/lib/benefit-orchestration/types"
 import type { SupportedLanguage } from "@/lib/i18n/languages"
 

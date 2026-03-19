@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 "use client"
 
 import { useEffect, useRef, useState, type ReactNode } from "react"

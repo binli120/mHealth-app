@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 "use client"
 
 import { Volume2 } from "lucide-react"

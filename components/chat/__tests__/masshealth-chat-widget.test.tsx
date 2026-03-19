@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { act, render, screen, fireEvent } from "@testing-library/react"
 import { Provider } from "react-redux"

@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 'use client'
 
 import * as CollapsiblePrimitive from '@radix-ui/react-collapsible'

@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import { getSafeSupabaseSession } from "@/lib/supabase/client"
 
 export async function authenticatedFetch(

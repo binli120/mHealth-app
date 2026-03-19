@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const extractPdfJsonMock = vi.fn()

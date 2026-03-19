@@ -1,4 +1,9 @@
 /**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
+/**
  * Application-level business rule checks run after PDF extraction or manual entry.
  *
  * Covers:

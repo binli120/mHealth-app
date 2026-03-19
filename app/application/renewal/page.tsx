@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"

@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import { useDispatch, useSelector, useStore } from "react-redux"
 
 import type { AppDispatch, AppStore, RootState } from "@/lib/redux/store"

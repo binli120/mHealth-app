@@ -1,3 +1,8 @@
+/**
+ * @author Bin Lee
+ * @email binlee120@gmail.com
+ */
+
 import { type SupportedLanguage } from "@/lib/i18n/languages"
 
 // Types are defined in types.ts; re-exported here for backward compatibility.
