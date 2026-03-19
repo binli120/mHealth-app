@@ -116,6 +116,119 @@ const SPEECH_LANG: Record<SupportedLanguage, string> = {
   vi: "vi-VN",
 }
 
+// ── Input field-type detection & auto-formatting ─────────────────────────────
+
+type InputFieldType = "phone" | "ssn" | "date" | "email" | "money" | "text"
+
+function detectInputFieldType(lastAssistantMsg: string): InputFieldType {
+  const msg = lastAssistantMsg.toLowerCase()
+  if (/social.?security|ssn|\bss#/.test(msg)) return "ssn"
+  if (/\bphone\b|telephone|cell|mobile|call you|phone number/.test(msg)) return "phone"
+  if (/date of birth|when were you born|\bdob\b|birthday|born on/.test(msg)) return "date"
+  if (/\bemail\b|e-mail/.test(msg)) return "email"
+  if (/income|salary|wages?|earn|how much|amount|monthly|weekly|annually|per (month|week|year)/.test(msg)) return "money"
+  return "text"
+}
+
+/** Format digits-only input as (xxx) xxx-xxxx */
+function formatPhone(raw: string): string {
+  const d = raw.replace(/\D/g, "").slice(0, 10)
+  if (d.length <= 3) return d
+  if (d.length <= 6) return `(${d.slice(0, 3)}) ${d.slice(3)}`
+  return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`
+}
+
+/** Format digits-only input as xxx-xx-xxxx */
+function formatSSN(raw: string): string {
+  const d = raw.replace(/\D/g, "").slice(0, 9)
+  if (d.length <= 3) return d
+  if (d.length <= 5) return `${d.slice(0, 3)}-${d.slice(3)}`
+  return `${d.slice(0, 3)}-${d.slice(3, 5)}-${d.slice(5)}`
+}
+
+/** Auto-insert slashes while user types a date with digits only */
+function formatDateDigits(raw: string): string {
+  const d = raw.replace(/\D/g, "").slice(0, 8)
+  if (d.length <= 2) return d
+  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`
+  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`
+}
+
+const MONTH_MAP: Record<string, number> = {
+  jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3,
+  apr: 4, april: 4, may: 5, jun: 6, june: 6, jul: 7, july: 7,
+  aug: 8, august: 8, sep: 9, sept: 9, september: 9,
+  oct: 10, october: 10, nov: 11, november: 11, dec: 12, december: 12,
+}
+
+/**
+ * Parse natural-language or partial dates into MM/DD/YYYY.
+ * Examples:
+ *   "Jan 17, 80"    → "01/17/1980"
+ *   "January 17 80" → "01/17/1980"
+ *   "1/17/80"       → "01/17/1980"
+ *   "01/17/1980"    → "01/17/1980" (unchanged)
+ */
+function parseNaturalDate(raw: string): string {
+  const v = raw.trim()
+
+  // Already MM/DD/YYYY
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) return v
+
+  const currentYear2d = new Date().getFullYear() % 100
+
+  const expand2dYear = (y: number) =>
+    y <= currentYear2d ? 2000 + y : 1900 + y
+
+  const pad = (n: number) => String(n).padStart(2, "0")
+
+  // Pattern: "MonthName DD, YY" or "MonthName DD YYYY"
+  const namePattern = /^([a-z]+)\s+(\d{1,2})[,\s]+(\d{2,4})$/i
+  const nameMatch = v.match(namePattern)
+  if (nameMatch) {
+    const month = MONTH_MAP[nameMatch[1].toLowerCase()]
+    if (month) {
+      const day = parseInt(nameMatch[2], 10)
+      let year = parseInt(nameMatch[3], 10)
+      if (year < 100) year = expand2dYear(year)
+      return `${pad(month)}/${pad(day)}/${year}`
+    }
+  }
+
+  // Pattern: M/D/YY or M/D/YYYY
+  const slashPattern = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/
+  const slashMatch = v.match(slashPattern)
+  if (slashMatch) {
+    let year = parseInt(slashMatch[3], 10)
+    if (year < 100) year = expand2dYear(year)
+    return `${pad(parseInt(slashMatch[1], 10))}/${pad(parseInt(slashMatch[2], 10))}/${year}`
+  }
+
+  return v // return as-is if unparseable
+}
+
+/** Format a dollar amount string: "3000" → "$3,000" */
+function formatMoney(raw: string): string {
+  const stripped = raw.replace(/[^0-9.]/g, "")
+  if (!stripped) return raw
+  const [whole, decimal] = stripped.split(".")
+  const withCommas = (whole ?? "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+  return decimal !== undefined ? `$${withCommas}.${decimal.slice(0, 2)}` : `$${withCommas}`
+}
+
+function isValidEmail(v: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())
+}
+
+const FIELD_TYPE_HINT: Record<InputFieldType, string> = {
+  phone: "Format: (xxx) xxx-xxxx",
+  ssn: "Format: xxx-xx-xxxx",
+  date: "Format: MM/DD/YYYY — or type like "Jan 17, 80"",
+  email: "Enter a valid email address",
+  money: "Enter amount, e.g. 3,000 or 3000.50",
+  text: "",
+}
+
 // ── Progress helpers ──────────────────────────────────────────────────────────
 
 interface SectionField {
@@ -383,8 +496,23 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
   const handleSubmit = useCallback(
     async (e?: FormEvent) => {
       e?.preventDefault()
-      const trimmed = input.trim()
+      let trimmed = input.trim()
       if (!trimmed || isLoading) return
+
+      // ── Email validation guard ──────────────────────────────────────────
+      if (inputFieldType === "email" && !isValidEmail(trimmed)) {
+        setInputError("Please enter a valid email address (e.g. name@example.com)")
+        return
+      }
+
+      // ── Date normalization ──────────────────────────────────────────────
+      // Convert "Jan 17, 80", "1/17/80", etc. → "01/17/1980" before the message
+      // is shown in the chat and sent to the API.
+      if (inputFieldType === "date") {
+        trimmed = parseNaturalDate(trimmed)
+      }
+
+      setInputError("")
 
       const userMessage: TextMessage = {
         id: crypto.randomUUID(),
@@ -595,7 +723,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
         setIsLoading(false)
       }
     },
-    [input, isLoading, messages, formData, language, currentSection, dispatch, scheduleDraftSave, sessionApplicationId],
+    [input, isLoading, messages, formData, language, currentSection, dispatch, scheduleDraftSave, sessionApplicationId, inputFieldType],
   )
 
   const handleKeyDown = useCallback(
@@ -619,6 +747,59 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
       return next
     })
   }, [])
+
+  // ── Input field-type detection ────────────────────────────────────────────
+
+  const lastAssistantContent = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i]
+      if (m.role === "assistant" && m.type === "text") return (m as TextMessage).content
+    }
+    return ""
+  }, [messages])
+
+  const inputFieldType = useMemo(
+    () => detectInputFieldType(lastAssistantContent),
+    [lastAssistantContent],
+  )
+
+  const [inputError, setInputError] = useState<string>("")
+
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const raw = e.target.value
+      setInputError("")
+
+      switch (inputFieldType) {
+        case "phone":
+          setInput(formatPhone(raw))
+          break
+        case "ssn":
+          setInput(formatSSN(raw))
+          break
+        case "date":
+          // Only auto-format if the user is typing pure digits (+ already-inserted slashes)
+          // If they type letters (e.g. "Jan"), let them type freely and parse on submit
+          if (/^[\d/]*$/.test(raw)) {
+            setInput(formatDateDigits(raw.replace(/\//g, "")))
+          } else {
+            setInput(raw)
+          }
+          break
+        case "money":
+          // Only auto-format if input looks like a number (no sentences)
+          if (/^[$\d,.\s]*$/.test(raw)) {
+            setInput(formatMoney(raw))
+          } else {
+            setInput(raw)
+          }
+          break
+        default:
+          setInput(raw)
+      }
+    },
+    [inputFieldType],
+  )
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -686,10 +867,20 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
             <Textarea
               ref={textareaRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              placeholder="Type your answer or click the mic to speak…"
-              className="min-h-[44px] max-h-32 resize-none"
+              placeholder={
+                inputFieldType === "phone" ? "(xxx) xxx-xxxx" :
+                inputFieldType === "ssn"   ? "xxx-xx-xxxx" :
+                inputFieldType === "date"  ? "MM/DD/YYYY or Jan 17, 1980" :
+                inputFieldType === "email" ? "name@example.com" :
+                inputFieldType === "money" ? "$0,000" :
+                "Type your answer or click the mic to speak…"
+              }
+              className={cn(
+                "min-h-[44px] max-h-32 resize-none",
+                inputError && "border-destructive focus-visible:ring-destructive",
+              )}
               rows={1}
               disabled={isLoading}
             />
@@ -718,6 +909,14 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
               </Button>
             </div>
           </form>
+
+          {/* Format hint or validation error */}
+          {inputError ? (
+            <p className="mt-1 text-xs text-destructive">{inputError}</p>
+          ) : inputFieldType !== "text" && !isListening ? (
+            <p className="mt-1 text-xs text-muted-foreground">{FIELD_TYPE_HINT[inputFieldType]}</p>
+          ) : null}
+
           {isListening && (
             <p className="mt-1 flex items-center gap-1 text-xs text-destructive">
               <Volume2 className="h-3 w-3" />
