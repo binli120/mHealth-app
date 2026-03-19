@@ -6,6 +6,7 @@ import {
   upsertApplicationDraft,
 } from "@/lib/db/application-drafts"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
+import { notifyStatusChange } from "@/lib/notifications/service"
 import {
   ERROR_APPLICATION_DRAFT_NOT_FOUND,
   ERROR_LOAD_DRAFT_FAILED,
@@ -117,6 +118,11 @@ export async function PUT(request: Request, context: RouteContext) {
       applicationType: body.applicationType,
       wizardState: body.wizardState,
     })
+
+    // Fire-and-forget notification on submission
+    if (record.status === "submitted") {
+      notifyStatusChange(authResult.userId, applicationId, "submitted").catch(() => null)
+    }
 
     return NextResponse.json({
       ok: true,

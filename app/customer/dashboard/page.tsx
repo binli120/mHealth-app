@@ -15,7 +15,6 @@ import { getMessage } from "@/lib/i18n/messages"
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher"
 import {
   AlertCircle,
-  Bell,
   BookOpenText,
   Calendar,
   CheckCircle2,
@@ -26,6 +25,7 @@ import {
   Scale,
   Upload,
 } from "lucide-react"
+import { NotificationBell } from "@/components/notifications/NotificationBell"
 import { getSafeSupabaseUser } from "@/lib/supabase/client"
 import { ShieldHeartIcon } from "@/lib/icons"
 import { UserAvatar } from "@/components/shared/UserAvatar"
@@ -217,12 +217,7 @@ export default function CustomerDashboardPage() {
           <div className="flex shrink-0 items-center gap-3">
             <LanguageSwitcher />
             <ThemeToggle />
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] text-destructive-foreground">
-                {needsActionApp ? "1" : "0"}
-              </span>
-            </Button>
+            <NotificationBell />
             <Link href="/customer/profile" aria-label="My Profile">
               <UserAvatar
                 avatarUrl={userProfile?.avatarUrl}

@@ -2,6 +2,7 @@ import { type SupportedLanguage } from "@/lib/i18n/languages"
 import type { EligibilityReport, ScreenerData } from "@/lib/eligibility-engine"
 import type { ChatRole, ChatMessage, MassHealthLink, MassHealthFaqItem } from "./types"
 import { MASSHEALTH_PHONE, MASSHEALTH_TTY, MASSHEALTH_SERVICE_HOURS } from "./constants"
+import type { FormSection } from "./form-sections"
 
 export type { ChatRole, ChatMessage, MassHealthLink, MassHealthFaqItem }
 
@@ -827,6 +828,92 @@ function buildResultsSummary(report: EligibilityReport): string {
 
   return lines.join("\n")
 }
+
+// ── Form Assistant prompt builder ─────────────────────────────────────────────
+
+const FORM_SECTION_LABELS: Record<FormSection, string> = {
+  personal: "Personal Information (name, date of birth)",
+  contact: "Contact Details (email, phone, address)",
+  household: "Household Members",
+  income: "Income Sources",
+  documents: "Supporting Documents",
+}
+
+const FORM_SECTION_NEXT_FIELDS: Record<FormSection, string> = {
+  personal: "Ask for the applicant's first name, last name, and date of birth (MM/DD/YYYY). Ask one at a time if not already provided.",
+  contact: "Ask for the applicant's email address, phone number, and home address (street, city, state, ZIP). Ask one at a time.",
+  household: "Ask if anyone else lives in the household. If yes, collect first name, last name, their relationship TO THE APPLICANT (e.g. spouse, child, parent, sibling), and date of birth for each person — one question at a time. IMPORTANT: if a member's relationship is already listed in the collected data below, do NOT ask for it again. When all members are captured, confirm the complete list and move on.",
+  income: "Ask about sources of income for the applicant and all household members. Accept any format (job, SSI, child support, etc.). When done (or if they have none), confirm.",
+  documents: "All form data collected! Let the user know they can now upload supporting documents like proof of income and ID using the upload section on the right. Ask if they have any other questions.",
+}
+
+/**
+ * Build the system prompt for form_assistant mode.
+ * Section-aware: guides the LLM through collecting fields in sequence.
+ * Supports mid-fill policy Q&A via optional RAG context.
+ */
+export function buildFormAssistantSystemPrompt(
+  language: SupportedLanguage,
+  collectedSummary: string,
+  currentSection: FormSection,
+  ragContext?: string,
+): string {
+  const responseLanguage = LANGUAGE_RESPONSE_HINT[language] ?? LANGUAGE_RESPONSE_HINT.en
+  const sectionLabel = FORM_SECTION_LABELS[currentSection]
+  const nextFieldsHint = FORM_SECTION_NEXT_FIELDS[currentSection]
+
+  const sections = [
+    "You are a friendly, patient MassHealth application assistant.",
+    "You are helping a user complete their MassHealth health coverage application through natural conversation.",
+    "Your goal: collect application form data one section at a time in a warm, conversational tone.",
+    "",
+    "Rules:",
+    "1) Focus on the CURRENT SECTION shown below. Complete it before moving on.",
+    "2) Ask ONE question at a time. Never ask for multiple pieces of info in one message.",
+    "3) After the user provides information, briefly confirm it in second person — address the user as 'you', not by name.",
+    "   Good: 'Got it — I have your date of birth as 01/15/1990.'",
+    "   Bad:  'Got it — David Ho, born 01/15/1990.' (never refer to the applicant in third person)",
+    "4) If the user asks a policy question (why we need certain info, what counts as income, etc.),",
+    "   answer it briefly and clearly, then return to collecting the next field.",
+    "5) Do not ask for information already collected (listed in 'Data already collected' below).",
+    "   This applies to household members too — if a member already appears with their relationship, skip those questions.",
+    "6) Do not ask for Social Security Number — that will be collected securely in a separate step.",
+    "7) Keep responses under 3 sentences unless explaining policy.",
+    `8) Respond in ${responseLanguage}.`,
+    "9) Be encouraging and reassure users that their information is secure.",
+    "",
+    `Current section: ${sectionLabel}`,
+    `What to do now: ${nextFieldsHint}`,
+    "",
+    "Data already collected (do not ask for these again):",
+    collectedSummary || "Nothing yet — start from the beginning.",
+  ]
+
+  if (ragContext) {
+    sections.push(
+      "",
+      "MassHealth policy references (use when answering policy questions mid-fill):",
+      ragContext,
+    )
+  }
+
+  return sections.join("\n")
+}
+
+const FORM_ASSISTANT_GREETING_BY_LANGUAGE: Record<SupportedLanguage, string> = {
+  en: "Hi! I'm your HealthCompass MA application assistant. I'll guide you through your MassHealth application step by step — it usually takes about 5 minutes. Let's start with your name. What's your first name?",
+  "zh-CN": "您好！我是您的 HealthCompass MA 申请助手。我将一步步引导您完成 MassHealth 申请，通常只需约5分钟。我们先从您的姓名开始。请问您的名字（名）是什么？",
+  ht: "Bonjou! Mwen se asistan aplikasyon HealthCompass MA ou. M ap gide ou etap pa etap pou ranpli aplikasyon MassHealth ou a — sa pran anviron 5 minit. Ann kòmanse ak non ou. Ki prenon ou?",
+  "pt-BR": "Olá! Sou seu assistente de inscrição HealthCompass MA. Vou te guiar passo a passo pelo seu pedido MassHealth — geralmente leva cerca de 5 minutos. Vamos começar com seu nome. Qual é o seu primeiro nome?",
+  es: "¡Hola! Soy su asistente de solicitud HealthCompass MA. Le guiaré paso a paso a través de su solicitud MassHealth, lo cual suele tomar unos 5 minutos. Empecemos con su nombre. ¿Cuál es su nombre?",
+  vi: "Xin chào! Tôi là trợ lý nộp đơn HealthCompass MA của bạn. Tôi sẽ hướng dẫn bạn từng bước để hoàn thành đơn xin MassHealth — thường mất khoảng 5 phút. Hãy bắt đầu với tên của bạn. Tên của bạn là gì?",
+}
+
+export function getFormAssistantGreeting(language: SupportedLanguage): string {
+  return FORM_ASSISTANT_GREETING_BY_LANGUAGE[language] ?? FORM_ASSISTANT_GREETING_BY_LANGUAGE.en
+}
+
+// ── Helpers for prompt builders ───────────────────────────────────────────────
 
 function getMissingRequiredFields(facts: Partial<ScreenerData>): string[] {
   const missing: string[] = []

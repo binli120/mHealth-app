@@ -6,6 +6,7 @@ import { extractWorkflowReducer } from "@/lib/redux/features/extract-workflow-sl
 import { benefitOrchestrationReducer } from "@/lib/redux/features/benefit-orchestration-slice"
 import { userProfileReducer } from "@/lib/redux/features/user-profile-slice"
 import { extractAutoReducer } from "@/lib/redux/features/extract-auto-slice"
+import { notificationsReducer } from "@/lib/redux/features/notifications-slice"
 
 export const makeStore = () =>
   configureStore({
@@ -17,6 +18,7 @@ export const makeStore = () =>
       benefitOrchestration: benefitOrchestrationReducer,
       userProfile: userProfileReducer,
       extractAuto: extractAutoReducer,
+      notifications: notificationsReducer,
     },
   })
 

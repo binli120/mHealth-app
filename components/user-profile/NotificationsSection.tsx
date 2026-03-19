@@ -8,7 +8,6 @@ import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { InfoBox } from "@/components/shared/InfoBox"
 import { FieldRow } from "@/components/user-profile/FieldRow"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { NOTIFICATION_CHANNEL_OPTIONS, REMINDER_LEAD_DAY_OPTIONS } from "@/lib/user-profile/constants"
@@ -96,13 +95,6 @@ export function NotificationsSection({ profile, onSaved }: Props) {
       </CardHeader>
 
       <CardContent className="space-y-6">
-        <InfoBox variant="neutral">
-          <p className="text-sm">
-            Notification sending is coming soon. Your preferences will be used once the
-            notification system is activated.
-          </p>
-        </InfoBox>
-
         {/* ── View mode ── */}
         {!isEditing && (
           <>

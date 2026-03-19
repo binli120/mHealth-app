@@ -4,6 +4,7 @@ import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 
 import {
   buildBenefitAdvisorSystemPrompt,
+  buildFormAssistantSystemPrompt,
   buildMassHealthIntakeSystemPrompt,
   buildMassHealthSystemPrompt,
   buildMassHealthSystemPromptWithContext,
@@ -16,6 +17,11 @@ import {
   extractEligibilityFacts,
   isSufficientForEvaluation,
 } from "@/lib/masshealth/fact-extraction"
+import {
+  extractFormFields,
+  type FormSection,
+} from "@/lib/masshealth/form-field-extraction"
+import type { HouseholdMember, IncomeSource } from "@/lib/redux/features/application-slice"
 import { runEligibilityCheck } from "@/lib/eligibility-engine"
 import { retrieveRelevantChunks, formatChunksForPrompt } from "@/lib/rag/retrieve"
 import { extractHouseholdRelationshipHints } from "@/lib/masshealth/household-relationships"
@@ -28,6 +34,7 @@ import {
   CHAT_MESSAGE_ROLES,
   CHAT_REQUEST_MODE_APPLICATION_INTAKE,
   CHAT_REQUEST_MODE_BENEFIT_ADVISOR,
+  CHAT_REQUEST_MODE_FORM_ASSISTANT,
   CHAT_REQUEST_MODES,
   CHAT_REQUEST_MAX_MESSAGES,
   CHAT_REQUEST_MIN_MESSAGES,
@@ -40,6 +47,7 @@ import {
   ERROR_OLLAMA_EMPTY_RESPONSE,
   ERROR_OLLAMA_RESPONSE,
   ERROR_USER_MESSAGE_REQUIRED,
+  FORM_ASSISTANT_SECTIONS,
   MASSHEALTH_CONVERSATION_RECENT_USER_MESSAGES,
   OLLAMA_CHAT_ENDPOINT,
   OLLAMA_MESSAGES_CONTEXT_LIMIT,
@@ -61,6 +69,11 @@ const requestSchema = z.object({
   language: z.string().optional(),
   mode: z.enum(CHAT_REQUEST_MODES).optional(),
   applicationType: z.string().trim().max(64).optional(),
+  // form_assistant mode extras
+  currentFields: z.string().max(2000).optional(),
+  currentSection: z.enum(FORM_ASSISTANT_SECTIONS).optional(),
+  existingMembers: z.array(z.unknown()).optional(),
+  existingSources: z.array(z.unknown()).optional(),
 })
 
 interface OllamaResponsePayload {
@@ -263,6 +276,67 @@ export async function POST(request: Request) {
               })),
             }
           : null,
+      })
+    }
+
+    // ── form_assistant mode ───────────────────────────────────────────────────
+    // Structured form field extraction + section-aware guidance + optional RAG
+    if (mode === CHAT_REQUEST_MODE_FORM_ASSISTANT) {
+      const collectedSummary = payload.currentFields ?? ""
+      const currentSection: FormSection = (payload.currentSection as FormSection) ?? "personal"
+
+      // Run field extraction and optional RAG retrieval in parallel
+      const [extractionResult, ragChunks] = await Promise.all([
+        extractFormFields(
+          payload.messages,
+          collectedSummary,
+          currentSection,
+          (payload.existingMembers ?? []) as HouseholdMember[],
+          (payload.existingSources ?? []) as IncomeSource[],
+          language,
+        ),
+        isMassHealthTopic(lastUserMessage.content)
+          ? retrieveRelevantChunks(lastUserMessage.content, RAG_TOP_K).catch(() => [])
+          : Promise.resolve([]),
+      ])
+
+      const ragContext = formatChunksForPrompt(ragChunks)
+      const formSystemPrompt = buildFormAssistantSystemPrompt(language, collectedSummary, currentSection, ragContext || undefined)
+
+      const formOllamaResponse = await fetch(`${getOllamaBaseUrl()}${OLLAMA_CHAT_ENDPOINT}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        signal: AbortSignal.timeout(OLLAMA_TIMEOUT_MS),
+        body: JSON.stringify({
+          model: process.env.OLLAMA_MODEL || DEFAULT_OLLAMA_MODEL,
+          stream: false,
+          options: { temperature: OLLAMA_TEMPERATURE },
+          messages: [
+            { role: "system", content: formSystemPrompt },
+            ...buildOllamaMessages(payload.messages),
+          ],
+        }),
+      })
+
+      if (!formOllamaResponse.ok) {
+        const detail = await formOllamaResponse.text().catch(() => "")
+        return NextResponse.json({ ok: false, error: ERROR_OLLAMA_RESPONSE, detail }, { status: 502 })
+      }
+
+      const formData = (await formOllamaResponse.json()) as OllamaResponsePayload
+      const formReply = formData.message?.content?.trim()
+
+      if (!formReply) {
+        return NextResponse.json({ ok: false, error: ERROR_OLLAMA_EMPTY_RESPONSE }, { status: 502 })
+      }
+
+      return NextResponse.json({
+        ok: true,
+        reply: formReply,
+        extractedFields: extractionResult.fields,
+        noHouseholdMembers: extractionResult.noHouseholdMembers,
+        noIncome: extractionResult.noIncome,
       })
     }
 

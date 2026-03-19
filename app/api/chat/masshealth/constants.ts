@@ -6,11 +6,16 @@ export const CHAT_MESSAGE_ROLES = [CHAT_MESSAGE_ROLE_USER, CHAT_MESSAGE_ROLE_ASS
 export const CHAT_REQUEST_MODE_ASSISTANT = "assistant"
 export const CHAT_REQUEST_MODE_APPLICATION_INTAKE = "application_intake"
 export const CHAT_REQUEST_MODE_BENEFIT_ADVISOR = "benefit_advisor"
+export const CHAT_REQUEST_MODE_FORM_ASSISTANT = "form_assistant"
 export const CHAT_REQUEST_MODES = [
   CHAT_REQUEST_MODE_ASSISTANT,
   CHAT_REQUEST_MODE_APPLICATION_INTAKE,
   CHAT_REQUEST_MODE_BENEFIT_ADVISOR,
+  CHAT_REQUEST_MODE_FORM_ASSISTANT,
 ] as const
+
+export const FORM_ASSISTANT_SECTIONS = ["personal", "contact", "household", "income", "documents"] as const
+export type FormAssistantSection = (typeof FORM_ASSISTANT_SECTIONS)[number]
 export const CHAT_MESSAGE_CONTENT_MIN_LENGTH = 1
 export const CHAT_MESSAGE_CONTENT_MAX_LENGTH = 6000
 
