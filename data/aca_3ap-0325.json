@@ -1,0 +1,369 @@
+{
+  "form_variant": "ACA-3-AP-0325",
+  "people": [],
+  "form_items": [
+    {
+      "page": 1,
+      "section": "STEP 1: Existing Application Information",
+      "question_id": "existing_case_number",
+      "question_text": "Existing MassHealth application or case number",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 1,
+      "section": "STEP 1: Existing Application Information",
+      "question_id": "primary_applicant_name",
+      "question_text": "Primary applicant's first and last name on the existing case",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 2,
+      "section": "STEP 2: Additional Person's Personal Information",
+      "question_id": "add_person_first_name",
+      "question_text": "Additional person's first name, middle name, last name, and suffix",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 2,
+      "section": "STEP 2: Additional Person's Personal Information",
+      "question_id": "add_person_dob",
+      "question_text": "Additional person's date of birth",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 2,
+      "section": "STEP 2: Additional Person's Personal Information",
+      "question_id": "add_person_gender",
+      "question_text": "Additional person's gender",
+      "answer_type": "single_or_multi_choice",
+      "options": ["Male", "Female", "Non-binary / Another gender", "Prefer not to say"],
+      "value": null
+    },
+    {
+      "page": 2,
+      "section": "STEP 2: Additional Person's Personal Information",
+      "question_id": "add_person_has_ssn",
+      "question_text": "Does this person have a Social Security Number (SSN)?",
+      "answer_type": "single_choice_yes_no",
+      "options": ["Yes", "No"],
+      "value": null
+    },
+    {
+      "page": 2,
+      "section": "STEP 2: Additional Person's Personal Information",
+      "question_id": "add_person_ssn",
+      "question_text": "Additional person's Social Security Number (SSN)",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 2,
+      "section": "STEP 2: Additional Person's Personal Information",
+      "question_id": "add_person_relationship",
+      "question_text": "What is this person's relationship to the primary applicant?",
+      "answer_type": "single_or_multi_choice",
+      "options": [
+        "Spouse or domestic partner",
+        "Child (biological, adopted, or stepchild)",
+        "Parent or stepparent",
+        "Sibling",
+        "Grandparent",
+        "Grandchild",
+        "Other relative",
+        "Non-relative living in household"
+      ],
+      "value": null
+    },
+    {
+      "page": 2,
+      "section": "STEP 2: Additional Person's Personal Information",
+      "question_id": "add_person_email",
+      "question_text": "Additional person's email address",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 2,
+      "section": "STEP 2: Additional Person's Personal Information",
+      "question_id": "add_person_phone",
+      "question_text": "Additional person's phone number",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 3,
+      "section": "STEP 3: Citizenship and Immigration Status",
+      "question_id": "add_person_citizenship",
+      "question_text": "Is this person a U.S. citizen or U.S. national?",
+      "answer_type": "single_choice_yes_no",
+      "options": ["Yes", "No"],
+      "value": null
+    },
+    {
+      "page": 3,
+      "section": "STEP 3: Citizenship and Immigration Status",
+      "question_id": "add_person_immigration_status",
+      "question_text": "If not a U.S. citizen, what is this person's immigration status?",
+      "answer_type": "single_or_multi_choice",
+      "options": [
+        "Lawful Permanent Resident (Green Card holder)",
+        "Refugee",
+        "Asylee",
+        "Temporary Protected Status (TPS)",
+        "Cuban/Haitian Entrant",
+        "Amerasian",
+        "Battered spouse, child, or parent (VAWA)",
+        "Other qualified noncitizen",
+        "Undocumented / No qualifying status"
+      ],
+      "value": null
+    },
+    {
+      "page": 3,
+      "section": "STEP 3: Citizenship and Immigration Status",
+      "question_id": "add_person_immigration_doc_type",
+      "question_text": "If not a U.S. citizen, what immigration document does this person have?",
+      "answer_type": "single_or_multi_choice",
+      "options": [
+        "Permanent Resident Card (I-551)",
+        "Employment Authorization Document (EAD)",
+        "Refugee Travel Document",
+        "Arrival/Departure Record (I-94)",
+        "Other immigration document"
+      ],
+      "value": null
+    },
+    {
+      "page": 4,
+      "section": "STEP 4: Massachusetts Residency",
+      "question_id": "add_person_ma_resident",
+      "question_text": "Does this person live in Massachusetts?",
+      "answer_type": "single_choice_yes_no",
+      "options": ["Yes", "No"],
+      "value": null
+    },
+    {
+      "page": 4,
+      "section": "STEP 4: Massachusetts Residency",
+      "question_id": "add_person_same_address",
+      "question_text": "Does this person live at the same address as the primary applicant?",
+      "answer_type": "single_choice_yes_no",
+      "options": ["Yes", "No"],
+      "value": null
+    },
+    {
+      "page": 4,
+      "section": "STEP 4: Massachusetts Residency",
+      "question_id": "add_person_street_address",
+      "question_text": "If different address: street address",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 4,
+      "section": "STEP 4: Massachusetts Residency",
+      "question_id": "add_person_city",
+      "question_text": "If different address: city",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 4,
+      "section": "STEP 4: Massachusetts Residency",
+      "question_id": "add_person_zip",
+      "question_text": "If different address: ZIP code",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 5,
+      "section": "STEP 5: Income",
+      "question_id": "add_person_has_wages",
+      "question_text": "Does this person work for wages, salary, tips, or commission?",
+      "answer_type": "single_choice_yes_no",
+      "options": ["Yes", "No"],
+      "value": null
+    },
+    {
+      "page": 5,
+      "section": "STEP 5: Income",
+      "question_id": "add_person_employer_name",
+      "question_text": "Employer's name",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 5,
+      "section": "STEP 5: Income",
+      "question_id": "add_person_gross_wages",
+      "question_text": "Gross wages or salary before taxes",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 5,
+      "section": "STEP 5: Income",
+      "question_id": "add_person_pay_frequency",
+      "question_text": "How often is this person paid?",
+      "answer_type": "single_or_multi_choice",
+      "options": ["Weekly", "Every two weeks", "Twice a month", "Monthly", "Yearly"],
+      "value": null
+    },
+    {
+      "page": 5,
+      "section": "STEP 5: Income",
+      "question_id": "add_person_has_self_employment",
+      "question_text": "Does this person have self-employment income?",
+      "answer_type": "single_choice_yes_no",
+      "options": ["Yes", "No"],
+      "value": null
+    },
+    {
+      "page": 5,
+      "section": "STEP 5: Income",
+      "question_id": "add_person_self_employment_net",
+      "question_text": "Net monthly self-employment income (after business expenses)",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 5,
+      "section": "STEP 5: Income",
+      "question_id": "add_person_has_social_security",
+      "question_text": "Does this person receive Social Security, SSI, or SSDI?",
+      "answer_type": "single_choice_yes_no",
+      "options": ["Yes", "No"],
+      "value": null
+    },
+    {
+      "page": 5,
+      "section": "STEP 5: Income",
+      "question_id": "add_person_social_security_amount",
+      "question_text": "Monthly Social Security, SSI, or SSDI amount",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 5,
+      "section": "STEP 5: Income",
+      "question_id": "add_person_other_income_types",
+      "question_text": "Does this person have any other income? Select all that apply.",
+      "answer_type": "multi_choice",
+      "options": [
+        "Unemployment benefits",
+        "Pension or retirement income",
+        "Veterans benefits",
+        "Alimony or spousal support",
+        "Child support received",
+        "Rental income",
+        "Interest or dividends",
+        "None of the above"
+      ],
+      "value": null
+    },
+    {
+      "page": 5,
+      "section": "STEP 5: Income",
+      "question_id": "add_person_other_income_amount",
+      "question_text": "Monthly amount of other income (if any)",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 6,
+      "section": "STEP 6: Health Coverage",
+      "question_id": "add_person_has_other_insurance",
+      "question_text": "Does this person currently have any other health insurance?",
+      "answer_type": "single_choice_yes_no",
+      "options": ["Yes", "No"],
+      "value": null
+    },
+    {
+      "page": 6,
+      "section": "STEP 6: Health Coverage",
+      "question_id": "add_person_insurance_plan_name",
+      "question_text": "Name of the other health insurance plan",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 6,
+      "section": "STEP 6: Health Coverage",
+      "question_id": "add_person_insurance_policy_number",
+      "question_text": "Health insurance policy or member ID number",
+      "answer_type": "text_or_unknown",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 6,
+      "section": "STEP 6: Health Coverage",
+      "question_id": "add_person_is_pregnant",
+      "question_text": "Is this person currently pregnant?",
+      "answer_type": "single_choice_yes_no",
+      "options": ["Yes", "No"],
+      "value": null
+    },
+    {
+      "page": 6,
+      "section": "STEP 6: Health Coverage",
+      "question_id": "add_person_is_disabled",
+      "question_text": "Does this person have a disability or long-term health condition?",
+      "answer_type": "single_choice_yes_no",
+      "options": ["Yes", "No"],
+      "value": null
+    },
+    {
+      "page": 7,
+      "section": "STEP 7: Signature and Authorization",
+      "question_id": "signer_name",
+      "question_text": "Signature: print name of person signing this form",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    },
+    {
+      "page": 7,
+      "section": "STEP 7: Signature and Authorization",
+      "question_id": "signer_relationship",
+      "question_text": "Signer's relationship to the additional person",
+      "answer_type": "single_or_multi_choice",
+      "options": [
+        "Self (the additional person)",
+        "Parent or legal guardian",
+        "Authorized representative",
+        "Other adult in household"
+      ],
+      "value": null
+    },
+    {
+      "page": 7,
+      "section": "STEP 7: Signature and Authorization",
+      "question_id": "signature_date",
+      "question_text": "Date signed",
+      "answer_type": "text",
+      "options": [],
+      "value": null
+    }
+  ]
+}

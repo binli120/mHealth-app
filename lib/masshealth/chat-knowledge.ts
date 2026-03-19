@@ -47,6 +47,14 @@ const MASSHEALTH_KEYWORDS = [
   "family",
   "adult",
   "disability",
+  "aca-3-ap",
+  "aca3ap",
+  "additional persons",
+  "add person",
+  "add someone",
+  "adding a person",
+  "newborn",
+  "new dependent",
 ]
 
 export const MASSHEALTH_OUT_OF_SCOPE_RESPONSE =
@@ -242,6 +250,63 @@ export const MASSHEALTH_COMMON_QUESTIONS: MassHealthFaqItem[] = [
       {
         label: "Learn about MassHealth CommonHealth",
         url: "https://www.mass.gov/info-details/learn-about-masshealth-commonhealth",
+      },
+    ],
+  },
+  // ── ACA-3-AP specific FAQs ────────────────────────────────────────────────
+  {
+    id: "aca3ap-what-is",
+    question: "What is the ACA-3-AP form?",
+    quickAnswer:
+      "The ACA-3-AP (Additional Persons) form is used to add people to an existing MassHealth household case. It is not a new application — the primary applicant must already have an active ACA-3 case.",
+    links: [
+      {
+        label: "Download the ACA-3-AP form",
+        url: "https://www.mass.gov/doc/massachusetts-application-for-health-and-dental-coverage-and-help-paying-costs-additional-persons/download",
+      },
+      {
+        label: "MassHealth application forms",
+        url: "https://www.mass.gov/lists/applications-to-become-a-masshealth-member",
+      },
+    ],
+  },
+  {
+    id: "aca3ap-who-uses",
+    question: "Who should use the ACA-3-AP form?",
+    quickAnswer:
+      "Use ACA-3-AP when you need to add a new household member — such as a newborn, new spouse, or other dependent — to an existing MassHealth case. The primary applicant must already have a case open with MassHealth.",
+    links: [
+      {
+        label: "Apply for MassHealth or report household changes",
+        url: "https://www.mass.gov/how-to/apply-for-masshealth-the-health-safety-net-or-the-childrens-medical-security-plan",
+      },
+    ],
+  },
+  {
+    id: "aca3ap-what-info",
+    question: "What information is needed to complete the ACA-3-AP form?",
+    quickAnswer:
+      "You will need the existing case or application number, the primary applicant's name, and the additional person's full name, date of birth, Social Security Number (if available), citizenship or immigration status, income, and any other health insurance they have.",
+    links: [
+      {
+        label: "Acceptable verifications list",
+        url: "https://www.mass.gov/doc/masshealth-and-health-connector-acceptable-verifications-list/download",
+      },
+    ],
+  },
+  {
+    id: "aca3ap-how-to-add",
+    question: "How do I add a person to my existing MassHealth case?",
+    quickAnswer:
+      "Complete and submit the ACA-3-AP form for each additional person. You can mail or fax the form to MassHealth, or report the change online or by phone. Changes should be reported as soon as possible.",
+    links: [
+      {
+        label: "Report household changes to MassHealth",
+        url: "https://www.mass.gov/how-to/report-household-changes-to-masshealth",
+      },
+      {
+        label: "Contact MassHealth member services",
+        url: "https://www.mass.gov/info-details/contact-masshealth-information-for-members",
       },
     ],
   },
@@ -844,12 +909,75 @@ const FORM_SECTION_LABELS: Record<FormSection, string> = {
   documents: "Supporting Documents",
 }
 
-const FORM_SECTION_NEXT_FIELDS: Record<FormSection, string> = {
+const FORM_SECTION_NEXT_FIELDS_STATIC: Record<FormSection, string> = {
   personal: "Ask for the applicant's first name, last name, and date of birth (MM/DD/YYYY). Ask one at a time if not already provided.",
   contact: "Ask for the applicant's email address, phone number, and home address (street, city, state, ZIP). Ask one at a time.",
   household: "Ask if anyone else lives in the household. If yes, collect first name, last name, their relationship TO THE APPLICANT (e.g. spouse, child, parent, sibling), and date of birth for each person — one question at a time. IMPORTANT: if a member's relationship is already listed in the collected data below, do NOT ask for it again. When all members are captured, confirm the complete list and move on.",
   income: "Ask about sources of income for the applicant and all household members. Accept any format (job, SSI, child support, etc.). When done (or if they have none), confirm.",
   documents: "All form data collected! Let the user know they can now upload supporting documents like proof of income and ID using the upload section on the right. Ask if they have any other questions.",
+}
+
+/**
+ * Dynamically compute the "what to ask next" hint by checking which fields
+ * are already labeled in the collected summary string.
+ * For personal and contact sections this produces an explicit
+ * "Ask for ONLY … DO NOT ask for …" instruction so weak LLMs (llama3.2)
+ * reliably skip pre-filled fields.  Other sections fall back to the static map.
+ */
+function computeDynamicNextFieldsHint(
+  section: FormSection,
+  collectedSummary: string,
+): string {
+  if (section === "personal") {
+    const hasFirstName = /First name:/i.test(collectedSummary)
+    const hasLastName = /Last name:/i.test(collectedSummary)
+    const hasDob = /DOB:/i.test(collectedSummary)
+
+    const missing: string[] = []
+    const filled: string[] = []
+
+    if (hasFirstName) { filled.push("first name") } else { missing.push("first name") }
+    if (hasLastName) { filled.push("last name") } else { missing.push("last name") }
+    if (hasDob) { filled.push("date of birth") } else { missing.push("date of birth (MM/DD/YYYY)") }
+
+    if (missing.length === 0) {
+      return "Personal section is complete. Immediately ask for the applicant's email address to begin the Contact section."
+    }
+    const doNotAsk = filled.length > 0
+      ? ` DO NOT ask for ${filled.join(" or ")} — already collected.`
+      : ""
+    // When only one field remains, tell the LLM what comes next so it doesn't stop after confirming
+    const transitionNote = missing.length === 1
+      ? " After confirming this field, immediately ask for the applicant's email address."
+      : ""
+    return `Ask for ONLY: ${missing.join(", ")}.${doNotAsk}${transitionNote} Ask one field at a time.`
+  }
+
+  if (section === "contact") {
+    const hasEmail = /Email:/i.test(collectedSummary)
+    const hasPhone = /Phone:/i.test(collectedSummary)
+    const hasAddress = /Address:/i.test(collectedSummary)
+
+    const missing: string[] = []
+    const filled: string[] = []
+
+    if (hasEmail) { filled.push("email address") } else { missing.push("email address") }
+    if (hasPhone) { filled.push("phone number") } else { missing.push("phone number") }
+    if (hasAddress) { filled.push("home address") } else { missing.push("home address (street, city, state, ZIP)") }
+
+    if (missing.length === 0) {
+      return "Contact section is complete. Immediately ask whether anyone else lives in the household to begin the Household Members section."
+    }
+    const doNotAsk = filled.length > 0
+      ? ` DO NOT ask for ${filled.join(" or ")} — already collected.`
+      : ""
+    const transitionNote = missing.length === 1
+      ? " After confirming this field, immediately ask whether anyone else lives in the household."
+      : ""
+    return `Ask for ONLY: ${missing.join(", ")}.${doNotAsk}${transitionNote} Ask one field at a time.`
+  }
+
+  return FORM_SECTION_NEXT_FIELDS_STATIC[section]
 }
 
 /**
@@ -865,7 +993,7 @@ export function buildFormAssistantSystemPrompt(
 ): string {
   const responseLanguage = LANGUAGE_RESPONSE_HINT[language] ?? LANGUAGE_RESPONSE_HINT.en
   const sectionLabel = FORM_SECTION_LABELS[currentSection]
-  const nextFieldsHint = FORM_SECTION_NEXT_FIELDS[currentSection]
+  const nextFieldsHint = computeDynamicNextFieldsHint(currentSection, collectedSummary)
 
   const sections = [
     "You are a friendly, patient MassHealth application assistant.",
@@ -875,8 +1003,10 @@ export function buildFormAssistantSystemPrompt(
     "Rules:",
     "1) Focus on the CURRENT SECTION shown below. Complete it before moving on.",
     "2) Ask ONE question at a time. Never ask for multiple pieces of info in one message.",
-    "3) After the user provides information, briefly confirm it in second person — address the user as 'you', not by name.",
-    "   Good: 'Got it — I have your date of birth as 01/15/1990.'",
+    "3) After the user provides information, briefly confirm it in second person AND immediately ask the next missing field in the same response.",
+    "   NEVER confirm and then stop — always end your reply with the next question.",
+    "   Good: 'Got it — I have your date of birth as 01/15/1990. What is your email address?'",
+    "   Bad:  'Got it — I have your date of birth as 01/15/1990.' (stopping without asking next field is wrong)",
     "   Bad:  'Got it — David Ho, born 01/15/1990.' (never refer to the applicant in third person)",
     "4) If the user asks a policy question (why we need certain info, what counts as income, etc.),",
     "   answer it briefly and clearly, then return to collecting the next field.",
@@ -914,8 +1044,90 @@ const FORM_ASSISTANT_GREETING_BY_LANGUAGE: Record<SupportedLanguage, string> = {
   vi: "Xin chào! Tôi là trợ lý nộp đơn HealthCompass MA của bạn. Tôi sẽ hướng dẫn bạn từng bước để hoàn thành đơn xin MassHealth — thường mất khoảng 5 phút. Hãy bắt đầu với tên của bạn. Tên của bạn là gì?",
 }
 
+const ACA3AP_FORM_ASSISTANT_GREETING_BY_LANGUAGE: Record<SupportedLanguage, string> = {
+  en: "Hi! I'm your HealthCompass MA assistant. I'll help you add a person to an existing MassHealth case using the ACA-3-AP form — it usually takes about 3 minutes. Let's start. Do you have the existing MassHealth application or case number?",
+  "zh-CN": "您好！我是您的 HealthCompass MA 助手。我将帮助您使用 ACA-3-AP 表格向现有 MassHealth 案例中添加人员，通常只需约3分钟。我们开始吧。请问您有现有 MassHealth 申请或案例号吗？",
+  ht: "Bonjou! Mwen se asistan HealthCompass MA ou. M ap ede ou ajoute yon moun nan yon ka MassHealth ki deja egziste a avèk fòm ACA-3-AP — sa pran anviron 3 minit. Ann kòmanse. Èske ou gen nimewo aplikasyon oswa ka MassHealth ki egziste deja a?",
+  "pt-BR": "Olá! Sou seu assistente HealthCompass MA. Vou ajudá-lo a adicionar uma pessoa a um caso MassHealth existente usando o formulário ACA-3-AP — geralmente leva cerca de 3 minutos. Vamos começar. Você tem o número do processo ou pedido MassHealth existente?",
+  es: "¡Hola! Soy su asistente HealthCompass MA. Le ayudaré a agregar una persona a un caso MassHealth existente usando el formulario ACA-3-AP — suele tomar unos 3 minutos. Empecemos. ¿Tiene el número de caso o solicitud MassHealth existente?",
+  vi: "Xin chào! Tôi là trợ lý HealthCompass MA của bạn. Tôi sẽ giúp bạn thêm một người vào hồ sơ MassHealth hiện có bằng biểu mẫu ACA-3-AP — thường mất khoảng 3 phút. Hãy bắt đầu. Bạn có số hồ sơ hoặc đơn MassHealth hiện có không?",
+}
+
 export function getFormAssistantGreeting(language: SupportedLanguage): string {
   return FORM_ASSISTANT_GREETING_BY_LANGUAGE[language] ?? FORM_ASSISTANT_GREETING_BY_LANGUAGE.en
+}
+
+export function getAca3ApFormAssistantGreeting(language: SupportedLanguage): string {
+  return ACA3AP_FORM_ASSISTANT_GREETING_BY_LANGUAGE[language] ?? ACA3AP_FORM_ASSISTANT_GREETING_BY_LANGUAGE.en
+}
+
+// ── Profile-aware greeting (pre-fill offer) ────────────────────────────────────
+
+export interface ProfilePreFillSummary {
+  firstName: string
+  hasLastName: boolean
+  hasDob: boolean
+  hasPhone: boolean
+  hasAddress: boolean
+}
+
+/**
+ * Greeting used when the user has an existing profile.
+ * Names the fields we already have and asks whether to pre-fill or start fresh.
+ */
+export function getProfileAwareFormAssistantGreeting(
+  profile: ProfilePreFillSummary,
+  language: SupportedLanguage,
+): string {
+  const fieldsHad: string[] = ["name"]
+  if (profile.hasDob) fieldsHad.push("date of birth")
+  if (profile.hasPhone) fieldsHad.push("phone number")
+  if (profile.hasAddress) fieldsHad.push("home address")
+  const fieldList = fieldsHad.join(", ")
+
+  const BY_LANGUAGE: Record<SupportedLanguage, string> = {
+    en: `Hi ${profile.firstName}! I can see we already have your ${fieldList} on file. Would you like me to pre-fill those fields so you can skip straight to what's missing? Reply **Yes** to use your saved info, or **No** to start fresh.`,
+    "zh-CN": `您好，${profile.firstName}！我们系统中已保存了您的${fieldList}。您是否希望我用这些信息预填申请表，跳过相关问题？回复**是**使用已保存信息，或回复**否**重新填写。`,
+    ht: `Bonjou ${profile.firstName}! Sistèm nou an genyen déjà ${fieldList} ou. Èske ou ta renmen m itilize yo pou ranpli aplikasyon ou alavans epi sote kesyon ki gen rapò yo? Reponn **Wi** pou itilize enfòmasyon sove ou yo, oswa **Non** pou kòmanse depi nan kòmansman.`,
+    "pt-BR": `Olá, ${profile.firstName}! Já temos seu(sua) ${fieldList} em nosso sistema. Gostaria que eu pré-preenchesse esses campos para você pular direto para o que falta? Responda **Sim** para usar seus dados salvos, ou **Não** para começar do zero.`,
+    es: `¡Hola, ${profile.firstName}! Ya tenemos su ${fieldList} en el sistema. ¿Le gustaría que rellene esos campos automáticamente para pasar directamente a lo que falta? Responda **Sí** para usar su información guardada, o **No** para comenzar desde cero.`,
+    vi: `Xin chào ${profile.firstName}! Chúng tôi đã có ${fieldList} của bạn trong hệ thống. Bạn có muốn tôi điền trước những thông tin đó để bỏ qua những câu hỏi đã có không? Trả lời **Có** để dùng thông tin đã lưu, hoặc **Không** để bắt đầu lại từ đầu.`,
+  }
+  return BY_LANGUAGE[language] ?? BY_LANGUAGE.en
+}
+
+/**
+ * Confirmation shown after the user says "Yes" — lists which fields were populated.
+ */
+export function getProfilePreFillConfirmation(
+  appliedFields: string[],
+  language: SupportedLanguage,
+): string {
+  const list = appliedFields.join(", ")
+  const BY_LANGUAGE: Record<SupportedLanguage, string> = {
+    en: `I've pre-filled your ${list}. Let me check what's still needed and we'll pick up from there.`,
+    "zh-CN": `我已为您预填了${list}。让我检查还缺什么信息，然后继续。`,
+    ht: `Mwen ranpli ${list} ou alavans. Kite m tcheke sa ki toujou manke epi nou a kontinye.`,
+    "pt-BR": `Preenchi automaticamente seu(sua) ${list}. Vou verificar o que ainda falta e continuamos a partir daí.`,
+    es: `He rellenado previamente su ${list}. Déjeme revisar qué falta y continuaremos desde allí.`,
+    vi: `Tôi đã điền trước ${list} của bạn. Hãy để tôi kiểm tra xem còn thiếu gì và chúng ta sẽ tiếp tục.`,
+  }
+  return BY_LANGUAGE[language] ?? BY_LANGUAGE.en
+}
+
+/**
+ * Response when the user says "No" — ask for first name to start fresh.
+ */
+export function getProfilePreFillDeclineResponse(language: SupportedLanguage): string {
+  const BY_LANGUAGE: Record<SupportedLanguage, string> = {
+    en: "No problem! Let's start fresh. What's your first name?",
+    "zh-CN": "没问题！我们重新开始。请问您的名字是什么？",
+    ht: "Pa gen pwoblèm! Ann kòmanse depi nan kòmansman. Ki prenon ou?",
+    "pt-BR": "Sem problema! Vamos começar do zero. Qual é o seu primeiro nome?",
+    es: "¡Sin problema! Empecemos desde cero. ¿Cuál es su nombre?",
+    vi: "Không sao! Hãy bắt đầu lại từ đầu. Tên của bạn là gì?",
+  }
+  return BY_LANGUAGE[language] ?? BY_LANGUAGE.en
 }
 
 // ── Helpers for prompt builders ───────────────────────────────────────────────

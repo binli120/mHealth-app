@@ -26,19 +26,21 @@ export const FORM_SECTION_ORDER: FormSection[] = [
 export function summarizeCollectedFields(formData: Partial<ApplicationFormData>): string {
   const lines: string[] = []
 
+  // Emit each personal field individually so partial pre-fills (e.g. firstName
+  // from a profile but no lastName yet) are still visible to the LLM and it
+  // doesn't re-ask for fields that are already collected.
   const personalParts = [
-    formData.firstName && formData.lastName ? `${formData.firstName} ${formData.lastName}` : null,
-    formData.dob ? `DOB: ${formData.dob}` : null,
+    formData.firstName ? `First name: ${formData.firstName}` : null,
+    formData.lastName  ? `Last name: ${formData.lastName}`   : null,
+    formData.dob       ? `DOB: ${formData.dob}`              : null,
   ].filter(Boolean)
   if (personalParts.length > 0) lines.push(`Personal: ${personalParts.join(", ")}`)
 
   const contactParts = [
-    formData.email || null,
-    formData.phone || null,
+    formData.email   ? `Email: ${formData.email}`   : null,
+    formData.phone   ? `Phone: ${formData.phone}`   : null,
     formData.address
-      ? [formData.address, formData.apartment, formData.city, formData.state, formData.zip]
-          .filter(Boolean)
-          .join(" ")
+      ? `Address: ${[formData.address, formData.apartment, formData.city, formData.state, formData.zip].filter(Boolean).join(" ")}`
       : null,
   ].filter(Boolean)
   if (contactParts.length > 0) lines.push(`Contact: ${contactParts.join(" | ")}`)

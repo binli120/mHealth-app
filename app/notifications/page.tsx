@@ -41,7 +41,9 @@ export default function NotificationsPage() {
   const [filter, setFilter] = useState<string>("all")
   // Keep a stable ref to items for rollback snapshots inside callbacks
   const itemsRef = useRef(items)
-  itemsRef.current = items
+  useEffect(() => {
+    itemsRef.current = items
+  })
 
   const loadAll = useCallback(async () => {
     dispatch(setLoading(true))

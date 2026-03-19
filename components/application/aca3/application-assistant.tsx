@@ -33,7 +33,14 @@ import {
 import { setLanguage } from "@/lib/redux/features/app-slice"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { isSupportedLanguage, SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/lib/i18n/languages"
-import { getFormAssistantGreeting } from "@/lib/masshealth/chat-knowledge"
+import {
+  getFormAssistantGreeting,
+  getProfileAwareFormAssistantGreeting,
+  getProfilePreFillConfirmation,
+  getProfilePreFillDeclineResponse,
+  type ProfilePreFillSummary,
+} from "@/lib/masshealth/chat-knowledge"
+import type { UserProfile } from "@/lib/user-profile/types"
 import {
   summarizeCollectedFields,
   detectCurrentSection,
@@ -223,7 +230,7 @@ function isValidEmail(v: string): boolean {
 const FIELD_TYPE_HINT: Record<InputFieldType, string> = {
   phone: "Format: (xxx) xxx-xxxx",
   ssn: "Format: xxx-xx-xxxx",
-  date: "Format: MM/DD/YYYY — or type like "Jan 17, 80"",
+  date: 'Format: MM/DD/YYYY — or type like "Jan 17, 80"',
   email: "Enter a valid email address",
   money: "Enter amount, e.g. 3,000 or 3000.50",
   text: "",
@@ -309,9 +316,35 @@ interface ApplicationAssistantProps {
   onSwitchToWizard?: () => void
 }
 
+/** Maps a saved UserProfile into ApplicationFormData fields that can be pre-filled. */
+function buildPreFillFromProfile(profile: UserProfile): Partial<ApplicationFormData> {
+  const fields: Partial<ApplicationFormData> = {}
+  if (profile.firstName) fields.firstName = profile.firstName
+  if (profile.lastName) fields.lastName = profile.lastName
+  if (profile.dateOfBirth) fields.dob = profile.dateOfBirth
+  if (profile.phone) fields.phone = profile.phone
+  if (profile.addressLine1) fields.address = profile.addressLine1
+  if (profile.addressLine2) fields.apartment = profile.addressLine2
+  if (profile.city) fields.city = profile.city
+  if (profile.state) fields.state = profile.state
+  if (profile.zip) fields.zip = profile.zip
+  return fields
+}
+
+/** Returns a human-readable list of which profile fields were applied. */
+function describedAppliedFields(profile: UserProfile): string[] {
+  const labels: string[] = []
+  if (profile.firstName || profile.lastName) labels.push("name")
+  if (profile.dateOfBirth) labels.push("date of birth")
+  if (profile.phone) labels.push("phone number")
+  if (profile.addressLine1) labels.push("home address")
+  return labels
+}
+
 export function ApplicationAssistant({ applicationId, onSwitchToWizard }: ApplicationAssistantProps) {
   const dispatch = useAppDispatch()
   const language = useAppSelector((state) => state.app.language) as SupportedLanguage
+  const userProfile = useAppSelector((state) => state.userProfile.profile)
 
   // Stable ID for this chat session — either the provided applicationId or a fresh UUID.
   // Using useState guarantees it never changes across re-renders.
@@ -345,8 +378,16 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
   const [expandedSections, setExpandedSections] = useState<Set<FormSection>>(new Set(["personal"]))
   const [documentsTriggered, setDocumentsTriggered] = useState(false)
 
+  // "pending"    — waiting for user's yes/no on profile pre-fill
+  // "confirming" — user said yes; confirmation shown; LLM being auto-called for first question
+  // "accepted"   — LLM responded after pre-fill; normal chat mode
+  // "declined"   — user said no, or no profile exists; start fresh / normal chat mode
+  const [profileFillMode, setProfileFillMode] = useState<"pending" | "confirming" | "accepted" | "declined">("declined")
+
   const recognitionRef = useRef<{ stop: () => void } | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  // Guard so the auto-trigger fires exactly once per pre-fill acceptance.
+  const profileAutoTriggeredRef = useRef(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const saveDraftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -373,7 +414,25 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
   // ── Initialise greeting ───────────────────────────────────────────────────
 
   useEffect(() => {
-    const greeting = getFormAssistantGreeting(language)
+    let greeting: string
+
+    if (userProfile?.firstName) {
+      // We have a profile — offer to pre-fill.
+      const summary: ProfilePreFillSummary = {
+        firstName: userProfile.firstName,
+        hasLastName: Boolean(userProfile.lastName),
+        hasDob: Boolean(userProfile.dateOfBirth),
+        hasPhone: Boolean(userProfile.phone),
+        hasAddress: Boolean(userProfile.addressLine1),
+      }
+      greeting = getProfileAwareFormAssistantGreeting(summary, language)
+      setProfileFillMode("pending")
+    } else {
+      // No profile — start the standard question flow.
+      greeting = getFormAssistantGreeting(language)
+      setProfileFillMode("declined")
+    }
+
     setMessages([
       {
         id: crypto.randomUUID(),
@@ -384,7 +443,8 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
     ])
     // Focus textarea so user can start typing immediately
     textareaRef.current?.focus()
-  }, [language])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language]) // intentionally omit userProfile — greeting is set once on mount/language change
 
   // ── Trigger document upload prompts when reaching documents section ────────
 
@@ -443,24 +503,80 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
     }, 1500)
   }, [applicationId, messages.length])
 
+  // ── Auto-trigger LLM after profile pre-fill ────────────────────────────────
+  // When the user says "yes" we show a confirmation message and enter "confirming"
+  // state.  This effect immediately calls the LLM so its first real question
+  // ("What's your email?", etc.) becomes the last assistant message — keeping
+  // field-type detection accurate.
+
+  useEffect(() => {
+    if (profileFillMode !== "confirming" || profileAutoTriggeredRef.current) return
+    profileAutoTriggeredRef.current = true
+
+    const trigger = async () => {
+      setIsLoading(true)
+      try {
+        const collectedSummary = summarizeCollectedFields(formData)
+        const response = await authenticatedFetch("/api/chat/masshealth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            // A minimal user turn gives the LLM something to respond to.
+            // It is NOT added to the visible chat — only the assistant reply is shown.
+            messages: [{ role: "user", content: "I confirmed my information. Please ask me for what's still needed to complete the application." }],
+            language,
+            mode: "form_assistant",
+            currentFields: collectedSummary,
+            currentSection,
+            existingMembers: formData.householdMembers ?? [],
+            existingSources: formData.incomeSources ?? [],
+          }),
+        })
+        if (response.ok) {
+          const data = await response.json() as { ok: boolean; reply: string }
+          if (data.ok && data.reply) {
+            setMessages((prev) => [
+              ...prev,
+              { id: crypto.randomUUID(), type: "text" as const, role: "assistant" as const, content: data.reply },
+            ])
+          } else {
+            // API returned ok:false or empty reply — show a nudge so the user isn't stuck
+            setMessages((prev) => [
+              ...prev,
+              { id: crypto.randomUUID(), type: "text" as const, role: "assistant" as const, content: getFormAssistantGreeting(language) },
+            ])
+          }
+        } else {
+          throw new Error(`API error ${response.status}`)
+        }
+      } catch {
+        // Surface a short nudge so the user knows they can continue typing
+        setMessages((prev) => [
+          ...prev,
+          { id: crypto.randomUUID(), type: "text" as const, role: "assistant" as const, content: "I'm ready to continue. What would you like to tell me next?" },
+        ])
+      } finally {
+        setIsLoading(false)
+        setProfileFillMode("accepted")
+      }
+    }
+
+    void trigger()
+    // formData, currentSection deliberately included so we always use the post-prefill snapshot
+  }, [profileFillMode, formData, language, currentSection])
+
   // ── Voice input ───────────────────────────────────────────────────────────
 
   const startListening = useCallback(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const w = typeof window !== "undefined" ? (window as any) : undefined
     const SpeechRecognitionAPI = w?.SpeechRecognition ?? w?.webkitSpeechRecognition
     if (!SpeechRecognitionAPI) return
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
     const recognition = new SpeechRecognitionAPI()
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     recognition.lang = SPEECH_LANG[language] ?? "en-US"
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     recognition.continuous = false
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     recognition.interimResults = true
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     recognition.onresult = (event: { resultIndex: number; results: { [key: number]: { [key: number]: { transcript: string } } } }) => {
       let transcript = ""
       for (let i = event.resultIndex; i < Object.keys(event.results).length; i++) {
@@ -491,6 +607,26 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
     setIsListening(false)
   }, [])
 
+  // ── Input field-type detection ────────────────────────────────────────────
+  // Must be declared BEFORE handleSubmit so the dep-array reference is valid.
+
+  const lastAssistantContent = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i]
+      if (m.role === "assistant" && m.type === "text") return (m as TextMessage).content
+    }
+    return ""
+  }, [messages])
+
+  const inputFieldType = useMemo(
+    // Bypass field-type detection while the profile pre-fill flow is in progress
+    // (pending = yes/no prompt, confirming = confirmation shown, LLM not yet called).
+    () => (profileFillMode === "pending" || profileFillMode === "confirming")
+      ? "text"
+      : detectInputFieldType(lastAssistantContent),
+    [lastAssistantContent, profileFillMode],
+  )
+
   // ── Chat submission ───────────────────────────────────────────────────────
 
   const handleSubmit = useCallback(
@@ -498,6 +634,52 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
       e?.preventDefault()
       let trimmed = input.trim()
       if (!trimmed || isLoading) return
+
+      // ── Profile pre-fill yes/no intercept ──────────────────────────────
+      // This fires only once — while the greeting is awaiting the user's answer.
+      if (profileFillMode === "pending") {
+        const normalized = trimmed.toLowerCase().replace(/[^a-z]/g, "")
+        const isYes = /^(yes|yeah|yep|yup|sure|ok|okay|oui|si|sim|wi|co|co|vang|да)/.test(normalized)
+        const isNo = /^(no|nope|nah|non|não|nò|không|не)/.test(normalized)
+
+        const userMessage: TextMessage = {
+          id: crypto.randomUUID(),
+          type: "text",
+          role: "user",
+          content: trimmed,
+        }
+        setMessages((prev) => [...prev, userMessage])
+        setInput("")
+
+        if (isYes && userProfile) {
+          // Pre-fill from profile
+          const preFilled = buildPreFillFromProfile(userProfile)
+          setLocalFields(preFilled)
+          dispatch(patchNewApplicationForm({ applicationId: sessionApplicationId, patch: preFilled }))
+          const appliedLabels = describedAppliedFields(userProfile)
+          const confirmMsg = getProfilePreFillConfirmation(appliedLabels, language)
+          setMessages((prev) => [
+            ...prev,
+            { id: crypto.randomUUID(), type: "text", role: "assistant", content: confirmMsg },
+          ])
+          // "confirming" triggers a useEffect below that auto-calls the LLM
+          // to ask the first missing question. This ensures the LLM's question
+          // (not the confirmation message) becomes the last assistant message,
+          // so field-type detection works correctly.
+          setProfileFillMode("confirming")
+        } else {
+          // Declined or unclear — start fresh
+          setProfileFillMode("declined")
+          const declineMsg = getProfilePreFillDeclineResponse(language)
+          setMessages((prev) => [
+            ...prev,
+            { id: crypto.randomUUID(), type: "text", role: "assistant", content: declineMsg },
+          ])
+        }
+
+        textareaRef.current?.focus()
+        return // Do not call the LLM for yes/no
+      }
 
       // ── Email validation guard ──────────────────────────────────────────
       if (inputFieldType === "email" && !isValidEmail(trimmed)) {
@@ -723,7 +905,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
         setIsLoading(false)
       }
     },
-    [input, isLoading, messages, formData, language, currentSection, dispatch, scheduleDraftSave, sessionApplicationId, inputFieldType],
+    [input, isLoading, messages, formData, language, currentSection, dispatch, scheduleDraftSave, sessionApplicationId, inputFieldType, profileFillMode, userProfile],
   )
 
   const handleKeyDown = useCallback(
@@ -747,21 +929,6 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
       return next
     })
   }, [])
-
-  // ── Input field-type detection ────────────────────────────────────────────
-
-  const lastAssistantContent = useMemo(() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const m = messages[i]
-      if (m.role === "assistant" && m.type === "text") return (m as TextMessage).content
-    }
-    return ""
-  }, [messages])
-
-  const inputFieldType = useMemo(
-    () => detectInputFieldType(lastAssistantContent),
-    [lastAssistantContent],
-  )
 
   const [inputError, setInputError] = useState<string>("")
 

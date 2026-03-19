@@ -189,6 +189,57 @@ export interface MassHealthApplicationTypeOption {
   referenceUrl: string
 }
 
+// ── ACA-3-AP eligibility ──────────────────────────────────────────────────────
+
+/**
+ * Input for evaluating whether an additional person qualifies to be added
+ * to an existing ACA-3 household case.
+ */
+export interface Aca3ApEligibilityApplicantInput {
+  applicantId: string
+  /** Age of the additional person being added. */
+  age: number
+  /** Whether the additional person is a Massachusetts resident. */
+  maResident: boolean
+  citizenshipStatus: CitizenshipStatus
+  /** Whether the additional person is being added to an existing case (should always be true). */
+  addingToExistingCase: boolean
+  /** Size of the existing household BEFORE adding this person. */
+  existingHouseholdSize: number
+  pregnant: boolean
+  unbornChildren: number
+  disabled: boolean
+  medicalVerification: boolean
+  hasOtherInsurance: boolean
+  income: EligibilityIncomeInput
+  identityVerified: boolean
+  verification: {
+    ssnVerified: boolean
+    incomeVerified: boolean
+    immigrationVerified: boolean
+  }
+}
+
+export interface Aca3ApEligibilityResult {
+  applicant_id: string
+  /** Household size after adding this person. */
+  new_household_size: number
+  income: number
+  fpl_percent: number
+  eligible_program: string
+  status:
+    | "APPROVED"
+    | "DENIED"
+    | "LIMITED_COVERAGE"
+    | "PENDING_VERIFICATION"
+    | "PENDING_DOCUMENTS"
+    | "TPL_REQUIRED"
+    | "REDIRECT_SACA2"
+  required_documents: string[]
+  findings: EligibilityFinding[]
+  rule_results: EligibilityRuleResult[]
+}
+
 // ── Extract workflow ──────────────────────────────────────────────────────────
 
 export interface ExtractWorkflowPayload {
