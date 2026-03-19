@@ -1,8 +1,7 @@
 import "server-only"
 
 import type { SupportedLanguage } from "@/lib/i18n/languages"
-import { DEFAULT_OLLAMA_BASE_URL, OLLAMA_CHAT_ENDPOINT } from "@/lib/rag/constants"
-import type { ChatMessage, OllamaResponse } from "./types"
+import type { ChatMessage } from "./types"
 import type { ApplicationFormData, HouseholdMember, IncomeSource } from "@/lib/redux/features/application-slice"
 import {
   EXTRACT_TEMPERATURE,
@@ -10,6 +9,7 @@ import {
   EXTRACT_MESSAGE_WINDOW,
 } from "./constants"
 import type { FormSection } from "./form-sections"
+import { callOllama } from "./ollama-client"
 
 // Re-export for server-side consumers
 export type { FormSection }
@@ -85,33 +85,15 @@ function buildFormFieldExtractionPrompt(collectedSummary: string, currentSection
 
 // ── Ollama call ───────────────────────────────────────────────────────────────
 
-function getOllamaBaseUrl(): string {
-  return (process.env.OLLAMA_BASE_URL || DEFAULT_OLLAMA_BASE_URL).replace(/\/+$/, "")
-}
-
 async function callOllamaForFormJson(systemPrompt: string, messages: ChatMessage[]): Promise<string> {
-  const response = await fetch(`${getOllamaBaseUrl()}${OLLAMA_CHAT_ENDPOINT}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    cache: "no-store",
-    signal: AbortSignal.timeout(EXTRACT_TIMEOUT_MS),
-    body: JSON.stringify({
-      model: EXTRACT_MODEL,
-      stream: false,
-      options: { temperature: EXTRACT_TEMPERATURE },
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...messages.slice(-EXTRACT_MESSAGE_WINDOW),
-      ],
-    }),
+  return callOllama({
+    model: EXTRACT_MODEL,
+    temperature: EXTRACT_TEMPERATURE,
+    timeoutMs: EXTRACT_TIMEOUT_MS,
+    systemPrompt,
+    messages,
+    messageWindowSize: EXTRACT_MESSAGE_WINDOW,
   })
-
-  if (!response.ok) {
-    throw new Error(`Ollama form extraction failed: HTTP ${response.status}`)
-  }
-
-  const data = (await response.json()) as OllamaResponse
-  return data.message?.content?.trim() ?? ""
 }
 
 // ── Parsing ───────────────────────────────────────────────────────────────────
@@ -164,13 +146,15 @@ function parseExtractedFormFields(
 
   const start = cleaned.indexOf("{")
   const end = cleaned.lastIndexOf("}")
-  if (start === -1 || end === -1) return { fields: {}, noHouseholdMembers: false, noIncome: false }
+  if (start === -1 || end === -1) {
+    return { fields: {}, noHouseholdMembers: false, noIncome: false, extractionFailed: true }
+  }
 
   let parsed: RawExtracted
   try {
     parsed = JSON.parse(cleaned.slice(start, end + 1)) as RawExtracted
   } catch {
-    return { fields: {}, noHouseholdMembers: false, noIncome: false }
+    return { fields: {}, noHouseholdMembers: false, noIncome: false, extractionFailed: true }
   }
 
   const fields: Partial<ExtractableFormFields> = {}
@@ -185,10 +169,21 @@ function parseExtractedFormFields(
     fields.dob = normalizeDate(parsed.dob.trim())
   }
   if (typeof parsed.phone === "string" && parsed.phone.trim()) {
-    fields.phone = parsed.phone.replace(/\D/g, "").slice(0, 10)
+    const digits = parsed.phone.replace(/\D/g, "")
+    // Accept exactly 10 digits (US) or 11 digits starting with 1 (US with country code)
+    if (digits.length === 11 && digits.startsWith("1")) {
+      fields.phone = digits.slice(1) // strip leading country code
+    } else if (digits.length === 10) {
+      fields.phone = digits
+    }
+    // If neither, skip — do not silently truncate an international/malformed number
   }
-  if (typeof parsed.email === "string" && parsed.email.includes("@")) {
-    fields.email = parsed.email.trim().toLowerCase()
+  if (typeof parsed.email === "string") {
+    const trimmed = parsed.email.trim().toLowerCase()
+    // Require: local@domain.tld — at least one char before @, dot in domain, no double-@
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      fields.email = trimmed
+    }
   }
   if (typeof parsed.address === "string" && parsed.address.trim()) {
     fields.address = parsed.address.trim()
@@ -252,14 +247,18 @@ function parseExtractedFormFields(
       const type = typeof rawSource.type === "string" ? rawSource.type.trim() : "other"
       if (existingTypes.has(type.toLowerCase())) continue
       existingTypes.add(type.toLowerCase())
+      const rawFreq = typeof rawSource.frequency === "string" ? rawSource.frequency.trim() : ""
+      const isValidFreq = VALID_INCOME_FREQ.has(rawFreq)
+      if (rawFreq && !isValidFreq) {
+        // Log so developers can see if the LLM is returning unexpected frequency values
+        console.warn("[form-field-extraction] Unknown income frequency %o — defaulting to monthly", rawFreq)
+      }
       newSources.push({
         id: crypto.randomUUID(),
         type,
         employer: typeof rawSource.employer === "string" ? rawSource.employer.trim() : "",
         amount: typeof rawSource.amount === "string" ? rawSource.amount.trim() : "",
-        frequency: typeof rawSource.frequency === "string" && VALID_INCOME_FREQ.has(rawSource.frequency as string)
-          ? (rawSource.frequency as string)
-          : "monthly",
+        frequency: isValidFreq ? rawFreq : "monthly",
       })
     }
 
@@ -281,6 +280,8 @@ export interface FormExtractionResult {
   fields: Partial<ExtractableFormFields>
   noHouseholdMembers: boolean
   noIncome: boolean
+  /** True when the LLM response could not be parsed — caller should warn the user. */
+  extractionFailed?: boolean
 }
 
 /**
@@ -301,6 +302,6 @@ export async function extractFormFields(
     const raw = await callOllamaForFormJson(systemPrompt, messages)
     return parseExtractedFormFields(raw, existingMembers, existingSources)
   } catch {
-    return { fields: {}, noHouseholdMembers: false, noIncome: false }
+    return { fields: {}, noHouseholdMembers: false, noIncome: false, extractionFailed: true }
   }
 }

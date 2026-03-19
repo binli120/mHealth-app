@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, CheckCheck, Loader2 } from "lucide-react"
 
@@ -12,6 +12,8 @@ import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import {
   markAllRead,
   markRead,
+  revertMarkAllRead,
+  revertMarkRead,
   setError,
   setLoading,
   setNotifications,
@@ -32,6 +34,9 @@ export default function NotificationsPage() {
   const dispatch = useAppDispatch()
   const { items, unreadCount, loading, error } = useAppSelector((s) => s.notifications)
   const [filter, setFilter] = useState<string>("all")
+  // Keep a stable ref to items for rollback snapshots inside callbacks
+  const itemsRef = useRef(items)
+  itemsRef.current = items
 
   const loadAll = useCallback(async () => {
     dispatch(setLoading(true))
@@ -48,13 +53,25 @@ export default function NotificationsPage() {
   useEffect(() => { loadAll() }, [loadAll])
 
   const handleMarkAllRead = useCallback(async () => {
+    const unreadIds = itemsRef.current.filter((n) => !n.readAt).map((n) => n.id)
+    const prevCount = unreadIds.length
     dispatch(markAllRead())
-    await authenticatedFetch("/api/notifications/read-all", { method: "POST" }).catch(() => null)
+    try {
+      await authenticatedFetch("/api/notifications/read-all", { method: "POST" })
+    } catch {
+      dispatch(revertMarkAllRead({ unreadIds, prevCount }))
+      dispatch(setError("Failed to mark all as read. Please try again."))
+    }
   }, [dispatch])
 
   const handleItemClick = useCallback(async (notification: Notification) => {
+    const wasUnread = !notification.readAt
     dispatch(markRead(notification.id))
-    await authenticatedFetch(`/api/notifications/${notification.id}/read`, { method: "POST" }).catch(() => null)
+    try {
+      await authenticatedFetch(`/api/notifications/${notification.id}/read`, { method: "POST" })
+    } catch {
+      if (wasUnread) dispatch(revertMarkRead(notification.id))
+    }
   }, [dispatch])
 
   const filtered = filter === "all" ? items : items.filter((n) => n.type === filter)

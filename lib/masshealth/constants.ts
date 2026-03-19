@@ -4,8 +4,10 @@
 
 // ── MassHealth contact info ───────────────────────────────────────────────────
 
-export const MASSHEALTH_PHONE = "(800) 841-2900"
+export const MASSHEALTH_PHONE = "1-800-841-2900"
 export const MASSHEALTH_TTY = "711"
+/** MassHealth direct TTY line (for D/HH applicants who don't use the relay service). */
+export const MASSHEALTH_TTY_DIRECT = "1-800-497-4648"
 export const MASSHEALTH_SERVICE_HOURS = "Monday-Friday, 8:00 a.m.-5:00 p.m."
 
 // ── ACA-3 eligibility: Federal Poverty Level (FY 2026) ────────────────────────

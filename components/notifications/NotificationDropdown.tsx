@@ -14,6 +14,8 @@ import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import {
   markAllRead,
   markRead,
+  revertMarkAllRead,
+  revertMarkRead,
   setError,
   setLoading,
   setNotifications,
@@ -22,6 +24,11 @@ import {
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import type { Notification } from "@/lib/notifications/types"
 
+/** Only allow internal paths — block open-redirect via metadata actionUrl. */
+function isSafeInternalPath(value: unknown): value is string {
+  return typeof value === "string" && value.startsWith("/") && !value.includes("://")
+}
+
 interface Props {
   children: React.ReactNode
 }
@@ -29,7 +36,7 @@ interface Props {
 export function NotificationDropdown({ children }: Props) {
   const dispatch = useAppDispatch()
   const router = useRouter()
-  const { items, unreadCount, loading } = useAppSelector((s) => s.notifications)
+  const { items, unreadCount, loading, error } = useAppSelector((s) => s.notifications)
 
   const loadNotifications = useCallback(async () => {
     dispatch(setLoading(true))
@@ -43,26 +50,32 @@ export function NotificationDropdown({ children }: Props) {
   }, [dispatch])
 
   const handleMarkAllRead = useCallback(async () => {
+    // Snapshot unread state before optimistic update so we can roll back on failure
+    const unreadIds = items.filter((n) => !n.readAt).map((n) => n.id)
+    const prevCount = unreadCount
     dispatch(markAllRead())
     try {
       await authenticatedFetch("/api/notifications/read-all", { method: "POST" })
     } catch {
-      // optimistic update already applied; silently fail
+      dispatch(revertMarkAllRead({ unreadIds, prevCount }))
+      dispatch(setError("Failed to mark notifications as read. Please try again."))
     }
-  }, [dispatch])
+  }, [dispatch, items, unreadCount])
 
   const handleItemClick = useCallback(async (notification: Notification) => {
+    const wasUnread = !notification.readAt
     dispatch(markRead(notification.id))
     try {
       await authenticatedFetch(`/api/notifications/${notification.id}/read`, { method: "POST" })
     } catch {
-      // optimistic update already applied
+      // Roll back optimistic update on failure
+      if (wasUnread) dispatch(revertMarkRead(notification.id))
     }
-    // Navigate based on type + metadata
+    // Navigate based on type + metadata — only allow safe internal paths (C1: open redirect fix)
     const meta = notification.metadata
     if (notification.type === "status_change" || notification.type === "document_request") {
       router.push("/customer/dashboard")
-    } else if (typeof meta.actionUrl === "string") {
+    } else if (isSafeInternalPath(meta.actionUrl)) {
       router.push(meta.actionUrl)
     } else {
       router.push("/notifications")
@@ -91,6 +104,11 @@ export function NotificationDropdown({ children }: Props) {
         </div>
         <Separator />
         <ScrollArea className="max-h-[360px]">
+          {error && (
+            <div className="px-4 py-2 text-xs text-destructive bg-destructive/10 border-b border-destructive/20">
+              {error}
+            </div>
+          )}
           {loading && items.length === 0 ? (
             <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
               Loading…

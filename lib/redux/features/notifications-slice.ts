@@ -43,6 +43,20 @@ const notificationsSlice = createSlice({
       })
       state.unreadCount = 0
     },
+    revertMarkRead(state, action: PayloadAction<string>) {
+      const item = state.items.find((n) => n.id === action.payload)
+      if (item && item.readAt) {
+        item.readAt = null
+        state.unreadCount += 1
+      }
+    },
+    revertMarkAllRead(state, action: PayloadAction<{ unreadIds: string[]; prevCount: number }>) {
+      for (const id of action.payload.unreadIds) {
+        const item = state.items.find((n) => n.id === id)
+        if (item) item.readAt = null
+      }
+      state.unreadCount = action.payload.prevCount
+    },
     setLoading(state, action: PayloadAction<boolean>) {
       state.loading = action.payload
       if (action.payload) state.error = null
@@ -59,6 +73,8 @@ export const {
   setUnreadCount,
   markRead,
   markAllRead,
+  revertMarkRead,
+  revertMarkAllRead,
   setLoading,
   setError,
 } = notificationsSlice.actions

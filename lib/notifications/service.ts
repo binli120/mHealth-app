@@ -18,7 +18,7 @@ import type { NotificationPrefs } from "@/lib/user-profile/types"
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
 const FROM_EMAIL = process.env.FROM_EMAIL ?? "noreply@healthcompassma.com"
 
-// ── Fetch user email + notification prefs from DB ───────────────────────────
+// ── Fetch user email + notification prefs ────────────────────────────────────
 
 async function getUserEmailAndPrefs(
   userId: string,
@@ -65,7 +65,7 @@ function wantsEmail(prefs: NotificationPrefs): boolean {
   return prefs.channel === "email" || prefs.channel === "both"
 }
 
-// ── Core dispatch function ──────────────────────────────────────────────────
+// ── Core email dispatch ──────────────────────────────────────────────────────
 
 async function sendEmailNotification(
   notificationId: string,
@@ -91,6 +91,51 @@ async function sendEmailNotification(
   }
 }
 
+// ── Shared dispatch pipeline ─────────────────────────────────────────────────
+//
+// All four public triggers share the same steps:
+//   1. Create in-app DB notification
+//   2. Fetch user email + prefs
+//   3. Guard: wants email + optional pref check
+//   4. Render and send email
+//
+// Each trigger only differs in the content (title, body, metadata, email element).
+
+interface NotifyPayload {
+  userId: string
+  type: NotificationType
+  title: string
+  body: string
+  metadata: Record<string, unknown>
+  subject: string
+  /** Return the React email element given the resolved recipient name. */
+  buildEmail: (recipientName: string) => React.ReactElement
+  /** Extra pref guard beyond wantsEmail (e.g. deadlineReminders). */
+  prefGuard?: (prefs: NotificationPrefs) => boolean
+}
+
+async function dispatch(payload: NotifyPayload): Promise<void> {
+  const notification = await createNotification({
+    userId: payload.userId,
+    type: payload.type,
+    title: payload.title,
+    body: payload.body,
+    metadata: payload.metadata,
+  })
+
+  const user = await getUserEmailAndPrefs(payload.userId)
+  if (!user) return
+  if (!wantsEmail(user.prefs)) return
+  if (payload.prefGuard && !payload.prefGuard(user.prefs)) return
+
+  await sendEmailNotification(
+    notification.id,
+    user.email,
+    payload.subject,
+    payload.buildEmail(user.name),
+  )
+}
+
 // ── Public convenience triggers ─────────────────────────────────────────────
 
 export async function notifyStatusChange(
@@ -110,34 +155,25 @@ export async function notifyStatusChange(
 
   const title = STATUS_TITLES[newStatus] ?? "Your application status has changed"
   const body = `Your MassHealth application (${applicationId}) status is now: ${newStatus.replace(/_/g, " ")}.`
+  const dashboardUrl = `${APP_URL}/customer/dashboard`
+  const prefsUrl = `${APP_URL}/customer/profile#notifications`
 
-  const notification = await createNotification({
+  await dispatch({
     userId,
-    type: "status_change" as NotificationType,
+    type: "status_change",
     title,
     body,
     metadata: { applicationId, newStatus },
+    subject: title,
+    buildEmail: (name) =>
+      StatusChangeEmail({
+        applicantName: applicantName ?? name,
+        applicationId,
+        newStatus,
+        dashboardUrl,
+        prefsUrl,
+      }),
   })
-
-  const user = await getUserEmailAndPrefs(userId)
-  if (!user || !wantsEmail(user.prefs)) return
-
-  const name = applicantName ?? user.name
-  const prefsUrl = `${APP_URL}/customer/profile#notifications`
-  const dashboardUrl = `${APP_URL}/customer/dashboard`
-
-  await sendEmailNotification(
-    notification.id,
-    user.email,
-    title,
-    StatusChangeEmail({
-      applicantName: name,
-      applicationId,
-      newStatus,
-      dashboardUrl,
-      prefsUrl,
-    }),
-  )
 }
 
 export async function notifyDocumentRequest(
@@ -149,34 +185,25 @@ export async function notifyDocumentRequest(
 ): Promise<void> {
   const title = `Document requested: ${documentType}`
   const body = `Please upload ${documentType} for your application (${applicationId}) by ${dueDate}.`
+  const uploadUrl = `${APP_URL}/customer/dashboard`
+  const prefsUrl = `${APP_URL}/customer/profile#notifications`
 
-  const notification = await createNotification({
+  await dispatch({
     userId,
-    type: "document_request" as NotificationType,
+    type: "document_request",
     title,
     body,
     metadata: { applicationId, documentType, dueDate },
+    subject: "Action Required: Document Requested",
+    buildEmail: (name) =>
+      DocumentRequestEmail({
+        applicantName: applicantName ?? name,
+        documentType,
+        dueDate,
+        uploadUrl,
+        prefsUrl,
+      }),
   })
-
-  const user = await getUserEmailAndPrefs(userId)
-  if (!user || !wantsEmail(user.prefs)) return
-
-  const name = applicantName ?? user.name
-  const prefsUrl = `${APP_URL}/customer/profile#notifications`
-  const uploadUrl = `${APP_URL}/customer/dashboard`
-
-  await sendEmailNotification(
-    notification.id,
-    user.email,
-    "Action Required: Document Requested",
-    DocumentRequestEmail({
-      applicantName: name,
-      documentType,
-      dueDate,
-      uploadUrl,
-      prefsUrl,
-    }),
-  )
 }
 
 export async function notifyRenewalReminder(
@@ -188,35 +215,27 @@ export async function notifyRenewalReminder(
 ): Promise<void> {
   const title = `${programName} renewal due in ${daysLeft} days`
   const body = `Your ${programName} coverage renews on ${renewalDate}. Complete your renewal to avoid a gap.`
+  const renewalUrl = `${APP_URL}/customer/dashboard`
+  const prefsUrl = `${APP_URL}/customer/profile#notifications`
 
-  const notification = await createNotification({
+  await dispatch({
     userId,
-    type: "renewal_reminder" as NotificationType,
+    type: "renewal_reminder",
     title,
     body,
     metadata: { programName, renewalDate, daysLeft },
+    subject: `${programName} Renewal Due in ${daysLeft} Days`,
+    prefGuard: (prefs) => prefs.deadlineReminders,
+    buildEmail: (name) =>
+      RenewalReminderEmail({
+        applicantName: applicantName ?? name,
+        programName,
+        renewalDate,
+        daysLeft,
+        renewalUrl,
+        prefsUrl,
+      }),
   })
-
-  const user = await getUserEmailAndPrefs(userId)
-  if (!user || !user.prefs.deadlineReminders || !wantsEmail(user.prefs)) return
-
-  const name = applicantName ?? user.name
-  const prefsUrl = `${APP_URL}/customer/profile#notifications`
-  const renewalUrl = `${APP_URL}/customer/dashboard`
-
-  await sendEmailNotification(
-    notification.id,
-    user.email,
-    `${programName} Renewal Due in ${daysLeft} Days`,
-    RenewalReminderEmail({
-      applicantName: name,
-      programName,
-      renewalDate,
-      daysLeft,
-      renewalUrl,
-      prefsUrl,
-    }),
-  )
 }
 
 export async function notifyDeadline(
@@ -228,32 +247,23 @@ export async function notifyDeadline(
 ): Promise<void> {
   const title = `Deadline approaching: ${programName}`
   const body = `There is an important deadline for ${programName} on ${deadline}.`
+  const prefsUrl = `${APP_URL}/customer/profile#notifications`
 
-  const notification = await createNotification({
+  await dispatch({
     userId,
-    type: "deadline" as NotificationType,
+    type: "deadline",
     title,
     body,
     metadata: { programName, deadline, actionUrl },
+    subject: `Deadline Reminder: ${programName}`,
+    prefGuard: (prefs) => prefs.deadlineReminders,
+    buildEmail: (name) =>
+      DeadlineEmail({
+        applicantName: applicantName ?? name,
+        programName,
+        deadline,
+        actionUrl,
+        prefsUrl,
+      }),
   })
-
-  const user = await getUserEmailAndPrefs(userId)
-  if (!user || !user.prefs.deadlineReminders || !wantsEmail(user.prefs)) return
-
-  const name = applicantName ?? user.name
-  const prefsUrl = `${APP_URL}/customer/profile#notifications`
-
-  await sendEmailNotification(
-    notification.id,
-    user.email,
-    `Deadline Reminder: ${programName}`,
-    DeadlineEmail({
-      applicantName: name,
-      programName,
-      deadline,
-      actionUrl,
-      prefsUrl,
-    }),
-  )
 }
-

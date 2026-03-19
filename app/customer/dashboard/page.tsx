@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { MASSHEALTH_APPLICATION_TYPES } from "@/lib/masshealth/application-types"
+import { MASSHEALTH_PHONE, MASSHEALTH_TTY_DIRECT } from "@/lib/masshealth/constants"
 import { type ApplicationStatus } from "@/lib/application-status"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { useAppSelector, useAppDispatch } from "@/lib/redux/hooks"
@@ -482,8 +483,8 @@ export default function CustomerDashboardPage() {
                   {getMessage(language, "dashboardSupportHours")}
                 </p>
                 <div className="text-sm">
-                  <p className="font-medium text-foreground">1-800-841-2900</p>
-                  <p className="text-muted-foreground">TTY: 1-800-497-4648</p>
+                  <p className="font-medium text-foreground">{MASSHEALTH_PHONE}</p>
+                  <p className="text-muted-foreground">TTY: {MASSHEALTH_TTY_DIRECT}</p>
                 </div>
               </CardContent>
             </Card>

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { z } from "zod"
 
 import {
   ApplicationDraftAccessError,
@@ -7,6 +8,7 @@ import {
 } from "@/lib/db/application-drafts"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 import { notifyStatusChange } from "@/lib/notifications/service"
+import { logServerError } from "@/lib/server/logger"
 import {
   ERROR_APPLICATION_DRAFT_NOT_FOUND,
   ERROR_LOAD_DRAFT_FAILED,
@@ -21,6 +23,19 @@ import {
 } from "./constants"
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+// Allowlist known application types; lowercase alphanumeric + hyphens only
+const draftBodySchema = z.object({
+  applicationType: z
+    .string()
+    .trim()
+    .max(64)
+    .regex(/^[a-z0-9_-]+$/, "applicationType must be alphanumeric with underscores/hyphens")
+    .optional(),
+  wizardState: z.record(z.unknown()).optional(),
+})
+
+const WIZARD_STATE_MAX_BYTES = 100_000 // 100 KB
 
 interface RouteContext {
   params: Promise<{
@@ -100,9 +115,23 @@ export async function PUT(request: Request, context: RouteContext) {
       )
     }
 
-    const body = (await request.json()) as {
-      applicationType?: string
-      wizardState?: Record<string, unknown>
+    // Guard body size before parsing (prevents unbounded wizardState blobs)
+    const rawBody = await request.text()
+    if (rawBody.length > WIZARD_STATE_MAX_BYTES) {
+      return NextResponse.json(
+        { ok: false, error: "Request body too large." },
+        { status: 413 },
+      )
+    }
+
+    let body: z.infer<typeof draftBodySchema>
+    try {
+      body = draftBodySchema.parse(JSON.parse(rawBody))
+    } catch {
+      return NextResponse.json(
+        { ok: false, error: ERROR_WIZARD_STATE_REQUIRED },
+        { status: STATUS_BAD_REQUEST },
+      )
     }
 
     if (!body.wizardState || typeof body.wizardState !== "object") {
@@ -119,9 +148,15 @@ export async function PUT(request: Request, context: RouteContext) {
       wizardState: body.wizardState,
     })
 
-    // Fire-and-forget notification on submission
+    // Notify on submission — log failures rather than silently swallowing them
     if (record.status === "submitted") {
-      notifyStatusChange(authResult.userId, applicationId, "submitted").catch(() => null)
+      notifyStatusChange(authResult.userId, applicationId, "submitted").catch((err) => {
+        logServerError("Failed to send submission notification", err, {
+          module: "api/applications/draft",
+          userId: authResult.userId,
+          applicationId,
+        })
+      })
     }
 
     return NextResponse.json({

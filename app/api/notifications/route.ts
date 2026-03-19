@@ -10,7 +10,8 @@ export async function GET(request: Request) {
 
   try {
     const url = new URL(request.url)
-    const limit = Math.min(parseInt(url.searchParams.get("limit") ?? "50", 10), 100)
+    const parsedLimit = parseInt(url.searchParams.get("limit") ?? "50", 10)
+    const limit = Math.min(isNaN(parsedLimit) || parsedLimit < 1 ? 50 : parsedLimit, 100)
     const notifications = await getNotifications(auth.userId, limit)
     return NextResponse.json({ ok: true, data: notifications })
   } catch (err) {
