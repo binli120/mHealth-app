@@ -96,6 +96,37 @@ async function requireApplicantIdForUser(userId: string): Promise<string> {
   return applicantId
 }
 
+/**
+ * When a social worker acts on behalf of a patient, verify they have active
+ * access and return the *patient's* applicant ID to use in DB queries.
+ */
+async function resolveApplicantIdWithSwAccess(
+  swUserId: string,
+  patientUserId: string,
+): Promise<string> {
+  assertUuid(swUserId)
+  assertUuid(patientUserId)
+  const pool = getDbPool()
+
+  const accessCheck = await pool.query<{ has_access: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1 FROM public.patient_social_worker_access
+       WHERE patient_user_id  = $1::uuid
+         AND social_worker_user_id = $2::uuid
+         AND is_active = true
+     ) AS has_access`,
+    [patientUserId, swUserId],
+  )
+
+  if (!accessCheck.rows[0]?.has_access) {
+    throw new ApplicationDraftAccessError(
+      "Social worker does not have active access to this patient.",
+    )
+  }
+
+  return requireApplicantIdForUser(patientUserId)
+}
+
 function parseIntOrNull(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value
@@ -176,9 +207,13 @@ export async function createApplicationDraft(params: {
   userId: string
   applicationId: string
   applicationType?: string
+  /** Social worker acting on behalf of this patient user ID */
+  actingForUserId?: string
 }) {
   assertUuid(params.applicationId)
-  const applicantId = await requireApplicantIdForUser(params.userId)
+  const applicantId = params.actingForUserId
+    ? await resolveApplicantIdWithSwAccess(params.userId, params.actingForUserId)
+    : await requireApplicantIdForUser(params.userId)
   const pool = getDbPool()
 
   const { rows } = await pool.query(
@@ -217,9 +252,15 @@ export async function createApplicationDraft(params: {
   return toRecord(rows[0] as Record<string, unknown>)
 }
 
-export async function getApplicationDraft(userId: string, applicationId: string) {
+export async function getApplicationDraft(
+  userId: string,
+  applicationId: string,
+  actingForUserId?: string,
+) {
   assertUuid(applicationId)
-  const applicantId = await findApplicantIdForUser(userId)
+  const applicantId = actingForUserId
+    ? await resolveApplicantIdWithSwAccess(userId, actingForUserId).catch(() => null)
+    : await findApplicantIdForUser(userId)
   if (!applicantId) {
     return null
   }
@@ -319,9 +360,13 @@ export async function upsertApplicationDraft(params: {
   applicationId: string
   applicationType?: string
   wizardState: Record<string, unknown>
+  /** Social worker acting on behalf of this patient user ID */
+  actingForUserId?: string
 }) {
   assertUuid(params.applicationId)
-  const applicantId = await requireApplicantIdForUser(params.userId)
+  const applicantId = params.actingForUserId
+    ? await resolveApplicantIdWithSwAccess(params.userId, params.actingForUserId)
+    : await requireApplicantIdForUser(params.userId)
   const pool = getDbPool()
   const currentStepRaw = params.wizardState.currentStep
   const currentStep =

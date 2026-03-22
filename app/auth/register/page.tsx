@@ -15,10 +15,26 @@ import { Label } from "@/components/ui/label"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { isLocalAuthHelperEnabled, normalizeAuthEmail } from "@/lib/auth/local-auth"
 import { formatPhoneNumber } from "@/lib/utils/input-format"
-import { Eye, EyeOff, ArrowLeft, CheckCircle2 } from "lucide-react"
+import {
+  Eye, EyeOff, ArrowLeft, CheckCircle2,
+  UserRound, UserCheck, Search, Building2, Loader2,
+} from "lucide-react"
 import { ShieldHeartIcon } from "@/lib/icons"
 
-type RegisterStep = "form" | "verify"
+type RegisterStep = "role-select" | "company-search" | "form" | "verify"
+type AccountRole = "applicant" | "social_worker"
+
+interface CompanyResult {
+  id: string | null
+  source: "nppes" | "local"
+  name: string
+  npi: string | null
+  address: string | null
+  city: string | null
+  state: string | null
+  zip: string | null
+  email_domain: string | null
+}
 
 interface DevRegisterResponse {
   ok?: boolean
@@ -29,7 +45,6 @@ function getSafeNextPath(nextPath: string | null, fallback: string): string {
   if (!nextPath || !nextPath.startsWith("/") || nextPath.startsWith("//") || nextPath.startsWith("/auth/")) {
     return fallback
   }
-
   return nextPath
 }
 
@@ -38,7 +53,10 @@ function RegisterPageContent() {
   const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [step, setStep] = useState<RegisterStep>("form")
+  const [step, setStep] = useState<RegisterStep>("role-select")
+  const [role, setRole] = useState<AccountRole>("applicant")
+
+  // Form fields
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
   const [email, setEmail] = useState("")
@@ -46,6 +64,17 @@ function RegisterPageContent() {
   const [password, setPassword] = useState("")
   const [errorMessage, setErrorMessage] = useState("")
   const [infoMessage, setInfoMessage] = useState("")
+
+  // Social worker fields
+  const [swCompany, setSwCompany] = useState<CompanyResult | null>(null)
+  const [swLicense, setSwLicense] = useState("")
+  const [swJobTitle, setSwJobTitle] = useState("")
+
+  // Company search
+  const [companyQuery, setCompanyQuery] = useState("")
+  const [companyResults, setCompanyResults] = useState<CompanyResult[]>([])
+  const [companySearching, setCompanySearching] = useState(false)
+
   const nextPath = useMemo(
     () => getSafeNextPath(searchParams.get("next"), "/application/type"),
     [searchParams],
@@ -54,6 +83,31 @@ function RegisterPageContent() {
     () => `/auth/login?next=${encodeURIComponent(nextPath)}`,
     [nextPath],
   )
+
+  const searchCompanies = async () => {
+    if (companyQuery.length < 2) return
+    setCompanySearching(true)
+    const res = await fetch(`/api/companies/search?q=${encodeURIComponent(companyQuery)}`)
+    const data = await res.json()
+    setCompanyResults(data.results ?? [])
+    setCompanySearching(false)
+  }
+
+  const selectCompany = (c: CompanyResult) => {
+    setSwCompany(c)
+    setStep("form")
+    setErrorMessage("")
+  }
+
+  const handleRoleSelect = (selectedRole: AccountRole) => {
+    setRole(selectedRole)
+    setErrorMessage("")
+    if (selectedRole === "social_worker") {
+      setStep("company-search")
+    } else {
+      setStep("form")
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -66,9 +120,25 @@ function RegisterPageContent() {
       setErrorMessage("Email is required.")
       return
     }
-
     if (password.length < 8) {
       setErrorMessage("Password must be at least 8 characters.")
+      return
+    }
+
+    // Validate email domain for social workers
+    if (role === "social_worker" && swCompany?.email_domain) {
+      const emailDomain = normalizedEmail.split("@")[1]?.toLowerCase()
+      if (emailDomain !== swCompany.email_domain.toLowerCase()) {
+        setErrorMessage(
+          `Your email must use your company domain (@${swCompany.email_domain}).`,
+        )
+        return
+      }
+    }
+
+    if (role === "social_worker" && !swCompany) {
+      setErrorMessage("Please select your company first.")
+      setStep("company-search")
       return
     }
 
@@ -76,6 +146,22 @@ function RegisterPageContent() {
 
     try {
       const supabase = getSupabaseClient()
+      const swExtra =
+        role === "social_worker"
+          ? {
+              role: "social_worker",
+              companyId: swCompany?.id,
+              companyName: swCompany?.name,
+              companyNpi: swCompany?.npi,
+              companyAddress: swCompany?.address,
+              companyCity: swCompany?.city,
+              companyState: swCompany?.state,
+              companyZip: swCompany?.zip,
+              companyEmailDomain: swCompany?.email_domain,
+              licenseNumber: swLicense,
+              jobTitle: swJobTitle,
+            }
+          : {}
 
       const tryDevRegisterAndSignIn = async (params: {
         email: string
@@ -90,15 +176,14 @@ function RegisterPageContent() {
 
         const registerResponse = await fetch("/api/auth/dev-register", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             email: params.email,
             password: params.password,
             firstName: params.firstName,
             lastName: params.lastName,
             phone: params.phone,
+            ...swExtra,
           }),
         })
 
@@ -115,10 +200,7 @@ function RegisterPageContent() {
           password: params.password,
         })
         if (signInResult.error) {
-          return {
-            ok: false as const,
-            error: signInResult.error.message,
-          }
+          return { ok: false as const, error: signInResult.error.message }
         }
 
         return { ok: true as const }
@@ -128,33 +210,22 @@ function RegisterPageContent() {
         email: normalizedEmail,
         password,
         options: {
-          data: {
-            first_name: firstName,
-            last_name: lastName,
-            phone,
-          },
+          data: { first_name: firstName, last_name: lastName, phone },
         },
       })
 
       if (error) {
         if (localAuthHelperEnabled) {
           const recovered = await tryDevRegisterAndSignIn({
-            email: normalizedEmail,
-            password,
-            firstName,
-            lastName,
-            phone,
+            email: normalizedEmail, password, firstName, lastName, phone,
           })
-
           if (recovered.ok) {
-            router.push(nextPath)
+            router.push(role === "social_worker" ? "/social-worker/dashboard" : nextPath)
             return
           }
-
           setErrorMessage(recovered.error || error.message)
           return
         }
-
         setErrorMessage(error.message)
         return
       }
@@ -165,22 +236,15 @@ function RegisterPageContent() {
       if (looksLikeExistingUser) {
         if (localAuthHelperEnabled) {
           const recovered = await tryDevRegisterAndSignIn({
-            email: normalizedEmail,
-            password,
-            firstName,
-            lastName,
-            phone,
+            email: normalizedEmail, password, firstName, lastName, phone,
           })
-
           if (recovered.ok) {
-            router.push(nextPath)
+            router.push(role === "social_worker" ? "/social-worker/dashboard" : nextPath)
             return
           }
-
-          setErrorMessage(recovered.error || "An account with this email already exists. Please sign in instead.")
+          setErrorMessage(recovered.error || "An account with this email already exists.")
           return
         }
-
         setErrorMessage("An account with this email already exists. Please sign in instead.")
         return
       }
@@ -191,25 +255,18 @@ function RegisterPageContent() {
       }
 
       if (data.session) {
-        router.push(nextPath)
+        router.push(role === "social_worker" ? "/social-worker/dashboard" : nextPath)
         return
       }
 
-      // Local development fallback: auto-confirm email and sign in.
       if (localAuthHelperEnabled) {
         const recovered = await tryDevRegisterAndSignIn({
-          email: normalizedEmail,
-          password,
-          firstName,
-          lastName,
-          phone,
+          email: normalizedEmail, password, firstName, lastName, phone,
         })
-
         if (recovered.ok) {
-          router.push(nextPath)
+          router.push(role === "social_worker" ? "/social-worker/dashboard" : nextPath)
           return
         }
-
         setErrorMessage(recovered.error || "Local auto-confirm failed.")
         return
       }
@@ -227,20 +284,12 @@ function RegisterPageContent() {
     setErrorMessage("")
     setInfoMessage("")
     setIsLoading(true)
-
     try {
-      const supabase = getSupabaseClient()
-      const normalizedEmail = normalizeAuthEmail(email)
-      const { error } = await supabase.auth.resend({
+      const { error } = await getSupabaseClient().auth.resend({
         type: "signup",
-        email: normalizedEmail,
+        email: normalizeAuthEmail(email),
       })
-
-      if (error) {
-        setErrorMessage(error.message)
-        return
-      }
-
+      if (error) { setErrorMessage(error.message); return }
       setInfoMessage("Confirmation email resent.")
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to resend confirmation email.")
@@ -267,86 +316,256 @@ function RegisterPageContent() {
               <ShieldHeartIcon color="currentColor" className="h-6 w-6 text-primary-foreground" />
             </div>
             <h1 className="text-2xl font-bold text-foreground">Create Account</h1>
-            <p className="mt-1 text-muted-foreground">Start your HealthCompass MA application</p>
+            <p className="mt-1 text-muted-foreground">HealthCompass MA</p>
           </div>
 
-          {step === "form" ? (
+          {/* Step: Role Selection */}
+          {step === "role-select" && (
+            <Card className="border-border bg-card">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-xl">I am…</CardTitle>
+                <CardDescription>Choose how you want to use HealthCompass MA</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => handleRoleSelect("applicant")}
+                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-colors text-left group"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    <UserRound className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-foreground text-sm">Applying for Benefits</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      I want to apply for MassHealth or other benefit programs
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleRoleSelect("social_worker")}
+                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-colors text-left group"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                    <UserCheck className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-foreground text-sm">Social Worker / Case Manager</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      I help clients apply for benefits at a licensed agency
+                    </div>
+                  </div>
+                </button>
+
+                <p className="text-center text-sm text-muted-foreground pt-2">
+                  Already have an account?{" "}
+                  <Link href={loginHref} className="font-medium text-primary hover:underline">Sign in</Link>
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Step: Company Search (Social Worker) */}
+          {step === "company-search" && (
+            <Card className="border-border bg-card">
+              <CardHeader className="pb-4">
+                <button
+                  onClick={() => setStep("role-select")}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-2"
+                >
+                  <ArrowLeft className="w-3 h-3" /> Back
+                </button>
+                <CardTitle className="text-xl">Find Your Agency</CardTitle>
+                <CardDescription>
+                  Search for the social work agency or organization you work for
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Agency name (e.g. 'Boston Medical')"
+                    value={companyQuery}
+                    onChange={(e) => setCompanyQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && searchCompanies()}
+                    className="border-input"
+                  />
+                  <Button
+                    type="button"
+                    onClick={searchCompanies}
+                    disabled={companySearching || companyQuery.length < 2}
+                    variant="outline"
+                    size="icon"
+                  >
+                    {companySearching ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Search className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
+
+                {companyResults.length > 0 && (
+                  <div className="space-y-2 max-h-72 overflow-y-auto">
+                    {companyResults.map((c, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => selectCompany(c)}
+                        className="w-full flex items-center gap-3 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-colors text-left"
+                      >
+                        <Building2 className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-foreground">{c.name}</div>
+                          <div className="text-xs text-muted-foreground truncate">
+                            {[c.address, c.city, c.state].filter(Boolean).join(", ")}
+                            {c.source === "local" && (
+                              <span className="ml-1.5 text-emerald-600 font-medium">✓ Approved</span>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {companyResults.length === 0 && companyQuery.length >= 2 && !companySearching && (
+                  <p className="text-xs text-muted-foreground text-center py-2">
+                    No results yet — click search or press Enter
+                  </p>
+                )}
+
+                {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Step: Account Form */}
+          {step === "form" && (
             <Card className="border-border bg-card">
               <CardHeader className="space-y-1 pb-4">
-                <CardTitle className="text-xl text-card-foreground">Account Information</CardTitle>
-                <CardDescription>Create an account to save your progress</CardDescription>
+                {role === "social_worker" && swCompany && (
+                  <button
+                    onClick={() => setStep("company-search")}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-1"
+                  >
+                    <ArrowLeft className="w-3 h-3" /> Back
+                  </button>
+                )}
+                <CardTitle className="text-xl text-card-foreground">
+                  {role === "social_worker" ? "Social Worker Account" : "Account Information"}
+                </CardTitle>
+                {role === "social_worker" && swCompany && (
+                  <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2 mt-1">
+                    <Building2 className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="font-medium">{swCompany.name}</span>
+                    {swCompany.email_domain && (
+                      <span className="text-emerald-600 ml-auto">@{swCompany.email_domain}</span>
+                    )}
+                  </div>
+                )}
+                <CardDescription>
+                  {role === "social_worker"
+                    ? "Use your company email address to register"
+                    : "Create an account to save your progress"}
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="firstName" className="text-foreground">
-                        First Name
-                      </Label>
+                      <Label htmlFor="firstName">First Name</Label>
                       <Input
                         id="firstName"
                         placeholder="John"
                         required
-                        className="border-input bg-background text-foreground"
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="lastName" className="text-foreground">
-                        Last Name
-                      </Label>
+                      <Label htmlFor="lastName">Last Name</Label>
                       <Input
                         id="lastName"
                         placeholder="Doe"
                         required
-                        className="border-input bg-background text-foreground"
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-foreground">
+                    <Label htmlFor="email">
                       Email Address
+                      {role === "social_worker" && swCompany?.email_domain && (
+                        <span className="text-xs text-muted-foreground ml-1">
+                          (must end in @{swCompany.email_domain})
+                        </span>
+                      )}
                     </Label>
                     <Input
                       id="email"
                       type="email"
-                      placeholder="you@example.com"
+                      placeholder={
+                        role === "social_worker" && swCompany?.email_domain
+                          ? `you@${swCompany.email_domain}`
+                          : "you@example.com"
+                      }
                       required
-                      className="border-input bg-background text-foreground"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-foreground">
-                      Phone Number
-                    </Label>
+                    <Label htmlFor="phone">Phone Number</Label>
                     <Input
                       id="phone"
                       type="tel"
                       placeholder="(555)123-4567"
                       required
-                      className="border-input bg-background text-foreground"
                       value={phone}
                       onChange={(e) => setPhone(formatPhoneNumber(e.target.value))}
                       maxLength={13}
                       inputMode="numeric"
                     />
                   </div>
+
+                  {/* Social worker specific fields */}
+                  {role === "social_worker" && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="jobTitle">Job Title</Label>
+                        <Input
+                          id="jobTitle"
+                          placeholder="e.g. Case Manager, Social Worker"
+                          value={swJobTitle}
+                          onChange={(e) => setSwJobTitle(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="license">
+                          License Number <span className="text-muted-foreground text-xs">(optional)</span>
+                        </Label>
+                        <Input
+                          id="license"
+                          placeholder="e.g. LCSW-123456"
+                          value={swLicense}
+                          onChange={(e) => setSwLicense(e.target.value)}
+                        />
+                      </div>
+                    </>
+                  )}
+
                   <div className="space-y-2">
-                    <Label htmlFor="password" className="text-foreground">
-                      Create Password
-                    </Label>
+                    <Label htmlFor="password">Create Password</Label>
                     <div className="relative">
                       <Input
                         id="password"
                         type={showPassword ? "text" : "password"}
                         placeholder="Create a strong password"
                         required
-                        className="border-input bg-background pr-10 text-foreground"
+                        className="pr-10"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                       />
@@ -358,46 +577,51 @@ function RegisterPageContent() {
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      At least 8 characters with a number and special character
-                    </p>
+                    <p className="text-xs text-muted-foreground">At least 8 characters</p>
                   </div>
 
-                  {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
-                  {infoMessage ? <p className="text-sm text-accent">{infoMessage}</p> : null}
+                  {role === "social_worker" && (
+                    <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-xs text-amber-800">
+                      Your account will be reviewed by an admin before you can access the social worker portal.
+                    </div>
+                  )}
 
-                  <Button
-                    type="submit"
-                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? "Creating Account..." : "Create Account"}
+                  {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
+                  {infoMessage && <p className="text-sm text-accent">{infoMessage}</p>}
+
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? "Creating Account…" : "Create Account"}
                   </Button>
                 </form>
 
                 <p className="mt-6 text-center text-sm text-muted-foreground">
                   Already have an account?{" "}
-                  <Link href={loginHref} className="font-medium text-primary hover:underline">
-                    Sign in
-                  </Link>
+                  <Link href={loginHref} className="font-medium text-primary hover:underline">Sign in</Link>
                 </p>
               </CardContent>
             </Card>
-          ) : (
+          )}
+
+          {/* Step: Verify email */}
+          {step === "verify" && (
             <Card className="border-border bg-card">
               <CardHeader className="space-y-1 pb-4">
                 <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-accent/10">
                   <CheckCircle2 className="h-6 w-6 text-accent" />
                 </div>
-                <CardTitle className="text-center text-xl text-card-foreground">Verify Your Email</CardTitle>
+                <CardTitle className="text-center text-xl">Verify Your Email</CardTitle>
                 <CardDescription className="text-center">
                   We sent a confirmation link to <span className="font-medium">{email}</span>
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
-                {infoMessage ? <p className="text-sm text-accent">{infoMessage}</p> : null}
-
+                {role === "social_worker" && (
+                  <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2.5 text-xs text-blue-800 text-center">
+                    After email verification, an admin will review and approve your account.
+                  </div>
+                )}
+                {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
+                {infoMessage && <p className="text-sm text-accent">{infoMessage}</p>}
                 <Button
                   type="button"
                   onClick={handleResend}
@@ -405,12 +629,10 @@ function RegisterPageContent() {
                   className="w-full"
                   disabled={isLoading}
                 >
-                  {isLoading ? "Sending..." : "Resend Confirmation Email"}
+                  {isLoading ? "Sending…" : "Resend Confirmation Email"}
                 </Button>
                 <Link href={loginHref} className="block">
-                  <Button type="button" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-                    Go to Sign In
-                  </Button>
+                  <Button type="button" className="w-full">Go to Sign In</Button>
                 </Link>
               </CardContent>
             </Card>

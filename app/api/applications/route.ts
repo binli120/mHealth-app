@@ -93,10 +93,12 @@ export async function POST(request: Request) {
       )
     }
 
+    const actingFor = request.headers.get("X-Acting-For-Patient") ?? undefined
     const record = await createApplicationDraft({
       userId: authResult.userId,
       applicationId: requestedId,
       applicationType: body.applicationType,
+      actingForUserId: actingFor,
     })
 
     return NextResponse.json({

@@ -77,7 +77,8 @@ export async function GET(request: Request, context: RouteContext) {
       )
     }
 
-    const record = await getApplicationDraft(authResult.userId, applicationId)
+    const actingFor = request.headers.get("X-Acting-For-Patient") ?? undefined
+    const record = await getApplicationDraft(authResult.userId, applicationId, actingFor)
     if (!record) {
       return NextResponse.json(
         {
@@ -146,11 +147,13 @@ export async function PUT(request: Request, context: RouteContext) {
       )
     }
 
+    const actingFor = request.headers.get("X-Acting-For-Patient") ?? undefined
     const record = await upsertApplicationDraft({
       userId: authResult.userId,
       applicationId,
       applicationType: body.applicationType,
       wizardState: body.wizardState,
+      actingForUserId: actingFor,
     })
 
     // Notify on submission — log failures rather than silently swallowing them

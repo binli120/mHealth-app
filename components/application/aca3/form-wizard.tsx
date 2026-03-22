@@ -809,9 +809,12 @@ function normalizeHydratedState(raw: unknown): WizardState | null {
 function FormProvider({
   children,
   applicationId,
+  actingForPatientId,
 }: {
   children: ReactNode
   applicationId?: string
+  /** When set (social worker acting for patient), all API calls include X-Acting-For-Patient header */
+  actingForPatientId?: string
 }) {
   const [state, dispatch] = useReducer(formReducer, undefined, createInitialState)
   const reduxDispatch = useAppDispatch()
@@ -859,13 +862,13 @@ function FormProvider({
       }
 
       try {
+        const putHeaders: Record<string, string> = { "Content-Type": "application/json" }
+        if (actingForPatientId) putHeaders["X-Acting-For-Patient"] = actingForPatientId
         const response = await authenticatedFetch(
           `/api/applications/${encodeURIComponent(resolvedApplicationId)}/draft`,
           {
             method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: putHeaders,
             body: JSON.stringify({
               wizardState: persistedState,
               applicationType:
@@ -918,11 +921,14 @@ function FormProvider({
 
     const hydrateFromServerThenCache = async () => {
       try {
+        const getHeaders: Record<string, string> = {}
+        if (actingForPatientId) getHeaders["X-Acting-For-Patient"] = actingForPatientId
         const response = await authenticatedFetch(
           `/api/applications/${encodeURIComponent(resolvedApplicationId)}/draft`,
           {
             method: "GET",
             cache: "no-store",
+            headers: getHeaders,
           },
         )
 
@@ -3990,9 +3996,15 @@ function FormWizardBody() {
   )
 }
 
-export function FormWizard({ applicationId }: { applicationId?: string }) {
+export function FormWizard({
+  applicationId,
+  actingForPatientId,
+}: {
+  applicationId?: string
+  actingForPatientId?: string
+}) {
   return (
-    <FormProvider applicationId={applicationId}>
+    <FormProvider applicationId={applicationId} actingForPatientId={actingForPatientId}>
       <FormWizardBody />
     </FormProvider>
   )

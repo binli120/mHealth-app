@@ -18,6 +18,8 @@ function NewApplicationPageContent() {
   const searchParams = useSearchParams()
   const queryApplicationId = searchParams.get("applicationId")?.trim()
   const requestedMode = searchParams.get("mode")
+  // When a social worker opens the form on behalf of a patient
+  const actingForPatientId = searchParams.get("patientId")?.trim() || undefined
   const [entryMode, setEntryMode] = useState<ApplicationEntryMode>(
     requestedMode === "wizard" ? "wizard" : "chat",
   )
@@ -32,7 +34,9 @@ function NewApplicationPageContent() {
           <div>
             <h1 className="text-xl font-semibold text-foreground">New Application</h1>
             <p className="text-sm text-muted-foreground">
-              Use the AI assistant to complete your application through conversation, or switch to the form wizard.
+              {actingForPatientId
+                ? "Filling this application on behalf of your patient."
+                : "Use the AI assistant to complete your application through conversation, or switch to the form wizard."}
             </p>
           </div>
           <TabsList>
@@ -52,7 +56,10 @@ function NewApplicationPageContent() {
         </TabsContent>
 
         <TabsContent value="wizard" className="mt-4">
-          <FormWizard applicationId={queryApplicationId || undefined} />
+          <FormWizard
+            applicationId={queryApplicationId || undefined}
+            actingForPatientId={actingForPatientId}
+          />
         </TabsContent>
       </Tabs>
     </div>

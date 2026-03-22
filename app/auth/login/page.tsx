@@ -31,8 +31,32 @@ function getSafeNextPath(nextPath: string | null, fallback: string): string {
   if (!nextPath || !nextPath.startsWith("/") || nextPath.startsWith("//") || nextPath.startsWith("/auth/")) {
     return fallback
   }
-
   return nextPath
+}
+
+/**
+ * After a successful Supabase sign-in, pick the right landing dashboard.
+ * Requires the JWT access token so the server-side API can authenticate the call.
+ */
+async function resolveRedirect(explicitNext: string, accessToken: string): Promise<string> {
+  // If the user navigated to login with an explicit ?next= (e.g. from a deep link),
+  // always honour it — don't override with a role-based redirect.
+  if (explicitNext !== "/customer/dashboard") return explicitNext
+
+  try {
+    const res = await fetch("/api/auth/me", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    if (!res.ok) return explicitNext
+    const data = (await res.json()) as { roles: string[]; swStatus: string | null }
+
+    if (data.roles.includes("admin")) return "/admin"
+    if (data.roles.includes("social_worker"))
+      return "/social-worker/dashboard" // layout handles pending/rejected screens
+  } catch {
+    // Fall through to default
+  }
+  return explicitNext
 }
 
 function LoginPageContent() {
@@ -112,7 +136,7 @@ function LoginPageContent() {
           }
         }
 
-        return { ok: true as const }
+        return { ok: true as const, accessToken: retry.data.session?.access_token ?? "" }
       }
 
       const signIn = await supabase.auth.signInWithPassword({
@@ -139,7 +163,7 @@ function LoginPageContent() {
             })
 
             if (!retry.error) {
-              router.push(nextPath)
+              router.push(await resolveRedirect(nextPath, retry.data.session?.access_token ?? ""))
               router.refresh()
               return
             }
@@ -159,7 +183,7 @@ function LoginPageContent() {
           })
 
           if (repaired.ok) {
-            router.push(nextPath)
+            router.push(await resolveRedirect(nextPath, repaired.accessToken))
             router.refresh()
             return
           }
@@ -172,7 +196,7 @@ function LoginPageContent() {
         return
       }
 
-      router.push(nextPath)
+      router.push(await resolveRedirect(nextPath, signIn.data.session?.access_token ?? ""))
       router.refresh()
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to sign in.")

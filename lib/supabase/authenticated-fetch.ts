@@ -22,6 +22,11 @@ export async function authenticatedFetch(
   const headers = new Headers(init.headers)
   headers.set("Authorization", `Bearer ${accessToken}`)
 
+  // Set JSON content type automatically when body is a plain string
+  if (typeof init.body === "string" && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json")
+  }
+
   return fetch(input, {
     ...init,
     headers,

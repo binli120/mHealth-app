@@ -30,6 +30,10 @@ import {
   LogOut,
   Scale,
   Upload,
+  UserCheck,
+  Plus,
+  X,
+  Loader2,
 } from "lucide-react"
 import { NotificationBell } from "@/components/notifications/NotificationBell"
 import { getSafeSupabaseUser } from "@/lib/supabase/client"
@@ -90,6 +94,22 @@ export default function CustomerDashboardPage() {
 
   const [firstName, setFirstName] = useState("")
 
+  // Social worker access state
+  const [socialWorkers, setSocialWorkers] = useState<Array<{
+    access_id: string
+    sw_user_id: string
+    email: string
+    first_name: string | null
+    last_name: string | null
+    company_name: string
+    granted_at: string
+  }>>([])
+  const [swModalOpen, setSwModalOpen] = useState(false)
+  const [swSearchEmail, setSwSearchEmail] = useState("")
+  const [swSearchLoading, setSwSearchLoading] = useState(false)
+  const [swSearchError, setSwSearchError] = useState("")
+  const [swGranting, setSwGranting] = useState(false)
+
   // Fetch the user profile on mount if Redux doesn't already have it.
   // This ensures the navbar avatar always shows even when the user lands
   // on the dashboard directly (without visiting the profile page first).
@@ -112,6 +132,56 @@ export default function CustomerDashboardPage() {
       cancelled = true
     }
   }, [dispatch, userProfile])
+
+  const loadSocialWorkers = useCallback(async () => {
+    try {
+      const res = await authenticatedFetch("/api/patient/social-worker-access", { cache: "no-store" })
+      const data = await res.json().catch(() => ({}))
+      if (data.ok) setSocialWorkers(data.socialWorkers ?? [])
+    } catch {
+      // non-fatal
+    }
+  }, [])
+
+  useEffect(() => { void loadSocialWorkers() }, [loadSocialWorkers])
+
+  const handleGrantAccess = async () => {
+    if (!swSearchEmail.trim()) return
+    setSwSearchLoading(true)
+    setSwSearchError("")
+    setSwGranting(true)
+    try {
+      const res = await authenticatedFetch("/api/patient/social-worker-access", {
+        method: "POST",
+        body: JSON.stringify({ socialWorkerEmail: swSearchEmail.trim() }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!data.ok) {
+        setSwSearchError(data.error ?? "Not found. Make sure the email belongs to an approved social worker.")
+      } else {
+        setSwModalOpen(false)
+        setSwSearchEmail("")
+        void loadSocialWorkers()
+      }
+    } catch {
+      setSwSearchError("Failed to grant access.")
+    } finally {
+      setSwSearchLoading(false)
+      setSwGranting(false)
+    }
+  }
+
+  const handleRevokeAccess = async (swUserId: string) => {
+    try {
+      await authenticatedFetch("/api/patient/social-worker-access", {
+        method: "DELETE",
+        body: JSON.stringify({ socialWorkerId: swUserId }),
+      })
+      void loadSocialWorkers()
+    } catch {
+      // non-fatal
+    }
+  }
 
   const applicationsFetcher = useCallback(async () => {
     const response = await authenticatedFetch("/api/applications?limit=6", {
@@ -493,9 +563,103 @@ export default function CustomerDashboardPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Social Worker Access Panel */}
+            <Card className="border-border bg-card">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-base text-card-foreground">
+                    <UserCheck className="h-4 w-4 text-primary" />
+                    Social Worker Access
+                  </CardTitle>
+                  <button
+                    type="button"
+                    onClick={() => { setSwModalOpen(true); setSwSearchError(""); setSwSearchEmail("") }}
+                    className="flex items-center gap-1 text-xs text-primary hover:underline font-medium"
+                  >
+                    <Plus className="h-3 w-3" /> Add
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {socialWorkers.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    No social workers have access. You can add a social worker to help you with your applications.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {socialWorkers.map((sw) => (
+                      <div key={sw.access_id} className="flex items-center justify-between gap-2 rounded-lg bg-secondary/30 px-3 py-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {[sw.first_name, sw.last_name].filter(Boolean).join(" ") || sw.email}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">{sw.company_name}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void handleRevokeAccess(sw.sw_user_id)}
+                          title="Revoke access"
+                          className="text-muted-foreground hover:text-destructive flex-shrink-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
       </main>
+
+      {/* Add Social Worker Modal */}
+      {swModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-card border border-border shadow-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-semibold text-card-foreground">Add Social Worker</h2>
+              <button onClick={() => setSwModalOpen(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">
+              Enter the email address of an approved social worker or case manager to grant them access to your applications.
+            </p>
+            <div className="space-y-3">
+              <input
+                type="email"
+                placeholder="socialworker@agency.org"
+                value={swSearchEmail}
+                onChange={(e) => { setSwSearchEmail(e.target.value); setSwSearchError("") }}
+                onKeyDown={(e) => e.key === "Enter" && void handleGrantAccess()}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              {swSearchError && <p className="text-xs text-destructive">{swSearchError}</p>}
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setSwModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  className="flex-1 gap-1.5"
+                  disabled={swGranting || !swSearchEmail.trim()}
+                  onClick={() => void handleGrantAccess()}
+                >
+                  {swSearchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Grant Access
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -13,11 +13,24 @@ interface DevRegisterRequestBody {
   firstName?: string
   lastName?: string
   phone?: string
+  // Social worker registration fields
+  role?: string
+  companyId?: string | null
+  companyName?: string
+  companyNpi?: string
+  companyAddress?: string
+  companyCity?: string
+  companyState?: string
+  companyZip?: string
+  companyEmailDomain?: string
+  licenseNumber?: string
+  jobTitle?: string
 }
 
 const MIN_PASSWORD_LENGTH = 8
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const DEFAULT_INSTANCE_ID = "00000000-0000-0000-0000-000000000000"
+const ADMIN_EMAIL = "binli120@gmail.com"
 
 function sanitizeText(value?: string): string | null {
   if (!value) {
@@ -42,6 +55,7 @@ export async function POST(request: Request) {
   const lastName = sanitizeText(body.lastName)
   const phone = sanitizeText(body.phone)
   const email = normalizeAuthEmail(emailRaw)
+  const isSocialWorker = body.role === "social_worker"
 
   if (!EMAIL_PATTERN.test(email)) {
     return NextResponse.json({ ok: false, error: "A valid email is required." }, { status: 400 })
@@ -291,6 +305,84 @@ export async function POST(request: Request) {
       `,
       [resolvedUserId, firstName ?? "", lastName ?? "", phone ?? ""],
     )
+
+    // Auto-assign admin role for the configured admin email
+    if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+      await client.query(
+        `
+          INSERT INTO public.user_roles (user_id, role_id)
+          SELECT $1::uuid, r.id FROM public.roles r WHERE r.name = 'admin'
+          ON CONFLICT DO NOTHING
+        `,
+        [resolvedUserId],
+      )
+    }
+
+    if (isSocialWorker) {
+      // Assign social_worker role
+      await client.query(
+        `
+          INSERT INTO public.user_roles (user_id, role_id)
+          SELECT $1::uuid, r.id FROM public.roles r WHERE r.name = 'social_worker'
+          ON CONFLICT DO NOTHING
+        `,
+        [resolvedUserId],
+      )
+
+      // Resolve or create company
+      let companyId: string | null = body.companyId ?? null
+
+      if (!companyId && body.companyName) {
+        // Create the company if it came from NPPES (no local id)
+        const companyResult = await client.query<{ id: string }>(
+          `
+            INSERT INTO public.companies (name, npi, address, city, state, zip, email_domain, status)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')
+            ON CONFLICT DO NOTHING
+            RETURNING id
+          `,
+          [
+            body.companyName,
+            sanitizeText(body.companyNpi),
+            sanitizeText(body.companyAddress),
+            sanitizeText(body.companyCity),
+            sanitizeText(body.companyState),
+            sanitizeText(body.companyZip),
+            sanitizeText(body.companyEmailDomain),
+          ],
+        )
+        companyId = companyResult.rows[0]?.id ?? null
+
+        // If insert conflicted (already exists), look it up
+        if (!companyId) {
+          const lookup = await client.query<{ id: string }>(
+            `SELECT id FROM public.companies WHERE name = $1 LIMIT 1`,
+            [body.companyName],
+          )
+          companyId = lookup.rows[0]?.id ?? null
+        }
+      }
+
+      if (companyId) {
+        await client.query(
+          `
+            INSERT INTO public.social_worker_profiles
+              (user_id, company_id, license_number, job_title, status)
+            VALUES ($1::uuid, $2::uuid, $3, $4, 'pending')
+            ON CONFLICT (user_id) DO UPDATE SET
+              company_id = EXCLUDED.company_id,
+              license_number = COALESCE(EXCLUDED.license_number, public.social_worker_profiles.license_number),
+              job_title = COALESCE(EXCLUDED.job_title, public.social_worker_profiles.job_title)
+          `,
+          [
+            resolvedUserId,
+            companyId,
+            sanitizeText(body.licenseNumber),
+            sanitizeText(body.jobTitle),
+          ],
+        )
+      }
+    }
 
     await client.query("COMMIT")
 
