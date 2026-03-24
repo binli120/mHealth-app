@@ -10,3 +10,4 @@ psql "$db_url" -v ON_ERROR_STOP=1 -f ./supabase/migrations/20260301145000_auth_u
 psql "$db_url" -v ON_ERROR_STOP=1 -f ./supabase/migrations/20260301152000_rls_policies.sql
 psql "$db_url" -v ON_ERROR_STOP=1 -f ./supabase/migrations/20260305214500_application_drafts.sql
 psql "$db_url" -v ON_ERROR_STOP=1 -f ./supabase/migrations/20260306090000_applications_search_trgm.sql
+psql "$db_url" -v ON_ERROR_STOP=1 -f ./supabase/migrations/20260322000000_collaborative_sessions.sql

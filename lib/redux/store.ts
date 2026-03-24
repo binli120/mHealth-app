@@ -12,6 +12,7 @@ import { benefitOrchestrationReducer } from "@/lib/redux/features/benefit-orches
 import { userProfileReducer } from "@/lib/redux/features/user-profile-slice"
 import { extractAutoReducer } from "@/lib/redux/features/extract-auto-slice"
 import { notificationsReducer } from "@/lib/redux/features/notifications-slice"
+import { collaborativeSessionReducer } from "@/lib/redux/features/collaborative-session-slice"
 
 export const makeStore = () =>
   configureStore({
@@ -24,6 +25,7 @@ export const makeStore = () =>
       userProfile: userProfileReducer,
       extractAuto: extractAutoReducer,
       notifications: notificationsReducer,
+      collaborativeSession: collaborativeSessionReducer,
     },
   })
 

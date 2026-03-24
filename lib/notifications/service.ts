@@ -13,6 +13,8 @@ import {
   DeadlineEmail,
   DocumentRequestEmail,
   RenewalReminderEmail,
+  SessionInviteEmail,
+  SessionStartingEmail,
   StatusChangeEmail,
 } from "@/lib/notifications/email-templates"
 import type { NotificationType } from "@/lib/notifications/types"
@@ -238,6 +240,66 @@ export async function notifyRenewalReminder(
         renewalDate,
         daysLeft,
         renewalUrl,
+        prefsUrl,
+      }),
+  })
+}
+
+export async function notifySessionInvite(
+  patientUserId: string,
+  sessionId: string,
+  swName: string,
+  scheduledAt?: string | null,
+  message?: string | null,
+): Promise<void> {
+  const title = `${swName} has invited you to a session`
+  const body = scheduledAt
+    ? `Your social worker scheduled a session for ${scheduledAt}. Accept to confirm.`
+    : `Your social worker wants to meet with you. Click to accept or decline.`
+  const sessionUrl = `${APP_URL}/customer/sessions/${sessionId}`
+  const prefsUrl = `${APP_URL}/customer/profile#notifications`
+
+  await dispatch({
+    userId: patientUserId,
+    type: "session_invite",
+    title,
+    body,
+    metadata: { sessionId, swName, scheduledAt: scheduledAt ?? null },
+    subject: `${swName} invited you to a HealthCompass session`,
+    buildEmail: (name) =>
+      SessionInviteEmail({
+        patientName: name,
+        swName,
+        scheduledAt: scheduledAt ?? null,
+        inviteMessage: message ?? null,
+        sessionUrl,
+        prefsUrl,
+      }),
+  })
+}
+
+export async function notifySessionStarting(
+  patientUserId: string,
+  sessionId: string,
+  swName: string,
+): Promise<void> {
+  const title = `Session starting now — ${swName} is ready`
+  const body = `Your social worker has started the session. Join now to connect.`
+  const sessionUrl = `${APP_URL}/customer/sessions/${sessionId}`
+  const prefsUrl = `${APP_URL}/customer/profile#notifications`
+
+  await dispatch({
+    userId: patientUserId,
+    type: "session_starting",
+    title,
+    body,
+    metadata: { sessionId, swName },
+    subject: `Join your session with ${swName} now`,
+    buildEmail: (name) =>
+      SessionStartingEmail({
+        patientName: name,
+        swName,
+        sessionUrl,
         prefsUrl,
       }),
   })

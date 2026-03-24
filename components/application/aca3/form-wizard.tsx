@@ -893,7 +893,7 @@ function FormProvider({
         return false
       }
     },
-    [resolvedApplicationId, state],
+    [resolvedApplicationId, state, actingForPatientId],
   )
 
   useEffect(() => {
@@ -973,7 +973,7 @@ function FormProvider({
     return () => {
       cancelled = true
     }
-  }, [applicationRecord?.aca3Wizard, resolvedApplicationId])
+  }, [applicationRecord?.aca3Wizard, resolvedApplicationId, actingForPatientId])
 
   useEffect(() => {
     if (!hydratedRef.current) {

@@ -10,6 +10,7 @@ import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { SWSessionProvider }  from "@/components/collaborative-sessions/FloatingSessionBar"
 import {
   LayoutDashboard,
   Users,
@@ -18,11 +19,13 @@ import {
   Menu,
   X,
   Clock,
+  Video,
 } from "lucide-react"
 
 const NAV_LINKS = [
   { href: "/social-worker/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/social-worker/patients", label: "My Patients", icon: Users },
+  { href: "/social-worker/patients",  label: "My Patients", icon: Users },
+  { href: "/social-worker/sessions",  label: "Sessions", icon: Video },
 ]
 
 export default function SocialWorkerLayout({ children }: { children: React.ReactNode }) {
@@ -176,7 +179,9 @@ export default function SocialWorkerLayout({ children }: { children: React.React
             <span className="text-sm font-semibold text-gray-900">Social Worker Portal</span>
           </div>
         </header>
-        <main className="flex-1 p-6 overflow-auto">{children}</main>
+        <main className="flex-1 p-6 overflow-auto">
+          <SWSessionProvider>{children}</SWSessionProvider>
+        </main>
       </div>
     </div>
   )

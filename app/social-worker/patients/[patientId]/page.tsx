@@ -171,7 +171,7 @@ export default function SWPatientDashboardPage() {
         {/* Row 1: primary action cards (read-only) */}
         <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {/* New application — SW can create on behalf of patient */}
-          <Link href={`/application/new?patientId=${patientId}&mode=wizard`}>
+          <Link href={`/social-worker/patients/${patientId}/applications/new`}>
             <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
               <CardContent className="flex items-center gap-4 p-4">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
@@ -290,7 +290,7 @@ export default function SWPatientDashboardPage() {
                       // Draft → open the form wizard on behalf of the patient
                       // Other statuses → view the status page
                       const href = app.status === "draft"
-                        ? `/application/new?applicationId=${app.id}&patientId=${patientId}&mode=wizard`
+                        ? `/social-worker/patients/${patientId}/applications/${app.id}`
                         : `/customer/status/${app.id}`
                       return (
                         <Link

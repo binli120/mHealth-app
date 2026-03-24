@@ -11,6 +11,8 @@ export type NotificationType =
   | "renewal_reminder"
   | "deadline"
   | "general"
+  | "session_invite"
+  | "session_starting"
 
 // DB row shape (snake_case from pg)
 export interface NotificationRow {

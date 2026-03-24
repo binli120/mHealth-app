@@ -5,7 +5,7 @@
 
 "use client"
 
-import { AlertTriangle, Bell, FileText, RefreshCw } from "lucide-react"
+import { AlertTriangle, Bell, FileText, RefreshCw, Video } from "lucide-react"
 
 import type { Notification, NotificationType } from "@/lib/notifications/types"
 
@@ -15,6 +15,8 @@ const TYPE_CONFIG: Record<NotificationType, { icon: React.ElementType; color: st
   renewal_reminder: { icon: RefreshCw,     color: "text-green-500",  dot: "bg-green-500" },
   deadline:         { icon: AlertTriangle, color: "text-red-500",    dot: "bg-red-500" },
   general:          { icon: Bell,          color: "text-muted-foreground", dot: "bg-muted-foreground" },
+  session_invite:   { icon: Video,         color: "text-violet-500", dot: "bg-violet-500" },
+  session_starting: { icon: Video,         color: "text-green-600",  dot: "bg-green-600" },
 }
 
 function relativeTime(iso: string): string {

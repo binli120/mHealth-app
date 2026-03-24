@@ -198,3 +198,91 @@ export function DeadlineEmail({ applicantName, programName, deadline, actionUrl,
     </Html>
   )
 }
+
+// ── Session invite ───────────────────────────────────────────────────────────
+
+export interface SessionInviteEmailProps {
+  patientName: string
+  swName: string
+  scheduledAt: string | null
+  inviteMessage: string | null
+  sessionUrl: string
+  prefsUrl: string
+}
+
+export function SessionInviteEmail({ patientName, swName, scheduledAt, inviteMessage, sessionUrl, prefsUrl }: Readonly<SessionInviteEmailProps>) {
+  return (
+    <Html>
+      <Head />
+      <Preview>{swName} has invited you to a session on HealthCompass MA</Preview>
+      <Body style={bodyStyle}>
+        <Container style={containerStyle}>
+          <Header />
+          <Section style={sectionStyle}>
+            <Heading style={h2Style}>You have a session invitation</Heading>
+            <Text style={pStyle}>Hi {patientName},</Text>
+            <Text style={pStyle}>
+              Your social worker <strong>{swName}</strong> has invited you to a
+              collaborative session on HealthCompass MA.
+            </Text>
+            {scheduledAt && (
+              <div style={{ backgroundColor: "#eff6ff", borderRadius: "6px", padding: "12px 16px", marginBottom: "16px" }}>
+                <Text style={{ ...pStyle, margin: "0", color: "#1d4ed8" }}>
+                  Scheduled for: <strong>{scheduledAt}</strong>
+                </Text>
+              </div>
+            )}
+            {inviteMessage && (
+              <div style={{ backgroundColor: "#f3f4f6", borderRadius: "6px", padding: "12px 16px", marginBottom: "16px", borderLeft: "3px solid #d1d5db" }}>
+                <Text style={{ ...pStyle, margin: "0", fontStyle: "italic" }}>
+                  &ldquo;{inviteMessage}&rdquo;
+                </Text>
+              </div>
+            )}
+            <Text style={pStyle}>During the session, you will be able to see your social worker&apos;s screen and chat with them in real time.</Text>
+            <Button href={sessionUrl} style={btnStyle}>View Invitation</Button>
+          </Section>
+          <Footer prefsUrl={prefsUrl} />
+        </Container>
+      </Body>
+    </Html>
+  )
+}
+
+// ── Session starting ─────────────────────────────────────────────────────────
+
+export interface SessionStartingEmailProps {
+  patientName: string
+  swName: string
+  sessionUrl: string
+  prefsUrl: string
+}
+
+export function SessionStartingEmail({ patientName, swName, sessionUrl, prefsUrl }: Readonly<SessionStartingEmailProps>) {
+  return (
+    <Html>
+      <Head />
+      <Preview>Your session with {swName} is starting now — join now</Preview>
+      <Body style={bodyStyle}>
+        <Container style={containerStyle}>
+          <Header />
+          <Section style={sectionStyle}>
+            <Heading style={h2Style}>Your session is starting now</Heading>
+            <Text style={pStyle}>Hi {patientName},</Text>
+            <Text style={pStyle}>
+              <strong>{swName}</strong> has started your session and is ready to meet with you.
+              Join now to connect.
+            </Text>
+            <div style={{ backgroundColor: "#dcfce7", borderRadius: "6px", padding: "12px 16px", marginBottom: "16px" }}>
+              <Text style={{ ...pStyle, margin: "0", color: "#166534", fontWeight: "600" as const }}>
+                Session is live — join now
+              </Text>
+            </div>
+            <Button href={sessionUrl} style={{ ...btnStyle, backgroundColor: "#16a34a" }}>Join Session</Button>
+          </Section>
+          <Footer prefsUrl={prefsUrl} />
+        </Container>
+      </Body>
+    </Html>
+  )
+}

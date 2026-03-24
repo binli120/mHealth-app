@@ -36,6 +36,7 @@ import {
   Loader2,
 } from "lucide-react"
 import { NotificationBell } from "@/components/notifications/NotificationBell"
+import { SessionInviteBanner } from "@/components/collaborative-sessions/SessionInviteBanner"
 import { getSafeSupabaseUser } from "@/lib/supabase/client"
 import { ShieldHeartIcon } from "@/lib/icons"
 import { UserAvatar } from "@/components/shared/UserAvatar"
@@ -272,6 +273,12 @@ export default function CustomerDashboardPage() {
               {getMessage(language, "dashboardNavBenefitStack")}
             </Link>
             <Link
+              href="/customer/sessions"
+              className="shrink-0 whitespace-nowrap text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Sessions
+            </Link>
+            <Link
               href="/knowledge-center"
               className="shrink-0 whitespace-nowrap text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
@@ -321,6 +328,8 @@ export default function CustomerDashboardPage() {
             {getMessage(language, "dashboardSubtitle")}
           </p>
         </div>
+
+        <SessionInviteBanner />
 
         {/* Row 1: primary actions */}
         <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
