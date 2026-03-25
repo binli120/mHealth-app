@@ -32,7 +32,7 @@ function normalizeResolveModules(modules) {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  allowedDevOrigins: ["192.168.86.25"],
+  allowedDevOrigins: ["192.168.86.25", "192.168.1.92"],
   turbopack: {
     root: projectRoot,
   },

@@ -97,6 +97,9 @@ export async function POST(request: Request) {
       phone: phone ?? "",
       first_name: firstName ?? "",
       last_name: lastName ?? "",
+      // role is used by the handle_new_auth_user trigger to decide whether to
+      // create an applicants row (patients only) or skip it (staff roles).
+      role: body.role ?? "patient",
       email_verified: true,
       phone_verified: false,
     }
@@ -367,16 +370,22 @@ export async function POST(request: Request) {
         await client.query(
           `
             INSERT INTO public.social_worker_profiles
-              (user_id, company_id, license_number, job_title, status)
-            VALUES ($1::uuid, $2::uuid, $3, $4, 'pending')
+              (user_id, company_id, first_name, last_name, phone, license_number, job_title, status)
+            VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6, $7, 'pending')
             ON CONFLICT (user_id) DO UPDATE SET
-              company_id = EXCLUDED.company_id,
+              company_id     = EXCLUDED.company_id,
+              first_name     = COALESCE(EXCLUDED.first_name,     public.social_worker_profiles.first_name),
+              last_name      = COALESCE(EXCLUDED.last_name,      public.social_worker_profiles.last_name),
+              phone          = COALESCE(EXCLUDED.phone,          public.social_worker_profiles.phone),
               license_number = COALESCE(EXCLUDED.license_number, public.social_worker_profiles.license_number),
-              job_title = COALESCE(EXCLUDED.job_title, public.social_worker_profiles.job_title)
+              job_title      = COALESCE(EXCLUDED.job_title,      public.social_worker_profiles.job_title)
           `,
           [
             resolvedUserId,
             companyId,
+            firstName || null,
+            lastName || null,
+            phone || null,
             sanitizeText(body.licenseNumber),
             sanitizeText(body.jobTitle),
           ],

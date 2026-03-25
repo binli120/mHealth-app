@@ -14,8 +14,10 @@ import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { setUnreadCount } from "@/lib/redux/features/notifications-slice"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 
-const POLL_INTERVAL_MS = 60_000
+const POLL_INTERVAL_MS = 15_000
 const VISIBILITY_DEBOUNCE_MS = 300
+/** Custom event dispatched by chat panels when new messages arrive. */
+const NOTIFICATION_REFRESH_EVENT = "notification:refresh"
 
 export function NotificationBell() {
   const dispatch = useAppDispatch()
@@ -58,11 +60,16 @@ export function NotificationBell() {
     }
     document.addEventListener("visibilitychange", handleVisibilityChange)
 
+    // Refresh immediately when a chat panel signals new messages arrived
+    const handleNotificationRefresh = () => { void fetchUnreadCount(controller.signal) }
+    window.addEventListener(NOTIFICATION_REFRESH_EVENT, handleNotificationRefresh)
+
     return () => {
       controller.abort()
       if (intervalRef.current) clearInterval(intervalRef.current)
       if (visibilityDebounceRef.current) clearTimeout(visibilityDebounceRef.current)
       document.removeEventListener("visibilitychange", handleVisibilityChange)
+      window.removeEventListener(NOTIFICATION_REFRESH_EVENT, handleNotificationRefresh)
     }
   }, [fetchUnreadCount])
 

@@ -210,7 +210,10 @@ function RegisterPageContent() {
         email: normalizedEmail,
         password,
         options: {
-          data: { first_name: firstName, last_name: lastName, phone },
+          // `role` is read by the handle_new_auth_user trigger to decide
+          // whether to create an applicants row. Social workers get their
+          // identity stored in social_worker_profiles instead.
+          data: { first_name: firstName, last_name: lastName, phone, role },
         },
       })
 

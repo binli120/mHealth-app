@@ -5,13 +5,21 @@
  * @email binlee120@gmail.com
  */
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import {
   Search, ArrowRight, Users, MapPin, Phone, Calendar,
-  ChevronDown, X, Filter,
+  ChevronDown, X, Filter, MessageCircle,
 } from "lucide-react"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { getSupabaseClient } from "@/lib/supabase/client"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { SwDirectChatPanel, type DirectMessage } from "@/components/chat/sw-direct-chat-panel"
 
 interface Patient {
   access_id: string
@@ -72,6 +80,17 @@ export default function SocialWorkerPatientsPage() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("")
   const [cityFilter, setCityFilter] = useState("")
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [chatPatient, setChatPatient] = useState<Patient | null>(null)
+  // Persist messages per patient so reopening the dialog doesn't flash a loading state
+  const messageCacheRef = useRef<Record<string, DirectMessage[]>>({})
+
+  // Get the SW's own user ID for the chat panel
+  useEffect(() => {
+    getSupabaseClient().auth.getSession().then(({ data }) => {
+      setCurrentUserId(data.session?.user?.id ?? null)
+    })
+  }, [])
 
   useEffect(() => {
     authenticatedFetch("/api/social-worker/patients")
@@ -191,9 +210,8 @@ export default function SocialWorkerPatientsPage() {
       ) : (
         <div className="space-y-3">
           {filtered.map((p) => (
-            <Link
+            <div
               key={p.access_id}
-              href={`/social-worker/patients/${p.patient_user_id}`}
               className="flex items-center justify-between bg-white rounded-xl border border-gray-200 px-5 py-4 hover:border-blue-300 hover:shadow-sm transition-all group"
             >
               {/* Left: avatar + core info */}
@@ -229,8 +247,8 @@ export default function SocialWorkerPatientsPage() {
                 </div>
               </div>
 
-              {/* Right: stats + status + arrow */}
-              <div className="flex items-center gap-4 flex-shrink-0 ml-4">
+              {/* Right: stats + status + actions */}
+              <div className="flex items-center gap-3 flex-shrink-0 ml-4">
                 <div className="hidden sm:flex items-center gap-1 text-xs text-gray-400">
                   <Calendar className="w-3 h-3" />
                   Since {new Date(p.granted_at).toLocaleDateString()}
@@ -245,12 +263,52 @@ export default function SocialWorkerPatientsPage() {
                 ) : (
                   <span className="text-xs text-gray-400 italic">no apps</span>
                 )}
-                <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-blue-500 transition-colors" />
+                {/* Chat button */}
+                <button
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); setChatPatient(p) }}
+                  className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-100 transition-colors"
+                  title={`Chat with ${fullName(p)}`}
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  Chat
+                </button>
+                <Link
+                  href={`/social-worker/patients/${p.patient_user_id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center"
+                >
+                  <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-blue-500 transition-colors" />
+                </Link>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       )}
+
+      {/* Direct chat dialog */}
+      <Dialog open={!!chatPatient} onOpenChange={(open) => { if (!open) setChatPatient(null) }}>
+        <DialogContent className="flex h-[600px] max-h-[90vh] flex-col gap-0 p-0 sm:max-w-md">
+          <DialogHeader className="sr-only">
+            <DialogTitle>
+              Chat with {chatPatient ? fullName(chatPatient) : "Patient"}
+            </DialogTitle>
+          </DialogHeader>
+          {chatPatient && currentUserId && (
+            <SwDirectChatPanel
+              swUserId={chatPatient.patient_user_id}
+              swName={fullName(chatPatient)}
+              currentUserId={currentUserId}
+              contactRole="Patient"
+              initialMessages={messageCacheRef.current[chatPatient.patient_user_id]}
+              onMessagesChange={(msgs) => {
+                messageCacheRef.current[chatPatient.patient_user_id] = msgs
+              }}
+              onBack={() => setChatPatient(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

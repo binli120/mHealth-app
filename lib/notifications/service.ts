@@ -305,6 +305,129 @@ export async function notifySessionStarting(
   })
 }
 
+// ── SW messaging notifications ───────────────────────────────────────────────
+
+/** Notify a SW that a patient has sent them an engagement request. */
+export async function notifySwEngagementRequest(
+  swUserId: string,
+  patientName: string,
+  requestId: string,
+): Promise<void> {
+  const title = `${patientName || "A patient"} wants your help`
+  const body = `A patient has requested you as their social worker. Review and respond from your dashboard.`
+  const requestUrl = `${APP_URL}/social-worker/messages?tab=requests`
+
+  await dispatch({
+    userId: swUserId,
+    type: "sw_engagement_request",
+    title,
+    body,
+    metadata: { requestId, patientName },
+    subject: title,
+    buildEmail: () =>
+      StatusChangeEmail({
+        applicantName: "Social Worker",
+        applicationId: requestId,
+        newStatus: "New patient engagement request",
+        dashboardUrl: requestUrl,
+        prefsUrl: `${APP_URL}/social-worker/profile#notifications`,
+      }),
+  })
+}
+
+/** Notify a patient that their engagement request was accepted. */
+export async function notifyEngagementAccepted(
+  patientUserId: string,
+  swName: string,
+  requestId: string,
+): Promise<void> {
+  const title = `${swName || "A social worker"} accepted your request`
+  const body = `Your social worker is now connected with you. You can send them messages any time from the chat window.`
+  const chatUrl = `${APP_URL}/customer/dashboard`
+
+  await dispatch({
+    userId: patientUserId,
+    type: "sw_engagement_accepted",
+    title,
+    body,
+    metadata: { requestId, swName },
+    subject: `${swName || "Your social worker"} is ready to help you`,
+    buildEmail: () =>
+      StatusChangeEmail({
+        applicantName: "Applicant",
+        applicationId: requestId,
+        newStatus: "Social worker accepted your request",
+        dashboardUrl: chatUrl,
+        prefsUrl: `${APP_URL}/customer/profile#notifications`,
+      }),
+  })
+}
+
+/** Notify a patient that their engagement request was politely declined. */
+export async function notifyEngagementRejected(
+  patientUserId: string,
+  swName: string,
+  requestId: string,
+  rejectionNote?: string | null,
+): Promise<void> {
+  const title = `${swName || "A social worker"} is unable to take your request`
+  const body =
+    rejectionNote
+      ? `Message: "${rejectionNote}". You can search for another social worker from the chat window.`
+      : `You can search for another social worker from the chat window.`
+  const searchUrl = `${APP_URL}/customer/dashboard`
+
+  await dispatch({
+    userId: patientUserId,
+    type: "sw_engagement_rejected",
+    title,
+    body,
+    metadata: { requestId, swName, rejectionNote: rejectionNote ?? null },
+    subject: `Update on your social worker request`,
+    buildEmail: () =>
+      StatusChangeEmail({
+        applicantName: "Applicant",
+        applicationId: requestId,
+        newStatus: "Social worker request declined",
+        dashboardUrl: searchUrl,
+        prefsUrl: `${APP_URL}/customer/profile#notifications`,
+      }),
+  })
+}
+
+/** Notify the recipient of a new direct message. */
+export async function notifyNewDirectMessage(
+  recipientUserId: string,
+  senderName: string,
+  messageId: string,
+  isSenderSw: boolean,
+): Promise<void> {
+  const title = `New message from ${senderName || (isSenderSw ? "your social worker" : "your patient")}`
+  const body = `You have a new message. Click to view and reply.`
+  const chatUrl = isSenderSw
+    ? `${APP_URL}/customer/dashboard`
+    : `${APP_URL}/social-worker/messages`
+
+  await dispatch({
+    userId: recipientUserId,
+    type: "new_direct_message",
+    title,
+    body,
+    metadata: { messageId, senderName },
+    subject: title,
+    buildEmail: () =>
+      StatusChangeEmail({
+        applicantName: isSenderSw ? "Applicant" : "Social Worker",
+        applicationId: messageId,
+        newStatus: "New direct message",
+        dashboardUrl: chatUrl,
+        prefsUrl: isSenderSw
+          ? `${APP_URL}/customer/profile#notifications`
+          : `${APP_URL}/social-worker/profile#notifications`,
+      }),
+  })
+}
+
 export async function notifyDeadline(
   userId: string,
   programName: string,

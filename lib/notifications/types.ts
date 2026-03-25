@@ -13,6 +13,10 @@ export type NotificationType =
   | "general"
   | "session_invite"
   | "session_starting"
+  | "sw_engagement_request"
+  | "sw_engagement_accepted"
+  | "sw_engagement_rejected"
+  | "new_direct_message"
 
 // DB row shape (snake_case from pg)
 export interface NotificationRow {

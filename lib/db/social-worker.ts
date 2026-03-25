@@ -42,6 +42,11 @@ export interface SwProfile {
   user_id: string
   company_id: string
   company_name: string
+  first_name: string | null
+  last_name: string | null
+  phone: string | null
+  bio: string | null
+  avatar_url: string | null
   license_number: string | null
   job_title: string | null
   status: "pending" | "approved" | "rejected"
@@ -54,6 +59,7 @@ export async function getSwProfile(userId: string): Promise<SwProfile | null> {
     `
       SELECT
         swp.id, swp.user_id, swp.company_id, c.name AS company_name,
+        swp.first_name, swp.last_name, swp.phone, swp.bio, swp.avatar_url,
         swp.license_number, swp.job_title, swp.status, swp.rejection_note
       FROM public.social_worker_profiles swp
       JOIN public.companies c ON c.id = swp.company_id
@@ -147,27 +153,66 @@ export async function getPatientApplications(
   return result.rows
 }
 
-export async function searchApprovedSocialWorkers(email: string): Promise<
-  Array<{ user_id: string; email: string; first_name: string | null; last_name: string | null; company_name: string }>
-> {
+export type SwSearchResult = {
+  user_id: string
+  email: string
+  first_name: string | null
+  last_name: string | null
+  company_name: string
+}
+
+/**
+ * Search approved social workers by name, email, or company name.
+ * Pass an empty query to return all approved SWs (up to 20).
+ */
+export async function searchApprovedSocialWorkers(query: string): Promise<SwSearchResult[]> {
   const pool = getDbPool()
-  const result = await pool.query(
+
+  if (!query.trim()) {
+    // Return all approved SWs when query is empty
+    const result = await pool.query<SwSearchResult>(
+      `
+        SELECT
+          u.id AS user_id,
+          u.email,
+          swp.first_name,
+          swp.last_name,
+          c.name AS company_name
+        FROM public.users u
+        JOIN public.social_worker_profiles swp ON swp.user_id = u.id
+        JOIN public.companies c ON c.id = swp.company_id
+        WHERE swp.status = 'approved'
+        ORDER BY c.name, swp.last_name NULLS LAST
+        LIMIT 20
+      `,
+    )
+    return result.rows
+  }
+
+  const like = `%${query}%`
+  const result = await pool.query<SwSearchResult>(
     `
       SELECT
         u.id AS user_id,
         u.email,
-        ap.first_name,
-        ap.last_name,
+        swp.first_name,
+        swp.last_name,
         c.name AS company_name
       FROM public.users u
       JOIN public.social_worker_profiles swp ON swp.user_id = u.id
       JOIN public.companies c ON c.id = swp.company_id
-      LEFT JOIN public.applicants ap ON ap.user_id = u.id
       WHERE swp.status = 'approved'
-        AND u.email ILIKE $1
-      LIMIT 10
+        AND (
+          u.email ILIKE $1
+          OR swp.first_name ILIKE $1
+          OR swp.last_name ILIKE $1
+          OR CONCAT(swp.first_name, ' ', swp.last_name) ILIKE $1
+          OR c.name ILIKE $1
+        )
+      ORDER BY c.name, swp.last_name NULLS LAST
+      LIMIT 20
     `,
-    [`%${email}%`],
+    [like],
   )
   return result.rows
 }
@@ -225,15 +270,14 @@ export async function getPatientSocialWorkers(
         psa.id AS access_id,
         u.id AS sw_user_id,
         u.email,
-        ap.first_name,
-        ap.last_name,
+        swp.first_name,
+        swp.last_name,
         c.name AS company_name,
         psa.granted_at
       FROM public.patient_social_worker_access psa
       JOIN public.users u ON u.id = psa.social_worker_user_id
       JOIN public.social_worker_profiles swp ON swp.user_id = u.id
       JOIN public.companies c ON c.id = swp.company_id
-      LEFT JOIN public.applicants ap ON ap.user_id = u.id
       WHERE psa.patient_user_id = $1::uuid
         AND psa.is_active = true
       ORDER BY psa.granted_at DESC

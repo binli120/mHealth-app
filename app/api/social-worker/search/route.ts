@@ -14,12 +14,9 @@ export async function GET(request: Request) {
   if (!authResult.ok) return authResult.response
 
   const { searchParams } = new URL(request.url)
-  const email = (searchParams.get("email") ?? "").trim()
+  // Support ?q= for name/company/email search; also keep legacy ?email= param
+  const query = (searchParams.get("q") ?? searchParams.get("email") ?? "").trim()
 
-  if (email.length < 2) {
-    return NextResponse.json({ ok: true, results: [] })
-  }
-
-  const results = await searchApprovedSocialWorkers(email)
+  const results = await searchApprovedSocialWorkers(query)
   return NextResponse.json({ ok: true, results })
 }

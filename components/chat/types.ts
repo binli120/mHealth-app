@@ -11,7 +11,7 @@ import type { ChatMessage } from "@/lib/masshealth/types"
 
 // ── View state ────────────────────────────────────────────────────────────────
 
-export type WidgetView = "faq" | "chat" | "advisor"
+export type WidgetView = "faq" | "chat" | "advisor" | "find_sw" | "sw_chat"
 
 // ── API response ──────────────────────────────────────────────────────────────
 

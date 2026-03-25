@@ -5,18 +5,22 @@
 
 "use client"
 
-import { AlertTriangle, Bell, FileText, RefreshCw, Video } from "lucide-react"
+import { AlertTriangle, Bell, FileText, MessageCircle, RefreshCw, UserCheck, UserPlus, UserX, Video } from "lucide-react"
 
 import type { Notification, NotificationType } from "@/lib/notifications/types"
 
 const TYPE_CONFIG: Record<NotificationType, { icon: React.ElementType; color: string; dot: string }> = {
-  status_change:    { icon: RefreshCw,     color: "text-blue-500",   dot: "bg-blue-500" },
-  document_request: { icon: FileText,      color: "text-amber-500",  dot: "bg-amber-500" },
-  renewal_reminder: { icon: RefreshCw,     color: "text-green-500",  dot: "bg-green-500" },
-  deadline:         { icon: AlertTriangle, color: "text-red-500",    dot: "bg-red-500" },
-  general:          { icon: Bell,          color: "text-muted-foreground", dot: "bg-muted-foreground" },
-  session_invite:   { icon: Video,         color: "text-violet-500", dot: "bg-violet-500" },
-  session_starting: { icon: Video,         color: "text-green-600",  dot: "bg-green-600" },
+  status_change:          { icon: RefreshCw,     color: "text-blue-500",        dot: "bg-blue-500" },
+  document_request:       { icon: FileText,      color: "text-amber-500",       dot: "bg-amber-500" },
+  renewal_reminder:       { icon: RefreshCw,     color: "text-green-500",       dot: "bg-green-500" },
+  deadline:               { icon: AlertTriangle, color: "text-red-500",         dot: "bg-red-500" },
+  general:                { icon: Bell,          color: "text-muted-foreground", dot: "bg-muted-foreground" },
+  session_invite:         { icon: Video,         color: "text-violet-500",      dot: "bg-violet-500" },
+  session_starting:       { icon: Video,         color: "text-green-600",       dot: "bg-green-600" },
+  sw_engagement_request:  { icon: UserPlus,      color: "text-blue-500",        dot: "bg-blue-500" },
+  sw_engagement_accepted: { icon: UserCheck,     color: "text-green-600",       dot: "bg-green-600" },
+  sw_engagement_rejected: { icon: UserX,         color: "text-red-500",         dot: "bg-red-500" },
+  new_direct_message:     { icon: MessageCircle, color: "text-violet-500",      dot: "bg-violet-500" },
 }
 
 function relativeTime(iso: string): string {
@@ -36,8 +40,10 @@ interface Props {
   onClick?: (notification: Notification) => void
 }
 
+const FALLBACK_CONFIG = { icon: Bell, color: "text-muted-foreground", dot: "bg-muted-foreground" }
+
 export function NotificationItem({ notification, onClick }: Props) {
-  const config = TYPE_CONFIG[notification.type]
+  const config = TYPE_CONFIG[notification.type] ?? FALLBACK_CONFIG
   const Icon = config.icon
   const isUnread = !notification.readAt
 

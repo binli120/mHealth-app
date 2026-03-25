@@ -26,10 +26,19 @@ CREATE TABLE IF NOT EXISTS public.companies (
 );
 
 -- Social worker profiles (one per user)
+-- Identity fields (first_name, last_name, phone, bio, avatar_url) live here —
+-- NOT in the applicants table, which is strictly for patients.
 CREATE TABLE IF NOT EXISTS public.social_worker_profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL UNIQUE REFERENCES public.users(id) ON DELETE CASCADE,
   company_id UUID NOT NULL REFERENCES public.companies(id),
+  -- Personal identity — kept separate from the patient applicants table
+  first_name TEXT,
+  last_name  TEXT,
+  phone      TEXT,
+  bio        TEXT,
+  avatar_url TEXT,
+  -- Professional info
   license_number TEXT,
   job_title TEXT,
   status TEXT NOT NULL DEFAULT 'pending'
@@ -56,6 +65,7 @@ CREATE INDEX IF NOT EXISTS idx_companies_status ON public.companies(status);
 CREATE INDEX IF NOT EXISTS idx_sw_profiles_user ON public.social_worker_profiles(user_id);
 CREATE INDEX IF NOT EXISTS idx_sw_profiles_company ON public.social_worker_profiles(company_id);
 CREATE INDEX IF NOT EXISTS idx_sw_profiles_status ON public.social_worker_profiles(status);
+CREATE INDEX IF NOT EXISTS idx_sw_profiles_name ON public.social_worker_profiles(last_name, first_name);
 CREATE INDEX IF NOT EXISTS idx_sw_access_patient ON public.patient_social_worker_access(patient_user_id);
 CREATE INDEX IF NOT EXISTS idx_sw_access_sw ON public.patient_social_worker_access(social_worker_user_id);
 CREATE INDEX IF NOT EXISTS idx_sw_access_active ON public.patient_social_worker_access(is_active);
