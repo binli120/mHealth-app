@@ -16,8 +16,7 @@ node_modules/
 .DS_Store
 storybook-static/
 debug-storybook.log
-.claude/worktrees/
-.claude/settings.local.json
+.claude/
 
 # TypeScript build cache
 tsconfig.tsbuildinfo
