@@ -29,6 +29,8 @@ import {
   FOOTER_PLATFORM,
   FOOTER_PROGRAMS,
   HERO_TAGS,
+  LIVE_ASSISTANCE_CARDS,
+  LIVE_ASSISTANCE_CHECKLIST,
   PREVIEW_PROGRAMS,
   PROBLEM_ITEMS,
   STATS_CONFIG,
@@ -193,6 +195,10 @@ export default function LandingPage() {
               <a href="#problems"     className="text-sm text-muted-foreground transition-colors hover:text-foreground">The Problem</a>
               <a href="#how-it-works" className="text-sm text-muted-foreground transition-colors hover:text-foreground">How It Works</a>
               <a href="#why-us"       className="text-sm text-muted-foreground transition-colors hover:text-foreground">Why Us</a>
+              <a href="#live-assistance" className="flex items-center gap-1 text-sm font-medium text-accent transition-colors hover:text-accent/80">
+                Live Assistance
+                <span className="rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-bold text-accent-foreground">NEW</span>
+              </a>
               <a href="#appeal" className="flex items-center gap-1 text-sm font-medium text-primary transition-colors hover:text-primary/80">
                 Appeal Help
                 <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">NEW</span>
@@ -260,6 +266,9 @@ export default function LandingPage() {
                 </div>
                 <div className="float-3 absolute -right-2 top-2 hidden rounded-xl border border-border bg-card px-3 py-2 shadow-lg xl:flex">
                   <span className="text-xs font-medium text-foreground">🌐 6 languages supported</span>
+                </div>
+                <div className="float-1 absolute -left-2 bottom-2 hidden rounded-xl border border-border bg-card px-3 py-2 shadow-lg xl:flex">
+                  <span className="text-xs font-medium text-foreground">🎙️ Voice + auto-translation</span>
                 </div>
                 <BenefitPreview />
               </div>
@@ -363,6 +372,64 @@ export default function LandingPage() {
                   <div className="text-sm text-primary-foreground/70">{stat.label}</div>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Live Assistance ─────────────────────────────────────────────────── */}
+        <section id="live-assistance" className="relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-accent/5 px-4 py-20 md:py-28">
+          <div className="pointer-events-none absolute -right-40 bottom-0 h-96 w-96 rounded-full bg-primary/8 blur-3xl" />
+          <div className="pointer-events-none absolute -left-40 top-0 h-96 w-96 rounded-full bg-accent/8 blur-3xl" />
+          <div className="relative mx-auto max-w-7xl">
+            <div className="grid items-center gap-14 lg:grid-cols-2">
+              {/* left – feature cards */}
+              <FadeUp>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {LIVE_ASSISTANCE_CARDS.map((card) => (
+                    <Card key={card.title} className="border-border bg-card transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
+                      <CardContent className="p-5">
+                        <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${card.bg}`}>
+                          <span className={card.color}>{card.icon}</span>
+                        </div>
+                        <h3 className="mb-1.5 font-semibold text-foreground">{card.title}</h3>
+                        <p className="text-xs leading-relaxed text-muted-foreground">{card.body}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </FadeUp>
+
+              {/* right copy */}
+              <FadeUp delay={200} className="space-y-6">
+                <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm font-semibold text-primary">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  New Feature
+                </div>
+                <h2 className="text-balance text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+                  Real human support,{" "}
+                  <span className="text-primary">in any language</span>
+                </h2>
+                <p className="max-w-lg text-pretty text-lg text-muted-foreground">
+                  Sometimes you need more than an AI. HealthCompass MA connects you directly with
+                  licensed social workers — with voice messaging, automatic translation, and
+                  screen sharing built right in.
+                </p>
+                <ul className="space-y-3 text-sm text-muted-foreground">
+                  {LIVE_ASSISTANCE_CHECKLIST.map((item) => (
+                    <li key={item} className="flex items-start gap-2">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex flex-wrap gap-3 pt-2">
+                  <Link href="/auth/register">
+                    <Button size="lg" className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
+                      Get Connected <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                </div>
+              </FadeUp>
             </div>
           </div>
         </section>
@@ -523,7 +590,7 @@ export default function LandingPage() {
                     <li key={l.label}>
                       <Link href={l.href} className="inline-flex items-center gap-1.5 hover:text-foreground">
                         {l.label}
-                        {l.label === "Appeal Assistance" && (
+                        {(l.label === "Appeal Assistance" || l.label === "Live Assistance") && (
                           <span className="rounded-full bg-accent px-1.5 py-0.5 text-[9px] font-bold text-accent-foreground">NEW</span>
                         )}
                       </Link>

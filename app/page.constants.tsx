@@ -10,11 +10,16 @@ import {
   ClipboardList,
   FileCheck,
   Globe,
+  Languages,
   Layers,
   Lock,
+  MessageCircle,
+  Mic,
+  Monitor,
   Scale,
   Search,
   Sparkles,
+  Users,
   Zap,
 } from "lucide-react"
 
@@ -38,7 +43,7 @@ export const PREVIEW_PROGRAMS: PreviewProgram[] = [
   { label: "LIHEAP Energy Aid",   badge: "Eligible", color: "text-warning", bg: "bg-warning/10",  delay: 1900 },
 ]
 
-export const HERO_TAGS = ["Free to use", "9+ programs", "6 languages", "~15 min to apply"]
+export const HERO_TAGS = ["Free to use", "9+ programs", "6 languages", "Voice messaging", "~15 min to apply"]
 
 // ── How It Works ──────────────────────────────────────────────────────────────
 
@@ -85,6 +90,9 @@ export const FEATURE_ITEMS: FeatureItem[] = [
   { icon: <Globe />,    color: "text-accent",  bg: "bg-accent/10",  title: "6 Languages",            body: "Full support for English, 简体中文, Español, Português, Kreyòl ayisyen, and Tiếng Việt.", delay: 400 },
   { icon: <Lock />,     color: "text-success", bg: "bg-success/10", title: "Private & Secure",       body: "Your data is encrypted end-to-end and never sold. You control what you share and with whom.", delay: 500 },
   { icon: <Scale />,    color: "text-accent",  bg: "bg-accent/10",  title: "Appeal Assistance",      body: "Denied? Our AI helps you draft appeal letters, prep for hearings, and track deadlines — turning a 'no' into a 'yes'.", delay: 600, isNew: true },
+  { icon: <Users />,    color: "text-primary", bg: "bg-primary/10", title: "Live Social Worker Chat", body: "Connect directly with a licensed social worker via real-time messaging, screen sharing, and secure voice notes.", delay: 700, isNew: true },
+  { icon: <Mic />,      color: "text-accent",  bg: "bg-accent/10",  title: "Voice Messaging",         body: "Send voice messages to your social worker — automatically transcribed on delivery so nothing gets lost in translation.", delay: 800, isNew: true },
+  { icon: <Languages />,color: "text-success", bg: "bg-success/10", title: "Auto-Translation",        body: "Speak in any language. Voice messages are instantly transcribed and translated to English using AI — no interpreter needed.", delay: 900, isNew: true },
 ]
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
@@ -94,6 +102,23 @@ export const STATS_CONFIG: StatConfig[] = [
   { target: 6,    suffix: "",     prefix: "",  label: "Languages supported"          },
   { target: 15,   suffix: " min", prefix: "~", label: "Average time to apply"        },
   { target: 2400, suffix: "/mo",  prefix: "$", label: "Max combined monthly benefit", duration: 2200 },
+]
+
+// ── Live Assistance ───────────────────────────────────────────────────────────
+
+export const LIVE_ASSISTANCE_CHECKLIST: string[] = [
+  "Real-time direct messaging with your assigned social worker",
+  "Voice messages with automatic AI transcription on delivery",
+  "Instant auto-translation — speak any language, read in English",
+  "Screen sharing for guided, step-by-step application walkthroughs",
+  "Secure in-chat file and image sharing",
+]
+
+export const LIVE_ASSISTANCE_CARDS = [
+  { icon: <MessageCircle className="h-5 w-5" />, color: "text-primary",  bg: "bg-primary/10",  title: "Direct Messaging",  body: "Secure, real-time chat between patients and social workers — no phone tag, no wait rooms." },
+  { icon: <Mic className="h-5 w-5" />,           color: "text-accent",   bg: "bg-accent/10",   title: "Voice Notes",        body: "Record and send voice messages — automatically transcribed so the other side can read or listen." },
+  { icon: <Languages className="h-5 w-5" />,     color: "text-success",  bg: "bg-success/10",  title: "Auto-Translation",   body: "Whisper detects the language; Ollama translates to English — instantly, without a human interpreter." },
+  { icon: <Monitor className="h-5 w-5" />,       color: "text-warning",  bg: "bg-warning/10",  title: "Screen Sharing",     body: "Social workers can share their screen to walk patients through complex forms in real time." },
 ]
 
 // ── Appeal Assistance ─────────────────────────────────────────────────────────
@@ -130,9 +155,10 @@ export const FOOTER_PROGRAMS: FooterLink[] = [
 ]
 
 export const FOOTER_PLATFORM: FooterLink[] = [
-  { label: "Eligibility Checker",  href: "/prescreener"    },
-  { label: "Benefit Stack Tool",   href: "/benefit-stack"  },
-  { label: "Appeal Assistance",    href: "/auth/register"  },
+  { label: "Eligibility Checker",  href: "/prescreener"     },
+  { label: "Benefit Stack Tool",   href: "/benefit-stack"   },
+  { label: "Live Assistance",      href: "/auth/register"   },
+  { label: "Appeal Assistance",    href: "/auth/register"   },
   { label: "Knowledge Center",     href: "/knowledge-center" },
-  { label: "Create Account",       href: "/auth/register"  },
+  { label: "Create Account",       href: "/auth/register"   },
 ]

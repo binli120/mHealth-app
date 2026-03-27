@@ -1,6 +1,191 @@
 # HealthCompass MA — MassHealth Application Portal
 
-A collaborative health-application platform that lets patients and social workers fill MassHealth applications together in real time, with screen-sharing, live chat, and voice messaging.
+A collaborative health-application platform that lets patients and social workers fill MassHealth applications together in real time, with screen-sharing, live chat, and AI-powered voice messaging.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16 (App Router, Turbopack) |
+| Language | TypeScript 5.7 |
+| UI | React 19, Tailwind CSS 4, Radix UI |
+| State | Redux Toolkit |
+| Database | Supabase (PostgreSQL + Auth + Storage) |
+| AI / LLM | Ollama — llama3.2 |
+| Speech-to-text | OpenAI Whisper CLI |
+| Email | Resend |
+| Package manager | pnpm 10 |
+| Node.js | ≥ 20 |
+
+---
+
+## Prerequisites
+
+### 1. Node.js & pnpm
+
+```bash
+# Node.js >= 20 (nvm recommended)
+nvm install 20 && nvm use 20
+
+# pnpm 10
+npm install -g pnpm@10
+
+# Verify
+node -v   # v20.x.x
+pnpm -v   # 10.x.x
+```
+
+### 2. Docker
+
+Required to run Supabase locally. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and ensure it is running before the next step.
+
+### 3. Supabase CLI
+
+```bash
+brew install supabase/tap/supabase
+supabase --version
+```
+
+### 4. Ollama + models
+
+```bash
+# Install Ollama
+brew install ollama
+
+# Pull required models
+ollama pull llama3.2          # conversational AI + translation
+ollama pull nomic-embed-text  # RAG document embeddings
+
+# Optional
+ollama pull llava             # vision / image analysis
+```
+
+### 5. OpenAI Whisper (voice transcription)
+
+```bash
+brew install openai-whisper
+
+# Verify — should print usage
+whisper --help
+```
+
+Whisper downloads the `base` model (~140 MB) on first use. Use `WHISPER_MODEL=small` or `medium` in `.env.local` for better accuracy.
+
+---
+
+## Setup
+
+### 1. Install dependencies
+
+```bash
+pnpm install
+```
+
+### 2. Start Supabase
+
+```bash
+supabase start
+```
+
+After startup, copy the printed values — you will need them in the next step:
+
+```
+API URL:          http://127.0.0.1:54321
+DB URL:           postgresql://postgres:postgres@127.0.0.1:54322/postgres
+anon key:         eyJ...
+service_role key: eyJ...
+Studio URL:       http://127.0.0.1:54323
+```
+
+### 3. Configure environment variables
+
+Create `.env.local` in the project root:
+
+```env
+# ── Database ──────────────────────────────────────────────────────────────────
+DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
+DATABASE_URL_DEV=postgresql://postgres:postgres@127.0.0.1:54322/postgres
+DATABASE_URL_PROD=
+
+# ── Supabase ──────────────────────────────────────────────────────────────────
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key from supabase start>
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<anon key from supabase start>
+
+# Local overrides (used when NODE_ENV != production)
+NEXT_PUBLIC_SUPABASE_URL_LOCAL=http://127.0.0.1:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY_LOCAL=<anon key from supabase start>
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY_LOCAL=<anon key from supabase start>
+NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS=true
+
+# Server-side only — never expose to the browser
+SUPABASE_SERVICE_ROLE_KEY=<service_role key from supabase start>
+
+# ── Ollama ────────────────────────────────────────────────────────────────────
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+OLLAMA_MODEL=llama3.2
+OLLAMA_VISION_MODEL=llava
+
+# ── Whisper voice transcription ───────────────────────────────────────────────
+WHISPER_BIN=/opt/homebrew/bin/whisper   # default on macOS; change if installed elsewhere
+WHISPER_MODEL=base                       # tiny | base | small | medium | large
+
+# ── Email (Resend) ────────────────────────────────────────────────────────────
+# Optional for local dev — invitation links are printed to the console when unset
+RESEND_API_KEY=
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+FROM_EMAIL=noreply@yourdomain.com
+
+# ── External services ─────────────────────────────────────────────────────────
+NEXT_PUBLIC_MASSHEALTH_FORMS_BASE_URL=http://localhost:8000
+NEXT_PUBLIC_MASSHEALTH_ANALYSIS_BASE_URL=http://localhost:8000
+
+# ── Optional ──────────────────────────────────────────────────────────────────
+PROFILE_ENCRYPTION_KEY=        # 32-byte hex string for profile field encryption
+GOOGLE_GEOCODING_API_KEY=      # address geocoding
+RAG_INGEST_SECRET=             # bearer token for the RAG document ingestion endpoint
+```
+
+### 4. Apply database migrations
+
+```bash
+PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres \
+  -f database/mHealth_schema.sql \
+  -f database/mHealth_schema_update.sql \
+  -f database/user_profile_schema.sql \
+  -f database/rag_schema.sql \
+  -f database/benefit_orchestration_schema.sql \
+  -f database/documents_storage_migration.sql \
+  -f database/notifications_schema.sql \
+  -f database/social_worker_schema.sql \
+  -f database/staff_profile_migration.sql \
+  -f database/invitations_schema.sql \
+  -f database/sw_messaging_schema.sql \
+  -f database/collaborative_session_schema.sql \
+  -f database/voice_transcription_migration.sql
+```
+
+Seed the admin account:
+
+```bash
+PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres \
+  -f database/seed_admin.sql
+```
+
+Or use the pnpm shortcut (runs all pending migrations):
+
+```bash
+pnpm db:migrate:dev
+```
+
+### 5. Start Ollama
+
+```bash
+ollama serve   # starts on http://127.0.0.1:11434
+               # on macOS this auto-starts after brew install
+```
 
 ---
 
@@ -11,9 +196,9 @@ A collaborative health-application platform that lets patients and social worker
 pnpm install
 
 # Start local Supabase (Docker required)
-npx supabase start
+supabase start
 
-# Run database migrations
+# Apply migrations
 pnpm db:migrate:dev
 
 # Start the dev server
@@ -21,6 +206,64 @@ pnpm dev
 ```
 
 App runs at **http://localhost:3000**
+
+---
+
+## Commands
+
+| Command | Description |
+|---|---|
+| `pnpm dev` | Start dev server with Turbopack at localhost:3000 |
+| `pnpm build` | Production build |
+| `pnpm start` | Start production server (requires `pnpm build` first) |
+| `pnpm lint` | Run ESLint |
+| `pnpm test` | Run unit tests (Vitest) |
+| `pnpm test:watch` | Unit tests in watch mode |
+| `pnpm test:e2e` | Run Playwright end-to-end tests |
+| `pnpm test:e2e:ui` | Playwright interactive UI mode |
+| `pnpm test:e2e:report` | Open last Playwright HTML report |
+| `pnpm db:check` | Verify database connection |
+| `pnpm db:migrate:dev` | Apply pending migrations (dev) |
+
+---
+
+## Local Service URLs
+
+| Service | URL |
+|---|---|
+| App | http://localhost:3000 |
+| Admin portal | http://localhost:3000/admin |
+| Social worker portal | http://localhost:3000/social-worker |
+| Supabase Studio | http://127.0.0.1:54323 |
+| Supabase API | http://127.0.0.1:54321 |
+| Ollama API | http://127.0.0.1:11434 |
+
+---
+
+## Voice Messaging
+
+Voice messages are automatically transcribed by **Whisper** (language auto-detected) and translated to English by **Ollama llama3.2** when the source language is not English.
+
+Supported languages: English, Spanish, Portuguese, Vietnamese, Chinese (Simplified), French, and all other languages supported by Whisper.
+
+Test audio files are included at `public/test-audio/`:
+
+| File | Language |
+|---|---|
+| `test_english.wav` | English |
+| `test_chinese.wav` | Mandarin Chinese |
+
+---
+
+## Ollama Models
+
+| Model | Purpose | Pull command |
+|---|---|---|
+| `llama3.2` | Conversational AI, translation | `ollama pull llama3.2` |
+| `nomic-embed-text` | RAG document embeddings | `ollama pull nomic-embed-text` |
+| `llava` *(optional)* | Vision / image analysis | `ollama pull llava` |
+
+---
 
 ---
 
@@ -260,24 +503,7 @@ pnpm test:e2e
 
 ## Environment Variables
 
-Copy `.env.example` to `.env.local` and fill in:
-
-```bash
-# Supabase (local dev — already set by `npx supabase start`)
-NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<from supabase start output>
-DATABASE_URL_DEV=postgresql://postgres:postgres@localhost:54322/postgres
-
-# App URL (used in notification emails)
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-
-# Email (Resend — optional for local dev)
-RESEND_API_KEY=re_...
-FROM_EMAIL=noreply@healthcompassma.com
-
-# Feature flags
-LOCAL_AUTH_HELPER=true   # enables /api/auth/dev-register for local user creation
-```
+See the **Setup → Configure environment variables** section above for the full `.env.local` template.
 
 ---
 
