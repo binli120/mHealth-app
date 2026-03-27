@@ -45,11 +45,13 @@ export interface DirectMessage {
   id: string
   senderId: string
   senderName: string | null
-  messageType: "text" | "voice" | "image"
+  messageType: "text" | "voice" | "image" | "file"
   content: string | null
   storagePath: string | null
   signedUrl?: string | null
   durationSec: number | null
+  transcription: string | null
+  transcriptionLang: string | null
   readAt: string | null
   createdAt: string
 }
@@ -105,35 +107,92 @@ function groupByDate(messages: DirectMessage[]): Array<{ date: string; messages:
   }))
 }
 
+// ── Language config ────────────────────────────────────────────────────────────
+
+export const VOICE_LANGUAGES = [
+  { code: "en-US", label: "English" },
+  { code: "es-ES", label: "Español" },
+  { code: "pt-BR", label: "Português" },
+  { code: "vi-VN", label: "Tiếng Việt" },
+  { code: "zh-CN", label: "中文" },
+  { code: "fr-FR", label: "Français" },
+] as const
+
 // ── Audio recording hook ──────────────────────────────────────────────────────
 
-function useAudioRecorder() {
+function useAudioRecorder(lang: string) {
   const [recording, setRecording] = useState(false)
   const [durationSec, setDurationSec] = useState(0)
+  const [liveTranscript, setLiveTranscript] = useState("")
   const mediaRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // SpeechRecognition is a browser-only API with no TypeScript types in this config
+  const recognitionRef = useRef<unknown>(null)
+  const finalTranscriptRef = useRef("")
 
   const start = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const mr = new MediaRecorder(stream)
       chunksRef.current = []
+      finalTranscriptRef.current = ""
+      setLiveTranscript("")
       mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
       mr.start()
       mediaRef.current = mr
       setRecording(true)
       setDurationSec(0)
       timerRef.current = setInterval(() => setDurationSec((s) => s + 1), 1000)
+
+      // Start SpeechRecognition alongside the MediaRecorder (browser API, no SSR)
+      // Cast through unknown to avoid the Window overlap error; SR is browser-only with no lib types
+      const win = window as unknown as Record<string, unknown>
+      type SRResult = { isFinal: boolean } & ArrayLike<{ transcript: string }>
+      type SREvent = { resultIndex: number; results: ArrayLike<SRResult> }
+      type SRInstance = {
+        lang: string; continuous: boolean; interimResults: boolean
+        onresult: (e: SREvent) => void; onerror: () => void
+        start: () => void; stop: () => void
+      }
+      const SR = (win.SpeechRecognition ?? win.webkitSpeechRecognition) as (new () => SRInstance) | undefined
+      if (SR) {
+        const rec = new SR()
+        rec.lang = lang
+        rec.continuous = true
+        rec.interimResults = true
+        rec.onresult = (event) => {
+          let interim = ""
+          let final = finalTranscriptRef.current
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const t = event.results[i][0].transcript
+            if (event.results[i].isFinal) final += t + " "
+            else interim += t
+          }
+          finalTranscriptRef.current = final
+          setLiveTranscript((final + interim).trim())
+        }
+        rec.onerror = () => { /* ignore — audio is still recorded */ }
+        rec.start()
+        recognitionRef.current = rec
+      }
     } catch {
       // Mic permission denied or unavailable
     }
-  }, [])
+  }, [lang])
 
-  const stop = useCallback((): Promise<{ blob: Blob; durationSec: number } | null> => {
+  const stop = useCallback((): Promise<{ blob: Blob; durationSec: number; transcription: string } | null> => {
     return new Promise((resolve) => {
       const mr = mediaRef.current
       if (!mr) { resolve(null); return }
+
+      // Stop speech recognition first and capture final text
+      if (recognitionRef.current) {
+        try { (recognitionRef.current as { stop: () => void }).stop() } catch { /* ignore */ }
+        recognitionRef.current = null
+      }
+      const transcription = finalTranscriptRef.current.trim()
+
       mr.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: "audio/webm" })
         mr.stream.getTracks().forEach((t) => t.stop())
@@ -141,14 +200,19 @@ function useAudioRecorder() {
         const dur = durationSec
         setRecording(false)
         setDurationSec(0)
+        setLiveTranscript("")
         mediaRef.current = null
-        resolve({ blob, durationSec: dur })
+        resolve({ blob, durationSec: dur, transcription })
       }
       mr.stop()
     })
   }, [durationSec])
 
   const cancel = useCallback(() => {
+    if (recognitionRef.current) {
+      try { (recognitionRef.current as { stop: () => void }).stop() } catch { /* ignore */ }
+      recognitionRef.current = null
+    }
     const mr = mediaRef.current
     if (mr) {
       mr.stream.getTracks().forEach((t) => t.stop())
@@ -157,9 +221,10 @@ function useAudioRecorder() {
     if (timerRef.current) clearInterval(timerRef.current)
     setRecording(false)
     setDurationSec(0)
+    setLiveTranscript("")
   }, [])
 
-  return { recording, durationSec, start, stop, cancel }
+  return { recording, durationSec, liveTranscript, start, stop, cancel }
 }
 
 // ── File helpers ──────────────────────────────────────────────────────────────
@@ -209,7 +274,10 @@ function MessageBubble({
   isOwn: boolean
 }) {
   const [playing, setPlaying] = useState(false)
+  const [translation, setTranslation] = useState<string | null>(null)
+  const [translating, setTranslating] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const didAutoTranslate = useRef(false)
 
   const handlePlayVoice = () => {
     if (!message.signedUrl) return
@@ -225,6 +293,35 @@ function MessageBubble({
     void audioRef.current.play()
     setPlaying(true)
   }
+
+  const handleTranslate = async () => {
+    if (!message.transcription || translating) return
+    setTranslating(true)
+    try {
+      const res = await authenticatedFetch("/api/messages/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: message.transcription, lang: message.transcriptionLang }),
+      })
+      const data = await res.json()
+      if (data.ok) setTranslation(data.translation)
+    } catch { /* ignore */ }
+    finally { setTranslating(false) }
+  }
+
+  // Auto-translate non-English transcriptions when the message loads
+  useEffect(() => {
+    if (
+      message.transcription &&
+      message.transcriptionLang &&
+      !message.transcriptionLang.startsWith("en") &&
+      !didAutoTranslate.current
+    ) {
+      didAutoTranslate.current = true
+      void handleTranslate()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [message.transcription, message.transcriptionLang])
 
   return (
     <div className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
@@ -258,20 +355,52 @@ function MessageBubble({
           )}
 
           {message.messageType === "voice" && (
-            <button
-              type="button"
-              onClick={handlePlayVoice}
-              className="flex items-center gap-2 rounded-lg"
-            >
-              {playing ? (
-                <Square className="h-4 w-4" />
-              ) : (
-                <Play className="h-4 w-4" />
+            <div className="flex flex-col gap-1.5">
+              {/* Play / stop row */}
+              <button
+                type="button"
+                onClick={handlePlayVoice}
+                className="flex items-center gap-2 rounded-lg"
+              >
+                {playing ? (
+                  <Square className="h-4 w-4" />
+                ) : (
+                  <Play className="h-4 w-4" />
+                )}
+                <span className="text-xs">
+                  Voice {message.durationSec ? `(${message.durationSec}s)` : ""}
+                </span>
+              </button>
+
+              {/* Auto English translation — shown first for non-English transcriptions */}
+              {message.transcription && message.transcriptionLang && !message.transcriptionLang.startsWith("en") && (
+                <div className="flex flex-col gap-0.5">
+                  {translating && (
+                    <p className="text-[10px] opacity-50 italic">Translating…</p>
+                  )}
+                  {translation && (
+                    <p className="max-w-[220px] text-xs font-medium leading-snug">
+                      🇺🇸 {translation}
+                    </p>
+                  )}
+                </div>
               )}
-              <span className="text-xs">
-                Voice {message.durationSec ? `(${message.durationSec}s)` : ""}
-              </span>
-            </button>
+
+              {/* Original transcription — shown below the English translation */}
+              {message.transcription && (
+                <div className="flex flex-col gap-0.5">
+                  {message.transcriptionLang && (
+                    <span className="text-[10px] opacity-40">
+                      {VOICE_LANGUAGES.find((l) => l.code === message.transcriptionLang)?.label ?? message.transcriptionLang}
+                    </span>
+                  )}
+                  <p className="max-w-[220px] text-xs italic opacity-60 leading-snug">
+                    &ldquo;{message.transcription}&rdquo;
+                  </p>
+                </div>
+              )}
+
+            </div>
           )}
 
           {/* Image — thumbnail, click opens full image in new tab */}
@@ -349,9 +478,13 @@ export function SwDirectChatPanel({
   const [loading, setLoading] = useState(!initialMessages?.length)
   const [sending, setSending] = useState(false)
   const [draft, setDraft] = useState("")
+  const [voiceLang, setVoiceLang] = useState("en-US")
+  const [showLangPicker, setShowLangPicker] = useState(false)
+  // Audio pre-upload state: holds an audio file while user picks language + types transcription
+  const [pendingAudio, setPendingAudio] = useState<{ file: File } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const bottomRef = useAutoScroll([messages, loading])
-  const { recording, durationSec, start: startRecording, stop: stopRecording, cancel: cancelRecording } = useAudioRecorder()
+  const { recording, durationSec, liveTranscript, start: startRecording, stop: stopRecording, cancel: cancelRecording } = useAudioRecorder(voiceLang)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const onMessagesChangeRef = useRef(onMessagesChange)
   onMessagesChangeRef.current = onMessagesChange
@@ -361,12 +494,17 @@ export function SwDirectChatPanel({
   // updater violates React's rule against setState-during-render.
   useEffect(() => {
     onMessagesChangeRef.current?.(messages)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages])
 
   // Wrapper that updates local state (parent is notified by the effect above)
   const setMessagesAndNotify = useCallback((updater: DirectMessage[] | ((prev: DirectMessage[]) => DirectMessage[])) => {
     setMessages(updater)
+  }, [])
+
+  // Append a message only if its ID is not already in state.
+  // Prevents duplicates when a poll full-replace races with a local send callback.
+  const appendMessage = useCallback((msg: DirectMessage) => {
+    setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg])
   }, [])
 
   // ── Fetch messages ──────────────────────────────────────────────────────────
@@ -376,8 +514,11 @@ export function SwDirectChatPanel({
       const res = await authenticatedFetch(`/api/messages/${swUserId}`)
       const data = await res.json()
       if (data.ok) {
-        // API returns newest-first; reverse to chronological
-        const incoming = (data.messages as DirectMessage[]).slice().reverse()
+        // API returns newest-first; reverse to chronological, dedupe by id
+        const seen = new Set<string>()
+        const incoming = (data.messages as DirectMessage[])
+          .slice().reverse()
+          .filter((m) => seen.has(m.id) ? false : (seen.add(m.id), true))
         setMessagesAndNotify((prev) => {
           // If new messages arrived from the other person, signal the notification bell
           const prevNewest = prev.at(-1)?.id
@@ -425,10 +566,7 @@ export function SwDirectChatPanel({
       })
       const data = await res.json()
       if (data.ok) {
-        setMessagesAndNotify((prev) => [
-          ...prev,
-          { ...data.message, senderName: null } as DirectMessage,
-        ])
+        appendMessage({ ...data.message, senderName: null } as DirectMessage)
       }
     } finally {
       setSending(false)
@@ -447,6 +585,10 @@ export function SwDirectChatPanel({
       form.append("file", result.blob, "voice.webm")
       form.append("type", "voice")
       form.append("durationSec", String(result.durationSec))
+      if (result.transcription) {
+        form.append("transcription", result.transcription)
+        form.append("transcriptionLang", voiceLang)
+      }
 
       const res = await authenticatedFetch(`/api/messages/${swUserId}/upload`, {
         method: "POST",
@@ -454,7 +596,7 @@ export function SwDirectChatPanel({
       })
       const data = await res.json()
       if (data.ok) {
-        setMessagesAndNotify((prev) => [...prev, data.message as DirectMessage])
+        appendMessage(data.message as DirectMessage)
       }
     } finally {
       setSending(false)
@@ -468,22 +610,48 @@ export function SwDirectChatPanel({
     if (!file) return
     event.target.value = ""
 
-    // Auto-detect upload type: "file" for documents, "image" for pictures
-    const uploadType: "image" | "file" = FILE_MIME_TYPES[file.type] ? "file" : "image"
+    // Audio files: queue for send (Whisper auto-transcribes on the server)
+    if (file.type.startsWith("audio/")) {
+      setPendingAudio({ file })
+      return
+    }
 
+    // Non-audio: upload immediately
+    const uploadType: "image" | "file" = FILE_MIME_TYPES[file.type] ? "file" : "image"
     setSending(true)
     try {
       const form = new FormData()
       form.append("file", file, file.name)
       form.append("type", uploadType)
-
       const res = await authenticatedFetch(`/api/messages/${swUserId}/upload`, {
         method: "POST",
         body: form,
       })
       const data = await res.json()
       if (data.ok) {
-        setMessagesAndNotify((prev) => [...prev, data.message as DirectMessage])
+        appendMessage(data.message as DirectMessage)
+      }
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const handleAudioUploadSend = async () => {
+    if (!pendingAudio || sending) return
+    const { file } = pendingAudio
+    setSending(true)
+    setPendingAudio(null)
+    try {
+      const form = new FormData()
+      form.append("file", file, file.name)
+      form.append("type", "voice")
+      const res = await authenticatedFetch(`/api/messages/${swUserId}/upload`, {
+        method: "POST",
+        body: form,
+      })
+      const data = await res.json()
+      if (data.ok) {
+        appendMessage(data.message as DirectMessage)
       }
     } finally {
       setSending(false)
@@ -549,25 +717,62 @@ export function SwDirectChatPanel({
 
       {/* Recording indicator */}
       {recording && (
-        <div className="flex items-center gap-2 border-t bg-destructive/10 px-4 py-2 text-sm text-destructive">
-          <span className="animate-pulse">●</span>
-          Recording… {durationSec}s
+        <div className="flex flex-col gap-1 border-t bg-destructive/10 px-4 py-2 text-sm text-destructive">
+          <div className="flex items-center gap-2">
+            <span className="animate-pulse">●</span>
+            <span>Recording… {durationSec}s</span>
+            <span className="text-xs text-muted-foreground opacity-70">
+              ({VOICE_LANGUAGES.find((l) => l.code === voiceLang)?.label ?? voiceLang})
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
+              className="ml-auto h-7 text-xs"
+              onClick={() => void handleVoiceSend()}
+              disabled={sending}
+            >
+              <Square className="h-3 w-3" /> Send
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs"
+              onClick={cancelRecording}
+            >
+              Cancel
+            </Button>
+          </div>
+          {liveTranscript && (
+            <p className="truncate text-xs italic text-muted-foreground">&ldquo;{liveTranscript}&rdquo;</p>
+          )}
+        </div>
+      )}
+
+      {/* Audio pre-upload panel — shown when an audio file is selected via paperclip */}
+      {pendingAudio && !recording && (
+        <div className="flex items-center gap-2 border-t bg-muted/30 px-4 py-3">
+          <Mic className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="flex-1 truncate text-xs font-medium text-muted-foreground">
+            {pendingAudio.file.name}
+          </span>
+          <p className="text-[10px] text-muted-foreground/60 shrink-0">Auto-transcribe on send</p>
           <Button
             type="button"
             size="sm"
-            variant="destructive"
-            className="ml-auto h-7 text-xs"
-            onClick={() => void handleVoiceSend()}
+            className="h-7 text-xs shrink-0"
             disabled={sending}
+            onClick={() => void handleAudioUploadSend()}
           >
-            <Square className="h-3 w-3" /> Send
+            {sending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Send"}
           </Button>
           <Button
             type="button"
             size="sm"
             variant="ghost"
-            className="h-7 text-xs"
-            onClick={cancelRecording}
+            className="h-7 text-xs shrink-0"
+            onClick={() => setPendingAudio(null)}
           >
             Cancel
           </Button>
@@ -575,14 +780,14 @@ export function SwDirectChatPanel({
       )}
 
       {/* Input bar */}
-      {!recording && (
+      {!recording && !pendingAudio && (
         <form onSubmit={(e) => void handleSubmit(e)} className="border-t px-3 py-2">
           <div className="flex items-center gap-1.5">
             {/* File / image upload */}
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+              accept="image/*,audio/wav,audio/x-wav,audio/wave,audio/mpeg,audio/ogg,audio/mp4,audio/webm,audio/aac,audio/x-m4a,.wav,.mp3,.ogg,.m4a,.aac,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
               className="hidden"
               onChange={(e) => void handleFileChange(e)}
             />
@@ -621,16 +826,49 @@ export function SwDirectChatPanel({
                 )}
               </Button>
             ) : (
-              <Button
-                type="button"
-                size="icon-sm"
-                variant="outline"
-                aria-label="Record voice message"
-                disabled={sending}
-                onClick={() => void startRecording()}
-              >
-                <Mic className="h-4 w-4" />
-              </Button>
+              <div className="relative flex items-center gap-0.5">
+                {/* Language picker toggle */}
+                <button
+                  type="button"
+                  className="rounded px-1 py-0.5 text-[10px] text-muted-foreground hover:bg-muted"
+                  onClick={() => setShowLangPicker((v) => !v)}
+                  title="Select language"
+                >
+                  {VOICE_LANGUAGES.find((l) => l.code === voiceLang)?.label.slice(0, 2) ?? "EN"}
+                </button>
+
+                {/* Language dropdown */}
+                {showLangPicker && (
+                  <div className="absolute bottom-8 right-0 z-10 rounded-md border bg-popover p-1 shadow-md">
+                    {VOICE_LANGUAGES.map((l) => (
+                      <button
+                        key={l.code}
+                        type="button"
+                        className={`block w-full rounded px-3 py-1 text-left text-xs hover:bg-muted ${voiceLang === l.code ? "font-semibold text-primary" : ""}`}
+                        onClick={() => { setVoiceLang(l.code); setShowLangPicker(false) }}
+                      >
+                        {l.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Hold-to-speak mic button */}
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="outline"
+                  aria-label="Hold to record voice message"
+                  disabled={sending}
+                  onPointerDown={() => void startRecording()}
+                  onPointerUp={() => void handleVoiceSend()}
+                  onPointerLeave={() => { if (recording) void handleVoiceSend() }}
+                  className="select-none touch-none"
+                  title="Hold to speak"
+                >
+                  <Mic className="h-4 w-4" />
+                </Button>
+              </div>
             )}
           </div>
         </form>

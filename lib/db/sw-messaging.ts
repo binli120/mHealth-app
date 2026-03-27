@@ -43,6 +43,8 @@ export interface DirectMessage {
   storagePath: string | null
   signedUrl?: string | null
   durationSec: number | null
+  transcription: string | null
+  transcriptionLang: string | null
   readAt: string | null
   createdAt: string
 }
@@ -314,6 +316,8 @@ interface DirectMessageRow {
   content: string | null
   storage_path: string | null
   duration_sec: number | null
+  transcription: string | null
+  transcription_lang: string | null
   read_at: Date | null
   created_at: Date
 }
@@ -329,6 +333,8 @@ function rowToMessage(row: DirectMessageRow): DirectMessage {
     content: row.content,
     storagePath: row.storage_path,
     durationSec: row.duration_sec,
+    transcription: row.transcription,
+    transcriptionLang: row.transcription_lang,
     readAt: row.read_at ? row.read_at.toISOString() : null,
     createdAt: row.created_at.toISOString(),
   }
@@ -348,7 +354,7 @@ export async function sendDirectMessage(input: {
      VALUES ($1::uuid, $2::uuid, $3::uuid, 'text', $4)
      RETURNING
        id, sw_user_id, patient_user_id, sender_id, message_type,
-       content, storage_path, duration_sec, read_at, created_at`,
+       content, storage_path, duration_sec, transcription, transcription_lang, read_at, created_at`,
     [input.swUserId, input.patientUserId, input.senderId, input.content],
   )
   return {
@@ -365,15 +371,17 @@ export async function createMediaMessagePlaceholder(input: {
   messageType: "voice" | "image" | "file"
   content?: string
   durationSec?: number | null
+  transcription?: string | null
+  transcriptionLang?: string | null
 }): Promise<DirectMessage> {
   const pool = getDbPool()
   const { rows } = await pool.query<DirectMessageRow>(
     `INSERT INTO public.sw_direct_messages
-       (sw_user_id, patient_user_id, sender_id, message_type, content, duration_sec)
-     VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6)
+       (sw_user_id, patient_user_id, sender_id, message_type, content, duration_sec, transcription, transcription_lang)
+     VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7, $8)
      RETURNING
        id, sw_user_id, patient_user_id, sender_id, message_type,
-       content, storage_path, duration_sec, read_at, created_at`,
+       content, storage_path, duration_sec, transcription, transcription_lang, read_at, created_at`,
     [
       input.swUserId,
       input.patientUserId,
@@ -381,6 +389,8 @@ export async function createMediaMessagePlaceholder(input: {
       input.messageType,
       input.content ?? null,
       input.durationSec ?? null,
+      input.transcription ?? null,
+      input.transcriptionLang ?? null,
     ],
   )
   return rowToMessage(rows[0])
@@ -395,6 +405,21 @@ export async function setMessageStoragePath(
   await pool.query(
     "UPDATE public.sw_direct_messages SET storage_path = $1 WHERE id = $2",
     [storagePath, messageId],
+  )
+}
+
+/** Update transcription and language for an existing voice message. */
+export async function updateMessageTranscription(
+  messageId: string,
+  transcription: string,
+  transcriptionLang: string,
+): Promise<void> {
+  const pool = getDbPool()
+  await pool.query(
+    `UPDATE public.sw_direct_messages
+     SET transcription = $1, transcription_lang = $2
+     WHERE id = $3`,
+    [transcription, transcriptionLang, messageId],
   )
 }
 
@@ -416,7 +441,7 @@ export async function getDirectMessages(input: {
        COALESCE(swp_s.first_name, ap_s.first_name) AS sender_first,
        COALESCE(swp_s.last_name,  ap_s.last_name)  AS sender_last,
        dm.message_type, dm.content, dm.storage_path,
-       dm.duration_sec, dm.read_at, dm.created_at
+       dm.duration_sec, dm.transcription, dm.transcription_lang, dm.read_at, dm.created_at
      FROM public.sw_direct_messages dm
      LEFT JOIN public.applicants ap_s              ON ap_s.user_id  = dm.sender_id
      LEFT JOIN public.social_worker_profiles swp_s ON swp_s.user_id = dm.sender_id

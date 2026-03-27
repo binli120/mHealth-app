@@ -15,18 +15,80 @@
  *   dm/images/{senderId}/{messageId}.{ext}
  */
 
+import { execFile } from "child_process"
+import { mkdtemp, readFile, rm, writeFile } from "fs/promises"
+import { tmpdir } from "os"
+import { join } from "path"
+import { promisify } from "util"
+
 import { NextResponse } from "next/server"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 import {
   createMediaMessagePlaceholder,
   setMessageStoragePath,
+  updateMessageTranscription,
 } from "@/lib/db/sw-messaging"
 import { notifyNewDirectMessage } from "@/lib/notifications/service"
 import { logServerError } from "@/lib/server/logger"
 import { getSignedDocumentUrl, uploadToStorage } from "@/lib/supabase/storage"
 import { getDbPool } from "@/lib/db/server"
 
+const execFileAsync = promisify(execFile)
+
 export const runtime = "nodejs"
+
+// ── Whisper transcription via CLI ─────────────────────────────────────────────
+// Uses the openai-whisper CLI installed at /opt/homebrew/bin/whisper (or WHISPER_BIN env).
+// Falls back silently if not available.
+
+const WHISPER_LANG_MAP: Record<string, string> = {
+  en: "en-US", zh: "zh-CN", es: "es-ES",
+  pt: "pt-BR", vi: "vi-VN", fr: "fr-FR",
+  ja: "ja-JP", ko: "ko-KR", ar: "ar-SA",
+  de: "de-DE", it: "it-IT", ru: "ru-RU",
+}
+
+function mapWhisperLang(lang: string): string {
+  return WHISPER_LANG_MAP[lang.toLowerCase()] ?? lang
+}
+
+async function transcribeWithWhisper(
+  audioBuffer: Buffer,
+  ext: string,
+): Promise<{ text: string; lang: string } | null> {
+  const whisperBin = process.env.WHISPER_BIN || "/opt/homebrew/bin/whisper"
+  const model = process.env.WHISPER_MODEL || "base"
+  let tmpDir: string | null = null
+
+  try {
+    tmpDir = await mkdtemp(join(tmpdir(), "whisper-"))
+    const audioPath = join(tmpDir, `audio.${ext}`)
+    await writeFile(audioPath, audioBuffer)
+
+    await execFileAsync(whisperBin, [
+      audioPath,
+      "--model", model,
+      "--output_format", "json",
+      "--output_dir", tmpDir,
+      "--fp16", "False",
+    ], { timeout: 120_000 })
+
+    const jsonPath = join(tmpDir, "audio.json")
+    const raw = await readFile(jsonPath, "utf-8")
+    const data = JSON.parse(raw) as { text?: string; language?: string }
+
+    const text = data.text?.trim()
+    if (!text) return null
+    return { text, lang: mapWhisperLang(data.language ?? "en") }
+  } catch {
+    // Whisper not installed or transcription failed — degrade gracefully
+    return null
+  } finally {
+    if (tmpDir) await rm(tmpDir, { recursive: true, force: true }).catch(() => {})
+  }
+}
+
+// ── Audio / image / file allow-lists ─────────────────────────────────────────
 
 const ALLOWED_AUDIO: Record<string, string> = {
   "audio/webm": "webm",
@@ -34,6 +96,10 @@ const ALLOWED_AUDIO: Record<string, string> = {
   "audio/mpeg": "mp3",
   "audio/mp4": "mp4",
   "audio/wav": "wav",
+  "audio/x-wav": "wav",
+  "audio/wave": "wav",
+  "audio/x-m4a": "m4a",
+  "audio/aac": "aac",
 }
 
 const ALLOWED_IMAGE: Record<string, string> = {
@@ -147,6 +213,15 @@ export async function POST(request: Request, { params }: Params) {
         ? (Number(formData?.get("durationSec") ?? 0) || null)
         : null
 
+    const transcription =
+      messageType === "voice"
+        ? (typeof formData?.get("transcription") === "string" ? (formData.get("transcription") as string).trim() || null : null)
+        : null
+    const transcriptionLang =
+      messageType === "voice"
+        ? (typeof formData?.get("transcriptionLang") === "string" ? (formData.get("transcriptionLang") as string).trim() || null : null)
+        : null
+
     // For file/image messages: preserve the original filename as message content
     const originalName = (fileBlob as File).name ?? null
     const displayName = messageType === "file" ? (originalName || `document.${ext}`) : null
@@ -159,6 +234,8 @@ export async function POST(request: Request, { params }: Params) {
       messageType,
       content: displayName ?? undefined,
       durationSec,
+      transcription,
+      transcriptionLang,
     })
 
     const folder =
@@ -175,6 +252,17 @@ export async function POST(request: Request, { params }: Params) {
     })
 
     await setMessageStoragePath(message.id, storagePath)
+
+    // Auto-transcribe voice messages that have no sender-provided transcription.
+    // Uses Ollama Whisper (ollama pull whisper). Silently skipped if unavailable.
+    let finalMessage = message
+    if (messageType === "voice" && !transcription) {
+      const result = await transcribeWithWhisper(Buffer.from(arrayBuffer), ext)
+      if (result?.text) {
+        await updateMessageTranscription(message.id, result.text, result.lang)
+        finalMessage = { ...message, transcription: result.text, transcriptionLang: result.lang }
+      }
+    }
 
     const signedUrl = await getSignedDocumentUrl({ storagePath })
 
@@ -202,7 +290,7 @@ export async function POST(request: Request, { params }: Params) {
     })()
 
     return NextResponse.json(
-      { ok: true, message: { ...message, storagePath, signedUrl } },
+      { ok: true, message: { ...finalMessage, storagePath, signedUrl } },
       { status: 201 },
     )
   } catch (error) {
