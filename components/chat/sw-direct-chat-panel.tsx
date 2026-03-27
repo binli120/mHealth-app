@@ -19,6 +19,8 @@ import {
 } from "react"
 import {
   ArrowLeft,
+  File,
+  FileText,
   Image as ImageIcon,
   Loader2,
   Mic,
@@ -66,6 +68,9 @@ interface SwDirectChatPanelProps {
   /** Called whenever the local message list changes so the parent can persist a cache. */
   onMessagesChange?: (messages: DirectMessage[]) => void
   onBack: () => void
+  /** When false the built-in header (back button, name, role) is hidden.
+   *  Use when the parent already renders its own navigation header. */
+  showHeader?: boolean
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -87,7 +92,9 @@ function formatDate(iso: string) {
 
 function groupByDate(messages: DirectMessage[]): Array<{ date: string; messages: DirectMessage[] }> {
   const groups: Map<string, DirectMessage[]> = new Map()
-  for (const msg of [...messages].reverse()) {
+  // Iterate chronologically (oldest first) — Map insertion order means the
+  // oldest date group is first in the output → Yesterday at top, Today at bottom.
+  for (const msg of messages) {
     const key = new Date(msg.createdAt).toDateString()
     if (!groups.has(key)) groups.set(key, [])
     groups.get(key)!.push(msg)
@@ -155,6 +162,43 @@ function useAudioRecorder() {
   return { recording, durationSec, start, stop, cancel }
 }
 
+// ── File helpers ──────────────────────────────────────────────────────────────
+
+const FILE_TYPE_LABELS: Record<string, string> = {
+  pdf: "PDF Document",
+  doc: "Word Document", docx: "Word Document",
+  xls: "Excel Spreadsheet", xlsx: "Excel Spreadsheet",
+  ppt: "PowerPoint", pptx: "PowerPoint",
+  txt: "Text File",
+}
+
+function getFileExt(filename: string): string {
+  return filename.split(".").pop()?.toLowerCase() ?? ""
+}
+
+function getFileLabel(filename: string): string {
+  return FILE_TYPE_LABELS[getFileExt(filename)] ?? "File"
+}
+
+function getFileIcon(filename: string, isOwn: boolean) {
+  const ext = getFileExt(filename)
+  const cls = `h-8 w-8 shrink-0 ${isOwn ? "text-primary-foreground/80" : "text-muted-foreground"}`
+  if (["pdf", "doc", "docx", "txt"].includes(ext)) return <FileText className={cls} />
+  return <File className={cls} />
+}
+
+// MIME types that should be sent as "file" type (not "image")
+const FILE_MIME_TYPES: Record<string, true> = {
+  "application/pdf": true,
+  "application/msword": true,
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
+  "application/vnd.ms-excel": true,
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+  "application/vnd.ms-powerpoint": true,
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+  "text/plain": true,
+}
+
 // ── Message bubble ────────────────────────────────────────────────────────────
 
 function MessageBubble({
@@ -184,58 +228,105 @@ function MessageBubble({
 
   return (
     <div className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
-      <div
-        className={[
-          "max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-sm",
-          isOwn
-            ? "bg-primary text-primary-foreground"
-            : "bg-secondary text-secondary-foreground",
-        ].join(" ")}
-      >
+      {/* Column wrapper — holds the label, bubble, and own-timestamp stacked */}
+      <div className={`flex max-w-[85%] flex-col ${isOwn ? "items-end" : "items-start"}`}>
+
+        {/* Other party: "Name · timestamp" sits ABOVE the bubble, outside it */}
         {!isOwn && message.senderName && (
-          <p className="mb-1 text-xs font-semibold opacity-70">{message.senderName}</p>
+          <div className="mb-0.5 flex items-center gap-1 px-1">
+            <span className="text-xs font-semibold text-muted-foreground">{message.senderName}</span>
+            <span className="text-[10px] text-muted-foreground/50">·</span>
+            <span className="text-[10px] text-muted-foreground/70">{formatTime(message.createdAt)}</span>
+          </div>
         )}
 
-        {message.messageType === "text" && (
-          <p className="whitespace-pre-wrap break-words leading-5">{message.content}</p>
-        )}
-
-        {message.messageType === "voice" && (
-          <button
-            type="button"
-            onClick={handlePlayVoice}
-            className="flex items-center gap-2 rounded-lg"
-          >
-            {playing ? (
-              <Square className="h-4 w-4" />
-            ) : (
-              <Play className="h-4 w-4" />
-            )}
-            <span className="text-xs">
-              Voice {message.durationSec ? `(${message.durationSec}s)` : ""}
-            </span>
-          </button>
-        )}
-
-        {message.messageType === "image" && message.signedUrl && (
-          <a href={message.signedUrl} target="_blank" rel="noreferrer">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={message.signedUrl}
-              alt="Shared image"
-              className="max-h-48 max-w-full rounded-lg object-cover"
-            />
-          </a>
-        )}
-
-        <p
+        {/* The bubble — pure content, no metadata inside */}
+        <div
           className={[
-            "mt-1 text-right text-[10px] opacity-60",
+            "rounded-2xl shadow-sm",
+            // Images and files use tighter padding; text uses standard padding
+            message.messageType === "text" || message.messageType === "voice"
+              ? "px-3 py-1.5 text-sm"
+              : "overflow-hidden p-0",
+            isOwn
+              ? "bg-primary text-primary-foreground"
+              : "bg-secondary text-secondary-foreground",
           ].join(" ")}
         >
-          {formatTime(message.createdAt)}
-          {isOwn && message.readAt && " ✓"}
-        </p>
+          {message.messageType === "text" && (
+            <p className="whitespace-pre-wrap break-words leading-snug">{message.content}</p>
+          )}
+
+          {message.messageType === "voice" && (
+            <button
+              type="button"
+              onClick={handlePlayVoice}
+              className="flex items-center gap-2 rounded-lg"
+            >
+              {playing ? (
+                <Square className="h-4 w-4" />
+              ) : (
+                <Play className="h-4 w-4" />
+              )}
+              <span className="text-xs">
+                Voice {message.durationSec ? `(${message.durationSec}s)` : ""}
+              </span>
+            </button>
+          )}
+
+          {/* Image — thumbnail, click opens full image in new tab */}
+          {message.messageType === "image" && message.signedUrl && (
+            <a
+              href={message.signedUrl}
+              target="_blank"
+              rel="noreferrer"
+              title="Click to view full image"
+              className="block"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={message.signedUrl}
+                alt="Shared image"
+                className="max-h-48 max-w-[220px] rounded-2xl object-cover transition-opacity hover:opacity-90"
+              />
+            </a>
+          )}
+          {message.messageType === "image" && !message.signedUrl && (
+            <div className="flex items-center gap-2 px-3 py-1.5 text-sm opacity-50">
+              <ImageIcon className="h-4 w-4" />
+              <span>Image unavailable</span>
+            </div>
+          )}
+
+          {/* File — icon + filename, click to download/open */}
+          {message.messageType === "file" && (
+            <a
+              href={message.signedUrl ?? "#"}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-3 px-3 py-2 transition-opacity hover:opacity-80"
+            >
+              {getFileIcon(message.content ?? "", isOwn)}
+              <div className="min-w-0">
+                <p className="max-w-[160px] truncate text-xs font-medium leading-tight">
+                  {message.content ?? "Document"}
+                </p>
+                <p className="text-[10px] opacity-60">
+                  {getFileLabel(message.content ?? "")}
+                </p>
+              </div>
+            </a>
+          )}
+        </div>
+
+        {/* Own messages: timestamp + read receipt sits BELOW the bubble, outside it */}
+        {isOwn && (
+          <p className="mt-0.5 px-1 text-right text-[10px] text-muted-foreground/70">
+            {formatTime(message.createdAt)}
+            {message.readAt && " ✓"}
+          </p>
+        )}
+
       </div>
     </div>
   )
@@ -251,6 +342,7 @@ export function SwDirectChatPanel({
   initialMessages,
   onMessagesChange,
   onBack,
+  showHeader = true,
 }: SwDirectChatPanelProps) {
   const [messages, setMessages] = useState<DirectMessage[]>(initialMessages ?? [])
   // Only show the loading spinner when we have no cached messages to display
@@ -264,13 +356,17 @@ export function SwDirectChatPanel({
   const onMessagesChangeRef = useRef(onMessagesChange)
   onMessagesChangeRef.current = onMessagesChange
 
-  // Wrapper that updates local state AND notifies the parent cache
+  // Notify parent cache after every messages change.
+  // Must be a useEffect — calling parent setState inside a child setState
+  // updater violates React's rule against setState-during-render.
+  useEffect(() => {
+    onMessagesChangeRef.current?.(messages)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages])
+
+  // Wrapper that updates local state (parent is notified by the effect above)
   const setMessagesAndNotify = useCallback((updater: DirectMessage[] | ((prev: DirectMessage[]) => DirectMessage[])) => {
-    setMessages((prev) => {
-      const next = typeof updater === "function" ? updater(prev) : updater
-      onMessagesChangeRef.current?.(next)
-      return next
-    })
+    setMessages(updater)
   }, [])
 
   // ── Fetch messages ──────────────────────────────────────────────────────────
@@ -365,18 +461,21 @@ export function SwDirectChatPanel({
     }
   }
 
-  // ── Image upload ────────────────────────────────────────────────────────────
+  // ── File / Image upload ─────────────────────────────────────────────────────
 
-  const handleImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
     event.target.value = ""
+
+    // Auto-detect upload type: "file" for documents, "image" for pictures
+    const uploadType: "image" | "file" = FILE_MIME_TYPES[file.type] ? "file" : "image"
 
     setSending(true)
     try {
       const form = new FormData()
       form.append("file", file, file.name)
-      form.append("type", "image")
+      form.append("type", uploadType)
 
       const res = await authenticatedFetch(`/api/messages/${swUserId}/upload`, {
         method: "POST",
@@ -397,23 +496,25 @@ export function SwDirectChatPanel({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* Chat header */}
-      <div className="flex items-center gap-2 border-b px-4 py-2">
-        <Button type="button" size="icon-sm" variant="ghost" onClick={onBack}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-          {swName.charAt(0).toUpperCase()}
+      {/* Chat header — hidden when parent provides its own navigation */}
+      {showHeader && (
+        <div className="flex items-center gap-2 border-b px-4 py-2">
+          <Button type="button" size="icon-sm" variant="ghost" onClick={onBack}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+            {swName.charAt(0).toUpperCase()}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold">{swName}</p>
+            <p className="text-xs text-muted-foreground">{contactRole}</p>
+          </div>
+          <Badge variant="secondary" className="gap-1 text-xs">
+            <UserCheck className="h-3 w-3" />
+            Connected
+          </Badge>
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{swName}</p>
-          <p className="text-xs text-muted-foreground">{contactRole}</p>
-        </div>
-        <Badge variant="secondary" className="gap-1 text-xs">
-          <UserCheck className="h-3 w-3" />
-          Connected
-        </Badge>
-      </div>
+      )}
 
       {/* Messages */}
       <ScrollArea className="min-h-0 flex-1 px-4">
@@ -477,19 +578,19 @@ export function SwDirectChatPanel({
       {!recording && (
         <form onSubmit={(e) => void handleSubmit(e)} className="border-t px-3 py-2">
           <div className="flex items-center gap-1.5">
-            {/* Image upload */}
+            {/* File / image upload */}
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
               className="hidden"
-              onChange={(e) => void handleImageChange(e)}
+              onChange={(e) => void handleFileChange(e)}
             />
             <Button
               type="button"
               size="icon-sm"
               variant="ghost"
-              aria-label="Attach image"
+              aria-label="Attach file or image"
               disabled={sending}
               onClick={() => fileInputRef.current?.click()}
             >
@@ -545,7 +646,7 @@ export function SwDirectChatPanel({
           onClick={() => fileInputRef.current?.click()}
           disabled={sending || recording}
         >
-          <ImageIcon className="h-3 w-3" /> Share image
+          <Paperclip className="h-3 w-3" /> Attach file or image
         </Button>
       </div>
     </div>

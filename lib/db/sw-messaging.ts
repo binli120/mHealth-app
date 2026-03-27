@@ -30,7 +30,7 @@ export interface EngagementRequest {
   companyName: string
 }
 
-export type DirectMessageType = "text" | "voice" | "image"
+export type DirectMessageType = "text" | "voice" | "image" | "file"
 
 export interface DirectMessage {
   id: string
@@ -362,7 +362,7 @@ export async function createMediaMessagePlaceholder(input: {
   swUserId: string
   patientUserId: string
   senderId: string
-  messageType: "voice" | "image"
+  messageType: "voice" | "image" | "file"
   content?: string
   durationSec?: number | null
 }): Promise<DirectMessage> {

@@ -178,8 +178,13 @@ export function SessionRoom({ sessionId, role, backHref }: Props) {
   }, [sessionId, dispatch])
 
   // ── Auto-scroll ────────────────────────────────────────────────────────────
+  // Attach messagesEndRef to the scroll container, then set scrollTop directly.
+  // scrollIntoView({ behavior: "smooth" }) is unreliable on initial load and
+  // when the sentinel is nested inside a flex child — scrollTop = scrollHeight
+  // is unambiguous and works in every browser.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    const el = messagesEndRef.current
+    if (el) el.scrollTop = el.scrollHeight
   }, [messages.length])
 
   // ── New message sent by THIS user ─────────────────────────────────────────
@@ -431,9 +436,12 @@ export function SessionRoom({ sessionId, role, backHref }: Props) {
       )}
 
       {/* ── Messages ──────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      {/* ref lives on the scroll container itself so useEffect can do
+          el.scrollTop = el.scrollHeight — the only 100% reliable way to
+          pin to bottom across browsers without CSS tricks               */}
+      <div ref={messagesEndRef} className="flex-1 overflow-y-auto px-4 py-4">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full gap-2 text-slate-500">
+          <div className="h-full flex flex-col items-center justify-center gap-2 text-slate-500">
             <Video className="w-8 h-8 opacity-30" />
             <p className="text-sm text-center">
               {isActive
@@ -443,17 +451,18 @@ export function SessionRoom({ sessionId, role, backHref }: Props) {
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {messages.map((msg) => (
-              <ChatBubble
-                key={msg.id}
-                message={msg}
-                isMine={msg.senderId === userId}
-                sessionId={sessionId}
-              />
-            ))}
+            {[...messages]
+              .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+              .map((msg) => (
+                <ChatBubble
+                  key={msg.id}
+                  message={msg}
+                  isMine={msg.senderId === userId}
+                  sessionId={sessionId}
+                />
+              ))}
           </div>
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       {/* ── Chat input ────────────────────────────────────────────────────── */}

@@ -178,24 +178,24 @@ describe("polling interval", () => {
   })
   afterEach(() => vi.useRealTimers())
 
-  it("does not make a second fetch before the 60s interval elapses", async () => {
+  it("does not make a second fetch before the 15s interval elapses", async () => {
     mockUnreadResponse(0)
     renderBell()
     // Settle the initial call
     await act(async () => { await Promise.resolve() })
     vi.clearAllMocks()
-    // Advance by 59 seconds — should NOT trigger another fetch
-    await act(async () => { vi.advanceTimersByTime(59_000) })
+    // Advance by 14 seconds — should NOT trigger another fetch
+    await act(async () => { vi.advanceTimersByTime(14_000) })
     expect(authenticatedFetch).not.toHaveBeenCalled()
   })
 
-  it("makes a second fetch after the 60s interval", async () => {
+  it("makes a second fetch after the 15s interval", async () => {
     mockUnreadResponse(2)
     renderBell()
     await act(async () => { await Promise.resolve() })
     vi.clearAllMocks()
     mockUnreadResponse(4)
-    await act(async () => { vi.advanceTimersByTime(60_000) })
+    await act(async () => { vi.advanceTimersByTime(15_000) })
     await act(async () => { await Promise.resolve() })
     expect(authenticatedFetch).toHaveBeenCalledOnce()
   })

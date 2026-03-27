@@ -1,62 +1,42 @@
 /**
  * @author Bin Lee
  * @email binlee120@gmail.com
+ *
+ * Landing page for HealthCompass MA.
+ * Data lives in page.constants.tsx, hooks in page.hooks.ts,
+ * types in page.types.ts, and CSS animations in page.styles.ts.
  */
 
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useAppSelector } from "@/lib/redux/hooks"
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher"
-import {
-  AlertCircle, Bot, CheckCircle2, ChevronRight, ClipboardList,
-  FileCheck, Globe, Layers, Lock, Scale, Search, Sparkles, Zap,
-} from "lucide-react"
+import { CheckCircle2, ChevronRight, Sparkles } from "lucide-react"
 import { ShieldHeartIcon } from "@/lib/icons"
 
-// ─── Scroll-trigger hook ──────────────────────────────────────────────────────
-function useInView(threshold = 0.15) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [inView, setInView] = useState(false)
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) setInView(true) },
-      { threshold },
-    )
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [threshold])
-  return { ref, inView }
-}
+import { LANDING_STYLES } from "@/app/page.styles"
+import { useInView, useCounter } from "@/app/page.hooks"
+import type { FadeUpProps } from "@/app/page.types"
+import {
+  APPEAL_CARDS,
+  APPEAL_CHECKLIST,
+  FEATURE_ITEMS,
+  FOOTER_PLATFORM,
+  FOOTER_PROGRAMS,
+  HERO_TAGS,
+  PREVIEW_PROGRAMS,
+  PROBLEM_ITEMS,
+  STATS_CONFIG,
+  STEPS,
+  TESTIMONIALS,
+} from "@/app/page.constants"
 
-// ─── Animated counter hook ────────────────────────────────────────────────────
-function useCounter(end: number, inView: boolean, duration = 1600) {
-  const [value, setValue] = useState(0)
-  useEffect(() => {
-    if (!inView) return
-    let n = 0
-    const step = end / (duration / 16)
-    const id = setInterval(() => {
-      n += step
-      if (n >= end) { setValue(end); clearInterval(id) } else setValue(Math.floor(n))
-    }, 16)
-    return () => clearInterval(id)
-  }, [end, inView, duration])
-  return value
-}
-
-// ─── Hero benefit-stack preview ───────────────────────────────────────────────
-const PREVIEW_PROGRAMS = [
-  { label: "MassHealth Standard", badge: "Eligible", color: "text-primary",  bg: "bg-primary/10",  delay: 400  },
-  { label: "SNAP Benefits",       badge: "Eligible", color: "text-accent",   bg: "bg-accent/10",   delay: 900  },
-  { label: "EITC Tax Credit",     badge: "Eligible", color: "text-success",  bg: "bg-success/10",  delay: 1400 },
-  { label: "LIHEAP Energy Aid",   badge: "Eligible", color: "text-warning",  bg: "bg-warning/10",  delay: 1900 },
-]
+// ─── BenefitPreview ───────────────────────────────────────────────────────────
 
 function BenefitPreview() {
   const [visible, setVisible] = useState<number[]>([])
@@ -87,8 +67,8 @@ function BenefitPreview() {
               key={p.label}
               className="flex items-center justify-between rounded-lg border border-border bg-secondary/40 px-3 py-2.5"
               style={{
-                opacity: visible.includes(i) ? 1 : 0,
-                transform: visible.includes(i) ? "translateY(0)" : "translateY(8px)",
+                opacity:    visible.includes(i) ? 1 : 0,
+                transform:  visible.includes(i) ? "translateY(0)" : "translateY(8px)",
                 transition: "opacity 0.5s ease, transform 0.5s ease",
               }}
             >
@@ -105,8 +85,8 @@ function BenefitPreview() {
         <div
           className="mt-4 rounded-lg bg-primary/10 px-3 py-2.5"
           style={{
-            opacity: done ? 1 : 0,
-            transform: done ? "translateY(0)" : "translateY(8px)",
+            opacity:    done ? 1 : 0,
+            transform:  done ? "translateY(0)" : "translateY(8px)",
             transition: "opacity 0.5s ease, transform 0.5s ease",
           }}
         >
@@ -119,18 +99,17 @@ function BenefitPreview() {
   )
 }
 
-// ─── FadeUp wrapper ────────────────────────────────────────────────────────────
-function FadeUp({ children, delay = 0, className = "" }: {
-  children: React.ReactNode; delay?: number; className?: string
-}) {
+// ─── FadeUp ───────────────────────────────────────────────────────────────────
+
+function FadeUp({ children, delay = 0, className = "" }: FadeUpProps) {
   const { ref, inView } = useInView()
   return (
     <div
       ref={ref}
       className={className}
       style={{
-        opacity: inView ? 1 : 0,
-        transform: inView ? "translateY(0)" : "translateY(28px)",
+        opacity:    inView ? 1 : 0,
+        transform:  inView ? "translateY(0)" : "translateY(28px)",
         transition: `opacity 0.6s ease ${delay}ms, transform 0.6s ease ${delay}ms`,
       }}
     >
@@ -139,13 +118,7 @@ function FadeUp({ children, delay = 0, className = "" }: {
   )
 }
 
-// ─── How It Works steps ───────────────────────────────────────────────────────
-const STEPS = [
-  { icon: <Search className="h-6 w-6" />, title: "Answer a few questions", body: "Tell us about your household size, income, and situation — takes about 5 minutes." },
-  { icon: <Sparkles className="h-6 w-6" />, title: "See programs you qualify for", body: "Our AI instantly checks your profile against MassHealth, SNAP, EITC, LIHEAP, WIC, and more." },
-  { icon: <ClipboardList className="h-6 w-6" />, title: "Apply with guided steps", body: "We walk you through each application with plain-language explanations and a document checklist." },
-  { icon: <Zap className="h-6 w-6" />, title: "Track everything in one place", body: "Monitor application status, renewal deadlines, and benefit amounts from your dashboard." },
-]
+// ─── HowItWorksSteps ──────────────────────────────────────────────────────────
 
 function HowItWorksSteps() {
   const { ref, inView } = useInView(0.2)
@@ -156,7 +129,7 @@ function HowItWorksSteps() {
         <div
           className="h-full origin-left bg-primary"
           style={{
-            transform: inView ? "scaleX(1)" : "scaleX(0)",
+            transform:  inView ? "scaleX(1)" : "scaleX(0)",
             transition: "transform 1.4s ease-out 0.3s",
           }}
         />
@@ -167,8 +140,8 @@ function HowItWorksSteps() {
             key={step.title}
             className="flex flex-col items-center text-center"
             style={{
-              opacity: inView ? 1 : 0,
-              transform: inView ? "translateY(0)" : "translateY(24px)",
+              opacity:    inView ? 1 : 0,
+              transform:  inView ? "translateY(0)" : "translateY(24px)",
               transition: `opacity 0.5s ease ${i * 200 + 300}ms, transform 0.5s ease ${i * 200 + 300}ms`,
             }}
           >
@@ -188,39 +161,22 @@ function HowItWorksSteps() {
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
-export default function LandingPage() {
-  const selectedLanguage = useAppSelector((state) => state.app.language)
 
-  // animated stats
+export default function LandingPage() {
+  useAppSelector((state) => state.app.language)   // re-render on language switch
+
+  // Animated stat counters — hooks must be called unconditionally at top level
   const { ref: statsRef, inView: statsInView } = useInView(0.3)
-  const programs  = useCounter(9,    statsInView)
-  const languages = useCounter(6,    statsInView)
-  const minutes   = useCounter(15,   statsInView)
-  const savings   = useCounter(2400, statsInView, 2200)
+  const statValues = [
+    useCounter(STATS_CONFIG[0].target, statsInView, STATS_CONFIG[0].duration),
+    useCounter(STATS_CONFIG[1].target, statsInView, STATS_CONFIG[1].duration),
+    useCounter(STATS_CONFIG[2].target, statsInView, STATS_CONFIG[2].duration),
+    useCounter(STATS_CONFIG[3].target, statsInView, STATS_CONFIG[3].duration),
+  ]
 
   return (
     <>
-      <style>{`
-        @keyframes float {
-          0%,100% { transform: translateY(0px); }
-          50%      { transform: translateY(-12px); }
-        }
-        @keyframes shimmer {
-          0%   { background-position: -200% center; }
-          100% { background-position:  200% center; }
-        }
-        .float-1 { animation: float 4s ease-in-out infinite; }
-        .float-2 { animation: float 5s ease-in-out 0.8s infinite; }
-        .float-3 { animation: float 3.5s ease-in-out 1.5s infinite; }
-        .shimmer-text {
-          background: linear-gradient(90deg, oklch(0.45 0.15 260) 0%, oklch(0.65 0.2 220) 50%, oklch(0.45 0.15 260) 100%);
-          background-size: 200% auto;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-          animation: shimmer 3s linear infinite;
-        }
-      `}</style>
+      <style>{LANDING_STYLES}</style>
 
       <div className="min-h-screen bg-background">
 
@@ -276,7 +232,7 @@ export default function LandingPage() {
                   HealthCompass MA checks 9+ programs at once and guides you through every application — for free.
                 </p>
                 <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
-                  {["Free to use", "9+ programs", "6 languages", "~15 min to apply"].map((tag) => (
+                  {HERO_TAGS.map((tag) => (
                     <span key={tag} className="flex items-center gap-1.5">
                       <CheckCircle2 className="h-4 w-4 text-accent" />{tag}
                     </span>
@@ -285,8 +241,7 @@ export default function LandingPage() {
                 <div className="flex flex-wrap gap-3 pt-2">
                   <Link href="/prescreener">
                     <Button size="lg" className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
-                      Check My Eligibility
-                      <ChevronRight className="h-4 w-4" />
+                      Check My Eligibility <ChevronRight className="h-4 w-4" />
                     </Button>
                   </Link>
                   <Link href="/auth/register">
@@ -326,29 +281,7 @@ export default function LandingPage() {
               </p>
             </FadeUp>
             <div className="grid gap-6 md:grid-cols-3">
-              {[
-                {
-                  icon: <Search className="h-6 w-6 text-destructive" />,
-                  bg: "bg-destructive/10",
-                  title: "You don't know what you qualify for",
-                  body: "With 30+ state and federal programs, each with different income limits and rules, most people have no idea which benefits they're entitled to.",
-                  delay: 0,
-                },
-                {
-                  icon: <ClipboardList className="h-6 w-6 text-warning" />,
-                  bg: "bg-warning/10",
-                  title: "Every program has separate paperwork",
-                  body: "Applying for MassHealth, SNAP, and LIHEAP separately means filling out the same information three times, on three different websites.",
-                  delay: 150,
-                },
-                {
-                  icon: <AlertCircle className="h-6 w-6 text-accent" />,
-                  bg: "bg-accent/10",
-                  title: "Benefits slip through the cracks",
-                  body: "The average Massachusetts family misses $4,800/year in unclaimed benefits — not because they don't qualify, but because they never knew to apply.",
-                  delay: 300,
-                },
-              ].map((item) => (
+              {PROBLEM_ITEMS.map((item) => (
                 <FadeUp key={item.title} delay={item.delay}>
                   <Card className="h-full border-border bg-background transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
                     <CardContent className="p-6">
@@ -396,15 +329,7 @@ export default function LandingPage() {
               </p>
             </FadeUp>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {[
-                { icon: <Sparkles />, color: "text-primary", bg: "bg-primary/10", title: "AI Eligibility Engine",  body: "Cross-check your profile against 9+ state and federal programs in seconds — no paperwork required.", delay: 0   },
-                { icon: <Layers />,   color: "text-accent",  bg: "bg-accent/10",  title: "Benefit Stacking",      body: "Most programs can be combined. We show every program you qualify for, not just one — maximizing your total benefit.", delay: 100 },
-                { icon: <FileCheck />,color: "text-success", bg: "bg-success/10", title: "Guided Applications",   body: "Step-by-step walkthroughs with plain-language explanations, document checklists, and real-time validation.", delay: 200 },
-                { icon: <Bot />,      color: "text-primary", bg: "bg-primary/10", title: "AI Chat Assistant",     body: "Ask questions any time. Our MassHealth assistant explains programs, deadlines, and next steps in plain language.", delay: 300 },
-                { icon: <Globe />,    color: "text-accent",  bg: "bg-accent/10",  title: "6 Languages",           body: "Full support for English, 简体中文, Español, Português, Kreyòl ayisyen, and Tiếng Việt.", delay: 400 },
-                { icon: <Lock />,     color: "text-success", bg: "bg-success/10", title: "Private & Secure",      body: "Your data is encrypted end-to-end and never sold. You control what you share and with whom.", delay: 500 },
-                { icon: <Scale />,    color: "text-accent",  bg: "bg-accent/10",  title: "Appeal Assistance",    body: "Denied? Our AI helps you draft appeal letters, prep for hearings, and track deadlines — turning a 'no' into a 'yes'.", delay: 600, isNew: true },
-              ].map((item) => (
+              {FEATURE_ITEMS.map((item) => (
                 <FadeUp key={item.title} delay={item.delay}>
                   <Card className="group h-full border-border bg-background transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg">
                     <CardContent className="p-6">
@@ -413,7 +338,7 @@ export default function LandingPage() {
                       </div>
                       <div className="mb-2 flex items-center gap-2">
                         <h3 className="font-semibold text-foreground">{item.title}</h3>
-                        {"isNew" in item && item.isNew && (
+                        {item.isNew && (
                           <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-accent-foreground">NEW</span>
                         )}
                       </div>
@@ -430,15 +355,10 @@ export default function LandingPage() {
         <section className="border-y border-border bg-primary px-4 py-16">
           <div ref={statsRef} className="mx-auto max-w-7xl">
             <div className="grid gap-8 text-center md:grid-cols-4">
-              {[
-                { value: programs,  suffix: "+",    prefix: "",  label: "Benefit programs checked"  },
-                { value: languages, suffix: "",     prefix: "",  label: "Languages supported"        },
-                { value: minutes,   suffix: " min", prefix: "~", label: "Average time to apply"      },
-                { value: savings,   suffix: "/mo",  prefix: "$", label: "Max combined monthly benefit" },
-              ].map((stat) => (
+              {STATS_CONFIG.map((stat, i) => (
                 <div key={stat.label} className="space-y-1">
                   <div className="text-4xl font-bold text-primary-foreground md:text-5xl">
-                    {stat.prefix}{stat.value.toLocaleString()}{stat.suffix}
+                    {stat.prefix}{statValues[i].toLocaleString()}{stat.suffix}
                   </div>
                   <div className="text-sm text-primary-foreground/70">{stat.label}</div>
                 </div>
@@ -469,12 +389,7 @@ export default function LandingPage() {
                   deadlines, and understand your rights.
                 </p>
                 <ul className="space-y-3 text-sm text-muted-foreground">
-                  {[
-                    "Plain-language explanation of your denial reason",
-                    "Personalized appeal letter drafting",
-                    "Document checklist for your hearing",
-                    "Deadline tracking so you never miss a filing window",
-                  ].map((item) => (
+                  {APPEAL_CHECKLIST.map((item) => (
                     <li key={item} className="flex items-start gap-2">
                       <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
                       <span>{item}</span>
@@ -484,8 +399,7 @@ export default function LandingPage() {
                 <div className="flex flex-wrap gap-3 pt-2">
                   <Link href="/auth/register">
                     <Button size="lg" className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90">
-                      Start My Appeal
-                      <ChevronRight className="h-4 w-4" />
+                      Start My Appeal <ChevronRight className="h-4 w-4" />
                     </Button>
                   </Link>
                   <Link href="/knowledge-center">
@@ -497,12 +411,7 @@ export default function LandingPage() {
               {/* right – feature cards */}
               <FadeUp delay={200}>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  {[
-                    { icon: <Scale className="h-5 w-5" />, color: "text-accent", bg: "bg-accent/10", title: "Know Your Rights", body: "Understand exactly why you were denied and what grounds you can appeal on." },
-                    { icon: <FileCheck className="h-5 w-5" />, color: "text-primary", bg: "bg-primary/10", title: "AI-Drafted Letters", body: "Generate a compelling, personalized appeal letter in minutes." },
-                    { icon: <ClipboardList className="h-5 w-5" />, color: "text-success", bg: "bg-success/10", title: "Hearing Prep", body: "Get a tailored checklist of documents and tips for your fair hearing." },
-                    { icon: <Zap className="h-5 w-5" />, color: "text-warning", bg: "bg-warning/10", title: "Deadline Alerts", body: "You have 30 days to appeal. We track it and remind you before time runs out." },
-                  ].map((card) => (
+                  {APPEAL_CARDS.map((card) => (
                     <Card key={card.title} className="border-border bg-card transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
                       <CardContent className="p-5">
                         <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${card.bg}`}>
@@ -524,16 +433,10 @@ export default function LandingPage() {
           <div className="mx-auto max-w-7xl">
             <FadeUp className="mb-12 text-center">
               <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-primary">Real Stories</p>
-              <h2 className="text-3xl font-bold text-foreground md:text-4xl">
-                Real help for real families
-              </h2>
+              <h2 className="text-3xl font-bold text-foreground md:text-4xl">Real help for real families</h2>
             </FadeUp>
             <div className="grid gap-6 md:grid-cols-3">
-              {[
-                { quote: "I had no idea I qualified for SNAP on top of MassHealth. HealthCompass MA found $600/month I was leaving on the table.", name: "Maria S.", location: "Worcester, MA", delay: 0 },
-                { quote: "The step-by-step guidance made the whole process so much less intimidating. I finished everything in under 20 minutes.", name: "James T.", location: "Boston, MA", delay: 150 },
-                { quote: "As a social worker, I recommend this to every client. It surfaces programs I wouldn't have thought to check.", name: "Priya K.", location: "Springfield, MA", delay: 300 },
-              ].map((t) => (
+              {TESTIMONIALS.map((t) => (
                 <FadeUp key={t.name} delay={t.delay}>
                   <Card className="h-full border-border bg-card transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
                     <CardContent className="p-6">
@@ -571,8 +474,7 @@ export default function LandingPage() {
             <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Link href="/prescreener">
                 <Button size="lg" className="w-full gap-2 bg-primary-foreground text-primary hover:bg-primary-foreground/90 sm:w-auto">
-                  Check My Eligibility — Free
-                  <ChevronRight className="h-4 w-4" />
+                  Check My Eligibility — Free <ChevronRight className="h-4 w-4" />
                 </Button>
               </Link>
               <Link href="/auth/login">
@@ -588,6 +490,7 @@ export default function LandingPage() {
         <footer className="border-t border-border bg-card px-4 py-12">
           <div className="mx-auto max-w-7xl">
             <div className="grid gap-8 md:grid-cols-4">
+              {/* Brand */}
               <div>
                 <div className="mb-4 flex items-center gap-2">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
@@ -599,30 +502,37 @@ export default function LandingPage() {
                   Helping Massachusetts residents discover and access the health and social benefits they deserve.
                 </p>
               </div>
+
+              {/* Programs */}
               <div>
                 <h4 className="mb-4 font-semibold text-foreground">Programs</h4>
                 <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li><Link href="#" className="hover:text-foreground">MassHealth</Link></li>
-                  <li><Link href="#" className="hover:text-foreground">SNAP / Food Assistance</Link></li>
-                  <li><Link href="#" className="hover:text-foreground">EITC Tax Credits</Link></li>
-                  <li><Link href="#" className="hover:text-foreground">LIHEAP Energy Aid</Link></li>
+                  {FOOTER_PROGRAMS.map((l) => (
+                    <li key={l.label}>
+                      <Link href={l.href} className="hover:text-foreground">{l.label}</Link>
+                    </li>
+                  ))}
                 </ul>
               </div>
+
+              {/* Platform */}
               <div>
                 <h4 className="mb-4 font-semibold text-foreground">Platform</h4>
                 <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li><Link href="/prescreener" className="hover:text-foreground">Eligibility Checker</Link></li>
-                  <li><Link href="/benefit-stack" className="hover:text-foreground">Benefit Stack Tool</Link></li>
-                  <li>
-                    <Link href="/auth/register" className="inline-flex items-center gap-1.5 hover:text-foreground">
-                      Appeal Assistance
-                      <span className="rounded-full bg-accent px-1.5 py-0.5 text-[9px] font-bold text-accent-foreground">NEW</span>
-                    </Link>
-                  </li>
-                  <li><Link href="/knowledge-center" className="hover:text-foreground">Knowledge Center</Link></li>
-                  <li><Link href="/auth/register" className="hover:text-foreground">Create Account</Link></li>
+                  {FOOTER_PLATFORM.map((l) => (
+                    <li key={l.label}>
+                      <Link href={l.href} className="inline-flex items-center gap-1.5 hover:text-foreground">
+                        {l.label}
+                        {l.label === "Appeal Assistance" && (
+                          <span className="rounded-full bg-accent px-1.5 py-0.5 text-[9px] font-bold text-accent-foreground">NEW</span>
+                        )}
+                      </Link>
+                    </li>
+                  ))}
                 </ul>
               </div>
+
+              {/* Support */}
               <div>
                 <h4 className="mb-4 font-semibold text-foreground">Support</h4>
                 <ul className="space-y-2 text-sm text-muted-foreground">

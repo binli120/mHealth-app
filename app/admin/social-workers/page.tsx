@@ -9,47 +9,9 @@ import { Suspense, useEffect, useState, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
 import { Search, CheckCircle, XCircle, UserCheck, UserPlus, X, Loader2, Copy } from "lucide-react"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
-
-interface SocialWorker {
-  id: string
-  user_id: string
-  email: string
-  first_name: string | null
-  last_name: string | null
-  company_id: string
-  company_name: string
-  license_number: string | null
-  job_title: string | null
-  status: "pending" | "approved" | "rejected"
-  rejection_note: string | null
-  created_at: string
-}
-
-const STATUS_FILTER_OPTIONS = [
-  { value: "", label: "All Statuses" },
-  { value: "pending", label: "Pending" },
-  { value: "approved", label: "Approved" },
-  { value: "rejected", label: "Rejected" },
-]
-
-const STATUS_STYLE: Record<string, string> = {
-  approved: "bg-emerald-100 text-emerald-700",
-  pending: "bg-amber-100 text-amber-700",
-  rejected: "bg-red-100 text-red-700",
-}
-
-interface CompanyOption {
-  id: string
-  name: string
-  email_domain: string | null
-}
-
-const VALID_STATUS_FILTERS = new Set(["pending", "approved", "rejected"])
-
-function initialStatusFromSearchParams(searchParams: URLSearchParams): string {
-  const s = searchParams.get("status") ?? ""
-  return VALID_STATUS_FILTERS.has(s) ? s : ""
-}
+import type { SocialWorker, CompanyOption } from "./page.types"
+import { STATUS_FILTER_OPTIONS, STATUS_STYLE, VALID_STATUS_FILTERS } from "./page.constants"
+import { initialStatusFromSearchParams, fullName } from "./page.utils"
 
 function AdminSocialWorkersPageInner() {
   const searchParams = useSearchParams()
@@ -172,9 +134,6 @@ function AdminSocialWorkersPageInner() {
     setInviteResult(null)
     setLinkCopied(false)
   }
-
-  const fullName = (w: SocialWorker) =>
-    [w.first_name, w.last_name].filter(Boolean).join(" ") || "—"
 
   return (
     <div className="max-w-6xl mx-auto">

@@ -22,40 +22,9 @@ import {
   Copy,
 } from "lucide-react"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
-
-interface AdminUser {
-  id: string
-  email: string
-  is_active: boolean
-  created_at: string
-  roles: string[]
-  first_name: string | null
-  last_name: string | null
-  company_id: string | null
-  company_name: string | null
-}
-
-interface CompanyOption {
-  id: string
-  name: string
-  email_domain: string | null
-  status: string
-}
-
-const ROLE_OPTIONS = [
-  { value: "", label: "All Roles" },
-  { value: "applicant", label: "Applicant" },
-  { value: "social_worker", label: "Social Worker" },
-  { value: "reviewer", label: "Reviewer" },
-  { value: "admin", label: "Admin" },
-]
-
-const ROLE_COLORS: Record<string, string> = {
-  admin: "bg-red-100 text-red-700",
-  reviewer: "bg-purple-100 text-purple-700",
-  social_worker: "bg-blue-100 text-blue-700",
-  applicant: "bg-gray-100 text-gray-600",
-}
+import type { AdminUser, CompanyOption } from "./page.types"
+import { ROLE_OPTIONS, ROLE_COLORS } from "./page.constants"
+import { fullName } from "./page.utils"
 
 function AdminUsersInner() {
   const searchParams = useSearchParams()
@@ -158,9 +127,6 @@ function AdminUsersInner() {
     setInviteResult(null)
     setLinkCopied(false)
   }
-
-  const fullName = (u: AdminUser) =>
-    [u.first_name, u.last_name].filter(Boolean).join(" ") || "—"
 
   const companyFilterLabel = companies.find((c) => c.id === companyFilter)?.name
 

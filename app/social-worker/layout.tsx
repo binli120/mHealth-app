@@ -15,19 +15,18 @@ import {
   LayoutDashboard,
   Users,
   LogOut,
-  MessageSquare,
   UserCheck,
   Menu,
   X,
   Clock,
   Video,
 } from "lucide-react"
+import { SwChatDialog } from "@/components/chat/sw-chat-dialog"
 
 const NAV_LINKS = [
   { href: "/social-worker/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/social-worker/patients",  label: "My Patients", icon: Users },
   { href: "/social-worker/sessions",  label: "Sessions", icon: Video },
-  { href: "/social-worker/messages",  label: "Messages", icon: MessageSquare },
 ]
 
 export default function SocialWorkerLayout({ children }: { children: React.ReactNode }) {
@@ -36,7 +35,7 @@ export default function SocialWorkerLayout({ children }: { children: React.React
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [swStatus, setSwStatus] = useState<"loading" | "approved" | "pending" | "rejected" | "none">("loading")
   const [userEmail, setUserEmail] = useState<string | null>(null)
-  const [messageBadge, setMessageBadge] = useState(0)
+  // messageBadge removed — SwChatDialog manages its own badge polling
 
   useEffect(() => {
     const supabase = getSupabaseClient()
@@ -58,30 +57,7 @@ export default function SocialWorkerLayout({ children }: { children: React.React
     })
   }, [router])
 
-  // Poll message badge (pending requests + unread DMs)
-  useEffect(() => {
-    if (swStatus !== "approved") return
-    const fetchBadge = async () => {
-      try {
-        const [reqRes, threadRes] = await Promise.all([
-          authenticatedFetch("/api/social-worker/engagement-requests"),
-          authenticatedFetch("/api/social-worker/messages"),
-        ])
-        const reqData = await reqRes.json()
-        const threadData = await threadRes.json()
-        const pendingReqs = (reqData.requests ?? []).length
-        const unreadDms = (threadData.threads ?? []).reduce(
-          (sum: number, t: { unreadCount: number }) => sum + t.unreadCount, 0
-        )
-        setMessageBadge(pendingReqs + unreadDms)
-      } catch {
-        // non-critical
-      }
-    }
-    void fetchBadge()
-    const id = setInterval(() => void fetchBadge(), 30_000)
-    return () => clearInterval(id)
-  }, [swStatus])
+  // Badge polling removed — SwChatDialog handles its own unread/request counts
 
   const handleLogout = async () => {
     await getSupabaseClient().auth.signOut()
@@ -181,11 +157,6 @@ export default function SocialWorkerLayout({ children }: { children: React.React
             >
               <Icon className="w-4 h-4 flex-shrink-0" />
               {label}
-              {href === "/social-worker/messages" && messageBadge > 0 && (
-                <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
-                  {messageBadge > 9 ? "9+" : messageBadge}
-                </span>
-              )}
             </Link>
           ))}
         </nav>
@@ -216,6 +187,9 @@ export default function SocialWorkerLayout({ children }: { children: React.React
           <SWSessionProvider>{children}</SWSessionProvider>
         </main>
       </div>
+
+      {/* Floating chat dialog — replaces the /messages full-page route */}
+      {swStatus === "approved" && <SwChatDialog />}
     </div>
   )
 }

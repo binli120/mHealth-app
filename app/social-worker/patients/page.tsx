@@ -82,8 +82,11 @@ export default function SocialWorkerPatientsPage() {
   const [cityFilter, setCityFilter] = useState("")
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [chatPatient, setChatPatient] = useState<Patient | null>(null)
-  // Persist messages per patient so reopening the dialog doesn't flash a loading state
+  // Persist messages per patient so reopening the dialog doesn't flash a loading state.
+  // The ref holds the cache; chatInitialMessages carries the snapshot into the panel
+  // so we never read ref.current during render (react-hooks/refs).
   const messageCacheRef = useRef<Record<string, DirectMessage[]>>({})
+  const [chatInitialMessages, setChatInitialMessages] = useState<DirectMessage[] | undefined>(undefined)
 
   // Get the SW's own user ID for the chat panel
   useEffect(() => {
@@ -266,7 +269,12 @@ export default function SocialWorkerPatientsPage() {
                 {/* Chat button */}
                 <button
                   type="button"
-                  onClick={(e) => { e.preventDefault(); setChatPatient(p) }}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    // Read ref in event handler (not render) — safe per react-hooks/refs
+                    setChatInitialMessages(messageCacheRef.current[p.patient_user_id])
+                    setChatPatient(p)
+                  }}
                   className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-100 transition-colors"
                   title={`Chat with ${fullName(p)}`}
                 >
@@ -287,7 +295,15 @@ export default function SocialWorkerPatientsPage() {
       )}
 
       {/* Direct chat dialog */}
-      <Dialog open={!!chatPatient} onOpenChange={(open) => { if (!open) setChatPatient(null) }}>
+      <Dialog
+        open={!!chatPatient}
+        onOpenChange={(open) => {
+          if (!open) {
+            setChatPatient(null)
+            setChatInitialMessages(undefined)
+          }
+        }}
+      >
         <DialogContent className="flex h-[600px] max-h-[90vh] flex-col gap-0 p-0 sm:max-w-md">
           <DialogHeader className="sr-only">
             <DialogTitle>
@@ -300,11 +316,14 @@ export default function SocialWorkerPatientsPage() {
               swName={fullName(chatPatient)}
               currentUserId={currentUserId}
               contactRole="Patient"
-              initialMessages={messageCacheRef.current[chatPatient.patient_user_id]}
+              initialMessages={chatInitialMessages}
               onMessagesChange={(msgs) => {
                 messageCacheRef.current[chatPatient.patient_user_id] = msgs
               }}
-              onBack={() => setChatPatient(null)}
+              onBack={() => {
+                setChatPatient(null)
+                setChatInitialMessages(undefined)
+              }}
             />
           )}
         </DialogContent>

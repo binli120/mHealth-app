@@ -44,8 +44,20 @@ const ALLOWED_IMAGE: Record<string, string> = {
   "image/heic": "heic",
 }
 
+const ALLOWED_FILE: Record<string, string> = {
+  "application/pdf": "pdf",
+  "application/msword": "doc",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+  "application/vnd.ms-excel": "xls",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+  "application/vnd.ms-powerpoint": "ppt",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
+  "text/plain": "txt",
+}
+
 const MAX_AUDIO_BYTES = 10 * 1024 * 1024   // 10 MB
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024   // 20 MB
+const MAX_FILE_BYTES  = 25 * 1024 * 1024   // 25 MB
 
 type Params = { params: Promise<{ userId: string }> }
 
@@ -98,15 +110,18 @@ export async function POST(request: Request, { params }: Params) {
         { status: 400 },
       )
     }
-    if (messageType !== "voice" && messageType !== "image") {
+    if (messageType !== "voice" && messageType !== "image" && messageType !== "file") {
       return NextResponse.json(
-        { ok: false, error: "Field 'type' must be 'voice' or 'image'." },
+        { ok: false, error: "Field 'type' must be 'voice', 'image', or 'file'." },
         { status: 400 },
       )
     }
 
-    const mimeType = fileBlob.type || (messageType === "voice" ? "audio/webm" : "image/jpeg")
-    const allowedMap = messageType === "voice" ? ALLOWED_AUDIO : ALLOWED_IMAGE
+    const mimeType = fileBlob.type || (messageType === "voice" ? "audio/webm" : "application/octet-stream")
+    const allowedMap =
+      messageType === "voice" ? ALLOWED_AUDIO :
+      messageType === "image" ? ALLOWED_IMAGE :
+      ALLOWED_FILE
     const ext = allowedMap[mimeType]
     if (!ext) {
       return NextResponse.json(
@@ -115,7 +130,10 @@ export async function POST(request: Request, { params }: Params) {
       )
     }
 
-    const maxBytes = messageType === "voice" ? MAX_AUDIO_BYTES : MAX_IMAGE_BYTES
+    const maxBytes =
+      messageType === "voice" ? MAX_AUDIO_BYTES :
+      messageType === "image" ? MAX_IMAGE_BYTES :
+      MAX_FILE_BYTES
     const arrayBuffer = await fileBlob.arrayBuffer()
     if (arrayBuffer.byteLength > maxBytes) {
       return NextResponse.json(
@@ -129,16 +147,24 @@ export async function POST(request: Request, { params }: Params) {
         ? (Number(formData?.get("durationSec") ?? 0) || null)
         : null
 
+    // For file/image messages: preserve the original filename as message content
+    const originalName = (fileBlob as File).name ?? null
+    const displayName = messageType === "file" ? (originalName || `document.${ext}`) : null
+
     // Create DB row first to get the ID for the storage path
     const message = await createMediaMessagePlaceholder({
       swUserId: thread.swUserId,
       patientUserId: thread.patientUserId,
       senderId: authResult.userId,
       messageType,
+      content: displayName ?? undefined,
       durationSec,
     })
 
-    const folder = messageType === "voice" ? "dm/voice" : "dm/images"
+    const folder =
+      messageType === "voice" ? "dm/voice" :
+      messageType === "image" ? "dm/images" :
+      "dm/files"
     const storagePath = `${folder}/${authResult.userId}/${message.id}.${ext}`
 
     await uploadToStorage({

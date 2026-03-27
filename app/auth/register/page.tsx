@@ -20,33 +20,8 @@ import {
   UserRound, UserCheck, Search, Building2, Loader2,
 } from "lucide-react"
 import { ShieldHeartIcon } from "@/lib/icons"
-
-type RegisterStep = "role-select" | "company-search" | "form" | "verify"
-type AccountRole = "applicant" | "social_worker"
-
-interface CompanyResult {
-  id: string | null
-  source: "nppes" | "local"
-  name: string
-  npi: string | null
-  address: string | null
-  city: string | null
-  state: string | null
-  zip: string | null
-  email_domain: string | null
-}
-
-interface DevRegisterResponse {
-  ok?: boolean
-  error?: string
-}
-
-function getSafeNextPath(nextPath: string | null, fallback: string): string {
-  if (!nextPath || !nextPath.startsWith("/") || nextPath.startsWith("//") || nextPath.startsWith("/auth/")) {
-    return fallback
-  }
-  return nextPath
-}
+import type { RegisterStep, AccountRole, CompanyResult, DevRegisterResponse } from "./page.types"
+import { getSafeNextPath } from "./page.utils"
 
 function RegisterPageContent() {
   const router = useRouter()

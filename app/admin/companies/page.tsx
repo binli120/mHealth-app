@@ -20,48 +20,8 @@ import {
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
-
-interface Company {
-  id: string
-  name: string
-  npi: string | null
-  address: string | null
-  city: string | null
-  state: string | null
-  zip: string | null
-  phone: string | null
-  email_domain: string | null
-  status: "pending" | "approved" | "rejected"
-  created_at: string
-  approved_at: string | null
-  sw_count: number
-}
-
-interface NppesResult {
-  id: string | null
-  source: "nppes" | "local"
-  name: string
-  npi: string | null
-  address: string | null
-  city: string | null
-  state: string | null
-  zip: string | null
-  phone: string | null
-  email_domain: string | null
-}
-
-const STATUS_FILTER_OPTIONS = [
-  { value: "", label: "All Statuses" },
-  { value: "pending", label: "Pending" },
-  { value: "approved", label: "Approved" },
-  { value: "rejected", label: "Rejected" },
-]
-
-const STATUS_STYLE: Record<string, string> = {
-  approved: "bg-emerald-100 text-emerald-700",
-  pending: "bg-amber-100 text-amber-700",
-  rejected: "bg-red-100 text-red-700",
-}
+import type { Company, NppesResult } from "./page.types"
+import { STATUS_FILTER_OPTIONS, STATUS_STYLE } from "./page.constants"
 
 export default function AdminCompaniesPage() {
   const router = useRouter()

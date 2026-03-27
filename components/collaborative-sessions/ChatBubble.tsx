@@ -167,17 +167,23 @@ export function ChatBubble({ message, isMine, sessionId }: Props) {
     <div
       className={`flex flex-col gap-0.5 max-w-[72%] ${isMine ? 'self-end items-end' : 'self-start items-start'}`}
     >
-      {/* Sender name (only for the other party) */}
+      {/* Other party: "Name · timestamp" on one compact line */}
       {!isMine && (
-        <span className='text-[11px] font-medium text-gray-400 px-1'>
-          {message.senderName}
-        </span>
+        <div className='flex items-center gap-1 px-1'>
+          <span className='text-[11px] font-semibold text-gray-300'>
+            {message.senderName}
+          </span>
+          <span className='text-[11px] text-gray-500'>·</span>
+          <span className='text-[10px] text-gray-500'>
+            {formatTime(message.createdAt)}
+          </span>
+        </div>
       )}
 
       {/* Bubble */}
       <div
         className={`
-          px-3 py-2 rounded-2xl text-sm leading-relaxed
+          px-3 py-1.5 rounded-2xl text-sm leading-snug
           ${
             isMine
               ? 'bg-violet-600 text-white rounded-br-sm'
@@ -194,10 +200,12 @@ export function ChatBubble({ message, isMine, sessionId }: Props) {
         )}
       </div>
 
-      {/* Timestamp */}
-      <span className='text-[10px] text-gray-400 px-1'>
-        {formatTime(message.createdAt)}
-      </span>
+      {/* My messages: timestamp below the bubble */}
+      {isMine && (
+        <span className='text-[10px] text-gray-500 px-1'>
+          {formatTime(message.createdAt)}
+        </span>
+      )}
     </div>
   );
 }

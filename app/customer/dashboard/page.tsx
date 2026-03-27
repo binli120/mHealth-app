@@ -10,7 +10,6 @@ import { useAsyncData } from "@/hooks/use-async-data"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { MASSHEALTH_APPLICATION_TYPES } from "@/lib/masshealth/application-types"
 import { MASSHEALTH_PHONE, MASSHEALTH_TTY_DIRECT } from "@/lib/masshealth/constants"
 import { type ApplicationStatus } from "@/lib/application-status"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
@@ -43,50 +42,9 @@ import { UserAvatar } from "@/components/shared/UserAvatar"
 import { ThemeToggle } from "@/components/shared/ThemeToggle"
 import { IdleTimeoutGuard } from "@/components/shared/IdleTimeoutGuard"
 import { formatDate } from "@/lib/utils/format"
-
-type DashboardStatus = ApplicationStatus
-
-interface ApplicationListRecord {
-  id: string
-  status: DashboardStatus
-  applicationType: string | null
-  draftStep: number | null
-  lastSavedAt: string | null
-  submittedAt: string | null
-  createdAt: string
-  updatedAt: string
-  applicantName: string | null
-  householdSize: number | null
-}
-
-interface ApplicationListApiResponse {
-  ok: boolean
-  records?: ApplicationListRecord[]
-  total?: number
-  error?: string
-}
-
-const STATUS_META: Record<DashboardStatus, { color: string; icon: typeof FileText }> = {
-  draft: { color: "bg-secondary text-secondary-foreground", icon: FileText },
-  submitted: { color: "bg-primary/10 text-primary", icon: Clock },
-  ai_extracted: { color: "bg-accent/10 text-accent", icon: Clock },
-  needs_review: { color: "bg-accent/10 text-accent", icon: Clock },
-  rfi_requested: { color: "bg-warning/10 text-warning", icon: AlertCircle },
-  approved: { color: "bg-success/10 text-success", icon: CheckCircle2 },
-  denied: { color: "bg-destructive/10 text-destructive", icon: AlertCircle },
-}
-
-const APPLICATION_TYPE_LABELS = new Map<string, string>(
-  MASSHEALTH_APPLICATION_TYPES.map((item) => [item.id, item.shortLabel]),
-)
-
-function getApplicationTypeLabel(type: string | null): string {
-  if (!type) {
-    return "Application"
-  }
-
-  return APPLICATION_TYPE_LABELS.get(type) ?? type.toUpperCase()
-}
+import type { DashboardStatus, ApplicationListRecord, ApplicationListApiResponse } from "./page.types"
+import { STATUS_META } from "./page.constants"
+import { getApplicationTypeLabel } from "./page.utils"
 
 export default function CustomerDashboardPage() {
   const dispatch = useAppDispatch()

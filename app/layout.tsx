@@ -6,7 +6,7 @@
 import type { Metadata } from 'next'
 import { Inter, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
-import { MassHealthChatWidget } from '@/components/chat/masshealth-chat-widget'
+import { ConditionalChatWidget } from '@/components/chat/conditional-chat-widget'
 import { ReduxProvider } from '@/components/providers/redux-provider'
 import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
@@ -35,7 +35,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <ReduxProvider>
             {children}
-            <MassHealthChatWidget />
+            <ConditionalChatWidget />
             <Analytics />
           </ReduxProvider>
         </ThemeProvider>

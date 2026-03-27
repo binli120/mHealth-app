@@ -21,6 +21,7 @@ import {
 } from "@/lib/db/sw-messaging"
 import { notifyNewDirectMessage } from "@/lib/notifications/service"
 import { logServerError } from "@/lib/server/logger"
+import { getSignedDocumentUrl } from "@/lib/supabase/storage"
 import { getDbPool } from "@/lib/db/server"
 
 export const runtime = "nodejs"
@@ -79,10 +80,23 @@ export async function GET(request: Request, { params }: Params) {
       limit,
     })
 
+    // Generate signed URLs for media messages (image, voice, file)
+    const messagesWithUrls = await Promise.all(
+      messages.map(async (msg) => {
+        if (!msg.storagePath) return msg
+        try {
+          const signedUrl = await getSignedDocumentUrl({ storagePath: msg.storagePath })
+          return { ...msg, signedUrl }
+        } catch {
+          return msg
+        }
+      }),
+    )
+
     // Mark incoming messages as read
     void markThreadRead(thread.swUserId, thread.patientUserId, authResult.userId)
 
-    return NextResponse.json({ ok: true, messages })
+    return NextResponse.json({ ok: true, messages: messagesWithUrls })
   } catch (error) {
     logServerError("GET /api/messages/[userId] failed", error, { module: "api/messages/[userId]" })
     return NextResponse.json({ ok: false, error: "Failed to load messages." }, { status: 500 })

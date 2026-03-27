@@ -11,11 +11,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getMessage } from "@/lib/i18n/messages"
 import { type SupportedLanguage } from "@/lib/i18n/languages"
-import { MASSHEALTH_APPLICATION_TYPES } from "@/lib/masshealth/application-types"
 import { type ApplicationStatus } from "@/lib/application-status"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { useAppSelector } from "@/lib/redux/hooks"
 import { ShieldHeartIcon, UserBadgeIcon } from "@/lib/icons"
+import type { PageProps, ApplicationDraftRecord, DraftApiResponse, TimelineEvent } from "./page.types"
+import { formatDate, formatDateTime, readContactField, readHouseholdSize, readCurrentIncome, buildTimeline, getApplicationTypeLabel } from "./page.utils"
 import {
   AlertCircle,
   ArrowLeft,
@@ -28,174 +29,6 @@ import {
   Upload,
   Users,
 } from "lucide-react"
-
-interface PageProps {
-  params: Promise<{ id: string }>
-}
-
-interface ApplicationDraftRecord {
-  id: string
-  status: ApplicationStatus
-  applicationType: string | null
-  draftState: Record<string, unknown> | null
-  draftStep: number | null
-  lastSavedAt: string | null
-  submittedAt: string | null
-  createdAt: string
-  updatedAt: string
-}
-
-interface DraftApiResponse {
-  ok: boolean
-  record?: ApplicationDraftRecord
-  error?: string
-}
-
-interface TimelineEvent {
-  id: string
-  title: string
-  description: string
-  date: string
-  state: "completed" | "current" | "pending"
-}
-
-const APPLICATION_TYPE_LABELS = new Map<string, string>(
-  MASSHEALTH_APPLICATION_TYPES.map((item) => [item.id, item.shortLabel]),
-)
-
-function formatDate(value: string | null, locale: string): string {
-  if (!value) {
-    return "—"
-  }
-
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return "—"
-  }
-
-  return date.toLocaleDateString(locale, {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-  })
-}
-
-function formatDateTime(value: string | null, locale: string): string {
-  if (!value) {
-    return "—"
-  }
-
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return "—"
-  }
-
-  return date.toLocaleString(locale, {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  })
-}
-
-function readContactField(record: ApplicationDraftRecord | null, key: string): string {
-  const data = (record?.draftState?.data as Record<string, unknown> | undefined) ?? {}
-  const contact = (data.contact as Record<string, unknown> | undefined) ?? {}
-  const raw = contact[key]
-  return typeof raw === "string" ? raw.trim() : ""
-}
-
-function readHouseholdSize(record: ApplicationDraftRecord | null): number | null {
-  const value = readContactField(record, "p1_num_people")
-  if (!value) {
-    return null
-  }
-
-  const parsed = Number.parseInt(value, 10)
-  return Number.isFinite(parsed) ? parsed : null
-}
-
-function readCurrentIncome(record: ApplicationDraftRecord | null): string {
-  const data = (record?.draftState?.data as Record<string, unknown> | undefined) ?? {}
-  const persons = (data.persons as Array<Record<string, unknown>> | undefined) ?? []
-  const firstPerson = persons[0]
-  if (!firstPerson) {
-    return "—"
-  }
-
-  const incomeSection = (firstPerson.income as Record<string, unknown> | undefined) ?? {}
-  const totalCurrentYear = incomeSection.total_income_current_year
-  if (typeof totalCurrentYear === "string" && totalCurrentYear.trim()) {
-    return totalCurrentYear
-  }
-
-  return "—"
-}
-
-function buildTimeline(record: ApplicationDraftRecord | null, language: SupportedLanguage): TimelineEvent[] {
-  if (!record) {
-    return []
-  }
-
-  const events: TimelineEvent[] = [
-    {
-      id: "started",
-      title: getMessage(language, "statusDetailStartedTitle"),
-      description: getMessage(language, "statusDetailStartedDesc"),
-      date: formatDateTime(record.createdAt, language),
-      state: "completed",
-    },
-  ]
-
-  if (record.lastSavedAt) {
-    events.push({
-      id: "saved",
-      title: getMessage(language, "statusDetailSavedTitle"),
-      description: `${getMessage(language, "statusDetailSavedDescPrefix")} ${record.draftStep ?? "—"}.`,
-      date: formatDateTime(record.lastSavedAt, language),
-      state: record.status === "draft" ? "current" : "completed",
-    })
-  }
-
-  if (record.submittedAt || record.status !== "draft") {
-    events.push({
-      id: "submitted",
-      title: getMessage(language, "statusDetailSubmittedTitle"),
-      description: getMessage(language, "statusDetailSubmittedDesc"),
-      date: formatDateTime(record.submittedAt, language),
-      state:
-        record.status === "draft"
-          ? "pending"
-          : record.status === "submitted" ||
-              record.status === "ai_extracted" ||
-              record.status === "needs_review" ||
-              record.status === "rfi_requested"
-            ? "current"
-            : "completed",
-    })
-  }
-
-  events.push({
-    id: "decision",
-    title: getMessage(language, "statusDetailDecisionTitle"),
-    description: getMessage(language, "statusDetailDecisionDesc"),
-    date: record.status === "approved" || record.status === "denied"
-      ? getMessage(language, "statusDetailCompleted")
-      : getMessage(language, "statusDetailPending"),
-    state: record.status === "approved" || record.status === "denied" ? "completed" : "pending",
-  })
-
-  return events
-}
-
-function getApplicationTypeLabel(type: string | null, language: SupportedLanguage): string {
-  if (!type) {
-    return getMessage(language, "statusListApplicationFallback")
-  }
-
-  return APPLICATION_TYPE_LABELS.get(type) ?? type.toUpperCase()
-}
 
 export default function StatusDetailPage({ params }: PageProps) {
   const language = useAppSelector((state) => state.app.language)
