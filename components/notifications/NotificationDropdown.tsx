@@ -5,10 +5,11 @@
 
 "use client"
 
-import { useCallback, useEffect } from "react"
+import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { BellOff, Check } from "lucide-react"
+import { dispatchOpenSwChat } from "@/lib/events/chat-events"
 
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -41,6 +42,7 @@ interface Props {
 export function NotificationDropdown({ children }: Props) {
   const dispatch = useAppDispatch()
   const router = useRouter()
+  const [open, setOpen] = useState(false)
   const { items, unreadCount, loading, error } = useAppSelector((s) => s.notifications)
 
   const loadNotifications = useCallback(async () => {
@@ -76,6 +78,17 @@ export function NotificationDropdown({ children }: Props) {
       // Roll back optimistic update on failure
       if (wasUnread) dispatch(revertMarkRead(notification.id))
     }
+
+    // For direct message notifications — open the chat widget to the sender's thread
+    if (notification.type === "new_direct_message") {
+      const { senderUserId, senderName } = notification.metadata
+      if (typeof senderUserId === "string" && senderUserId) {
+        setOpen(false)
+        dispatchOpenSwChat(senderUserId, typeof senderName === "string" ? senderName : "Social Worker")
+        return
+      }
+    }
+
     // Navigate based on type + metadata — only allow safe internal paths (C1: open redirect fix)
     const meta = notification.metadata
     if (notification.type === "status_change" || notification.type === "document_request") {
@@ -88,7 +101,7 @@ export function NotificationDropdown({ children }: Props) {
   }, [dispatch, router])
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild onClick={loadNotifications}>
         {children}
       </PopoverTrigger>

@@ -10,6 +10,16 @@ import { useAsyncData } from "@/hooks/use-async-data"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { MASSHEALTH_PHONE, MASSHEALTH_TTY_DIRECT } from "@/lib/masshealth/constants"
 import { type ApplicationStatus } from "@/lib/application-status"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
@@ -27,6 +37,7 @@ import {
   Clock,
   FileText,
   LogOut,
+  MessageCircle,
   Scale,
   Upload,
   UserCheck,
@@ -34,6 +45,7 @@ import {
   X,
   Loader2,
 } from "lucide-react"
+import { dispatchOpenSwChat } from "@/lib/events/chat-events"
 import { NotificationBell } from "@/components/notifications/NotificationBell"
 import { SessionInviteBanner } from "@/components/collaborative-sessions/SessionInviteBanner"
 import { getSafeSupabaseUser } from "@/lib/supabase/client"
@@ -68,6 +80,7 @@ export default function CustomerDashboardPage() {
   const [swSearchLoading, setSwSearchLoading] = useState(false)
   const [swSearchError, setSwSearchError] = useState("")
   const [swGranting, setSwGranting] = useState(false)
+  const [swRevokeTarget, setSwRevokeTarget] = useState<{ swUserId: string; name: string } | null>(null)
 
   // Fetch the user profile on mount if Redux doesn't already have it.
   // This ensures the navbar avatar always shows even when the user lands
@@ -207,14 +220,14 @@ export default function CustomerDashboardPage() {
     <div className="min-h-screen bg-background">
       <IdleTimeoutGuard />
       <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
+        <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4">
           <div className="flex shrink-0 items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
               <ShieldHeartIcon color="currentColor" className="h-5 w-5 text-primary-foreground" />
             </div>
             <span className="whitespace-nowrap text-xl font-semibold text-foreground">HealthCompass MA</span>
           </div>
-          <nav className="hidden min-w-0 shrink items-center gap-4 md:flex">
+          <nav className="hidden min-w-0 flex-1 items-center gap-3 overflow-hidden md:flex">
             <Link href="/customer/dashboard" className="shrink-0 whitespace-nowrap text-sm font-medium text-foreground">
               {getMessage(language, "dashboardNav")}
             </Link>
@@ -247,12 +260,6 @@ export default function CustomerDashboardPage() {
               className="shrink-0 whitespace-nowrap text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               {getMessage(language, "dashboardNavAppealAssistant")}
-            </Link>
-            <Link
-              href="/customer/profile"
-              className="shrink-0 whitespace-nowrap text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              My Profile
             </Link>
           </nav>
           <div className="flex shrink-0 items-center gap-3">
@@ -563,14 +570,31 @@ export default function CustomerDashboardPage() {
                           </p>
                           <p className="text-xs text-muted-foreground truncate">{sw.company_name}</p>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => void handleRevokeAccess(sw.sw_user_id)}
-                          title="Revoke access"
-                          className="text-muted-foreground hover:text-destructive flex-shrink-0"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => dispatchOpenSwChat(
+                              sw.sw_user_id,
+                              [sw.first_name, sw.last_name].filter(Boolean).join(" ") || sw.email,
+                            )}
+                            title="Chat with social worker"
+                            className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
+                          >
+                            <MessageCircle className="h-3.5 w-3.5" />
+                            Chat
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSwRevokeTarget({
+                              swUserId: sw.sw_user_id,
+                              name: [sw.first_name, sw.last_name].filter(Boolean).join(" ") || sw.email,
+                            })}
+                            title="Revoke access"
+                            className="text-muted-foreground hover:text-destructive p-1"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -627,6 +651,34 @@ export default function CustomerDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Revoke SW access confirmation */}
+      <AlertDialog open={!!swRevokeTarget} onOpenChange={(o) => { if (!o) setSwRevokeTarget(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove social worker access?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {swRevokeTarget?.name
+                ? <><strong>{swRevokeTarget.name}</strong> will no longer be able to view or assist with your applications.</>
+                : "This social worker will no longer be able to view or assist with your applications."
+              }
+              {" "}You can re-add them at any time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setSwRevokeTarget(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (swRevokeTarget) void handleRevokeAccess(swRevokeTarget.swUserId)
+                setSwRevokeTarget(null)
+              }}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -401,6 +401,7 @@ export async function notifyNewDirectMessage(
   senderName: string,
   messageId: string,
   isSenderSw: boolean,
+  senderUserId: string,
 ): Promise<void> {
   const title = `New message from ${senderName || (isSenderSw ? "your social worker" : "your patient")}`
   const body = `You have a new message. Click to view and reply.`
@@ -413,7 +414,7 @@ export async function notifyNewDirectMessage(
     type: "new_direct_message",
     title,
     body,
-    metadata: { messageId, senderName },
+    metadata: { messageId, senderName, senderUserId },
     subject: title,
     buildEmail: () =>
       StatusChangeEmail({

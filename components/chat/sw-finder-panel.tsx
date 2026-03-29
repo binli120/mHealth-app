@@ -10,14 +10,12 @@
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react"
 import {
   Building2,
-  CheckCircle2,
   Clock,
   Loader2,
   Search,
   SendHorizontal,
   UserCheck,
   Users,
-  XCircle,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -59,29 +57,12 @@ function swDisplayName(sw: SwResult | null | undefined, fallback?: string): stri
   return name || sw.email
 }
 
-function StatusBadge({ status }: { status: EngagementRequest["status"] }) {
-  if (status === "pending") {
-    return (
-      <Badge variant="secondary" className="gap-1 text-xs">
-        <Clock className="h-3 w-3" /> Pending
-      </Badge>
-    )
-  }
-  if (status === "accepted") {
-    return (
-      <Badge className="gap-1 bg-green-600 text-xs text-white hover:bg-green-700">
-        <CheckCircle2 className="h-3 w-3" /> Accepted
-      </Badge>
-    )
-  }
-  if (status === "rejected") {
-    return (
-      <Badge variant="destructive" className="gap-1 text-xs">
-        <XCircle className="h-3 w-3" /> Declined
-      </Badge>
-    )
-  }
-  return null
+function StatusBadge() {
+  return (
+    <Badge variant="secondary" className="gap-1 text-xs">
+      <Clock className="h-3 w-3" /> Pending
+    </Badge>
+  )
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -126,11 +107,6 @@ export function SwFinderPanel({ onOpenChat }: SwFinderPanelProps) {
       setSearching(false)
     }
   }, [])
-
-  // Load all SWs on mount
-  useEffect(() => {
-    void doSearch("")
-  }, [doSearch])
 
   const handleQueryChange = (value: string) => {
     setQuery(value)
@@ -216,7 +192,7 @@ export function SwFinderPanel({ onOpenChat }: SwFinderPanelProps) {
                     <p className="truncate font-medium">{req.swName ?? req.swEmail}</p>
                     <p className="truncate text-xs text-muted-foreground">{req.companyName}</p>
                   </div>
-                  <StatusBadge status={req.status} />
+                  <StatusBadge />
                 </div>
               ))}
           </div>
@@ -284,75 +260,66 @@ export function SwFinderPanel({ onOpenChat }: SwFinderPanelProps) {
         </div>
       </div>
 
-      {/* Results ──────────────────────────────────────────────────────────── */}
-      <ScrollArea className="min-h-0 flex-1 px-4 pb-4">
-        {searching ? (
-          <div className="flex items-center justify-center py-8 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" />
-          </div>
-        ) : results.length === 0 ? (
-          <div className="py-8 text-center text-sm text-muted-foreground">
-            <Users className="mx-auto mb-2 h-8 w-8 opacity-40" />
-            No social workers found
-          </div>
-        ) : (
-          <div className="space-y-2 pt-1">
-            {results.map((sw) => {
-              const name = swDisplayName(sw)
-              const alreadyRequested = requestedSwIds.has(sw.user_id)
-              const reqForSw = requests.find((r) => r.swUserId === sw.user_id)
+      {/* Results — only shown when user has typed a search string ─────────── */}
+      {query.trim().length > 0 && (
+        <ScrollArea className="min-h-0 flex-1 px-4 pb-4">
+          {searching ? (
+            <div className="flex items-center justify-center py-8 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+            </div>
+          ) : results.length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">
+              <Users className="mx-auto mb-2 h-8 w-8 opacity-40" />
+              No social workers found
+            </div>
+          ) : (
+            <div className="space-y-2 pt-1">
+              {results.map((sw) => {
+                const name = swDisplayName(sw)
+                const alreadyRequested = requestedSwIds.has(sw.user_id)
+                const reqForSw = requests.find((r) => r.swUserId === sw.user_id)
+                const isPending = reqForSw?.status === "pending"
 
-              const isAccepted = reqForSw?.status === "accepted"
-
-              return (
-                <div
-                  key={sw.user_id}
-                  role={isAccepted ? "button" : undefined}
-                  tabIndex={isAccepted ? 0 : undefined}
-                  onClick={isAccepted ? () => onOpenChat(reqForSw!.swUserId, reqForSw!.swName ?? reqForSw!.swEmail) : undefined}
-                  onKeyDown={isAccepted ? (e) => { if (e.key === "Enter" || e.key === " ") onOpenChat(reqForSw!.swUserId, reqForSw!.swName ?? reqForSw!.swEmail) } : undefined}
-                  className={[
-                    "flex items-start gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm",
-                    isAccepted ? "cursor-pointer hover:bg-green-50 dark:hover:bg-green-950/30 transition-colors" : "",
-                  ].join(" ")}
-                >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                    {name.charAt(0).toUpperCase()}
+                return (
+                  <div
+                    key={sw.user_id}
+                    className="flex items-start gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm"
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                      {name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">{name}</p>
+                      <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+                        <Building2 className="h-3 w-3 shrink-0" />
+                        {sw.company_name}
+                      </p>
+                    </div>
+                    <div className="shrink-0">
+                      {isPending ? (
+                        <StatusBadge />
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          disabled={alreadyRequested}
+                          onClick={() => {
+                            setSelectedSw(sw)
+                            setMessage("")
+                          }}
+                        >
+                          Request
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{name}</p>
-                    <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
-                      <Building2 className="h-3 w-3 shrink-0" />
-                      {sw.company_name}
-                    </p>
-                    {isAccepted && (
-                      <p className="mt-0.5 text-xs font-medium text-green-600">Tap to open chat →</p>
-                    )}
-                  </div>
-                  <div className="shrink-0">
-                    {reqForSw && reqForSw.status !== "rejected" && reqForSw.status !== "cancelled" ? (
-                      <StatusBadge status={reqForSw.status} />
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs"
-                        disabled={alreadyRequested}
-                        onClick={() => {
-                          setSelectedSw(sw)
-                          setMessage("")
-                        }}
-                      >
-                        Request
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </ScrollArea>
+                )
+              })}
+            </div>
+          )}
+        </ScrollArea>
+      )}
     </div>
   )
 }

@@ -26,6 +26,7 @@ import {
   getMassHealthOutOfScopeResponse,
 } from "@/lib/masshealth/chat-knowledge"
 import { getSupabaseClient } from "@/lib/supabase/client"
+import { OPEN_SW_CHAT_EVENT, type OpenSwChatDetail } from "@/lib/events/chat-events"
 import type {
   WidgetView,
   ChatApiResponse,
@@ -154,7 +155,12 @@ export function MassHealthChatWidget() {
   const dispatch = useAppDispatch()
   const selectedLanguage = useAppSelector((state) => state.app.language)
   const [open, setOpen] = useState(false)
-  const [view, setView] = useState<WidgetView>("advisor")
+  const [view, setView] = useState<WidgetView>(() => {
+    if (typeof window === "undefined") return "advisor"
+    const saved = localStorage.getItem("chat-widget-last-view")
+    const valid: WidgetView[] = ["advisor", "chat", "faq", "find_sw"]
+    return valid.includes(saved as WidgetView) ? (saved as WidgetView) : "advisor"
+  })
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [authStatus, setAuthStatus] = useState<"loading" | "authenticated" | "guest">("loading")
   const [swChatTarget, setSwChatTarget] = useState<{ userId: string; name: string } | null>(null)
@@ -195,6 +201,23 @@ export function MassHealthChatWidget() {
   const [draft, setDraft] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const bottomAnchorRef = useAutoScroll([messages, advisorMessages, isLoading, open, view])
+
+  // Listen for programmatic open-to-SW-chat requests (from dashboard card, notifications, etc.)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { swUserId, swName } = (e as CustomEvent<OpenSwChatDetail>).detail
+      setSwChatTarget({ userId: swUserId, name: swName })
+      setView("sw_chat")
+      setOpen(true)
+    }
+    window.addEventListener(OPEN_SW_CHAT_EVENT, handler)
+    return () => window.removeEventListener(OPEN_SW_CHAT_EVENT, handler)
+  }, [])
+
+  // Persist last-used tab (exclude sw_chat — it's a transient sub-view)
+  useEffect(() => {
+    if (view !== "sw_chat") localStorage.setItem("chat-widget-last-view", view)
+  }, [view])
 
   useEffect(() => {
     const options = { greeting, advisorGreeting, outOfScopeReply, copy }

@@ -283,6 +283,7 @@ export async function POST(request: Request, { params }: Params) {
           senderName ?? (isSenderSw ? "Your social worker" : "Your patient"),
           message.id,
           isSenderSw,
+          authResult.userId,
         )
       } catch {
         // Non-critical
