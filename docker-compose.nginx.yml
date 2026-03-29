@@ -1,0 +1,82 @@
+# Alternative: Nginx reverse proxy (manual SSL certs)
+# Usage: docker compose -f docker-compose.nginx.yml up -d
+#
+# SSL setup on host before starting:
+#   sudo certbot certonly --standalone -d yourdomain.com
+#   # Certs will be at /etc/letsencrypt/live/yourdomain.com/
+#
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: healthcompass-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Mount your Let's Encrypt certs (adjust path to match your domain)
+      - /etc/letsencrypt/live/${DOMAIN}/fullchain.pem:/etc/ssl/certs/fullchain.pem:ro
+      - /etc/letsencrypt/live/${DOMAIN}/privkey.pem:/etc/ssl/private/privkey.pem:ro
+    depends_on:
+      - app
+    networks:
+      - proxy
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+        NEXT_PUBLIC_MASSHEALTH_FORMS_BASE_URL: ${NEXT_PUBLIC_MASSHEALTH_FORMS_BASE_URL:-}
+        NEXT_PUBLIC_MASSHEALTH_ANALYSIS_BASE_URL: ${NEXT_PUBLIC_MASSHEALTH_ANALYSIS_BASE_URL:-}
+    image: healthcompass-ma:latest
+    container_name: healthcompass-app
+    restart: unless-stopped
+    expose:
+      - "3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL_PROD: ${DATABASE_URL_PROD:-}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      NEXT_PUBLIC_APP_URL: https://${DOMAIN}
+      FROM_EMAIL: ${FROM_EMAIL:-}
+    env_file:
+      - .env.production.local
+    networks:
+      - proxy
+      - internal
+    depends_on:
+      ollama:
+        condition: service_started
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: healthcompass-ollama
+    restart: unless-stopped
+    expose:
+      - "11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - internal
+
+networks:
+  proxy:
+    name: proxy
+  internal:
+    name: healthcompass-internal
+    internal: true
+
+volumes:
+  ollama_data:

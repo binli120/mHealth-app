@@ -1,0 +1,108 @@
+services:
+  # ── Traefik reverse proxy (auto-SSL via Let's Encrypt) ───────────────────
+  traefik:
+    image: traefik:v3
+    container_name: healthcompass-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"      # HTTP  → redirects to HTTPS
+      - "443:443"    # HTTPS (TLS termination here)
+    command:
+      # Docker provider — watch container labels
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=proxy
+      # Entrypoints
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      # Auto-redirect HTTP → HTTPS
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.web.http.redirections.entrypoint.permanent=true
+      # Let's Encrypt ACME (TLS challenge — no port 80 block needed)
+      - --certificatesresolvers.le.acme.email=${ACME_EMAIL}
+      - --certificatesresolvers.le.acme.storage=/certs/acme.json
+      - --certificatesresolvers.le.acme.tlschallenge=true
+      # Optional: Traefik dashboard (remove in production or restrict)
+      # - --api.dashboard=true
+      # - --api.insecure=true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro   # read container labels
+      - traefik_certs:/certs                           # persist Let's Encrypt certs
+    networks:
+      - proxy
+
+  # ── Next.js app ──────────────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+        NEXT_PUBLIC_MASSHEALTH_FORMS_BASE_URL: ${NEXT_PUBLIC_MASSHEALTH_FORMS_BASE_URL:-}
+        NEXT_PUBLIC_MASSHEALTH_ANALYSIS_BASE_URL: ${NEXT_PUBLIC_MASSHEALTH_ANALYSIS_BASE_URL:-}
+    image: healthcompass-ma:latest
+    container_name: healthcompass-app
+    restart: unless-stopped
+    # ✅ No host port binding — Traefik reaches the app via the internal network
+    expose:
+      - "3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL_PROD: ${DATABASE_URL_PROD:-}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://${DOMAIN}}
+      FROM_EMAIL: ${FROM_EMAIL:-}
+    env_file:
+      - .env.production.local
+    labels:
+      - "traefik.enable=true"
+      # Router: HTTPS
+      - "traefik.http.routers.app.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.app.entrypoints=websecure"
+      - "traefik.http.routers.app.tls=true"
+      - "traefik.http.routers.app.tls.certresolver=le"
+      # Tell Traefik which container port to forward to
+      - "traefik.http.services.app.loadbalancer.server.port=3000"
+      # Pass real client IP + proto to Next.js
+      - "traefik.http.middlewares.app-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.routers.app.middlewares=app-headers"
+    networks:
+      - proxy
+      - internal
+    depends_on:
+      ollama:
+        condition: service_started
+
+  # ── Ollama (AI chat) ─────────────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: healthcompass-ollama
+    restart: unless-stopped
+    # Not exposed to the internet — internal network only
+    expose:
+      - "11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - internal
+
+networks:
+  proxy:
+    name: proxy          # shared network — Traefik uses this to reach containers
+  internal:
+    name: healthcompass-internal
+    internal: true       # no external internet access for app ↔ ollama traffic
+
+volumes:
+  traefik_certs:
+  ollama_data:

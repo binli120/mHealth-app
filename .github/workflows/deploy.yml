@@ -1,0 +1,75 @@
+name: Deploy to Hostinger VPS
+
+on:
+  push:
+    branches:
+      - main          # trigger on every push to main
+  workflow_dispatch:  # allow manual trigger from GitHub UI
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false  # never cancel a running deploy mid-flight
+
+jobs:
+  deploy:
+    name: SSH → VPS → docker compose up
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      # ── 1. Deploy via SSH ─────────────────────────────────────────────────
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host:        ${{ secrets.VPS_HOST }}
+          username:    ${{ secrets.VPS_USER }}
+          key:         ${{ secrets.VPS_SSH_KEY }}
+          port:        22
+          script_stop: true   # abort on first error
+          script: |
+            set -euo pipefail
+
+            APP_DIR="${{ secrets.APP_DIR }}"
+            echo "▶ Deploying to $APP_DIR"
+
+            # ── Pull latest code ─────────────────────────────────────────
+            cd "$APP_DIR"
+            git fetch --all --prune
+            git reset --hard origin/main
+
+            # ── Re-build and restart only changed containers ─────────────
+            docker compose pull --ignore-pull-failures || true
+            docker compose up -d --build --remove-orphans
+
+            # ── Wait for app to be healthy ────────────────────────────────
+            echo "⏳ Waiting for app to be healthy..."
+            for i in $(seq 1 24); do
+              STATUS=$(docker inspect --format='{{.State.Health.Status}}' healthcompass-app 2>/dev/null || echo "starting")
+              echo "  attempt $i/24 — status: $STATUS"
+              if [ "$STATUS" = "healthy" ]; then
+                echo "✅ App is healthy"
+                break
+              fi
+              # No HEALTHCHECK defined? fall back to checking port 3000
+              if docker exec healthcompass-app wget -qO- http://localhost:3000/api/health >/dev/null 2>&1; then
+                echo "✅ App responding on port 3000"
+                break
+              fi
+              if [ "$i" = "24" ]; then
+                echo "❌ App did not become healthy after 120s" >&2
+                docker compose logs --tail=50 app
+                exit 1
+              fi
+              sleep 5
+            done
+
+            # ── Remove dangling images to free disk space ─────────────────
+            docker image prune -f
+
+            echo "🚀 Deploy complete"
+
+      # ── 2. Notify on failure ──────────────────────────────────────────────
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Deployment to ${{ secrets.VPS_HOST }} failed. Check the logs above."
