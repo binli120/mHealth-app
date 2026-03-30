@@ -34,11 +34,26 @@ jobs:
             echo "▶ Deploying to $APP_DIR"
 
             # ── Pull latest code (clone on first run, pull on subsequent) ──
+            REPO_URL="https://${{ secrets.GH_PAT }}@github.com/${{ secrets.REPO_SLUG }}.git"
+
+            # Wipe any broken/partial clone (no valid remote = broken)
+            if [ -d "$APP_DIR/.git" ]; then
+              CURRENT_REMOTE=$(git -C "$APP_DIR" remote get-url origin 2>/dev/null || echo "")
+              if [ -z "$CURRENT_REMOTE" ]; then
+                echo "⚠️  Broken clone detected — removing and re-cloning..."
+                rm -rf "$APP_DIR"
+              fi
+            fi
+
+            mkdir -p "$APP_DIR"
             if [ ! -d "$APP_DIR/.git" ]; then
               echo "⚙️  First deploy — cloning repository..."
-              git clone "${{ secrets.REPO_URL }}" "$APP_DIR"
+              git clone "$REPO_URL" "$APP_DIR"
             fi
+
             cd "$APP_DIR"
+            # Always ensure remote uses HTTPS token URL (not SSH)
+            git remote set-url origin "$REPO_URL"
             git fetch --all --prune
             git reset --hard origin/main
 
