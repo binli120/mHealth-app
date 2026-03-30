@@ -33,7 +33,11 @@ jobs:
             APP_DIR="${{ secrets.APP_DIR }}"
             echo "▶ Deploying to $APP_DIR"
 
-            # ── Pull latest code ─────────────────────────────────────────
+            # ── Pull latest code (clone on first run, pull on subsequent) ──
+            if [ ! -d "$APP_DIR/.git" ]; then
+              echo "⚙️  First deploy — cloning repository..."
+              git clone "${{ secrets.REPO_URL }}" "$APP_DIR"
+            fi
             cd "$APP_DIR"
             git fetch --all --prune
             git reset --hard origin/main
