@@ -216,8 +216,8 @@ async function handleFormAssistant(
       payload.messages,
       collectedSummary,
       currentSection,
-      payload.existingMembers ?? [],
-      payload.existingSources ?? [],
+      (payload.existingMembers ?? []).filter((m): m is typeof m & { id: string } => typeof m.id === "string"),
+      (payload.existingSources ?? []).filter((s): s is typeof s & { id: string } => typeof s.id === "string"),
       language,
     ),
     isMassHealthTopic(lastUserMessage.content)

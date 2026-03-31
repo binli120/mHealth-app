@@ -143,7 +143,7 @@ function parseExtractedFormFields(
   raw: string,
   existingMembers: HouseholdMember[],
   existingSources: IncomeSource[],
-): { fields: Partial<ExtractableFormFields>; noHouseholdMembers: boolean; noIncome: boolean } {
+): { fields: Partial<ExtractableFormFields>; noHouseholdMembers: boolean; noIncome: boolean; extractionFailed?: boolean } {
   const cleaned = raw
     .replace(/^```(?:json)?/m, "")
     .replace(/```$/m, "")

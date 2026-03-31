@@ -302,9 +302,6 @@ export function MassHealthChatWidget() {
   const activeMessages = isAdvisorView ? advisorMessages : messages
   const chatPlaceholder = isAdvisorView ? copy.advisorPlaceholder : copy.chatPlaceholder
 
-  // Hide the entire widget (button + panel) for unauthenticated users
-  if (authStatus === "loading" || authStatus === "guest") return null
-
   return (
     <>
       <Button
@@ -387,7 +384,7 @@ export function MassHealthChatWidget() {
                   <button
                     key={id}
                     type="button"
-                    disabled={authStatus === "loading" && id !== "faq"}
+
                     onClick={locked ? undefined : onClick}
                     aria-label={label}
                     className={[

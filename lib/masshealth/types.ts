@@ -11,7 +11,7 @@ import type { SupportedLanguage } from "@/lib/i18n/languages"
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
 
-export type ChatRole = "user" | "assistant"
+export type ChatRole = "user" | "assistant" | "system"
 
 export interface ChatMessage {
   role: ChatRole
