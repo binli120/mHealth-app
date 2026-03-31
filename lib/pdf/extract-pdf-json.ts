@@ -3,13 +3,14 @@
  * @email binlee120@gmail.com
  */
 
+import { createRequire } from "node:module"
 import { PDFDocument } from "pdf-lib"
-import _pdfParse from "pdf-parse"
 
-// pdf-parse ships CJS. In some environments (jsdom, SSR) the module resolves to
-// undefined or wraps the callable under .default — resolve whichever is callable.
+// pdf-parse ships CJS only — its ESM build has no default export.
+// Use createRequire to force CJS resolution and bypass Turbopack's static ESM analysis.
+const _require = createRequire(import.meta.url)
 type PdfParseFn = (buf: Buffer) => Promise<{ text: string }>
-const _mod = _pdfParse as unknown
+const _mod = _require("pdf-parse") as unknown
 const pdfParse: PdfParseFn | null =
   typeof _mod === "function"
     ? (_mod as PdfParseFn)
