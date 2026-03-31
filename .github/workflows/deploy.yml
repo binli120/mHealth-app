@@ -3,93 +3,122 @@ name: Deploy to Hostinger VPS
 on:
   push:
     branches:
-      - main # trigger on every push to main
-  workflow_dispatch: # allow manual trigger from GitHub UI
+      - main
+  workflow_dispatch:
 
 concurrency:
   group: deploy-production
-  cancel-in-progress: false # never cancel a running deploy mid-flight
+  cancel-in-progress: false
 
 jobs:
   deploy:
     name: SSH → VPS → docker compose up
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    environment: dev   # ← unlocks secrets stored in the "dev" environment
+    environment: dev
 
     steps:
-      # ── 1. Deploy via SSH ─────────────────────────────────────────────────
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: 22
-          script_stop: true # abort on first error
+          host:        ${{ secrets.VPS_HOST }}
+          username:    ${{ secrets.VPS_USER }}
+          key:         ${{ secrets.VPS_SSH_KEY }}
+          port:        22
+          script_stop: true
           script: |
             set -euo pipefail
 
             APP_DIR="${{ secrets.APP_DIR }}"
-            echo "▶ Deploying to $APP_DIR"
-
-            # ── Pull latest code (clone on first run, pull on subsequent) ──
             REPO_URL="https://${{ secrets.GH_PAT }}@github.com/${{ secrets.REPO_SLUG }}.git"
 
-            # Wipe any broken/partial clone (no valid remote = broken)
+            # ── 1. Install Docker if missing ──────────────────────────────
+            if ! command -v docker &>/dev/null; then
+              echo "⚙️  Installing Docker..."
+              curl -fsSL https://get.docker.com | sh
+              echo "✅ Docker installed"
+            fi
+
+            # Always ensure daemon is running (covers fresh installs + reboots)
+            systemctl enable docker --now || true
+            if ! docker info &>/dev/null; then
+              echo "▶ Starting Docker daemon..."
+              systemctl start docker
+              sleep 3
+            fi
+            echo "✅ Docker $(docker --version)"
+
+            # ── 2. Clone or update repo ───────────────────────────────────
+            echo "▶ Deploying to $APP_DIR"
+
             if [ -d "$APP_DIR/.git" ]; then
-              CURRENT_REMOTE=$(git -C "$APP_DIR" remote get-url origin 2>/dev/null || echo "")
-              if [ -z "$CURRENT_REMOTE" ]; then
-                echo "⚠️  Broken clone detected — removing and re-cloning..."
+              REMOTE=$(git -C "$APP_DIR" remote get-url origin 2>/dev/null || echo "")
+              if [ -z "$REMOTE" ]; then
+                echo "⚠️  Broken clone — removing..."
                 rm -rf "$APP_DIR"
               fi
             fi
 
             mkdir -p "$APP_DIR"
             if [ ! -d "$APP_DIR/.git" ]; then
-              echo "⚙️  First deploy — cloning repository..."
+              echo "⚙️  First deploy — cloning..."
               git clone "$REPO_URL" "$APP_DIR"
             fi
 
             cd "$APP_DIR"
-            # Always ensure remote uses HTTPS token URL (not SSH)
             git remote set-url origin "$REPO_URL"
             git fetch --all --prune
             git reset --hard origin/main
 
-            # ── Re-build and restart only changed containers ─────────────
-            docker compose pull --ignore-pull-failures || true
+            # ── 3. Remove stale docker-compose.yaml if present ────────────
+            rm -f "$APP_DIR/docker-compose.yaml"
+            echo "✅ Repo up to date"
+
+            # ── 4. Write .env.production.local (no heredoc — avoids indent issues)
+            echo "⚙️  Writing .env.production.local..."
+            ENV_FILE="$APP_DIR/.env.production.local"
+            printf '%s\n' \
+              "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+              "DATABASE_URL_PROD=${{ secrets.DATABASE_URL }}" \
+              "NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" \
+              "NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+              "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}" \
+              "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+              "OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}" \
+              "OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2}" \
+              "RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}" \
+              "FROM_EMAIL=${{ secrets.FROM_EMAIL }}" \
+              "DOMAIN=${{ secrets.DOMAIN }}" \
+              "ACME_EMAIL=${{ secrets.ACME_EMAIL }}" \
+              "NEXT_PUBLIC_APP_URL=https://${{ secrets.DOMAIN }}" \
+              > "$ENV_FILE"
+            chmod 600 "$ENV_FILE"
+            echo "✅ .env.production.local written ($(wc -l < "$ENV_FILE") lines)"
+
+            # ── 5. Build and start containers ─────────────────────────────
+            cd "$APP_DIR"
             docker compose up -d --build --remove-orphans
 
-            # ── Wait for app to be healthy ────────────────────────────────
-            echo "⏳ Waiting for app to be healthy..."
+            # ── 6. Health check ───────────────────────────────────────────
+            echo "⏳ Waiting for app (up to 2 min)..."
             for i in $(seq 1 24); do
-              STATUS=$(docker inspect --format='{{.State.Health.Status}}' healthcompass-app 2>/dev/null || echo "starting")
-              echo "  attempt $i/24 — status: $STATUS"
-              if [ "$STATUS" = "healthy" ]; then
-                echo "✅ App is healthy"
+              if docker exec healthcompass-app wget -qO- http://localhost:3000 >/dev/null 2>&1; then
+                echo "✅ App is up after $((i * 5))s"
                 break
               fi
-              # No HEALTHCHECK defined? fall back to checking port 3000
-              if docker exec healthcompass-app wget -qO- http://localhost:3000/api/health >/dev/null 2>&1; then
-                echo "✅ App responding on port 3000"
-                break
-              fi
+              echo "  attempt $i/24..."
               if [ "$i" = "24" ]; then
-                echo "❌ App did not become healthy after 120s" >&2
-                docker compose logs --tail=50 app
+                echo "❌ App did not start — last 80 log lines:" >&2
+                docker compose logs --tail=80 app
                 exit 1
               fi
               sleep 5
             done
 
-            # ── Remove dangling images to free disk space ─────────────────
+            # ── 7. Cleanup ────────────────────────────────────────────────
             docker image prune -f
-
             echo "🚀 Deploy complete"
 
-      # ── 2. Notify on failure ──────────────────────────────────────────────
       - name: Notify on failure
         if: failure()
-        run: |
-          echo "::error::Deployment to ${{ secrets.VPS_HOST }} failed. Check the logs above."
+        run: echo "::error::Deploy to ${{ secrets.VPS_HOST }} failed — check logs above"
