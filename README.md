@@ -507,6 +507,177 @@ See the **Setup → Configure environment variables** section above for the full
 
 ---
 
+## Deployment — Hostinger VPS
+
+### Overview
+
+| File | Purpose |
+|------|---------|
+| `Dockerfile` | Multi-stage build (deps → builder → runner) using `output: standalone` |
+| `docker-compose.yml` | Production stack: Next.js app + Traefik (auto-SSL) + Ollama |
+| `docker-compose.nginx.yml` | Alternative stack using Nginx + manual SSL certs |
+| `nginx/nginx.conf` | Nginx reverse proxy config with TLS + SSE streaming support |
+| `.github/workflows/deploy.yml` | GitHub Actions CI/CD — SSH → git pull → docker compose up |
+
+---
+
+### GitHub Secrets (Settings → Environments → dev)
+
+| Secret | Value |
+|--------|-------|
+| `VPS_HOST` | `72.60.29.200` |
+| `VPS_USER` | `root` |
+| `VPS_SSH_KEY` | Full contents of private key (begins `-----BEGIN OPENSSH PRIVATE KEY-----`) |
+| `APP_DIR` | `/opt/masshealth-app` |
+| `GH_PAT` | GitHub fine-grained token — repo Contents: Read-only |
+| `REPO_SLUG` | `your-username/mHealth-app` |
+| `DATABASE_URL` | Supabase production Postgres URL |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side only) |
+| `DOMAIN` | `yourdomain.com` |
+| `ACME_EMAIL` | Email for Let's Encrypt registration |
+| `RESEND_API_KEY` | Resend email API key |
+| `FROM_EMAIL` | Sender address |
+| `OLLAMA_BASE_URL` | `http://ollama:11434` |
+| `OLLAMA_MODEL` | `llama3.2` |
+
+> **Secrets vs Variables:** All of the above must be stored under **Secrets** (lock icon),
+> not Variables. Secrets use `${{ secrets.NAME }}`; Variables use `${{ vars.NAME }}` — mixing them causes blank values and silent deploy failures.
+
+---
+
+### First-time VPS Setup
+
+```bash
+# 1. SSH in (via Hostinger hPanel → Terminal, or ssh root@72.60.29.200)
+
+# 2. Install SSH server if missing (Debian/Ubuntu)
+apt-get update && apt-get install -y openssh-server
+systemctl enable --now ssh
+
+# 3. Add your deploy public key
+echo "ssh-ed25519 AAAA... your-public-key" >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+
+# 4. Open firewall ports
+ufw allow 22/tcp
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw --force enable
+
+# 5. Verify SSH from your Mac
+nc -zv 72.60.29.200 22    # should say: succeeded
+ssh -i ~/.ssh/id_hostinger.ed25519 root@72.60.29.200
+
+# 6. Pull Ollama model after first deploy
+docker exec healthcompass-ollama ollama pull llama3.2
+```
+
+---
+
+### SSH Key Setup
+
+Private key goes into GitHub secret `VPS_SSH_KEY`. Public key goes on the VPS.
+
+```bash
+# Generate a new passphrase-free deploy key
+ssh-keygen -t ed25519 -f ~/.ssh/github_deploy -N "" -C "github-actions-deploy"
+
+cat ~/.ssh/github_deploy      # → paste into VPS_SSH_KEY GitHub secret
+cat ~/.ssh/github_deploy.pub  # → append to VPS ~/.ssh/authorized_keys
+```
+
+> **Important:** The key must have **no passphrase**. GitHub Actions cannot enter one interactively.
+> If you get `ssh: this private key is passphrase protected`, strip it:
+> ```bash
+> ssh-keygen -p -f ~/.ssh/your_key   # enter current passphrase, set new to empty
+> ```
+
+---
+
+### Deploy Flow
+
+Every `git push` to `main` triggers the workflow automatically:
+
+```
+git push main
+  └─► GitHub Actions
+        └─► SSH into 72.60.29.200
+              ├─► Install Docker (if missing) + ensure daemon running
+              ├─► git clone (first run) or git reset --hard origin/main
+              ├─► rm -f docker-compose.yaml          # remove stale file
+              ├─► Write .env.production.local from GitHub secrets
+              ├─► docker compose up -d --build --remove-orphans
+              ├─► Health check: poll localhost:3000 every 5s (2 min max)
+              └─► docker image prune -f
+```
+
+Manual trigger: **GitHub → Actions → Deploy to Hostinger VPS → Run workflow**
+
+---
+
+### Troubleshooting
+
+#### `dial tcp ***:22: i/o timeout`
+
+SSH port 22 is blocked. Fix via **hPanel → VPS → Firewall** — add inbound TCP rule for port 22.
+Then on the VPS (via hPanel web terminal):
+```bash
+ufw allow 22/tcp && ufw --force enable
+systemctl enable --now ssh
+ss -tlnp | grep ':22'     # confirm listening
+```
+
+#### `ssh: no key found` or `ssh: this private key is passphrase protected`
+
+Wrong key in `VPS_SSH_KEY` secret. Check:
+1. You pasted the **private** key (not `.pub`) — must start with `-----BEGIN OPENSSH PRIVATE KEY-----`
+2. The key has **no passphrase** — strip with `ssh-keygen -p -f ~/.ssh/key`
+
+#### `Unit sshd.service could not be found`
+
+On Debian/Ubuntu the service is `ssh`, not `sshd`:
+```bash
+systemctl enable --now ssh
+```
+If that also fails: `apt-get install -y openssh-server`
+
+#### `fatal: not a git repository`
+
+The repo has never been cloned on the VPS. The workflow handles this automatically (clones on first run). If it fails, check that `GH_PAT` and `REPO_SLUG` secrets are set correctly and that the PAT has **Contents: Read-only** permission.
+
+#### `Host key verification failed`
+
+The VPS tried to clone from GitHub via SSH before accepting GitHub's host key.
+The workflow uses HTTPS + `GH_PAT` to avoid this entirely. Ensure `GH_PAT` and `REPO_SLUG` are set in the `dev` environment secrets.
+
+#### `env file .env.production.local not found`
+
+The workflow writes this file from GitHub secrets on every deploy. If it's missing, the workflow failed before reaching that step. Check the Actions log for the earlier error (usually Docker not running or a git clone failure).
+
+#### `Cannot connect to the Docker daemon`
+
+Docker is installed but the daemon isn't running:
+```bash
+systemctl enable docker --now
+docker info    # should respond without error
+```
+
+#### `Found multiple config files: docker-compose.yml, docker-compose.yaml`
+
+A stale `docker-compose.yaml` (the old minio-only file) was cloned before it was deleted from the repo. The workflow removes it automatically with `rm -f docker-compose.yaml`. If it persists, delete it manually on the VPS:
+```bash
+rm -f /opt/masshealth-app/docker-compose.yaml
+```
+
+#### Variables showing as blank / `not set` in docker compose
+
+Secrets added to GitHub environment **Variables** (not **Secrets**) use a different syntax and won't be interpolated. Move all sensitive values to **Secrets** (lock icon) under Settings → Environments → dev.
+
+---
+
 ## Common Issues
 
 | Symptom | Fix |

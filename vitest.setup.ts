@@ -36,19 +36,20 @@ Object.defineProperty(window, "scrollTo", {
 // transform calculations. jsdom doesn't implement it — stub the minimum
 // surface needed so the module evaluates without crashing in tests.
 if (typeof globalThis.DOMMatrix === "undefined") {
-  // @ts-expect-error — intentional minimal stub for test environment only
-  globalThis.DOMMatrix = class DOMMatrix {
+  class DOMMatrixStub {
     a=1; b=0; c=0; d=1; e=0; f=0
     is2D=true; isIdentity=true
     constructor(_init?: string | number[]) {}
-    multiply(_other?: unknown) { return new (globalThis.DOMMatrix as never)() }
-    translate(_tx?: number, _ty?: number, _tz?: number) { return new (globalThis.DOMMatrix as never)() }
-    scale(_s?: number) { return new (globalThis.DOMMatrix as never)() }
-    inverse() { return new (globalThis.DOMMatrix as never)() }
+    multiply(_other?: unknown): DOMMatrixStub { return new DOMMatrixStub() }
+    translate(_tx?: number, _ty?: number, _tz?: number): DOMMatrixStub { return new DOMMatrixStub() }
+    scale(_s?: number): DOMMatrixStub { return new DOMMatrixStub() }
+    inverse(): DOMMatrixStub { return new DOMMatrixStub() }
     transformPoint(_p?: unknown) { return { x: 0, y: 0, z: 0, w: 1 } }
     toJSON() { return {} }
-    static fromMatrix(_other?: unknown) { return new (globalThis.DOMMatrix as never)() }
+    static fromMatrix(_other?: unknown): DOMMatrixStub { return new DOMMatrixStub() }
   }
+  // @ts-expect-error — intentional minimal stub for test environment only
+  globalThis.DOMMatrix = DOMMatrixStub
 }
 
 afterEach(() => {
