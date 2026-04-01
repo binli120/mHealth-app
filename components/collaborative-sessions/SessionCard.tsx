@@ -9,6 +9,7 @@ import Link from "next/link"
 import { Video, Calendar, Clock, CheckCircle2, XCircle, ArrowRight, Trash2 } from "lucide-react"
 
 import type { SessionSummary, SessionStatus } from "@/lib/collaborative-sessions/types"
+import { formatShortDateTime } from "@/lib/utils/format"
 
 interface Props {
   session: SessionSummary
@@ -28,16 +29,6 @@ const STATUS_CONFIG: Record<
   active:    { label: "Live",     classes: "bg-green-100  text-green-700",  dot: "bg-green-500 animate-pulse" },
   ended:     { label: "Ended",    classes: "bg-gray-100   text-gray-500",   dot: "bg-gray-400" },
   cancelled: { label: "Cancelled",classes: "bg-red-50     text-red-500",    dot: "bg-red-400" },
-}
-
-function formatDt(iso: string | null): string {
-  if (!iso) return ""
-  return new Date(iso).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  })
 }
 
 export function SessionCard({ session, role, onAccept, onDecline, onDelete, accepting, deleting }: Props) {
@@ -82,21 +73,21 @@ export function SessionCard({ session, role, onAccept, onDecline, onDelete, acce
         {session.scheduledAt && session.status === "scheduled" && (
           <p className="flex items-center gap-1 text-xs text-gray-500 mb-1">
             <Calendar className="w-3 h-3" />
-            {formatDt(session.scheduledAt)}
+            {formatShortDateTime(session.scheduledAt)}
           </p>
         )}
 
         {session.startedAt && session.status === "active" && (
           <p className="flex items-center gap-1 text-xs text-green-600 mb-1">
             <Clock className="w-3 h-3" />
-            Started {formatDt(session.startedAt)}
+            Started {formatShortDateTime(session.startedAt)}
           </p>
         )}
 
         {session.endedAt && (
           <p className="flex items-center gap-1 text-xs text-gray-400 mb-1">
             <Clock className="w-3 h-3" />
-            Ended {formatDt(session.endedAt)}
+            Ended {formatShortDateTime(session.endedAt)}
           </p>
         )}
 

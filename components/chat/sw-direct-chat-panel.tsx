@@ -36,6 +36,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { formatConversationDateLabel, formatTime } from "@/lib/utils/format"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { useAutoScroll } from "@/hooks/use-auto-scroll"
 
@@ -73,23 +74,6 @@ interface SwDirectChatPanelProps {
   /** When false the built-in header (back button, name, role) is hidden.
    *  Use when the parent already renders its own navigation header. */
   showHeader?: boolean
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function formatTime(iso: string) {
-  const date = new Date(iso)
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-}
-
-function formatDate(iso: string) {
-  const date = new Date(iso)
-  const today = new Date()
-  const yesterday = new Date(today)
-  yesterday.setDate(today.getDate() - 1)
-  if (date.toDateString() === today.toDateString()) return "Today"
-  if (date.toDateString() === yesterday.toDateString()) return "Yesterday"
-  return date.toLocaleDateString([], { month: "short", day: "numeric" })
 }
 
 function groupByDate(messages: DirectMessage[]): Array<{ date: string; messages: DirectMessage[] }> {
@@ -700,7 +684,9 @@ export function SwDirectChatPanel({
           <div className="space-y-4 py-3">
             {grouped.map(({ date, messages: groupMsgs }) => (
               <div key={date} className="space-y-2">
-                <p className="text-center text-xs text-muted-foreground">{formatDate(date)}</p>
+                <p className="text-center text-xs text-muted-foreground">
+                  {formatConversationDateLabel(date)}
+                </p>
                 {groupMsgs.map((msg) => (
                   <MessageBubble
                     key={msg.id}

@@ -6,7 +6,9 @@
 
 import {
   AlertCircle,
+  BookOpen,
   Bot,
+  Brain,
   ClipboardList,
   FileCheck,
   Globe,
@@ -19,6 +21,7 @@ import {
   Scale,
   Search,
   Sparkles,
+  TrendingUp,
   Users,
   Zap,
 } from "lucide-react"
@@ -89,7 +92,7 @@ export const FEATURE_ITEMS: FeatureItem[] = [
   { icon: <Bot />,      color: "text-primary", bg: "bg-primary/10", title: "AI Chat Assistant",      body: "Ask questions any time. Our MassHealth assistant explains programs, deadlines, and next steps in plain language.", delay: 300 },
   { icon: <Globe />,    color: "text-accent",  bg: "bg-accent/10",  title: "6 Languages",            body: "Full support for English, 简体中文, Español, Português, Kreyòl ayisyen, and Tiếng Việt.", delay: 400 },
   { icon: <Lock />,     color: "text-success", bg: "bg-success/10", title: "Private & Secure",       body: "Your data is encrypted end-to-end and never sold. You control what you share and with whom.", delay: 500 },
-  { icon: <Scale />,    color: "text-accent",  bg: "bg-accent/10",  title: "Appeal Assistance",      body: "Denied? Our AI helps you draft appeal letters, prep for hearings, and track deadlines — turning a 'no' into a 'yes'.", delay: 600, isNew: true },
+  { icon: <Scale />,    color: "text-accent",  bg: "bg-accent/10",  title: "Appeal Assistance",      body: "AI trained on real MassHealth denial cases. Paste your notice, get a tailored evidence checklist and a cited appeal letter grounded in actual regulations.", delay: 600, isNew: true },
   { icon: <Users />,    color: "text-primary", bg: "bg-primary/10", title: "Live Social Worker Chat", body: "Connect directly with a licensed social worker via real-time messaging, screen sharing, and secure voice notes.", delay: 700, isNew: true },
   { icon: <Mic />,      color: "text-accent",  bg: "bg-accent/10",  title: "Voice Messaging",         body: "Send voice messages to your social worker — automatically transcribed on delivery so nothing gets lost in translation.", delay: 800, isNew: true },
   { icon: <Languages />,color: "text-success", bg: "bg-success/10", title: "Auto-Translation",        body: "Speak in any language. Voice messages are instantly transcribed and translated to English using AI — no interpreter needed.", delay: 900, isNew: true },
@@ -124,17 +127,18 @@ export const LIVE_ASSISTANCE_CARDS = [
 // ── Appeal Assistance ─────────────────────────────────────────────────────────
 
 export const APPEAL_CHECKLIST: string[] = [
-  "Plain-language explanation of your denial reason",
-  "Personalized appeal letter drafting",
-  "Document checklist for your hearing",
-  "Deadline tracking so you never miss a filing window",
+  "AI trained on thousands of real MassHealth denial cases — and improving with every new one",
+  "RAG-powered research pulls from official regulations, legal aid guides, and court records",
+  "Evidence checklist tailored to your exact denial category",
+  "Cited appeal letter grounded in real legal sources, not generic templates",
+  "The model gets smarter the more denials the community shares",
 ]
 
 export const APPEAL_CARDS: AppealCard[] = [
-  { icon: <Scale className="h-5 w-5" />,       color: "text-accent",   bg: "bg-accent/10",   title: "Know Your Rights",    body: "Understand exactly why you were denied and what grounds you can appeal on." },
-  { icon: <FileCheck className="h-5 w-5" />,   color: "text-primary",  bg: "bg-primary/10",  title: "AI-Drafted Letters",  body: "Generate a compelling, personalized appeal letter in minutes." },
-  { icon: <ClipboardList className="h-5 w-5" />, color: "text-success", bg: "bg-success/10", title: "Hearing Prep",        body: "Get a tailored checklist of documents and tips for your fair hearing." },
-  { icon: <Zap className="h-5 w-5" />,         color: "text-warning",  bg: "bg-warning/10",  title: "Deadline Alerts",     body: "You have 30 days to appeal. We track it and remind you before time runs out." },
+  { icon: <Brain className="h-5 w-5" />,        color: "text-accent",   bg: "bg-accent/10",   title: "Trained on Real Denials",  body: "Our model is fine-tuned on actual MassHealth denial notices. It recognizes patterns — and knows how courts and EOHHS resolve them." },
+  { icon: <BookOpen className="h-5 w-5" />,     color: "text-primary",  bg: "bg-primary/10",  title: "Regulatory Research",      body: "Every answer is grounded in MassHealth CMRs, EOHHS policy bulletins, and legal aid resources — not generic advice." },
+  { icon: <ClipboardList className="h-5 w-5" />, color: "text-success", bg: "bg-success/10",  title: "Evidence Checklist",       body: "Paste your denial notice and get a tailored document list — exactly what you need to build your case, nothing more." },
+  { icon: <TrendingUp className="h-5 w-5" />,   color: "text-warning",  bg: "bg-warning/10",  title: "Gets Better Over Time",    body: "Each real denial submitted to the platform trains the next version of the model — making every future appeal stronger." },
 ]
 
 // ── Testimonials ──────────────────────────────────────────────────────────────
@@ -155,10 +159,11 @@ export const FOOTER_PROGRAMS: FooterLink[] = [
 ]
 
 export const FOOTER_PLATFORM: FooterLink[] = [
-  { label: "Eligibility Checker",  href: "/prescreener"     },
-  { label: "Benefit Stack Tool",   href: "/benefit-stack"   },
-  { label: "Live Assistance",      href: "/auth/register"   },
-  { label: "Appeal Assistance",    href: "/auth/register"   },
-  { label: "Knowledge Center",     href: "/knowledge-center" },
-  { label: "Create Account",       href: "/auth/register"   },
+  { label: "Eligibility Checker",  href: "/prescreener"       },
+  { label: "Benefit Stack Tool",   href: "/benefit-stack"     },
+  { label: "Live Assistance",      href: "/auth/register"     },
+  { label: "Appeal Assistance",    href: "/auth/register"     },
+  { label: "Appeal Letter (AI)",   href: "/masshealth-appeals" },
+  { label: "Knowledge Center",     href: "/knowledge-center"  },
+  { label: "Create Account",       href: "/auth/register"     },
 ]

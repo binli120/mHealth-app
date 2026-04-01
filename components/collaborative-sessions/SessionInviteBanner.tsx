@@ -9,6 +9,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Video, X, ArrowRight } from "lucide-react"
 
+import { formatShortDateTime } from "@/lib/utils/format"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { getSupabaseClient, getSafeSupabaseUser } from "@/lib/supabase/client"
 import type { SessionSummary } from "@/lib/collaborative-sessions/types"
@@ -93,9 +94,7 @@ export function SessionInviteBanner() {
               </span>
               {session.scheduledAt && !isLive && (
                 <span className="text-violet-600 ml-1.5 text-xs">
-                  · {new Date(session.scheduledAt).toLocaleString(undefined, {
-                    month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
-                  })}
+                  · {formatShortDateTime(session.scheduledAt)}
                 </span>
               )}
             </div>

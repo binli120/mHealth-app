@@ -5,11 +5,9 @@
 
 import type { ApplicationStatus } from "@/lib/application-status"
 
-export type DashboardStatus = ApplicationStatus
-
 export interface ApplicationListRecord {
   id: string
-  status: DashboardStatus
+  status: ApplicationStatus
   applicationType: string | null
   draftStep: number | null
   lastSavedAt: string | null

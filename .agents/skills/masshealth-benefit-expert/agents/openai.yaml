@@ -1,0 +1,4 @@
+interface:
+  display_name: "MassHealth Benefit Expert"
+  short_description: "MassHealth rules, app flows, and AI build guide"
+  default_prompt: "Use $masshealth-benefit-expert to implement or review a MassHealth feature for this app."

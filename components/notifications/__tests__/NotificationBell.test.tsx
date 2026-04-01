@@ -56,6 +56,7 @@ function renderBell(unreadCount = 0) {
 
 function mockUnreadResponse(count: number) {
   vi.mocked(authenticatedFetch).mockResolvedValue({
+    ok: true,
     json: () => Promise.resolve({ ok: true, data: { count } }),
   } as unknown as Response)
 }
@@ -66,6 +67,7 @@ describe("badge display", () => {
   beforeEach(() => {
     // Silent fetch — badge tests care only about store state, not API
     vi.mocked(authenticatedFetch).mockResolvedValue({
+      ok: true,
       json: () => Promise.resolve({ ok: true, data: { count: 0 } }),
     } as unknown as Response)
   })
@@ -108,6 +110,7 @@ describe("badge display", () => {
 describe("accessibility", () => {
   beforeEach(() => {
     vi.mocked(authenticatedFetch).mockResolvedValue({
+      ok: true,
       json: () => Promise.resolve({ ok: true, data: { count: 0 } }),
     } as unknown as Response)
   })
@@ -151,6 +154,7 @@ describe("fetch on mount", () => {
 
   it("does not update unreadCount when the API returns ok: false", async () => {
     vi.mocked(authenticatedFetch).mockResolvedValue({
+      ok: true,
       json: () => Promise.resolve({ ok: false }),
     } as unknown as Response)
     const store = renderBell(5)
@@ -196,6 +200,21 @@ describe("polling interval", () => {
     vi.clearAllMocks()
     mockUnreadResponse(4)
     await act(async () => { vi.advanceTimersByTime(15_000) })
+    await act(async () => { await Promise.resolve() })
+    expect(authenticatedFetch).toHaveBeenCalledOnce()
+  })
+
+  it("backs off polling for one minute after a failed request", async () => {
+    vi.mocked(authenticatedFetch).mockRejectedValue(new Error("Network error"))
+    renderBell()
+    await act(async () => { await Promise.resolve() })
+    vi.clearAllMocks()
+
+    await act(async () => { vi.advanceTimersByTime(15_000) })
+    await act(async () => { await Promise.resolve() })
+    expect(authenticatedFetch).not.toHaveBeenCalled()
+
+    await act(async () => { vi.advanceTimersByTime(45_000) })
     await act(async () => { await Promise.resolve() })
     expect(authenticatedFetch).toHaveBeenCalledOnce()
   })

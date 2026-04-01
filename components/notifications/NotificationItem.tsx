@@ -8,6 +8,7 @@
 import { AlertTriangle, Bell, FileText, MessageCircle, RefreshCw, UserCheck, UserPlus, UserX, Video } from "lucide-react"
 
 import type { Notification, NotificationType } from "@/lib/notifications/types"
+import { formatRelativeTime } from "@/lib/utils/format"
 
 const TYPE_CONFIG: Record<NotificationType, { icon: React.ElementType; color: string; dot: string }> = {
   status_change:          { icon: RefreshCw,     color: "text-blue-500",        dot: "bg-blue-500" },
@@ -21,18 +22,6 @@ const TYPE_CONFIG: Record<NotificationType, { icon: React.ElementType; color: st
   sw_engagement_accepted: { icon: UserCheck,     color: "text-green-600",       dot: "bg-green-600" },
   sw_engagement_rejected: { icon: UserX,         color: "text-red-500",         dot: "bg-red-500" },
   new_direct_message:     { icon: MessageCircle, color: "text-violet-500",      dot: "bg-violet-500" },
-}
-
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diff / 60_000)
-  if (mins < 1) return "just now"
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  const days = Math.floor(hrs / 24)
-  if (days < 7) return `${days}d ago`
-  return new Date(iso).toLocaleDateString()
 }
 
 interface Props {
@@ -60,7 +49,9 @@ export function NotificationItem({ notification, onClick }: Props) {
           <p className={`truncate text-sm ${isUnread ? "font-semibold text-foreground" : "font-medium text-foreground/80"}`}>
             {notification.title}
           </p>
-          <span className="shrink-0 text-[11px] text-muted-foreground">{relativeTime(notification.createdAt)}</span>
+          <span className="shrink-0 text-[11px] text-muted-foreground">
+            {formatRelativeTime(notification.createdAt)}
+          </span>
         </div>
         <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{notification.body}</p>
       </div>

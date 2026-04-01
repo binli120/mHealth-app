@@ -10,6 +10,7 @@ import { NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/auth/require-admin"
 import { createInvitation } from "@/lib/db/invitations"
 import { resend } from "@/lib/resend"
+import { logServerError, logServerInfo } from "@/lib/server/logger"
 
 export const runtime = "nodejs"
 
@@ -17,6 +18,9 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
 const FROM_EMAIL = process.env.FROM_EMAIL ?? "noreply@healthcompassma.com"
 
 export async function POST(request: Request) {
+  const start = Date.now()
+  logServerInfo("invite.start", { route: "/api/admin/users/invite" })
+
   const authResult = await requireAdmin(request)
   if (!authResult.ok) return authResult.response
 
@@ -54,8 +58,9 @@ export async function POST(request: Request) {
         subject: "You've been invited to HealthCompass MA",
         html: buildInviteEmailHtml(inviteUrl),
       })
+      logServerInfo("invite.email_sent", { email: body.email.trim() })
     } catch (err) {
-      console.error("[invite] Resend failed:", err)
+      logServerError("[invite] Resend failed", err, { email: body.email.trim() })
       // Don't fail the request — invitation was created, link can be shared manually
     }
   } else {
@@ -63,6 +68,7 @@ export async function POST(request: Request) {
     console.log(`[invite] ${inviteUrl}`)
   }
 
+  logServerInfo("invite.done", { ms: Date.now() - start, role: body.role ?? "applicant" })
   return NextResponse.json({ ok: true, inviteUrl })
 }
 

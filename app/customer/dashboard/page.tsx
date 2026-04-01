@@ -39,6 +39,7 @@ import {
   LogOut,
   MessageCircle,
   Scale,
+  FileSearch,
   Upload,
   UserCheck,
   Plus,
@@ -54,7 +55,7 @@ import { UserAvatar } from "@/components/shared/UserAvatar"
 import { ThemeToggle } from "@/components/shared/ThemeToggle"
 import { IdleTimeoutGuard } from "@/components/shared/IdleTimeoutGuard"
 import { formatDate } from "@/lib/utils/format"
-import type { DashboardStatus, ApplicationListRecord, ApplicationListApiResponse } from "./page.types"
+import type { ApplicationListApiResponse } from "./page.types"
 import { STATUS_META } from "./page.constants"
 import { getApplicationTypeLabel } from "./page.utils"
 
@@ -261,6 +262,12 @@ export default function CustomerDashboardPage() {
             >
               {getMessage(language, "dashboardNavAppealAssistant")}
             </Link>
+            <Link
+              href="/masshealth-appeals"
+              className="shrink-0 whitespace-nowrap text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Appeal Letter
+            </Link>
           </nav>
           <div className="flex shrink-0 items-center gap-3">
             <LanguageSwitcher />
@@ -333,6 +340,19 @@ export default function CustomerDashboardPage() {
                 <div>
                   <p className="font-medium text-card-foreground">{getMessage(language, "dashboardAppealAssistant")}</p>
                   <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardAppealAssistantDesc")}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/masshealth-appeals">
+            <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
+              <CardContent className="flex items-center gap-4 p-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-50">
+                  <FileSearch className="h-5 w-5 text-violet-600" />
+                </div>
+                <div>
+                  <p className="font-medium text-card-foreground">Appeal Letter</p>
+                  <p className="text-sm text-muted-foreground">Research &amp; draft a MassHealth appeal</p>
                 </div>
               </CardContent>
             </Card>

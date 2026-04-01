@@ -3,12 +3,12 @@
  * @author Bin Lee
  */
 
-import { APPLICATION_TYPE_LABELS } from "./page.constants"
+import { getApplicationTypeLabel as libGetApplicationTypeLabel } from "@/lib/masshealth/application-types"
 
+/**
+ * Resolve a display label for the given application type id.
+ * Delegates to the shared lib utility with the English-only default fallback.
+ */
 export function getApplicationTypeLabel(type: string | null): string {
-  if (!type) {
-    return "Application"
-  }
-
-  return APPLICATION_TYPE_LABELS.get(type) ?? type.toUpperCase()
+  return libGetApplicationTypeLabel(type, "Application")
 }

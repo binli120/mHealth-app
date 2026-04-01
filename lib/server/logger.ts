@@ -93,26 +93,61 @@ function serializeError(error: unknown): Record<string, unknown> {
   }
 }
 
+// ─── OpenObserve shipping ─────────────────────────────────────────────────────
+
+function getOOCredentials(): { url: string; auth: string; org: string; stream: string } | null {
+  const url  = process.env.OPENOBSERVE_URL
+  const user = process.env.OPENOBSERVE_USER
+  const pass = process.env.OPENOBSERVE_PASSWORD
+  if (!url || !user || !pass) return null
+  return {
+    url,
+    auth:   Buffer.from(`${user}:${pass}`).toString("base64"),
+    org:    process.env.OPENOBSERVE_ORG    ?? "default",
+    stream: process.env.OPENOBSERVE_STREAM ?? "mhealth-app",
+  }
+}
+
+function shipToOpenObserve(payload: Record<string, unknown>): void {
+  const creds = getOOCredentials()
+  if (!creds) return
+
+  const { url, auth, org, stream } = creds
+
+  // Fire-and-forget — never block the response path or throw
+  void fetch(`${url}/api/${org}/${stream}/_json`, {
+    method: "POST",
+    headers: {
+      "Content-Type":  "application/json",
+      "Authorization": `Basic ${auth}`,
+    },
+    body: JSON.stringify([payload]),
+  }).catch(() => undefined)
+}
+
+// ─── Core write ───────────────────────────────────────────────────────────────
+
 function writeLog(level: LogLevel, event: string, context?: Record<string, unknown>): void {
   const payload = {
-    ts: new Date().toISOString(),
+    _timestamp: Date.now() * 1000, // OpenObserve expects microseconds
+    ts:         new Date().toISOString(),
     level,
     event,
+    service:    "mhealth-app",
+    env:        process.env.NODE_ENV ?? "development",
     ...(context ? { context: sanitizeValue(context) } : {}),
   }
 
   const line = JSON.stringify(payload)
   if (level === "info") {
     console.info(line)
-    return
-  }
-
-  if (level === "warn") {
+  } else if (level === "warn") {
     console.warn(line)
-    return
+  } else {
+    console.error(line)
   }
 
-  console.error(line)
+  shipToOpenObserve(payload)
 }
 
 export function logServerError(event: string, error: unknown, context?: Record<string, unknown>): void {

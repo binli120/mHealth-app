@@ -5,6 +5,7 @@
  */
 
 import Link from "next/link"
+import { ConversationBubble } from "@/components/shared/ConversationBubble"
 import { Button } from "@/components/ui/button"
 import {
   AlertCircle,
@@ -35,15 +36,13 @@ export function ChatBubble({ message }: { message: ChatMessage }) {
   return (
     <div className={`flex items-end gap-3 ${isBot ? "" : "flex-row-reverse"}`}>
       {isBot && <BotAvatar />}
-      <div
-        className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
-          isBot
-            ? "rounded-bl-sm bg-secondary text-foreground"
-            : "rounded-br-sm bg-primary text-primary-foreground"
-        }`}
+      <ConversationBubble
+        align={isBot ? "start" : "end"}
+        tone={isBot ? "secondary" : "primary"}
+        bubbleClassName={`max-w-[80%] whitespace-pre-wrap leading-relaxed ${isBot ? "rounded-bl-sm" : "rounded-br-sm"}`}
       >
         {message.text}
-      </div>
+      </ConversationBubble>
     </div>
   )
 }

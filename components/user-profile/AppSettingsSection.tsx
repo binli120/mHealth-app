@@ -7,13 +7,15 @@
 
 import { useState } from "react"
 import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { FieldRow } from "@/components/user-profile/FieldRow"
+import {
+  EditableSectionCard,
+  PreferenceToggleRow,
+  SectionActions,
+} from "@/components/user-profile/section-primitives"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { useAppDispatch } from "@/lib/redux/hooks"
 import { setLanguage } from "@/lib/redux/features/app-slice"
@@ -86,24 +88,31 @@ export function AppSettingsSection({ profile, onSaved }: Props) {
 
   const langLabel = SUPPORTED_LANGUAGES.find((l) => l.code === profile.profileData.preferredLanguage)?.label ?? null
   const a11y = profile.profileData.accessibility
+  const accessibilityItems = [
+    {
+      key: "needsReadingAssistance" as const,
+      title: "Reading assistance",
+      desc: "Highlight and enlarge text; enable simplified language mode",
+    },
+    {
+      key: "needsTranslation" as const,
+      title: "Translation support",
+      desc: "Request a certified interpreter for in-person appointments",
+    },
+    {
+      key: "needsVoiceAssistant" as const,
+      title: "Voice assistant",
+      desc: "Enable screen reader compatibility and audio guidance",
+    },
+  ] as const
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-4">
-        <div>
-          <CardTitle>App Settings</CardTitle>
-          <CardDescription>
-            Language preference and accessibility options — applied across the entire app.
-          </CardDescription>
-        </div>
-        {!isEditing && (
-          <Button variant="outline" size="sm" onClick={handleEdit} className="shrink-0">
-            Edit
-          </Button>
-        )}
-      </CardHeader>
-
-      <CardContent className="space-y-6">
+    <EditableSectionCard
+      title="App Settings"
+      description="Language preference and accessibility options — applied across the entire app."
+      isEditing={isEditing}
+      onEdit={handleEdit}
+    >
         {/* ── View mode ── */}
         {!isEditing && (
           <>
@@ -151,51 +160,22 @@ export function AppSettingsSection({ profile, onSaved }: Props) {
             <div>
               <h3 className="mb-3 text-sm font-medium">Accessibility needs</h3>
               <div className="space-y-3">
-                {(
-                  [
-                    {
-                      key: "needsReadingAssistance" as const,
-                      title: "Reading assistance",
-                      desc: "Highlight and enlarge text; enable simplified language mode",
-                    },
-                    {
-                      key: "needsTranslation" as const,
-                      title: "Translation support",
-                      desc: "Request a certified interpreter for in-person appointments",
-                    },
-                    {
-                      key: "needsVoiceAssistant" as const,
-                      title: "Voice assistant",
-                      desc: "Enable screen reader compatibility and audio guidance",
-                    },
-                  ] as const
-                ).map(({ key, title, desc }) => (
-                  <div key={key} className="flex items-center justify-between rounded-lg border border-border p-4">
-                    <div>
-                      <p className="text-sm font-medium">{title}</p>
-                      <p className="text-xs text-muted-foreground">{desc}</p>
-                    </div>
-                    <Switch
-                      checked={accessibility[key]}
-                      onCheckedChange={() => toggleAccessibility(key)}
-                      aria-label={`Enable ${title.toLowerCase()}`}
-                    />
-                  </div>
+                {accessibilityItems.map(({ key, title, desc }) => (
+                  <PreferenceToggleRow
+                    key={key}
+                    title={title}
+                    description={desc}
+                    checked={accessibility[key]}
+                    onCheckedChange={() => toggleAccessibility(key)}
+                    ariaLabel={`Enable ${title.toLowerCase()}`}
+                  />
                 ))}
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="ghost" onClick={handleCancel} disabled={saving}>
-                Cancel
-              </Button>
-              <Button onClick={handleSave} disabled={saving}>
-                {saving ? "Saving…" : "Save changes"}
-              </Button>
-            </div>
+            <SectionActions onCancel={handleCancel} onSave={handleSave} isSaving={saving} />
           </>
         )}
-      </CardContent>
-    </Card>
+    </EditableSectionCard>
   )
 }

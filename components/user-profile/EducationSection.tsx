@@ -7,13 +7,15 @@
 
 import { useState } from "react"
 import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { FieldRow } from "@/components/user-profile/FieldRow"
+import {
+  EditableSectionCard,
+  PreferenceToggleRow,
+  SectionActions,
+} from "@/components/user-profile/section-primitives"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { EDUCATION_LEVEL_OPTIONS } from "@/lib/user-profile/constants"
 import type { UserProfile, EducationInfo, EducationLevel } from "@/lib/user-profile/types"
@@ -76,23 +78,17 @@ export function EducationSection({ profile, onSaved }: Props) {
     EDUCATION_LEVEL_OPTIONS.find((o) => o.value === existing?.level)?.label ?? null
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-4">
-        <div>
-          <CardTitle>Education</CardTitle>
-          <CardDescription>
-            Education level may affect eligibility for student loan assistance, childcare, and job
-            training programs.
-          </CardDescription>
-        </div>
-        {!isEditing && (
-          <Button variant="outline" size="sm" onClick={handleEdit} className="shrink-0">
-            Edit
-          </Button>
-        )}
-      </CardHeader>
-
-      <CardContent className="space-y-6">
+    <EditableSectionCard
+      title="Education"
+      description={
+        <>
+          Education level may affect eligibility for student loan assistance, childcare, and job
+          training programs.
+        </>
+      }
+      isEditing={isEditing}
+      onEdit={handleEdit}
+    >
         {/* ── View mode ── */}
         {!isEditing && (
           <dl className="divide-y divide-border">
@@ -124,19 +120,13 @@ export function EducationSection({ profile, onSaved }: Props) {
               </Select>
             </div>
 
-            <div className="flex items-center justify-between rounded-lg border border-border p-4">
-              <div>
-                <p className="font-medium text-sm">Currently enrolled in school</p>
-                <p className="text-xs text-muted-foreground">
-                  Includes community college, university, vocational training, or adult education
-                </p>
-              </div>
-              <Switch
-                checked={currentlyEnrolled}
-                onCheckedChange={setCurrentlyEnrolled}
-                aria-label="Currently enrolled in school"
-              />
-            </div>
+            <PreferenceToggleRow
+              title="Currently enrolled in school"
+              description="Includes community college, university, vocational training, or adult education"
+              checked={currentlyEnrolled}
+              onCheckedChange={setCurrentlyEnrolled}
+              ariaLabel="Currently enrolled in school"
+            />
 
             {currentlyEnrolled && (
               <div className="space-y-1.5">
@@ -150,17 +140,9 @@ export function EducationSection({ profile, onSaved }: Props) {
               </div>
             )}
 
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="ghost" onClick={handleCancel} disabled={saving}>
-                Cancel
-              </Button>
-              <Button onClick={handleSave} disabled={saving}>
-                {saving ? "Saving…" : "Save changes"}
-              </Button>
-            </div>
+            <SectionActions onCancel={handleCancel} onSave={handleSave} isSaving={saving} />
           </>
         )}
-      </CardContent>
-    </Card>
+    </EditableSectionCard>
   )
 }

@@ -7,6 +7,7 @@
 
 import { Volume2 } from "lucide-react"
 
+import { ConversationBubble } from "@/components/shared/ConversationBubble"
 import { Button } from "@/components/ui/button"
 import type { ChatMessage } from "@/lib/masshealth/chat-knowledge"
 
@@ -51,36 +52,29 @@ export function IntakeMessageBubble({
 }) {
   const isUser = message.role === "user"
   const { prefix, question } = splitTrailingQuestion(message.content)
+  const footer =
+    !isUser && question ? (
+      <Button type="button" variant="ghost" size="sm" onClick={() => onSpeakQuestion(question)}>
+        <Volume2 className="h-4 w-4" />
+        Play question
+      </Button>
+    ) : null
 
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div
-        className={[
-          "max-w-[90%] rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm",
-          isUser
-            ? "bg-primary text-primary-foreground"
-            : "bg-secondary text-secondary-foreground",
-        ].join(" ")}
-      >
-        {isUser || !question ? (
-          message.content
-        ) : (
-          <>
-            {prefix ? <span>{`${prefix} `}</span> : null}
-            <span className="font-semibold">{question}</span>
-          </>
-        )}
-
-        {!isUser && question ? (
-          <div className="mt-2">
-            <Button type="button" variant="ghost" size="sm" onClick={() => onSpeakQuestion(question)}>
-              <Volume2 className="h-4 w-4" />
-              Play question
-            </Button>
-          </div>
-        ) : null}
-      </div>
-    </div>
+    <ConversationBubble
+      align={isUser ? "end" : "start"}
+      tone={isUser ? "primary" : "secondary"}
+      bubbleClassName="max-w-[90%] leading-6"
+      footer={footer}
+    >
+      {isUser || !question ? (
+        message.content
+      ) : (
+        <>
+          {prefix ? <span>{`${prefix} `}</span> : null}
+          <span className="font-semibold">{question}</span>
+        </>
+      )}
+    </ConversationBubble>
   )
 }
-

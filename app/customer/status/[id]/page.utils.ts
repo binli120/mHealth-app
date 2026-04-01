@@ -5,44 +5,12 @@
 
 import { getMessage } from "@/lib/i18n/messages"
 import type { SupportedLanguage } from "@/lib/i18n/languages"
+import { formatDate, formatDateTime } from "@/lib/utils/format"
+import { getApplicationTypeLabel as libGetApplicationTypeLabel } from "@/lib/masshealth/application-types"
 import type { ApplicationDraftRecord, TimelineEvent } from "./page.types"
-import { APPLICATION_TYPE_LABELS } from "./page.constants"
 
-export function formatDate(value: string | null, locale: string): string {
-  if (!value) {
-    return "—"
-  }
-
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return "—"
-  }
-
-  return date.toLocaleDateString(locale, {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-  })
-}
-
-export function formatDateTime(value: string | null, locale: string): string {
-  if (!value) {
-    return "—"
-  }
-
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return "—"
-  }
-
-  return date.toLocaleString(locale, {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  })
-}
+// Re-export so page components and existing tests can import from here.
+export { formatDate, formatDateTime }
 
 export function readContactField(record: ApplicationDraftRecord | null, key: string): string {
   const data = (record?.draftState?.data as Record<string, unknown> | undefined) ?? {}
@@ -135,9 +103,5 @@ export function buildTimeline(record: ApplicationDraftRecord | null, language: S
 }
 
 export function getApplicationTypeLabel(type: string | null, language: SupportedLanguage): string {
-  if (!type) {
-    return getMessage(language, "statusListApplicationFallback")
-  }
-
-  return APPLICATION_TYPE_LABELS.get(type) ?? type.toUpperCase()
+  return libGetApplicationTypeLabel(type, getMessage(language, "statusListApplicationFallback"))
 }

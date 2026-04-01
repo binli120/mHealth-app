@@ -3,6 +3,23 @@
  * @email binlee120@gmail.com
  */
 
+/**
+ * Render a first + last name pair as a single display string.
+ *
+ * - Both parts present → "Jane Doe"
+ * - One part null/empty → returns the non-empty part
+ * - Both null/empty    → "—"
+ *
+ * Accepts any object that exposes `first_name` and `last_name` (AdminUser,
+ * SocialWorker, Patient, etc.) so callers never need to re-implement this.
+ */
+export function fullName(person: {
+  first_name: string | null | undefined
+  last_name: string | null | undefined
+}): string {
+  return [person.first_name, person.last_name].filter(Boolean).join(" ") || "—"
+}
+
 const NAME_PART_PATTERN = /[\p{L}\p{M}]/u
 
 function getNamePartCount(value: string): number {

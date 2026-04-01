@@ -201,7 +201,7 @@ export default function LandingPage() {
               </a>
               <a href="#appeal" className="flex items-center gap-1 text-sm font-medium text-primary transition-colors hover:text-primary/80">
                 Appeal Help
-                <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">NEW</span>
+                <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">AI</span>
               </a>
               <Link href="/knowledge-center" className="text-sm text-muted-foreground transition-colors hover:text-foreground">Resources</Link>
             </nav>
@@ -444,16 +444,17 @@ export default function LandingPage() {
               <FadeUp className="space-y-6">
                 <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-4 py-1.5 text-sm font-semibold text-accent">
                   <Sparkles className="h-3.5 w-3.5" />
-                  New Feature
+                  AI trained on real MassHealth denials
                 </div>
                 <h2 className="text-balance text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-                  Got denied? We&apos;ll help you{" "}
-                  <span className="text-accent">fight back</span>
+                  Got denied? Our AI has{" "}
+                  <span className="text-accent">seen it before</span>
                 </h2>
                 <p className="max-w-lg text-pretty text-lg text-muted-foreground">
-                  A denial isn&apos;t the end. Our AI-powered Appeal Assistance guides you through the
-                  MassHealth appeal process step-by-step — helping you build a stronger case, meet
-                  deadlines, and understand your rights.
+                  Our model is trained on thousands of actual MassHealth denial cases — and learns
+                  from every new one the community submits. Paste your notice and get a tailored
+                  evidence checklist, legal arguments grounded in real regulations, and a fully-cited
+                  draft appeal letter in minutes.
                 </p>
                 <ul className="space-y-3 text-sm text-muted-foreground">
                   {APPEAL_CHECKLIST.map((item) => (
@@ -464,13 +465,13 @@ export default function LandingPage() {
                   ))}
                 </ul>
                 <div className="flex flex-wrap gap-3 pt-2">
-                  <Link href="/auth/register">
+                  <Link href="/masshealth-appeals">
                     <Button size="lg" className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90">
-                      Start My Appeal <ChevronRight className="h-4 w-4" />
+                      Try Appeal Letter AI <ChevronRight className="h-4 w-4" />
                     </Button>
                   </Link>
-                  <Link href="/knowledge-center">
-                    <Button size="lg" variant="outline">Learn About Appeals</Button>
+                  <Link href="/auth/register">
+                    <Button size="lg" variant="outline">Create Free Account</Button>
                   </Link>
                 </div>
               </FadeUp>
@@ -592,6 +593,9 @@ export default function LandingPage() {
                         {l.label}
                         {(l.label === "Appeal Assistance" || l.label === "Live Assistance") && (
                           <span className="rounded-full bg-accent px-1.5 py-0.5 text-[9px] font-bold text-accent-foreground">NEW</span>
+                        )}
+                        {l.label === "Appeal Letter (AI)" && (
+                          <span className="rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-bold text-primary-foreground">AI</span>
                         )}
                       </Link>
                     </li>

@@ -7,13 +7,15 @@
 
 import { useState } from "react"
 import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { FieldRow } from "@/components/user-profile/FieldRow"
+import {
+  EditableSectionCard,
+  PreferenceToggleRow,
+  SectionActions,
+} from "@/components/user-profile/section-primitives"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { NOTIFICATION_CHANNEL_OPTIONS, REMINDER_LEAD_DAY_OPTIONS } from "@/lib/user-profile/constants"
 import type { UserProfile, NotificationPrefs, NotificationChannel, ReminderLeadDays } from "@/lib/user-profile/types"
@@ -84,22 +86,12 @@ export function NotificationsSection({ profile, onSaved }: Props) {
   const leadDaysLabel = REMINDER_LEAD_DAY_OPTIONS.find((o) => o.value === String(existing.reminderLeadDays))?.label ?? null
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-4">
-        <div>
-          <CardTitle>Notifications</CardTitle>
-          <CardDescription>
-            Choose which alerts to receive and how you&apos;d like to be contacted.
-          </CardDescription>
-        </div>
-        {!isEditing && (
-          <Button variant="outline" size="sm" onClick={handleEdit} className="shrink-0">
-            Edit
-          </Button>
-        )}
-      </CardHeader>
-
-      <CardContent className="space-y-6">
+    <EditableSectionCard
+      title="Notifications"
+      description="Choose which alerts to receive and how you'd like to be contacted."
+      isEditing={isEditing}
+      onEdit={handleEdit}
+    >
         {/* ── View mode ── */}
         {!isEditing && (
           <>
@@ -128,17 +120,14 @@ export function NotificationsSection({ profile, onSaved }: Props) {
               <h3 className="mb-3 text-sm font-medium">Alert types</h3>
               <div className="space-y-3">
                 {ALERT_ITEMS.map(({ key, title, desc }) => (
-                  <div key={key} className="flex items-center justify-between rounded-lg border border-border p-4">
-                    <div>
-                      <p className="text-sm font-medium">{title}</p>
-                      <p className="text-xs text-muted-foreground">{desc}</p>
-                    </div>
-                    <Switch
-                      checked={prefs[key]}
-                      onCheckedChange={() => toggle(key)}
-                      aria-label={`Enable ${title.toLowerCase()}`}
-                    />
-                  </div>
+                  <PreferenceToggleRow
+                    key={key}
+                    title={title}
+                    description={desc}
+                    checked={prefs[key]}
+                    onCheckedChange={() => toggle(key)}
+                    ariaLabel={`Enable ${title.toLowerCase()}`}
+                  />
                 ))}
               </div>
             </div>
@@ -183,17 +172,9 @@ export function NotificationsSection({ profile, onSaved }: Props) {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="ghost" onClick={handleCancel} disabled={saving}>
-                Cancel
-              </Button>
-              <Button onClick={handleSave} disabled={saving}>
-                {saving ? "Saving…" : "Save changes"}
-              </Button>
-            </div>
+            <SectionActions onCancel={handleCancel} onSave={handleSave} isSaving={saving} />
           </>
         )}
-      </CardContent>
-    </Card>
+    </EditableSectionCard>
   )
 }

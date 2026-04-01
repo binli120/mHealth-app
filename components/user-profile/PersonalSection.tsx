@@ -12,11 +12,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { InfoBox } from "@/components/shared/InfoBox"
 import { AddressFields, type AddressValue } from "@/components/shared/AddressFields"
 import { FieldRow } from "@/components/user-profile/FieldRow"
+import { EditableSectionCard, SectionActions } from "@/components/user-profile/section-primitives"
 import { UserAvatar } from "@/components/shared/UserAvatar"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { CITIZENSHIP_OPTIONS } from "@/lib/constants/form-options"
@@ -188,22 +188,12 @@ export function PersonalSection({ profile, onSaved }: Props) {
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-4">
-        <div>
-          <CardTitle>Personal Information</CardTitle>
-          <CardDescription>
-            Your name, contact details, and address — used to auto-fill benefit applications.
-          </CardDescription>
-        </div>
-        {!isEditing && (
-          <Button variant="outline" size="sm" onClick={handleEdit} className="shrink-0">
-            Edit
-          </Button>
-        )}
-      </CardHeader>
-
-      <CardContent className="space-y-6">
+    <EditableSectionCard
+      title="Personal Information"
+      description="Your name, contact details, and address — used to auto-fill benefit applications."
+      isEditing={isEditing}
+      onEdit={handleEdit}
+    >
         {/* ── Avatar section (always visible, independent of edit mode) ── */}
         <div className="flex items-center gap-4">
           <div className="relative">
@@ -363,17 +353,9 @@ export function PersonalSection({ profile, onSaved }: Props) {
 
             <AddressFields value={address} onChange={setAddress} idPrefix="profile" disabled={saving} />
 
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="ghost" onClick={handleCancel} disabled={saving}>
-                Cancel
-              </Button>
-              <Button onClick={handleSave} disabled={saving}>
-                {saving ? "Saving…" : "Save changes"}
-              </Button>
-            </div>
+            <SectionActions onCancel={handleCancel} onSave={handleSave} isSaving={saving} />
           </>
         )}
-      </CardContent>
-    </Card>
+    </EditableSectionCard>
   )
 }

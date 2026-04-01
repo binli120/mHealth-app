@@ -9,10 +9,9 @@ import {
   Clock,
   FileText,
 } from "lucide-react"
-import { MASSHEALTH_APPLICATION_TYPES } from "@/lib/masshealth/application-types"
-import type { DashboardStatus } from "./page.types"
+import type { ApplicationStatus } from "@/lib/application-status"
 
-export const STATUS_META: Record<DashboardStatus, { color: string; icon: typeof FileText }> = {
+export const STATUS_META: Record<ApplicationStatus, { color: string; icon: typeof FileText }> = {
   draft: { color: "bg-secondary text-secondary-foreground", icon: FileText },
   submitted: { color: "bg-primary/10 text-primary", icon: Clock },
   ai_extracted: { color: "bg-accent/10 text-accent", icon: Clock },
@@ -22,6 +21,5 @@ export const STATUS_META: Record<DashboardStatus, { color: string; icon: typeof 
   denied: { color: "bg-destructive/10 text-destructive", icon: AlertCircle },
 }
 
-export const APPLICATION_TYPE_LABELS = new Map<string, string>(
-  MASSHEALTH_APPLICATION_TYPES.map((item) => [item.id, item.shortLabel]),
-)
+// Single source of truth lives in lib — re-exported here for page convenience.
+export { APPLICATION_TYPE_LABELS } from "@/lib/masshealth/application-types"

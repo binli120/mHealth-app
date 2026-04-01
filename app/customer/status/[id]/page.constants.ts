@@ -3,8 +3,5 @@
  * @author Bin Lee
  */
 
-import { MASSHEALTH_APPLICATION_TYPES } from "@/lib/masshealth/application-types"
-
-export const APPLICATION_TYPE_LABELS = new Map<string, string>(
-  MASSHEALTH_APPLICATION_TYPES.map((item) => [item.id, item.shortLabel]),
-)
+// Single source of truth lives in lib — re-exported here for page convenience.
+export { APPLICATION_TYPE_LABELS } from "@/lib/masshealth/application-types"

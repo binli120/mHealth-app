@@ -3,8 +3,5 @@
  * @author Bin Lee
  */
 
-import type { AdminUser } from "./page.types"
-
-export function fullName(u: AdminUser): string {
-  return [u.first_name, u.last_name].filter(Boolean).join(" ") || "—"
-}
+// fullName logic is shared across all person-like entities — lives in lib.
+export { fullName } from "@/lib/utils/person-name"

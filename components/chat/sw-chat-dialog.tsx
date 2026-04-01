@@ -18,6 +18,7 @@ import { ArrowLeft, Bell, Loader2, MessageSquare, UserCheck, X } from "lucide-re
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { formatRelativeTime } from "@/lib/utils/format"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { EngagementRequestsPanel } from "@/components/social-worker/engagement-requests-panel"
@@ -37,19 +38,6 @@ interface MessageThread {
 
 type DialogTab = "messages" | "requests"
 type DialogView = "threads" | "chat"
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function formatRelative(iso: string | null): string {
-  if (!iso) return ""
-  const date = new Date(iso)
-  const diffMin = Math.floor((Date.now() - date.getTime()) / 60_000)
-  if (diffMin < 1) return "Just now"
-  if (diffMin < 60) return `${diffMin}m ago`
-  const diffHr = Math.floor(diffMin / 60)
-  if (diffHr < 24) return `${diffHr}h ago`
-  return date.toLocaleDateString([], { month: "short", day: "numeric" })
-}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -301,7 +289,7 @@ export function SwChatDialog() {
                                 {thread.patientName ?? thread.patientEmail}
                               </p>
                               <span className="shrink-0 text-[11px] text-muted-foreground">
-                                {formatRelative(thread.lastMessageAt)}
+                                {formatRelativeTime(thread.lastMessageAt, { capitalize: true })}
                               </span>
                             </div>
                             <p className="truncate text-xs text-muted-foreground">

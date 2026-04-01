@@ -57,3 +57,27 @@ export function isMassHealthApplicationType(
 ): value is MassHealthApplicationType {
   return MASSHEALTH_APPLICATION_TYPES.some((type) => type.id === value)
 }
+
+/**
+ * Lookup map from application type id → short display label.
+ * Derived from MASSHEALTH_APPLICATION_TYPES; single source of truth.
+ * e.g. "aca3" → "ACA-3"
+ */
+export const APPLICATION_TYPE_LABELS = new Map<string, string>(
+  MASSHEALTH_APPLICATION_TYPES.map((item) => [item.id, item.shortLabel]),
+)
+
+/**
+ * Resolve a human-readable label for an application type id.
+ *
+ * - Known id  → short label (e.g. "ACA-3")
+ * - Unknown id → uppercased id (e.g. "CUSTOM-FORM")
+ * - null/empty → fallback string (defaults to "Application")
+ */
+export function getApplicationTypeLabel(
+  type: string | null | undefined,
+  fallback = "Application",
+): string {
+  if (!type) return fallback
+  return APPLICATION_TYPE_LABELS.get(type) ?? type.toUpperCase()
+}
