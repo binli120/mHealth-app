@@ -60,7 +60,7 @@ export function buildAppealDraftPrefill(params: {
   const contactInformation = contactLines.join("\n")
 
   const householdSize = profile?.familyProfileSummary?.householdSize
-  const householdSummary = Number.isFinite(householdSize) && householdSize > 0
+  const householdSummary = typeof householdSize === "number" && Number.isFinite(householdSize) && householdSize > 0
     ? `Household size: ${householdSize}`
     : ""
 

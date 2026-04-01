@@ -24,6 +24,18 @@ export const STORAGE_BUCKET = 'masshealth-dev';
 export const DOCUMENTS_BUCKET = STORAGE_BUCKET;
 
 const DEFAULT_SIGNED_URL_EXPIRES = 60 * 60; // 1 hour
+const SIGNED_URL_CACHE_SKEW_MS = 5_000;
+
+type SignedUrlCacheEntry = {
+  url: string;
+  expiresAt: number;
+};
+
+type GlobalWithSignedUrlCache = typeof globalThis & {
+  __mhealthSignedUrlCache?: Map<string, SignedUrlCacheEntry>;
+};
+
+const globalForSignedUrls = globalThis as GlobalWithSignedUrlCache;
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -84,6 +96,18 @@ function authHeaders(overrideToken?: string): Record<string, string> {
     Authorization: `Bearer ${key}`,
     apikey: key,
   };
+}
+
+function getSignedUrlCache(): Map<string, SignedUrlCacheEntry> {
+  if (!globalForSignedUrls.__mhealthSignedUrlCache) {
+    globalForSignedUrls.__mhealthSignedUrlCache = new Map();
+  }
+
+  return globalForSignedUrls.__mhealthSignedUrlCache;
+}
+
+function getSignedUrlCacheKey(storagePath: string, expiresInSeconds: number): string {
+  return `${storagePath}:${expiresInSeconds}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -238,6 +262,12 @@ export async function getSignedDocumentUrl(params: {
   const base = getStorageBaseUrl();
   const url = `${base}/object/sign/${STORAGE_BUCKET}/${params.storagePath}`;
   const expiresIn = params.expiresInSeconds ?? DEFAULT_SIGNED_URL_EXPIRES;
+  const cacheKey = getSignedUrlCacheKey(params.storagePath, expiresIn);
+  const cache = getSignedUrlCache();
+  const cached = cache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.url;
+  }
 
   const res = await fetch(url, {
     method: 'POST',
@@ -267,8 +297,41 @@ export async function getSignedDocumentUrl(params: {
     const path = data.signedURL.startsWith('/storage/v1')
       ? data.signedURL
       : `/storage/v1${data.signedURL}`;
-    return `${supabaseUrl}${path}`;
+    const absoluteUrl = `${supabaseUrl}${path}`;
+    cache.set(cacheKey, {
+      url: absoluteUrl,
+      expiresAt: Date.now() + expiresIn * 1000 - SIGNED_URL_CACHE_SKEW_MS,
+    });
+    return absoluteUrl;
   }
 
+  cache.set(cacheKey, {
+    url: data.signedURL,
+    expiresAt: Date.now() + expiresIn * 1000 - SIGNED_URL_CACHE_SKEW_MS,
+  });
   return data.signedURL;
+}
+
+export async function getSignedDocumentUrls(params: {
+  accessToken?: string;
+  storagePaths: string[];
+  expiresInSeconds?: number;
+}): Promise<Record<string, string | null>> {
+  const uniquePaths = [...new Set(params.storagePaths.filter(Boolean))];
+  const entries = await Promise.all(
+    uniquePaths.map(async (storagePath) => {
+      try {
+        const signedUrl = await getSignedDocumentUrl({
+          accessToken: params.accessToken,
+          storagePath,
+          expiresInSeconds: params.expiresInSeconds,
+        });
+        return [storagePath, signedUrl] as const;
+      } catch {
+        return [storagePath, null] as const;
+      }
+    }),
+  );
+
+  return Object.fromEntries(entries);
 }

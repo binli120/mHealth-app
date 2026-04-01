@@ -5,7 +5,7 @@
 
 "use client"
 
-import { useState, useRef } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useAutoScroll } from "@/hooks/use-auto-scroll"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -22,13 +22,24 @@ import {
   type EligibilityReport,
 } from "@/lib/eligibility-engine"
 import type { ChatMessage } from "./page.types"
-import { STEP_MAP } from "./page.constants"
+import { getStepMap, PROGRESS_STEPS } from "./page.constants"
 import { uid, getProgress } from "./page.utils"
 import { BotAvatar, ChatBubble, ResultsPanel } from "@/components/prescreener/EligibilityResults"
+import {
+  formatPrescreenerCurrency,
+  getPrescreenerCopy,
+  getPrescreenerLocale,
+} from "./prescreener-copy"
+import { useAppSelector } from "@/lib/redux/hooks"
+import { localizeEligibilityReport } from "./prescreener-results"
+import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher"
 
 export default function PreScreenerPage() {
+  const language = useAppSelector((state) => state.app.language)
+  const copy = useMemo(() => getPrescreenerCopy(language), [language])
+  const stepMap = useMemo(() => getStepMap(language), [language])
   const [messages, setMessages] = useState<ChatMessage[]>(() => [
-    { id: uid(), role: "bot", text: STEP_MAP["intro"].botMessage, timestamp: new Date() },
+    { id: uid(), role: "bot", text: stepMap.intro.botMessage, timestamp: new Date() },
   ])
   const [currentStepId, setCurrentStepId] = useState("intro")
   const [screenerData, setScreenerData] = useState<Partial<ScreenerData>>({
@@ -45,8 +56,36 @@ export default function PreScreenerPage() {
 
   const messagesEndRef = useAutoScroll([messages, isTyping, report])
   const inputRef = useRef<HTMLInputElement>(null)
+  const previousLanguageRef = useRef(language)
 
-  const currentStep = STEP_MAP[currentStepId]
+  const currentStep = stepMap[currentStepId]
+  const localizedReport = useMemo(
+    () => (report ? localizeEligibilityReport(report, screenerData, language) : null),
+    [language, report, screenerData],
+  )
+
+  useEffect(() => {
+    document.documentElement.lang = getPrescreenerLocale(language)
+  }, [language])
+
+  useEffect(() => {
+    const hasOnlyIntroMessage =
+      messages.length === 1 &&
+      messages[0]?.role === "bot" &&
+      currentStepId === "intro" &&
+      !isComplete
+
+    if (!hasOnlyIntroMessage) {
+      previousLanguageRef.current = language
+      return
+    }
+
+    if (previousLanguageRef.current !== language) {
+      setMessages([{ id: uid(), role: "bot", text: stepMap.intro.botMessage, timestamp: new Date() }])
+    }
+
+    previousLanguageRef.current = language
+  }, [currentStepId, isComplete, language, messages, stepMap])
 
   function addBotMessage(text: string) {
     setMessages((prev) => [
@@ -86,12 +125,12 @@ export default function PreScreenerPage() {
         setReport(result)
         setIsComplete(true)
         setCurrentStepId("done")
-        addBotMessage("Here are your pre-screening results:")
+        addBotMessage(copy.resultsReady)
       }, 1200)
       return
     }
 
-    const nextStep = STEP_MAP[nextId]
+    const nextStep = stepMap[nextId]
     if (!nextStep) return
 
     setIsTyping(true)
@@ -138,8 +177,10 @@ export default function PreScreenerPage() {
 
     const displayVal =
       step.inputType === "currency"
-        ? `$${Math.round(val).toLocaleString()} / year`
-        : `${Math.round(val)} ${step.dataKey === "householdSize" ? "people" : ""}`
+        ? copy.incomeReply(formatPrescreenerCurrency(Math.round(val), language))
+        : step.dataKey === "householdSize"
+        ? copy.householdReply(Math.round(val))
+        : String(Math.round(val))
 
     addUserMessage(displayVal.trim())
     setNumberInput("")
@@ -166,10 +207,11 @@ export default function PreScreenerPage() {
     setReport(null)
     setIsComplete(false)
     setIsTyping(false)
-    setTimeout(() => addBotMessage(STEP_MAP["intro"].botMessage), 100)
+    setTimeout(() => addBotMessage(stepMap.intro.botMessage), 100)
   }
 
   const progress = getProgress(currentStepId)
+  const totalSteps = PROGRESS_STEPS.length
 
   return (
     <div className="flex h-screen flex-col bg-background">
@@ -181,25 +223,28 @@ export default function PreScreenerPage() {
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span className="text-sm hidden sm:inline">Back</span>
+            <span className="text-sm hidden sm:inline">{copy.back}</span>
           </Link>
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <Heart className="h-4 w-4 text-primary-foreground" />
             </div>
             <span className="font-semibold text-foreground">
-              Eligibility Pre-Screener
+              {copy.title}
             </span>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleReset}
-            className="gap-1 text-muted-foreground"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline text-xs">Restart</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher className="h-9 w-[132px] border-border bg-card text-foreground" />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleReset}
+              className="gap-1 text-muted-foreground"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline text-xs">{copy.restart}</span>
+            </Button>
+          </div>
         </div>
 
         {/* Progress bar */}
@@ -209,10 +254,10 @@ export default function PreScreenerPage() {
               <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
                 <span>
                   {progress < 100
-                    ? `Step ${Math.max(1, Math.ceil((progress / 100) * 8))} of 8`
-                    : "Calculating..."}
+                    ? copy.stepLabel(Math.max(1, Math.ceil((progress / 100) * totalSteps)), totalSteps)
+                    : copy.calculating}
                 </span>
-                <span>{progress}% complete</span>
+                <span>{copy.percentComplete(progress)}</span>
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
                 <div
@@ -228,8 +273,7 @@ export default function PreScreenerPage() {
       {/* Disclaimer */}
       <div className="bg-amber-50 border-b border-amber-200 px-4 py-2">
         <p className="mx-auto max-w-3xl text-xs text-amber-800 text-center">
-          <strong>Pre-screening estimate only.</strong> This is not an official eligibility
-          determination. Based on 2026 FPL guidelines & MassHealth regulations.
+          <strong>{copy.estimateOnlyLead}</strong> {copy.estimateOnlyBody}
         </p>
       </div>
 
@@ -253,8 +297,13 @@ export default function PreScreenerPage() {
           )}
 
           {/* Results */}
-          {isComplete && report && (
-            <ResultsPanel report={report} screenerData={screenerData} onReset={handleReset} />
+          {isComplete && localizedReport && (
+            <ResultsPanel
+              report={localizedReport}
+              screenerData={screenerData}
+              onReset={handleReset}
+              language={language}
+            />
           )}
 
           <div ref={messagesEndRef} />

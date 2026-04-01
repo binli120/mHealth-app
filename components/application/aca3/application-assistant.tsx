@@ -33,6 +33,7 @@ import {
 import { setLanguage } from "@/lib/redux/features/app-slice"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { isSupportedLanguage, SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/lib/i18n/languages"
+import { createUuid } from "@/lib/utils/random-id"
 import {
   getFormAssistantGreeting,
   getProfileAwareFormAssistantGreeting,
@@ -349,7 +350,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
   // Stable ID for this chat session — either the provided applicationId or a fresh UUID.
   // Using useState guarantees it never changes across re-renders.
   const [sessionApplicationId] = useState<string>(
-    () => applicationId ?? crypto.randomUUID(),
+    () => applicationId ?? createUuid(),
   )
 
   // ── Local field mirror ────────────────────────────────────────────────────
@@ -435,7 +436,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
 
     setMessages([
       {
-        id: crypto.randomUUID(),
+        id: createUuid(),
         type: "text",
         role: "assistant",
         content: greeting,
@@ -454,7 +455,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
       setMessages((prev) => [
         ...prev,
         {
-          id: crypto.randomUUID(),
+          id: createUuid(),
           type: "upload_prompt",
           role: "assistant",
           content:
@@ -537,13 +538,13 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
           if (data.ok && data.reply) {
             setMessages((prev) => [
               ...prev,
-              { id: crypto.randomUUID(), type: "text" as const, role: "assistant" as const, content: data.reply },
+              { id: createUuid(), type: "text" as const, role: "assistant" as const, content: data.reply },
             ])
           } else {
             // API returned ok:false or empty reply — show a nudge so the user isn't stuck
             setMessages((prev) => [
               ...prev,
-              { id: crypto.randomUUID(), type: "text" as const, role: "assistant" as const, content: getFormAssistantGreeting(language) },
+              { id: createUuid(), type: "text" as const, role: "assistant" as const, content: getFormAssistantGreeting(language) },
             ])
           }
         } else {
@@ -553,7 +554,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
         // Surface a short nudge so the user knows they can continue typing
         setMessages((prev) => [
           ...prev,
-          { id: crypto.randomUUID(), type: "text" as const, role: "assistant" as const, content: "I'm ready to continue. What would you like to tell me next?" },
+          { id: createUuid(), type: "text" as const, role: "assistant" as const, content: "I'm ready to continue. What would you like to tell me next?" },
         ])
       } finally {
         setIsLoading(false)
@@ -643,7 +644,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
         const isNo = /^(no|nope|nah|non|não|nò|không|не)/.test(normalized)
 
         const userMessage: TextMessage = {
-          id: crypto.randomUUID(),
+          id: createUuid(),
           type: "text",
           role: "user",
           content: trimmed,
@@ -660,7 +661,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
           const confirmMsg = getProfilePreFillConfirmation(appliedLabels, language)
           setMessages((prev) => [
             ...prev,
-            { id: crypto.randomUUID(), type: "text", role: "assistant", content: confirmMsg },
+            { id: createUuid(), type: "text", role: "assistant", content: confirmMsg },
           ])
           // "confirming" triggers a useEffect below that auto-calls the LLM
           // to ask the first missing question. This ensures the LLM's question
@@ -673,7 +674,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
           const declineMsg = getProfilePreFillDeclineResponse(language)
           setMessages((prev) => [
             ...prev,
-            { id: crypto.randomUUID(), type: "text", role: "assistant", content: declineMsg },
+            { id: createUuid(), type: "text", role: "assistant", content: declineMsg },
           ])
         }
 
@@ -697,7 +698,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
       setInputError("")
 
       const userMessage: TextMessage = {
-        id: crypto.randomUUID(),
+        id: createUuid(),
         type: "text",
         role: "user",
         content: trimmed,
@@ -850,7 +851,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
                     setMessages((prev) => [
                       ...prev,
                       {
-                        id: crypto.randomUUID(),
+                        id: createUuid(),
                         type: "text" as const,
                         role: "assistant" as const,
                         content: `✅ Address verified: **${s.displayName}**${s.county ? ` (${s.county})` : ""}`,
@@ -860,7 +861,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
                     setMessages((prev) => [
                       ...prev,
                       {
-                        id: crypto.randomUUID(),
+                        id: createUuid(),
                         type: "text" as const,
                         role: "assistant" as const,
                         content: addrData.suggestion
@@ -885,7 +886,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
         setMessages((prev) => [
           ...prev,
           {
-            id: crypto.randomUUID(),
+            id: createUuid(),
             type: "text",
             role: "assistant",
             content: data.reply,
@@ -895,7 +896,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
         setMessages((prev) => [
           ...prev,
           {
-            id: crypto.randomUUID(),
+            id: createUuid(),
             type: "text",
             role: "assistant",
             content: "I'm having trouble connecting right now. Please try again in a moment.",

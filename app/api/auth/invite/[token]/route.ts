@@ -7,7 +7,7 @@
 
 import { NextResponse } from "next/server"
 import { getDbPool } from "@/lib/db/server"
-import { getInvitationByToken, acceptInvitation } from "@/lib/db/invitations"
+import { claimInvitationByToken, getInvitationByToken } from "@/lib/db/invitations"
 
 export const runtime = "nodejs"
 
@@ -65,19 +65,6 @@ export async function POST(
     )
   }
 
-  // Verify invitation
-  const invitation = await getInvitationByToken(token)
-  if (!invitation) {
-    return NextResponse.json({ ok: false, error: "Invitation not found." }, { status: 404 })
-  }
-  if (invitation.accepted_at) {
-    return NextResponse.json({ ok: false, error: "This invitation has already been used." }, { status: 410 })
-  }
-  if (new Date(invitation.expires_at) < new Date()) {
-    return NextResponse.json({ ok: false, error: "This invitation has expired." }, { status: 410 })
-  }
-
-  const email = invitation.email
   const firstName = body.firstName?.trim() || null
   const lastName = body.lastName?.trim() || null
   const password = body.password
@@ -88,17 +75,40 @@ export async function POST(
   try {
     await client.query("BEGIN")
 
+    const invitation = await getInvitationByToken(token, client)
+    if (!invitation) {
+      await client.query("ROLLBACK")
+      return NextResponse.json({ ok: false, error: "Invitation not found." }, { status: 404 })
+    }
+    if (invitation.accepted_at) {
+      await client.query("ROLLBACK")
+      return NextResponse.json({ ok: false, error: "This invitation has already been used." }, { status: 410 })
+    }
+    if (new Date(invitation.expires_at) < new Date()) {
+      await client.query("ROLLBACK")
+      return NextResponse.json({ ok: false, error: "This invitation has expired." }, { status: 410 })
+    }
+
+    const claimedInvitation = await claimInvitationByToken(token, client)
+    if (!claimedInvitation) {
+      await client.query("ROLLBACK")
+      return NextResponse.json(
+        { ok: false, error: "This invitation is no longer available." },
+        { status: 409 },
+      )
+    }
+
     // Check if auth user already exists for this email
     const existingAuth = await client.query<{ id: string }>(
       `SELECT id FROM auth.users WHERE lower(email) = $1 AND deleted_at IS NULL LIMIT 1`,
-      [email.toLowerCase()],
+      [claimedInvitation.email.toLowerCase()],
     )
 
     let resolvedUserId: string | null = existingAuth.rows[0]?.id ?? null
 
     const appMeta = { provider: "email", providers: ["email"] }
     const userMeta = {
-      email,
+      email: claimedInvitation.email,
       first_name: firstName ?? "",
       last_name: lastName ?? "",
       email_verified: true,
@@ -130,7 +140,13 @@ export async function POST(
           )
           RETURNING id
         `,
-        [DEFAULT_INSTANCE_ID, email, password, JSON.stringify(appMeta), JSON.stringify(userMeta)],
+        [
+          DEFAULT_INSTANCE_ID,
+          claimedInvitation.email,
+          password,
+          JSON.stringify(appMeta),
+          JSON.stringify(userMeta),
+        ],
       )
       resolvedUserId = createResult.rows[0]?.id ?? null
     } else {
@@ -171,7 +187,7 @@ export async function POST(
               is_active  = true,
               company_id = COALESCE(EXCLUDED.company_id, public.users.company_id)
       `,
-      [resolvedUserId, email, invitation.company_id ?? null],
+      [resolvedUserId, claimedInvitation.email, claimedInvitation.company_id ?? null],
     )
 
     // Upsert public.applicants (name)
@@ -187,12 +203,12 @@ export async function POST(
     )
 
     // Assign the role from the invitation
-    if (invitation.role) {
+    if (claimedInvitation.role) {
       await client.query(
         `
           INSERT INTO public.roles (name) VALUES ($1) ON CONFLICT (name) DO NOTHING
         `,
-        [invitation.role],
+        [claimedInvitation.role],
       )
       await client.query(
         `
@@ -200,16 +216,13 @@ export async function POST(
           SELECT $1::uuid, r.id FROM public.roles r WHERE r.name = $2
           ON CONFLICT DO NOTHING
         `,
-        [resolvedUserId, invitation.role],
+        [resolvedUserId, claimedInvitation.role],
       )
     }
 
-    // Mark invitation accepted
-    await acceptInvitation(token)
-
     await client.query("COMMIT")
 
-    return NextResponse.json({ ok: true, email })
+    return NextResponse.json({ ok: true, email: claimedInvitation.email })
   } catch (error) {
     await client.query("ROLLBACK")
     console.error("[invite/accept]", error)

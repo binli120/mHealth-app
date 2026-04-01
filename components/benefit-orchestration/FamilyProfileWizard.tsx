@@ -43,6 +43,7 @@ import { type SupportedLanguage } from "@/lib/i18n/languages"
 import { getMessage } from "@/lib/i18n/messages"
 import { useAppSelector } from "@/lib/redux/hooks"
 import { getSafeSupabaseSession } from "@/lib/supabase/client"
+import { createUuid } from "@/lib/utils/random-id"
 
 const STEP_LABELS = [
   { key: "bsStep0", icon: User },
@@ -83,7 +84,7 @@ function IncomeSection({
 }
 
 const emptyMember = (): HouseholdMemberProfile => ({
-  id: crypto.randomUUID(),
+  id: createUuid(),
   firstName: "",
   relationship: "child",
   age: 0,

@@ -78,7 +78,19 @@ CREATE POLICY sessions_select
 -- Only the SW (or staff) can create a session
 CREATE POLICY sessions_insert
   ON public.collaborative_sessions FOR INSERT TO authenticated
-  WITH CHECK (sw_user_id = public.request_user_id() OR public.is_staff());
+  WITH CHECK (
+    public.is_staff()
+    OR (
+      sw_user_id = public.request_user_id()
+      AND EXISTS (
+        SELECT 1
+        FROM public.patient_social_worker_access psa
+        WHERE psa.patient_user_id = patient_user_id
+          AND psa.social_worker_user_id = sw_user_id
+          AND psa.is_active = true
+      )
+    )
+  );
 
 -- SW or patient can update status (accept, decline, start, end)
 CREATE POLICY sessions_update

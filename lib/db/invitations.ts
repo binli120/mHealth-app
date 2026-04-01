@@ -5,6 +5,8 @@
 
 import "server-only"
 
+import type { Pool, PoolClient } from "pg"
+
 import { getDbPool } from "@/lib/db/server"
 
 export interface Invitation {
@@ -18,6 +20,12 @@ export interface Invitation {
   accepted_at: string | null
   expires_at: string
   created_at: string
+}
+
+type Queryable = Pool | PoolClient
+
+function getQueryable(queryable?: Queryable): Queryable {
+  return queryable ?? getDbPool()
 }
 
 /** Create a new invitation record and return the token. */
@@ -45,9 +53,11 @@ export async function createInvitation(opts: {
 }
 
 /** Look up an invitation by token — returns null if not found. */
-export async function getInvitationByToken(token: string): Promise<Invitation | null> {
-  const pool = getDbPool()
-  const result = await pool.query<Invitation>(
+export async function getInvitationByToken(
+  token: string,
+  queryable?: Queryable,
+): Promise<Invitation | null> {
+  const result = await getQueryable(queryable).query<Invitation>(
     `
       SELECT
         inv.id, inv.email, inv.company_id, c.name AS company_name,
@@ -63,13 +73,34 @@ export async function getInvitationByToken(token: string): Promise<Invitation | 
   return result.rows[0] ?? null
 }
 
-/** Mark an invitation as accepted. */
-export async function acceptInvitation(token: string): Promise<void> {
-  const pool = getDbPool()
-  await pool.query(
-    `UPDATE public.invitations SET accepted_at = now() WHERE token = $1`,
+/** Claim an invitation atomically inside an existing transaction. */
+export async function claimInvitationByToken(
+  token: string,
+  queryable?: Queryable,
+): Promise<Invitation | null> {
+  const result = await getQueryable(queryable).query<Invitation>(
+    `
+      UPDATE public.invitations inv
+      SET accepted_at = now()
+      WHERE inv.token = $1
+        AND inv.accepted_at IS NULL
+        AND inv.expires_at > now()
+      RETURNING
+        inv.id,
+        inv.email,
+        inv.company_id,
+        NULL::text AS company_name,
+        inv.role,
+        inv.token,
+        inv.invited_by,
+        inv.accepted_at,
+        inv.expires_at,
+        inv.created_at
+    `,
     [token],
   )
+
+  return result.rows[0] ?? null
 }
 
 /** List all pending (not accepted, not expired) invitations for a company. */

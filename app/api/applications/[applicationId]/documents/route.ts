@@ -7,9 +7,15 @@ import { NextResponse } from "next/server"
 import { randomUUID } from "crypto"
 
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
-import { insertDocument, listDocumentsByApplication } from "@/lib/db/documents"
 import {
+  insertDocument,
+  listDocumentsByApplication,
+  userCanAccessApplication,
+} from "@/lib/db/documents"
+import {
+  deleteFromStorage,
   uploadDocumentToStorage,
+  getSignedDocumentUrls,
   getSignedDocumentUrl,
   buildStoragePath,
 } from "@/lib/supabase/storage"
@@ -65,22 +71,17 @@ export async function GET(request: Request, context: RouteContext) {
 
     const accessToken = extractBearerToken(request)
     const docs = await listDocumentsByApplication(authResult.userId, applicationId)
-
-    // Attach a fresh signed URL to each document so the client can display/download files
-    const docsWithUrls = await Promise.all(
-      docs.map(async (doc) => {
-        if (!doc.filePath) return { ...doc, signedUrl: null }
-        try {
-          const signedUrl = await getSignedDocumentUrl({
-            accessToken,
-            storagePath: doc.filePath,
-          })
-          return { ...doc, signedUrl }
-        } catch {
-          return { ...doc, signedUrl: null }
-        }
-      }),
-    )
+    const uniquePaths = docs
+      .map((doc) => doc.filePath)
+      .filter((path): path is string => Boolean(path))
+    const signedUrlMap = await getSignedDocumentUrls({
+      accessToken,
+      storagePaths: uniquePaths,
+    })
+    const docsWithUrls = docs.map((doc) => ({
+      ...doc,
+      signedUrl: doc.filePath ? signedUrlMap[doc.filePath] ?? null : null,
+    }))
 
     return NextResponse.json({ ok: true, documents: docsWithUrls })
   } catch (error) {
@@ -115,6 +116,13 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json(
         { ok: false, error: "applicationId must be a valid UUID." },
         { status: 400 },
+      )
+    }
+
+    if (!(await userCanAccessApplication(authResult.userId, applicationId))) {
+      return NextResponse.json(
+        { ok: false, error: "Application not found or not accessible." },
+        { status: 403 },
       )
     }
 
@@ -183,42 +191,30 @@ export async function POST(request: Request, context: RouteContext) {
       storagePath,
     })
 
-    // 2. Persist document record in PostgreSQL
-    //    Note: we INSERT with a generated documentId so the record ID matches
-    //    the storage path segment.  The DB uses gen_random_uuid() by default,
-    //    so we pass our pre-generated ID via the INSERT explicitly.
-    const pool = (await import("@/lib/db/server")).getDbPool()
-    const { rows } = await pool.query(
-      `
-        INSERT INTO public.documents (
-          id,
-          application_id,
-          uploaded_by,
-          document_type,
-          required_document_label,
-          file_name,
-          file_path,
-          file_size_bytes,
-          mime_type,
-          document_status
-        )
-        VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7, $8, $9, 'uploaded')
-        RETURNING *
-      `,
-      [
-        documentId,
-        applicationId,
-        authResult.userId,
-        documentType ?? null,
-        requiredDocumentLabel ?? null,
-        fileEntry.name,
-        storagePath,
-        fileEntry.size,
-        fileEntry.type,
-      ],
-    )
+    // 2. Persist document record in PostgreSQL with an ownership check.
+    const document = await insertDocument({
+      id: documentId,
+      applicationId,
+      uploadedBy: authResult.userId,
+      documentType,
+      requiredDocumentLabel,
+      fileName: fileEntry.name,
+      filePath: storagePath,
+      fileSizeBytes: fileEntry.size,
+      mimeType: fileEntry.type,
+    })
 
-    const document = rows[0] as Record<string, unknown>
+    if (!document) {
+      try {
+        await deleteFromStorage({ accessToken, storagePaths: [storagePath] })
+      } catch {
+        // Best-effort cleanup for an upload that failed authorization at insert time.
+      }
+      return NextResponse.json(
+        { ok: false, error: "Application not found or not accessible." },
+        { status: 403 },
+      )
+    }
 
     // 3. Generate a signed URL for the freshly uploaded file
     let signedUrl: string | null = null
@@ -232,17 +228,17 @@ export async function POST(request: Request, context: RouteContext) {
       {
         ok: true,
         document: {
-          id: String(document.id),
-          applicationId: String(document.application_id),
-          uploadedBy: (document.uploaded_by as string | null) ?? null,
-          documentType: (document.document_type as string | null) ?? null,
-          requiredDocumentLabel: (document.required_document_label as string | null) ?? null,
-          fileName: (document.file_name as string | null) ?? null,
-          filePath: (document.file_path as string | null) ?? null,
-          fileSizeBytes: document.file_size_bytes != null ? Number(document.file_size_bytes) : null,
-          mimeType: (document.mime_type as string | null) ?? null,
-          documentStatus: String(document.document_status ?? "uploaded"),
-          uploadedAt: String(document.uploaded_at),
+          id: document.id,
+          applicationId: document.applicationId,
+          uploadedBy: document.uploadedBy,
+          documentType: document.documentType,
+          requiredDocumentLabel: document.requiredDocumentLabel,
+          fileName: document.fileName,
+          filePath: document.filePath,
+          fileSizeBytes: document.fileSizeBytes,
+          mimeType: document.mimeType,
+          documentStatus: document.documentStatus,
+          uploadedAt: document.uploadedAt,
           signedUrl,
         },
       },

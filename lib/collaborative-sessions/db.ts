@@ -88,13 +88,20 @@ const NAME_SELECT = `
 
 // ── Session CRUD ─────────────────────────────────────────────────────────────
 
-export async function createSession(input: CreateSessionInput): Promise<SessionSummary> {
+export async function createSession(input: CreateSessionInput): Promise<SessionSummary | null> {
   const pool = getDbPool()
   const { rows } = await pool.query<SessionQueryRow>(
     `WITH ins AS (
        INSERT INTO collaborative_sessions
          (sw_user_id, patient_user_id, scheduled_at, invite_message)
-       VALUES ($1, $2, $3, $4)
+       SELECT $1, $2, $3, $4
+       WHERE EXISTS (
+         SELECT 1
+         FROM public.patient_social_worker_access psa
+         WHERE psa.patient_user_id = $2::uuid
+           AND psa.social_worker_user_id = $1::uuid
+           AND psa.is_active = true
+       )
        RETURNING *
      )
      SELECT
@@ -104,7 +111,7 @@ export async function createSession(input: CreateSessionInput): Promise<SessionS
      ${NAME_JOIN}`,
     [input.swUserId, input.patientUserId, input.scheduledAt ?? null, input.inviteMessage ?? null],
   )
-  return rowToSummary(rows[0])
+  return rows[0] ? rowToSummary(rows[0]) : null
 }
 
 export async function getSession(sessionId: string): Promise<SessionSummary | null> {

@@ -5,6 +5,7 @@
 
 import "server-only"
 
+import { createHmac, timingSafeEqual } from "crypto"
 import { NextResponse } from "next/server"
 
 import { isLocalAuthHelperEnabled } from "@/lib/auth/local-auth"
@@ -12,6 +13,8 @@ import { logServerError } from "@/lib/server/logger"
 import { getSupabaseServerClient } from "@/lib/supabase/server"
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "0.0.0.0", "::1"])
+const LOCAL_DEV_JWT_SECRET = "super-secret-jwt-token-with-at-least-32-characters-long"
 
 function parseBearerToken(headerValue: string | null): string | null {
   if (!headerValue) {
@@ -53,30 +56,94 @@ function extractAccessToken(request: Request): string | null {
   return parseCookieValue(request.headers.get("cookie"), "sb-access-token")
 }
 
-function parseJwtPayload(token: string): Record<string, unknown> | null {
-  const parts = token.split(".")
-  if (parts.length < 2) {
-    return null
-  }
-
+function decodeBase64Url(input: string): string | null {
   try {
-    const normalized = parts[1].replace(/-/g, "+").replace(/_/g, "/")
+    const normalized = input.replace(/-/g, "+").replace(/_/g, "/")
     const padded = normalized + "=".repeat((4 - (normalized.length % 4 || 4)) % 4)
-    const decoded = Buffer.from(padded, "base64").toString("utf8")
-    const parsed = JSON.parse(decoded) as unknown
-    return typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>) : null
+    return Buffer.from(padded, "base64").toString("utf8")
   } catch {
     return null
   }
 }
 
-function extractLocalFallbackUserId(token: string): string | null {
-  if (!isLocalAuthHelperEnabled()) {
+function parseJwtParts(token: string): {
+  header: Record<string, unknown>
+  payload: Record<string, unknown>
+  signingInput: string
+  signature: string
+} | null {
+  const parts = token.split(".")
+  if (parts.length !== 3) {
     return null
   }
 
-  const payload = parseJwtPayload(token)
-  if (!payload) {
+  try {
+    const headerJson = decodeBase64Url(parts[0])
+    const payloadJson = decodeBase64Url(parts[1])
+
+    if (!headerJson || !payloadJson) {
+      return null
+    }
+
+    const header = JSON.parse(headerJson) as unknown
+    const payload = JSON.parse(payloadJson) as unknown
+    if (
+      typeof header !== "object" ||
+      header === null ||
+      typeof payload !== "object" ||
+      payload === null
+    ) {
+      return null
+    }
+
+    return {
+      header: header as Record<string, unknown>,
+      payload: payload as Record<string, unknown>,
+      signingInput: `${parts[0]}.${parts[1]}`,
+      signature: parts[2],
+    }
+  } catch {
+    return null
+  }
+}
+
+function isLocalRequest(request: Request): boolean {
+  try {
+    const url = new URL(request.url)
+    return LOCAL_HOSTS.has(url.hostname)
+  } catch {
+    return false
+  }
+}
+
+function verifyHs256JwtSignature(signingInput: string, signature: string, secret: string): boolean {
+  const expected = createHmac("sha256", secret).update(signingInput).digest("base64url")
+  const actualBuffer = Buffer.from(signature)
+  const expectedBuffer = Buffer.from(expected)
+
+  return (
+    actualBuffer.length === expectedBuffer.length &&
+    timingSafeEqual(actualBuffer, expectedBuffer)
+  )
+}
+
+function extractLocalFallbackUserId(request: Request, token: string): string | null {
+  if (!isLocalAuthHelperEnabled() || !isLocalRequest(request)) {
+    return null
+  }
+
+  const parsedToken = parseJwtParts(token)
+  if (!parsedToken) {
+    return null
+  }
+
+  const { header, payload, signingInput, signature } = parsedToken
+  if (header.alg !== "HS256") {
+    return null
+  }
+
+  const jwtSecret = process.env.SUPABASE_JWT_SECRET || LOCAL_DEV_JWT_SECRET
+  if (!verifyHs256JwtSignature(signingInput, signature, jwtSecret)) {
     return null
   }
 
@@ -87,6 +154,21 @@ function extractLocalFallbackUserId(token: string): string | null {
 
   const exp = payload.exp
   if (typeof exp === "number" && Number.isFinite(exp) && exp * 1000 <= Date.now()) {
+    return null
+  }
+
+  const audience = typeof payload.aud === "string" ? payload.aud : null
+  if (audience !== "authenticated") {
+    return null
+  }
+
+  const issuer = typeof payload.iss === "string" ? payload.iss : null
+  const allowedIssuers = new Set(
+    [process.env.SUPABASE_JWT_ISSUER, process.env.JWT_ISSUER, "supabase-demo"].filter(
+      (value): value is string => Boolean(value),
+    ),
+  )
+  if (!issuer || !allowedIssuers.has(issuer)) {
     return null
   }
 
@@ -119,7 +201,7 @@ export async function requireAuthenticatedUser(
     }
   }
 
-  const localFallbackUserId = extractLocalFallbackUserId(token)
+  const localFallbackUserId = extractLocalFallbackUserId(request, token)
 
   try {
     const { data, error } = await getSupabaseServerClient().auth.getUser(token)

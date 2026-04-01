@@ -53,8 +53,29 @@ export interface ScreenerData {
 
 export type EligibilityStatus = 'likely' | 'possibly' | 'unlikely'
 export type EligibilityColor = 'green' | 'yellow' | 'red' | 'blue' | 'gray'
+export type EligibilityResultCode =
+  | "not_eligible_non_ma"
+  | "masshealth_limited"
+  | "pregnancy_undocumented_standard"
+  | "pregnancy_standard"
+  | "child_standard"
+  | "family_assistance_chip"
+  | "health_connector_child_plans"
+  | "adult_disability_standard"
+  | "careplus"
+  | "connectorcare"
+  | "federal_tax_credits"
+  | "employer_or_connector"
+  | "medicare_savings_program_adult"
+  | "employer_sponsored_insurance"
+  | "dual_eligible_standard"
+  | "medicare_savings_program_senior"
+  | "medigap_plans"
+  | "senior_no_medicare_standard"
+  | "full_application_recommended"
 
 export interface EligibilityResult {
+  code: EligibilityResultCode
   program: string
   status: EligibilityStatus
   tagline: string
@@ -94,6 +115,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
       summary: 'MassHealth is only available to Massachusetts residents.',
       results: [
         {
+          code: "not_eligible_non_ma",
           program: 'Not Eligible for MassHealth',
           status: 'unlikely',
           tagline: 'You must reside in Massachusetts to apply.',
@@ -111,6 +133,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
   // ── Undocumented Status ──────────────────────────────────────────────────
   if (data.citizenshipStatus === 'undocumented') {
     results.push({
+      code: "masshealth_limited",
       program: 'MassHealth Limited',
       status: 'likely',
       tagline: 'Emergency and pregnancy services regardless of immigration status.',
@@ -124,6 +147,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
 
     if (data.isPregnant) {
       results.push({
+        code: "pregnancy_undocumented_standard",
         program: 'MassHealth Standard – Pregnancy',
         status: 'likely',
         tagline: 'Full prenatal and delivery coverage available.',
@@ -142,6 +166,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
   // ── PREGNANT (any qualified status, up to 200% FPL) ─────────────────────
   if (data.isPregnant && isQualifiedImmigrant && fplPct <= 200) {
     results.push({
+      code: "pregnancy_standard",
       program: 'MassHealth Standard – Pregnancy',
       status: 'likely',
       tagline: `At ${fplPct}% FPL — full prenatal, delivery & 12-month postpartum coverage.`,
@@ -158,6 +183,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
   if (data.age < 19 && isQualifiedImmigrant) {
     if (fplPct <= 150) {
       results.push({
+        code: "child_standard",
         program: 'MassHealth Standard',
         status: 'likely',
         tagline: `At ${fplPct}% FPL — full Medicaid coverage, $0 premiums.`,
@@ -170,6 +196,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
       })
     } else if (fplPct <= 300) {
       results.push({
+        code: "family_assistance_chip",
         program: 'MassHealth Family Assistance (CHIP)',
         status: 'likely',
         tagline: `At ${fplPct}% FPL — low-cost children's coverage through CHIP.`,
@@ -182,6 +209,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
       })
     } else {
       results.push({
+        code: "health_connector_child_plans",
         program: 'Health Connector Plans',
         status: 'possibly',
         tagline: `At ${fplPct}% FPL — marketplace plans with potential tax credits.`,
@@ -202,6 +230,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
     // Adults with disability/SSI at ≤133% FPL → MassHealth Standard
     if (data.hasDisability && fplPct <= 133) {
       results.push({
+        code: "adult_disability_standard",
         program: 'MassHealth Standard',
         status: 'likely',
         tagline: `Disability + income at ${fplPct}% FPL — full Medicaid coverage.`,
@@ -218,6 +247,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
     // 133% FPL + 5% income disregard = effectively 138%
     if (!data.hasMedicare && fplPct <= 138 && !results.some(r => r.program === 'MassHealth Standard')) {
       results.push({
+        code: "careplus",
         program: 'MassHealth CarePlus',
         status: 'likely',
         tagline: `At ${fplPct}% FPL — free Medicaid for adults, no premiums.`,
@@ -233,6 +263,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
     // ConnectorCare — subsidized marketplace, 139–300% FPL
     if (!data.hasMedicare && fplPct > 138 && fplPct <= 300) {
       results.push({
+        code: "connectorcare",
         program: 'ConnectorCare',
         status: 'likely',
         tagline: `At ${fplPct}% FPL — subsidized plans through MA Health Connector.`,
@@ -248,6 +279,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
     // Federal premium tax credits, 300–400% FPL (or higher if extended)
     if (!data.hasMedicare && fplPct > 300 && fplPct <= 500) {
       results.push({
+        code: "federal_tax_credits",
         program: 'Health Connector with Federal Tax Credits',
         status: 'likely',
         tagline: `At ${fplPct}% FPL — federal premium subsidies may apply.`,
@@ -263,6 +295,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
     // Above subsidy threshold
     if (!data.hasMedicare && fplPct > 500) {
       results.push({
+        code: "employer_or_connector",
         program: 'Health Connector or Employer Plans',
         status: 'possibly',
         tagline: `At ${fplPct}% FPL — unsubsidized marketplace or employer coverage.`,
@@ -278,6 +311,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
     // Medicare + low income → Medicare Savings Program
     if (data.hasMedicare && fplPct <= 135) {
       results.push({
+        code: "medicare_savings_program_adult",
         program: 'Medicare Savings Program',
         status: 'likely',
         tagline: `Medicare + income at ${fplPct}% FPL — help paying Medicare costs.`,
@@ -293,6 +327,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
     // Employer insurance note
     if (data.hasEmployerInsurance && fplPct > 138) {
       results.push({
+        code: "employer_sponsored_insurance",
         program: 'Employer-Sponsored Insurance',
         status: 'likely',
         tagline: 'Your employer coverage may be the most affordable option.',
@@ -312,6 +347,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
       // Dual eligible: MassHealth Standard pays Medicare cost-sharing
       if (fplPct <= 100) {
         results.push({
+          code: "dual_eligible_standard",
           program: 'MassHealth Standard (Dual Eligible)',
           status: 'likely',
           tagline: `At ${fplPct}% FPL — MassHealth covers what Medicare doesn't.`,
@@ -327,6 +363,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
       // Medicare Savings Program
       if (fplPct <= 135) {
         results.push({
+          code: "medicare_savings_program_senior",
           program: 'Medicare Savings Program',
           status: 'likely',
           tagline: `At ${fplPct}% FPL — MassHealth pays your Medicare premiums.`,
@@ -341,6 +378,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
 
       if (fplPct > 135) {
         results.push({
+          code: "medigap_plans",
           program: 'Medicare Supplement (Medigap) Plans',
           status: 'possibly',
           tagline: `At ${fplPct}% FPL — explore Medigap to cover Medicare gaps.`,
@@ -355,6 +393,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
     } else {
       // 65+ without Medicare (uncommon)
       results.push({
+        code: "senior_no_medicare_standard",
         program: 'MassHealth Standard',
         status: 'possibly',
         tagline: 'Coverage while you gain Medicare eligibility.',
@@ -371,6 +410,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
   // ── Fallback ─────────────────────────────────────────────────────────────
   if (results.length === 0) {
     results.push({
+      code: "full_application_recommended",
       program: 'Full Application Recommended',
       status: 'possibly',
       tagline: 'A full application will determine your exact eligibility.',

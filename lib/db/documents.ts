@@ -26,6 +26,18 @@ export interface DocumentRecord {
   uploadedAt: string
 }
 
+export interface InsertDocumentParams {
+  id?: string
+  applicationId: string
+  uploadedBy: string
+  documentType?: string
+  requiredDocumentLabel?: string
+  fileName: string
+  filePath: string
+  fileSizeBytes: number
+  mimeType: string
+}
+
 // ---------------------------------------------------------------------------
 // Row mapper
 // ---------------------------------------------------------------------------
@@ -56,21 +68,38 @@ function toRecord(row: Record<string, unknown>): DocumentRecord {
  * Insert a new document record after the file has been stored.
  * `filePath` is the Supabase Storage object path.
  */
-export async function insertDocument(params: {
-  applicationId: string
-  uploadedBy: string
-  documentType?: string
-  requiredDocumentLabel?: string
-  fileName: string
-  filePath: string
-  fileSizeBytes: number
-  mimeType: string
-}): Promise<DocumentRecord> {
+export async function userCanAccessApplication(userId: string, applicationId: string): Promise<boolean> {
   const pool = getDbPool()
+  const { rows } = await pool.query<{ has_access: boolean }>(
+    `
+      SELECT EXISTS (
+        SELECT 1
+        FROM public.applications a
+        JOIN public.applicants ap ON ap.id = a.applicant_id
+        WHERE a.id = $1::uuid
+          AND ap.user_id = $2::uuid
+      ) AS has_access
+    `,
+    [applicationId, userId],
+  )
 
+  return rows[0]?.has_access ?? false
+}
+
+export async function insertDocument(params: InsertDocumentParams): Promise<DocumentRecord | null> {
+  const pool = getDbPool()
   const { rows } = await pool.query(
     `
+      WITH accessible_application AS (
+        SELECT a.id
+        FROM public.applications a
+        JOIN public.applicants ap ON ap.id = a.applicant_id
+        WHERE a.id = $2::uuid
+          AND ap.user_id = $3::uuid
+        LIMIT 1
+      )
       INSERT INTO public.documents (
+        id,
         application_id,
         uploaded_by,
         document_type,
@@ -81,10 +110,22 @@ export async function insertDocument(params: {
         mime_type,
         document_status
       )
-      VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6, $7, $8, 'uploaded')
+      SELECT
+        COALESCE($1::uuid, gen_random_uuid()),
+        accessible_application.id,
+        $3::uuid,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9,
+        'uploaded'
+      FROM accessible_application
       RETURNING *
     `,
     [
+      params.id ?? null,
       params.applicationId,
       params.uploadedBy,
       params.documentType ?? null,
@@ -96,7 +137,7 @@ export async function insertDocument(params: {
     ],
   )
 
-  return toRecord(rows[0] as Record<string, unknown>)
+  return rows[0] ? toRecord(rows[0] as Record<string, unknown>) : null
 }
 
 /**

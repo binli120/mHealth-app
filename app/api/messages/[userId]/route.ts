@@ -13,7 +13,6 @@
 
 import { NextResponse } from "next/server"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
-import { getPatientSocialWorkers } from "@/lib/db/social-worker"
 import {
   getDirectMessages,
   markThreadRead,
@@ -21,7 +20,7 @@ import {
 } from "@/lib/db/sw-messaging"
 import { notifyNewDirectMessage } from "@/lib/notifications/service"
 import { logServerError } from "@/lib/server/logger"
-import { getSignedDocumentUrl } from "@/lib/supabase/storage"
+import { getSignedDocumentUrls } from "@/lib/supabase/storage"
 import { getDbPool } from "@/lib/db/server"
 
 export const runtime = "nodejs"
@@ -81,16 +80,15 @@ export async function GET(request: Request, { params }: Params) {
     })
 
     // Generate signed URLs for media messages (image, voice, file)
-    const messagesWithUrls = await Promise.all(
-      messages.map(async (msg) => {
-        if (!msg.storagePath) return msg
-        try {
-          const signedUrl = await getSignedDocumentUrl({ storagePath: msg.storagePath })
-          return { ...msg, signedUrl }
-        } catch {
-          return msg
-        }
-      }),
+    const signedUrlMap = await getSignedDocumentUrls({
+      storagePaths: messages
+        .map((message) => message.storagePath)
+        .filter((path): path is string => Boolean(path)),
+    })
+    const messagesWithUrls = messages.map((message) =>
+      message.storagePath
+        ? { ...message, signedUrl: signedUrlMap[message.storagePath] ?? null }
+        : message,
     )
 
     // Mark incoming messages as read

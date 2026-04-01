@@ -13,25 +13,12 @@ import { createApplication } from "@/lib/redux/features/application-slice"
 import { MASSHEALTH_APPLICATION_TYPES } from "@/lib/masshealth/application-types"
 import { useAppDispatch } from "@/lib/redux/hooks"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { createUuid } from "@/lib/utils/random-id"
 import { ArrowLeft, FileText, ChevronRight } from "lucide-react"
 import { ShieldHeartIcon } from "@/lib/icons"
 
 function createApplicationId() {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID()
-  }
-
-  if (typeof crypto === "undefined" || typeof crypto.getRandomValues !== "function") {
-    throw new Error("Secure random UUID generation is unavailable in this browser.")
-  }
-
-  const bytes = new Uint8Array(16)
-  crypto.getRandomValues(bytes)
-
-  bytes[6] = (bytes[6] & 0x0f) | 0x40
-  bytes[8] = (bytes[8] & 0x3f) | 0x80
-  const hex = Array.from(bytes, (item) => item.toString(16).padStart(2, "0")).join("")
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+  return createUuid()
 }
 
 export default function ApplicationTypePage() {

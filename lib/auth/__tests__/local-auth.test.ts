@@ -247,11 +247,11 @@ describe("isLocalAuthHelperEnabled — window.location.hostname branch (jsdom)",
 // Node.js / server-only context).  We stub window away to simulate that.
 
 describe("isLocalAuthHelperEnabled — NODE_ENV fallback (no window, no env vars)", () => {
-  it('returns true when NODE_ENV is "development"', () => {
+  it('returns false when NODE_ENV is "development"', () => {
     vi.stubGlobal("window", undefined)
     try {
       withEnv({ NODE_ENV: "development" }, () => {
-        expect(isLocalAuthHelperEnabled()).toBe(true)
+        expect(isLocalAuthHelperEnabled()).toBe(false)
       })
     } finally {
       vi.unstubAllGlobals()

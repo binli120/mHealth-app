@@ -58,6 +58,12 @@ export async function POST(request: Request) {
       scheduledAt: body.scheduledAt ?? null,
       inviteMessage: body.inviteMessage ?? null,
     })
+    if (!session) {
+      return NextResponse.json(
+        { ok: false, error: "An active patient relationship is required to create a session." },
+        { status: 403 },
+      )
+    }
 
     // Fire-and-forget invite notification
     notifySessionInvite(

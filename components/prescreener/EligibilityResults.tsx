@@ -8,7 +8,6 @@ import Link from "next/link"
 import { ConversationBubble } from "@/components/shared/ConversationBubble"
 import { Button } from "@/components/ui/button"
 import {
-  AlertCircle,
   ChevronRight,
   ExternalLink,
   Heart,
@@ -18,6 +17,13 @@ import type { EligibilityReport, ScreenerData } from "@/lib/eligibility-engine"
 import { FPL_TABLE_2026 } from "@/lib/eligibility-engine"
 import { colorConfig } from "@/app/prescreener/page.utils"
 import type { ChatMessage } from "@/app/prescreener/page.types"
+import {
+  formatPrescreenerCurrency,
+  formatPrescreenerInteger,
+  getPrescreenerCopy,
+} from "@/app/prescreener/prescreener-copy"
+import { getEligibilityBadgeLabel } from "@/app/prescreener/prescreener-results"
+import { type SupportedLanguage } from "@/lib/i18n/languages"
 
 // ─── Bot Avatar ────────────────────────────────────────────────────────────
 
@@ -52,24 +58,27 @@ export function ChatBubble({ message }: { message: ChatMessage }) {
 export function FPLReferenceTable({
   householdSize,
   fplPct,
+  language,
 }: {
   householdSize: number
   fplPct: number
+  language: SupportedLanguage
 }) {
   const row = FPL_TABLE_2026.find((r) => r.householdSize === Math.min(householdSize, 8))
   if (!row) return null
+  const copy = getPrescreenerCopy(language)
 
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-        2026 FPL Reference — Household of {householdSize}
+        {copy.householdReference(householdSize)}
       </p>
       <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
         {[
-          { label: "100% FPL", value: `$${row.annualFPL.toLocaleString()}/yr` },
-          { label: "138% FPL (Medicaid)", value: `$${row.pct138.toLocaleString()}/yr` },
-          { label: "200% FPL", value: `$${row.pct200.toLocaleString()}/yr` },
-          { label: "300% FPL", value: `$${row.pct300.toLocaleString()}/yr` },
+          { label: copy.fpl100, value: `${formatPrescreenerCurrency(row.annualFPL, language)}/yr` },
+          { label: copy.fpl138, value: `${formatPrescreenerCurrency(row.pct138, language)}/yr` },
+          { label: copy.fpl200, value: `${formatPrescreenerCurrency(row.pct200, language)}/yr` },
+          { label: copy.fpl300, value: `${formatPrescreenerCurrency(row.pct300, language)}/yr` },
         ].map((item) => (
           <div key={item.label} className="rounded-lg bg-secondary p-2 text-center">
             <p className="text-muted-foreground">{item.label}</p>
@@ -78,7 +87,7 @@ export function FPLReferenceTable({
         ))}
       </div>
       <p className="mt-2 text-xs text-muted-foreground text-center">
-        Your income is at <strong>{fplPct}% FPL</strong>
+        {copy.yourIncomeAt(fplPct)}
       </p>
     </div>
   )
@@ -90,12 +99,15 @@ export function ResultsPanel({
   report,
   screenerData,
   onReset,
+  language,
 }: {
   report: EligibilityReport
   screenerData: Partial<ScreenerData>
   onReset: () => void
+  language: SupportedLanguage
 }) {
   const topColor = report.results[0]?.color ?? "gray"
+  const copy = getPrescreenerCopy(language)
   const headerBg =
     topColor === "green"
       ? "bg-emerald-50 border-emerald-200"
@@ -110,19 +122,19 @@ export function ResultsPanel({
       {/* Summary card */}
       <div className={`rounded-2xl border p-5 ${headerBg}`}>
         <h2 className="text-base font-semibold text-foreground mb-1">
-          Pre-Screening Complete
+          {copy.resultsTitle}
         </h2>
         <p className="text-sm text-muted-foreground">{report.summary}</p>
         <div className="mt-3 flex flex-wrap gap-3 text-xs">
           <span className="rounded-full bg-white/70 border border-border px-3 py-1">
-            Household: <strong>{screenerData.householdSize ?? 1}</strong>
+            {copy.householdLabel}: <strong>{formatPrescreenerInteger(screenerData.householdSize ?? 1, language)}</strong>
           </span>
           <span className="rounded-full bg-white/70 border border-border px-3 py-1">
-            Annual Income:{" "}
-            <strong>${(screenerData.annualIncome ?? 0).toLocaleString()}</strong>
+            {copy.annualIncomeLabel}:{" "}
+            <strong>{formatPrescreenerCurrency(screenerData.annualIncome ?? 0, language)}</strong>
           </span>
           <span className="rounded-full bg-white/70 border border-border px-3 py-1">
-            Income Level:{" "}
+            {copy.incomeLevelLabel}:{" "}
             <strong>{report.fplPercent}% of FPL</strong>
           </span>
         </div>
@@ -131,7 +143,7 @@ export function ResultsPanel({
       {/* Program results */}
       <div className="space-y-3">
         {report.results.map((result, i) => {
-          const cfg = colorConfig(result.color)
+          const cfg = colorConfig(result.color, getEligibilityBadgeLabel(language, result.color))
           return (
             <div key={i} className={`rounded-xl border p-4 ${cfg.bg}`}>
               <div className="flex items-start gap-3">
@@ -170,29 +182,33 @@ export function ResultsPanel({
       </div>
 
       {/* FPL Reference */}
-      <FPLReferenceTable householdSize={screenerData.householdSize ?? 1} fplPct={report.fplPercent} />
+      <FPLReferenceTable
+        householdSize={screenerData.householdSize ?? 1}
+        fplPct={report.fplPercent}
+        language={language}
+      />
 
       {/* Actions */}
       <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-        <p className="text-sm font-medium text-foreground">Next Steps</p>
+        <p className="text-sm font-medium text-foreground">{copy.nextSteps}</p>
         <div className="grid gap-2 sm:grid-cols-2">
           <Link href="/application/new">
             <Button className="w-full gap-2">
-              Start Full Application
+              {copy.startFullApplication}
               <ChevronRight className="h-4 w-4" />
             </Button>
           </Link>
           <Button variant="outline" onClick={onReset} className="w-full gap-2">
             <RotateCcw className="h-4 w-4" />
-            Check Again
+            {copy.checkAgain}
           </Button>
         </div>
         <p className="text-xs text-muted-foreground text-center">
-          Call MassHealth at{" "}
+          {copy.callMassHealth}{" "}
           <a href="tel:18008412900" className="font-medium text-primary">
             1-800-841-2900
           </a>{" "}
-          (Mon–Fri, 8am–5pm) for personalized assistance.
+          {copy.supportHours}
         </p>
       </div>
     </div>

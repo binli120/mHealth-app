@@ -5,6 +5,7 @@
  * @author Bin Lee
  */
 
+import { createHmac } from "crypto"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
@@ -30,16 +31,22 @@ import { logServerError } from "@/lib/server/logger"
 
 const mockLocalAuth = vi.mocked(isLocalAuthHelperEnabled)
 const mockLogError  = vi.mocked(logServerError)
+const LOCAL_DEV_JWT_SECRET = "super-secret-jwt-token-with-at-least-32-characters-long"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const VALID_UUID = "550e8400-e29b-41d4-a716-446655440000"
 
-/** Build a minimal 3-part JWT with a base64url-encoded payload. */
-function makeJwt(payload: Record<string, unknown>): string {
+/** Build a minimal signed HS256 JWT with a base64url-encoded payload. */
+function makeJwt(payload: Record<string, unknown>, secret = LOCAL_DEV_JWT_SECRET): string {
   const header  = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url")
   const body    = Buffer.from(JSON.stringify(payload)).toString("base64url")
-  return `${header}.${body}.fakesignature`
+  const signature = signJwt(`${header}.${body}`, secret)
+  return `${header}.${body}.${signature}`
+}
+
+function signJwt(signingInput: string, secret: string): string {
+  return createHmac("sha256", secret).update(signingInput).digest("base64url")
 }
 
 /** A JWT whose subject is VALID_UUID and expires 1 hour from now. */
@@ -47,6 +54,8 @@ function validJwt(overrides: Record<string, unknown> = {}): string {
   return makeJwt({
     sub: VALID_UUID,
     exp: Math.floor(Date.now() / 1000) + 3600,
+    aud: "authenticated",
+    iss: "supabase-demo",
     ...overrides,
   })
 }
@@ -175,6 +184,21 @@ describe("requireAuthenticatedUser — Supabase error, local auth enabled", () =
   it("returns 401 when JWT is already expired (exp in the past)", async () => {
     const expiredToken = makeJwt({ sub: VALID_UUID, exp: Math.floor(Date.now() / 1000) - 60 })
     const result = await requireAuthenticatedUser(bearerRequest(expiredToken))
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.response.status).toBe(401)
+  })
+
+  it("returns 401 when the JWT signature is invalid", async () => {
+    const forgedToken = makeJwt(
+      {
+        sub: VALID_UUID,
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        aud: "authenticated",
+        iss: "supabase-demo",
+      },
+      "wrong-secret",
+    )
+    const result = await requireAuthenticatedUser(bearerRequest(forgedToken))
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.response.status).toBe(401)
   })

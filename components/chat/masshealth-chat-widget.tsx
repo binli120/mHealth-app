@@ -27,6 +27,7 @@ import {
 } from "@/lib/masshealth/chat-knowledge"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { OPEN_SW_CHAT_EVENT, type OpenSwChatDetail } from "@/lib/events/chat-events"
+import { createUuid } from "@/lib/utils/random-id"
 import type {
   WidgetView,
   ChatApiResponse,
@@ -37,10 +38,7 @@ import { SwFinderPanel } from "./sw-finder-panel"
 import { SwDirectChatPanel, type DirectMessage } from "./sw-direct-chat-panel"
 
 function createMessageId() {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID()
-  }
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+  return createUuid()
 }
 
 function createAssistantMessage(

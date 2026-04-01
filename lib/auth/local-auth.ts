@@ -39,19 +39,11 @@ function isLocalUrl(url: string | undefined): boolean | null {
   }
 }
 
-export function isLocalAuthHelperEnabled(): boolean {
-  const explicit =
-    parseBoolean(process.env.NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS) ??
-    parseBoolean(process.env.ENABLE_LOCAL_AUTH_HELPERS)
-
-  if (explicit !== null) {
-    return explicit
-  }
-
+function resolveLocalRuntime(): boolean {
   const bySupabaseUrl = isLocalUrl(
     process.env.NEXT_PUBLIC_SUPABASE_URL_LOCAL ||
-    process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    process.env.SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      process.env.SUPABASE_URL,
   )
   if (bySupabaseUrl !== null) {
     return bySupabaseUrl
@@ -68,5 +60,17 @@ export function isLocalAuthHelperEnabled(): boolean {
     return LOCAL_HOSTS.has(window.location.hostname)
   }
 
-  return process.env.NODE_ENV !== "production"
+  return process.env.NODE_ENV === "test"
+}
+
+export function isLocalAuthHelperEnabled(): boolean {
+  const explicit =
+    parseBoolean(process.env.NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS) ??
+    parseBoolean(process.env.ENABLE_LOCAL_AUTH_HELPERS)
+
+  if (explicit !== null) {
+    return explicit && resolveLocalRuntime()
+  }
+
+  return resolveLocalRuntime()
 }

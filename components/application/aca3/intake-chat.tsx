@@ -31,6 +31,7 @@ import { setApplicationWizardState } from "@/lib/redux/features/application-slic
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { hasFirstAndLastName } from "@/lib/utils/person-name"
 import { formatCurrency, formatPhoneNumber, formatSsn, parseCurrency } from "@/lib/utils/input-format"
+import { createUuid } from "@/lib/utils/random-id"
 import { normalizeNumberInput, parseDate, validateDobBounds } from "@/lib/utils/aca3-form"
 import { parsePastedUsAddress } from "@/lib/utils/address-parse"
 import { countHouseholdRelationshipMentions } from "@/lib/masshealth/household-relationships"
@@ -189,11 +190,7 @@ const UI_COPY: Record<SupportedLanguage, IntakeChatCopy> = {
 }
 
 function createMessageId() {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID()
-  }
-
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+  return createUuid()
 }
 
 function normalizeTwoDigitYear(year: number): number {

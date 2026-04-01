@@ -5,16 +5,19 @@
 
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { CheckCircle2, Download, Mail, Calendar, ArrowRight } from "lucide-react"
 import { ShieldHeartIcon } from "@/lib/icons"
+import { createUuid } from "@/lib/utils/random-id"
 
 const submittedDate = new Date().toLocaleDateString()
-const caseId = `MH-2024-${crypto.randomUUID().slice(0, 5).toUpperCase()}`
 
 export default function ConfirmationPage() {
+  const [caseId] = useState(() => `MH-2024-${createUuid().slice(0, 5).toUpperCase()}`)
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       {/* Header */}
