@@ -49,6 +49,7 @@ import {
 import { dispatchOpenSwChat } from "@/lib/events/chat-events"
 import { NotificationBell } from "@/components/notifications/NotificationBell"
 import { SessionInviteBanner } from "@/components/collaborative-sessions/SessionInviteBanner"
+import { IdentityVerificationBanner } from "@/components/identity/IdentityVerificationBanner"
 import { getSafeSupabaseUser } from "@/lib/supabase/client"
 import { ShieldHeartIcon } from "@/lib/icons"
 import { UserAvatar } from "@/components/shared/UserAvatar"
@@ -302,6 +303,9 @@ export default function CustomerDashboardPage() {
         </div>
 
         <SessionInviteBanner />
+
+        {/* Identity verification soft nudge — hidden once verified */}
+        <IdentityVerificationBanner className="mb-4" />
 
         {/* Row 1: primary actions */}
         <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

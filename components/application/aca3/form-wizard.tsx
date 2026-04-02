@@ -94,6 +94,8 @@ import {
   type CitizenshipStatus,
   type EligibilityIncomeInput,
 } from "@/lib/masshealth/aca3-eligibility-engine"
+import { IdentityVerificationBanner } from "@/components/identity/IdentityVerificationBanner"
+import { openScanner } from "@/lib/redux/features/identity-verification-slice"
 import type {
   AddressGroupFieldProps,
   AddressValidationResponse,
@@ -3248,6 +3250,8 @@ function ValidateAndSubmitStep({ onBackToReview, onGoToStep }: ValidateAndSubmit
   const { state, dispatch, applicationId, saveDraftNow } = useFormContext()
   const reduxDispatch = useAppDispatch()
   const validateStep = useStepValidation()
+  const identityStatus = useAppSelector((rootState) => rootState.identityVerification.status)
+  const identityVerified = identityStatus === "verified"
   const [findings, setFindings] = useState<ValidationPanelFinding[]>([])
   const [eligibilityResult, setEligibilityResult] = useState<Aca3EligibilityResult | null>(null)
   const [animatedRules, setAnimatedRules] = useState<AnimatedRuleResult[]>([])
@@ -3450,7 +3454,7 @@ function ValidateAndSubmitStep({ onBackToReview, onGoToStep }: ValidateAndSubmit
   const hasBlockingErrors = findings.some((finding) => finding.level === "error")
   const statusBlocksSubmission =
     eligibilityResult?.status === "DENIED" || eligibilityResult?.status === "REDIRECT_ACA2"
-  const canSubmit = hasRunValidation && !hasBlockingErrors && !statusBlocksSubmission && state.data.attestation
+  const canSubmit = hasRunValidation && !hasBlockingErrors && !statusBlocksSubmission && state.data.attestation && identityVerified
   const allRulesPassed =
     hasRunValidation &&
     !isRunningValidation &&
@@ -3628,14 +3632,24 @@ function ValidateAndSubmitStep({ onBackToReview, onGoToStep }: ValidateAndSubmit
         <span>I attest that the information provided is true and complete to the best of my knowledge.</span>
       </label>
 
+      {/* Identity verification hard gate */}
+      {!identityVerified && !state.submitted && (
+        <IdentityVerificationBanner className="w-full" />
+      )}
+
       <Button
         type="button"
         className="w-full"
         disabled={!canSubmit || state.submitted}
         onClick={() => {
+          if (!identityVerified) {
+            reduxDispatch(openScanner())
+            return
+          }
           setSubmitAcknowledged(false)
           setSubmitDialogOpen(true)
         }}
+        title={!identityVerified ? "Identity verification is required before submitting" : undefined}
       >
         {state.submitted ? "Application Submitted" : "Submit Application"}
       </Button>

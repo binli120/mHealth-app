@@ -1,486 +1,411 @@
 import {
-  Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
-  Header, Footer, AlignmentType, BorderStyle, WidthType, ShadingType,
-  VerticalAlign, PageNumber, HeadingLevel, LevelFormat, ExternalHyperlink,
-  TabStopType, TabStopPosition
+  AlignmentType,
+  BorderStyle,
+  Document,
+  Footer,
+  Header,
+  Packer,
+  PageNumber,
+  Paragraph,
+  ShadingType,
+  TabStopPosition,
+  TabStopType,
+  Table,
+  TableCell,
+  TableRow,
+  TextRun,
+  VerticalAlign,
+  WidthType,
 } from "docx";
 import { writeFileSync } from "fs";
 
-// ── Brand colors ──────────────────────────────────────────────────────────────
-const NAVY   = "1A3A5C";   // primary dark blue
-const TEAL   = "0D7B6E";   // accent teal / green
-const STEEL  = "3A7FC1";   // mid-blue for highlights
-const LIGHT  = "EAF3FB";   // very light blue fill
-const GRAY   = "F4F6F8";   // neutral section bg
-const DGRAY  = "555E6B";   // body text gray
-const WHITE  = "FFFFFF";
-const RULE   = "C8D8E8";   // divider line color
+const OUT_PATH = "docs/HealthCompassMA_Executive_Summary_2026.docx";
 
-// ── Helper: horizontal rule via paragraph border ──────────────────────────────
-const hr = (color = RULE, space = 1, size = 6) =>
+const C = {
+  navy: "10263F",
+  ink: "1D3557",
+  teal: "137C71",
+  aqua: "5DB7DE",
+  coral: "E8825E",
+  gold: "F2C14E",
+  line: "D9E3EA",
+  sky: "E9F5FB",
+  mint: "DFF5F1",
+  sand: "F7F2EA",
+  panel: "FFFDFC",
+  text: "233142",
+  slate: "556677",
+  white: "FFFFFF",
+};
+
+const FONT_HEAD = "Aptos Display";
+const FONT_BODY = "Aptos";
+
+const spacer = (after = 120) => new Paragraph({ spacing: { after } });
+
+const rule = (color = C.line, size = 6) =>
   new Paragraph({
-    spacing: { before: 80, after: 80 },
-    border: { bottom: { style: BorderStyle.SINGLE, size, color, space } },
-    children: [],
+    spacing: { before: 60, after: 120 },
+    border: { bottom: { style: BorderStyle.SINGLE, color, size, space: 1 } },
   });
 
-// ── Helper: spacer paragraph ──────────────────────────────────────────────────
-const sp = (pt = 80) =>
-  new Paragraph({ spacing: { before: 0, after: pt }, children: [] });
-
-// ── Helper: section title ─────────────────────────────────────────────────────
-const sectionTitle = (text, color = NAVY) =>
+const para = (text, opts = {}) =>
   new Paragraph({
-    spacing: { before: 260, after: 100 },
-    children: [new TextRun({ text, font: "Arial", size: 26, bold: true, color })],
+    spacing: { before: 20, after: opts.after ?? 90 },
+    alignment: opts.alignment ?? AlignmentType.LEFT,
+    children: [
+      new TextRun({
+        text,
+        font: FONT_BODY,
+        size: opts.size ?? 22,
+        color: opts.color ?? C.text,
+        bold: opts.bold ?? false,
+        italics: opts.italics ?? false,
+      }),
+    ],
   });
 
-// ── Helper: body paragraph ────────────────────────────────────────────────────
-const body = (text, opts = {}) =>
-  new Paragraph({
-    spacing: { before: 60, after: 80 },
-    children: [new TextRun({ text, font: "Arial", size: 21, color: DGRAY, ...opts })],
-  });
-
-// ── Helper: bullet ────────────────────────────────────────────────────────────
-const bullet = (text, bold = false) =>
+const bullet = (text) =>
   new Paragraph({
     numbering: { reference: "bullets", level: 0 },
-    spacing: { before: 40, after: 40 },
-    children: [new TextRun({ text, font: "Arial", size: 21, color: DGRAY, bold })],
-  });
-
-// ── Helper: KPI card row (2-col table used as card grid) ─────────────────────
-const kpiRow = (items) => {
-  // items: [{label, value, sub}]
-  const cells = items.map(({ label, value, sub }) => {
-    const brd = { style: BorderStyle.NONE, size: 0, color: WHITE };
-    return new TableCell({
-      borders: { top: brd, bottom: brd, left: brd, right: brd },
-      width: { size: 4680, type: WidthType.DXA },
-      shading: { fill: LIGHT, type: ShadingType.CLEAR },
-      margins: { top: 160, bottom: 160, left: 200, right: 200 },
-      verticalAlign: VerticalAlign.CENTER,
-      children: [
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { before: 0, after: 40 },
-          children: [new TextRun({ text: value, font: "Arial", size: 52, bold: true, color: NAVY })],
-        }),
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { before: 0, after: 20 },
-          children: [new TextRun({ text: label, font: "Arial", size: 18, bold: true, color: STEEL })],
-        }),
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          children: [new TextRun({ text: sub, font: "Arial", size: 16, color: DGRAY, italics: true })],
-        }),
-      ],
-    });
-  });
-
-  return new Table({
-    width: { size: 9360, type: WidthType.DXA },
-    columnWidths: [4680, 4680],
-    rows: [new TableRow({ children: cells })],
-  });
-};
-
-// ── Helper: 2-col feature table ───────────────────────────────────────────────
-const featureTable = (rows) => {
-  const brd  = { style: BorderStyle.SINGLE, size: 1, color: RULE };
-  const borders = { top: brd, bottom: brd, left: brd, right: brd };
-
-  const headerRow = new TableRow({
-    tableHeader: true,
+    spacing: { before: 20, after: 40 },
     children: [
-      new TableCell({
-        borders, width: { size: 4000, type: WidthType.DXA },
-        shading: { fill: NAVY, type: ShadingType.CLEAR },
-        margins: { top: 100, bottom: 100, left: 140, right: 140 },
-        children: [new Paragraph({ children: [new TextRun({ text: "Feature", font: "Arial", size: 20, bold: true, color: WHITE })] })],
-      }),
-      new TableCell({
-        borders, width: { size: 5360, type: WidthType.DXA },
-        shading: { fill: NAVY, type: ShadingType.CLEAR },
-        margins: { top: 100, bottom: 100, left: 140, right: 140 },
-        children: [new Paragraph({ children: [new TextRun({ text: "Description", font: "Arial", size: 20, bold: true, color: WHITE })] })],
+      new TextRun({
+        text,
+        font: FONT_BODY,
+        size: 21,
+        color: C.text,
       }),
     ],
   });
 
-  const dataRows = rows.map(([feat, desc], i) => new TableRow({
+const sectionTitle = (index, title) =>
+  new Paragraph({
+    spacing: { before: 220, after: 80 },
     children: [
-      new TableCell({
-        borders, width: { size: 4000, type: WidthType.DXA },
-        shading: { fill: i % 2 === 0 ? GRAY : WHITE, type: ShadingType.CLEAR },
-        margins: { top: 80, bottom: 80, left: 140, right: 140 },
-        children: [new Paragraph({ children: [new TextRun({ text: feat, font: "Arial", size: 20, bold: true, color: NAVY })] })],
-      }),
-      new TableCell({
-        borders, width: { size: 5360, type: WidthType.DXA },
-        shading: { fill: i % 2 === 0 ? GRAY : WHITE, type: ShadingType.CLEAR },
-        margins: { top: 80, bottom: 80, left: 140, right: 140 },
-        children: [new Paragraph({ children: [new TextRun({ text: desc, font: "Arial", size: 20, color: DGRAY })] })],
+      new TextRun({
+        text: `${index}  ${title}`,
+        font: FONT_HEAD,
+        size: 29,
+        bold: true,
+        color: C.ink,
       }),
     ],
-  }));
+  });
 
+function twoColTable(rows, widths = [3200, 6160]) {
+  const border = { style: BorderStyle.SINGLE, size: 1, color: C.line };
   return new Table({
     width: { size: 9360, type: WidthType.DXA },
-    columnWidths: [4000, 5360],
-    rows: [headerRow, ...dataRows],
-  });
-};
-
-// ── Helper: program badge row ─────────────────────────────────────────────────
-const programBadgeTable = (programs) => {
-  // 3-column grid
-  const colW = 3120;
-  const brd  = { style: BorderStyle.NONE, size: 0, color: WHITE };
-  const rows = [];
-  for (let i = 0; i < programs.length; i += 3) {
-    const slice = programs.slice(i, i + 3);
-    while (slice.length < 3) slice.push(null);
-    rows.push(new TableRow({
-      children: slice.map((p) =>
-        new TableCell({
-          borders: { top: brd, bottom: brd, left: brd, right: brd },
-          width: { size: colW, type: WidthType.DXA },
-          shading: { fill: p ? TEAL : WHITE, type: ShadingType.CLEAR },
-          margins: { top: 80, bottom: 80, left: 120, right: 120 },
-          verticalAlign: VerticalAlign.CENTER,
-          children: p
-            ? [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: p, font: "Arial", size: 18, bold: true, color: WHITE })] })]
-            : [new Paragraph({ children: [] })],
-        })
+    columnWidths: widths,
+    rows: [
+      new TableRow({
+        tableHeader: true,
+        children: [
+          new TableCell({
+            width: { size: widths[0], type: WidthType.DXA },
+            borders: { top: border, bottom: border, left: border, right: border },
+            shading: { type: ShadingType.CLEAR, fill: C.navy },
+            margins: { top: 90, bottom: 90, left: 140, right: 140 },
+            children: [para("Focus Area", { size: 20, color: C.white, bold: true, after: 0 })],
+          }),
+          new TableCell({
+            width: { size: widths[1], type: WidthType.DXA },
+            borders: { top: border, bottom: border, left: border, right: border },
+            shading: { type: ShadingType.CLEAR, fill: C.navy },
+            margins: { top: 90, bottom: 90, left: 140, right: 140 },
+            children: [para("Executive Summary", { size: 20, color: C.white, bold: true, after: 0 })],
+          }),
+        ],
+      }),
+      ...rows.map(([left, right], index) =>
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: widths[0], type: WidthType.DXA },
+              borders: { top: border, bottom: border, left: border, right: border },
+              shading: { type: ShadingType.CLEAR, fill: index % 2 === 0 ? C.sky : C.panel },
+              margins: { top: 90, bottom: 90, left: 140, right: 140 },
+              verticalAlign: VerticalAlign.CENTER,
+              children: [para(left, { size: 19, color: C.ink, bold: true, after: 0 })],
+            }),
+            new TableCell({
+              width: { size: widths[1], type: WidthType.DXA },
+              borders: { top: border, bottom: border, left: border, right: border },
+              shading: { type: ShadingType.CLEAR, fill: index % 2 === 0 ? C.sky : C.panel },
+              margins: { top: 90, bottom: 90, left: 140, right: 140 },
+              children: [para(right, { size: 19, color: C.text, after: 0 })],
+            }),
+          ],
+        }),
       ),
-    }));
-  }
+    ],
+  });
+}
+
+function metricRow(items) {
+  const border = { style: BorderStyle.NONE, size: 0, color: C.white };
   return new Table({
     width: { size: 9360, type: WidthType.DXA },
-    columnWidths: [colW, colW, colW],
-    rows,
+    columnWidths: [3120, 3120, 3120],
+    rows: [
+      new TableRow({
+        children: items.map(({ value, label, note }, index) =>
+          new TableCell({
+            width: { size: 3120, type: WidthType.DXA },
+            borders: { top: border, bottom: border, left: border, right: border },
+            shading: {
+              type: ShadingType.CLEAR,
+              fill: [C.mint, C.sky, "FFF3D2"][index % 3],
+            },
+            margins: { top: 160, bottom: 160, left: 180, right: 180 },
+            children: [
+              para(value, { size: 34, color: C.ink, bold: true, alignment: AlignmentType.CENTER, after: 20 }),
+              para(label, { size: 18, color: C.teal, bold: true, alignment: AlignmentType.CENTER, after: 20 }),
+              para(note, { size: 16, color: C.slate, alignment: AlignmentType.CENTER, after: 0 }),
+            ],
+          }),
+        ),
+      }),
+    ],
   });
-};
+}
 
-// ── Document ──────────────────────────────────────────────────────────────────
 const doc = new Document({
   numbering: {
     config: [
       {
         reference: "bullets",
-        levels: [{
-          level: 0, format: LevelFormat.BULLET, text: "•", alignment: AlignmentType.LEFT,
-          style: { paragraph: { indent: { left: 560, hanging: 280 } } },
-        }],
+        levels: [
+          {
+            level: 0,
+            format: "bullet",
+            text: "•",
+            alignment: AlignmentType.LEFT,
+            style: { paragraph: { indent: { left: 540, hanging: 280 } } },
+          },
+        ],
       },
     ],
   },
   styles: {
-    default: { document: { run: { font: "Arial", size: 21, color: DGRAY } } },
-    paragraphStyles: [
-      {
-        id: "Heading1", name: "Heading 1", basedOn: "Normal", next: "Normal", quickFormat: true,
-        run: { size: 32, bold: true, font: "Arial", color: NAVY },
-        paragraph: { spacing: { before: 240, after: 160 }, outlineLevel: 0 },
+    default: {
+      document: {
+        run: { font: FONT_BODY, size: 22, color: C.text },
       },
-    ],
+    },
   },
-  sections: [{
-    properties: {
-      page: {
-        size: { width: 12240, height: 15840 },
-        margin: { top: 1080, right: 1080, bottom: 1080, left: 1080 },
+  sections: [
+    {
+      properties: {
+        page: {
+          size: { width: 12240, height: 15840 },
+          margin: { top: 900, right: 900, bottom: 900, left: 900 },
+        },
       },
+      headers: {
+        default: new Header({
+          children: [
+            new Paragraph({
+              tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
+              border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: C.teal, space: 1 } },
+              spacing: { after: 80 },
+              children: [
+                new TextRun({ text: "HealthCompass MA", font: FONT_HEAD, size: 18, bold: true, color: C.ink }),
+                new TextRun({ text: "\tExecutive Summary  |  April 2026", font: FONT_BODY, size: 16, color: C.slate }),
+              ],
+            }),
+          ],
+        }),
+      },
+      footers: {
+        default: new Footer({
+          children: [
+            new Paragraph({
+              tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
+              border: { top: { style: BorderStyle.SINGLE, size: 4, color: C.line, space: 1 } },
+              spacing: { before: 80 },
+              children: [
+                new TextRun({ text: "Confidential", font: FONT_BODY, size: 16, italics: true, color: C.slate }),
+                new TextRun({ text: "\tPage ", font: FONT_BODY, size: 16, color: C.slate }),
+                new TextRun({ children: [PageNumber.CURRENT], font: FONT_BODY, size: 16, color: C.slate }),
+              ],
+            }),
+          ],
+        }),
+      },
+      children: [
+        new Table({
+          width: { size: 10080, type: WidthType.DXA },
+          rows: [
+            new TableRow({
+              children: [
+                new TableCell({
+                  shading: { type: ShadingType.CLEAR, fill: C.navy },
+                  margins: { top: 380, bottom: 380, left: 480, right: 480 },
+                  borders: {
+                    top: { style: BorderStyle.SINGLE, size: 12, color: C.teal },
+                    bottom: { style: BorderStyle.SINGLE, size: 12, color: C.teal },
+                    left: { style: BorderStyle.NONE, size: 0, color: C.white },
+                    right: { style: BorderStyle.NONE, size: 0, color: C.white },
+                  },
+                  children: [
+                    para("HealthCompass MA", { size: 46, color: C.white, bold: true, after: 40 }),
+                    para("Executive Summary  |  AI Infrastructure for Benefits Access", {
+                      size: 24,
+                      color: "B7DBEC",
+                      after: 80,
+                    }),
+                    para(
+                      "Turning fragmented public-benefits intake into a guided, multilingual, AI-supported care navigation system for patients, social workers, and facilities.",
+                      { size: 28, color: C.white, bold: true, after: 140 },
+                    ),
+                    para(
+                      "This Word version tracks the refreshed investor narrative: technology secret sauce, technical barriers and AI support, patient and facility impact, language and disability support, and the future blueprint.",
+                      { size: 20, color: "DAE8F3", after: 0 },
+                    ),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        }),
+
+        spacer(180),
+        metricRow([
+          { value: "10", label: "Programs evaluated", note: "MassHealth plus cross-program benefit stack" },
+          { value: "6", label: "Languages live", note: "Chinese, Haitian Creole, Portuguese, Spanish, Vietnamese, English" },
+          { value: "4", label: "AI support modes", note: "Advisor, intake, form assistance, and appeals" },
+        ]),
+
+        sectionTitle("01", "Platform Today"),
+        rule(),
+        para(
+          "HealthCompass MA is no longer just a screener. The live product now combines deterministic eligibility logic, application workflows, AI support, document handling, multilingual guidance, staff collaboration, and reviewer operations in one stack.",
+        ),
+        twoColTable([
+          [
+            "Discover",
+            "Deterministic pre-screening plus benefit orchestration across MassHealth, MSP, SNAP, EITC, Section 8, Child Care, LIHEAP, WIC, TAFDC, and EAEDC.",
+          ],
+          [
+            "Apply",
+            "MassHealth application flows, ACA-3-AP rules, required-document tracking, document uploads, and guided form completion support.",
+          ],
+          [
+            "Support",
+            "Benefit advisor chat, form assistant, appeal assistant, policy RAG, knowledge-center content, and notifications.",
+          ],
+          [
+            "Coordinate",
+            "Social-worker messaging, voice-note transcription, translation, screen-share sessions, reviewer dashboards, case management, and audit workflows.",
+          ],
+        ]),
+
+        sectionTitle("02", "Technology Secret Sauce"),
+        rule(),
+        para(
+          "The core technology decision is to separate deterministic decisions from AI support. LLMs are used where language, extraction, summarization, translation, and drafting matter. Deterministic code remains responsible for eligibility, routing, document requirements, and workflow state.",
+        ),
+        bullet("Plain-language intake lowers the policy and literacy barrier at the very first interaction."),
+        bullet("Structured extraction converts open-ended patient input into typed household, income, relationship, and document signals."),
+        bullet("Rule engines decide coverage pathways, required documents, and next-step routing using code rather than model guesswork."),
+        bullet("Actionable workflow output powers applications, notifications, staff review, and appeal support."),
+
+        sectionTitle("03", "Technical Barriers, Training, and AI Support"),
+        rule(),
+        twoColTable([
+          [
+            "Technical barriers",
+            "Massachusetts-specific rule code, benefit orchestration logic, narrow task-specific prompts, policy retrieval, and staff workflow tooling create a compound moat that is much harder to copy than a standalone chatbot.",
+          ],
+          [
+            "Prompt design",
+            "Prompts are mode-specific: intake, benefit advising, form assistance, and appeals. Structured outputs are validated before the product acts on them.",
+          ],
+          [
+            "Retrieval strategy",
+            "Task-specific pgvector retrieval uses policy chunks selected from the current denial reason, top candidate program, or active form section rather than the full conversation.",
+          ],
+          [
+            "Training path",
+            "Current assets include curated policy corpus, denial categories, domain prompts, multilingual interactions, and workflow data. The future training path includes benchmark suites, denial-outcome datasets, reviewer feedback loops, and document-AI labeling.",
+          ],
+          [
+            "Evaluation metrics",
+            "Key evals should include parse success, factual grounding, multilingual consistency, extraction precision, completion time, reviewer override rate, and appeal readiness.",
+          ],
+        ]),
+
+        sectionTitle("04", "How the Technology Helps Patients"),
+        rule(),
+        para(
+          "The patient value is practical rather than abstract: help people discover more benefits, complete more applications, avoid missed deadlines, and recover faster after denials.",
+        ),
+        bullet("One intake can surface a fuller benefit stack instead of leaving households to discover programs one by one."),
+        bullet("Guided form assistance reduces blank-page paralysis and clarifies what information or proof is still missing."),
+        bullet("Appeal support turns a denial notice into a structured evidence checklist and a first-pass appeal draft."),
+        bullet("Notifications reduce renewal lapses, response delays, and forgotten next steps."),
+        bullet("The experience is built for patients with low time, limited English proficiency, low digital confidence, or difficulty writing complex forms on their own."),
+
+        sectionTitle("05", "How the Technology Helps Facilities and Care Teams"),
+        rule(),
+        para(
+          "HealthCompass MA is also a care-operations platform for social workers, reviewers, and partner organizations. Patient value and facility value improve together.",
+        ),
+        bullet("Secure direct messaging, voice notes with transcription, translation, and screen-share sessions reduce the back-and-forth required to move cases forward."),
+        bullet("Reviewer dashboards, case queues, status views, reports, and audit surfaces provide operational visibility for staff workflows."),
+        bullet("Facilities gain less repeated intake work, faster document follow-up, better patient engagement outside business hours, and a foundation for provider-facing deployments."),
+
+        sectionTitle("06", "Language, Accessibility, and Disability Support"),
+        rule(),
+        para(
+          "The product is intentionally built for people who do not fit the default assumption of strong English, high literacy, or easy form completion.",
+        ),
+        twoColTable([
+          ["Languages live today", "English, Simplified Chinese, Haitian Creole, Brazilian Portuguese, Spanish, and Vietnamese."],
+          ["Accessibility preferences", "Reading assistance, translation support, and voice assistant preferences are already modeled at the profile level and can shape the app experience."],
+          ["Support when writing is hard", "Guided chat, voice-note workflows, and plain-language assistance help users who cannot easily complete dense forms by typing alone."],
+          ["Disability-aware logic", "The platform already captures disability / SSI / SSDI context and identifies when medical verification or disability supplements are required so people can get their applications ready earlier."],
+        ]),
+
+        sectionTitle("07", "Future Blueprint"),
+        rule(),
+        para(
+          "The next phase is about compounding the rule engine with document AI, retention workflows, provider tooling, and a stronger learning loop.",
+        ),
+        twoColTable([
+          ["Now", "Workflow platform for screening, benefit stacking, applications, appeals, messaging, notifications, and reviewer operations."],
+          ["Next", "Document AI to classify paystubs, IDs, and supporting proofs, normalize extracted fields, and flag mismatches before submission."],
+          ["Next", "Retention engine for renewal automation, proactive reminders, and monitoring for changes that could threaten coverage."],
+          ["Later", "Provider operating system with provider portals, staff copilot workflows, analytics, policy learning loops, and state-by-state rule-pack architecture."],
+        ]),
+
+        sectionTitle("08", "Why This Is Hard to Copy"),
+        rule(),
+        para(
+          "The defensibility comes from the combination of domain rules, workflow data, and trusted operational surfaces. The more the platform touches intake, support, and review, the more proprietary the system becomes.",
+        ),
+        bullet("Policy depth: MassHealth-specific prompts, rules, and document logic accumulate domain knowledge faster than generic SaaS tooling."),
+        bullet("Workflow graph: patients, documents, messages, deadlines, reviewer actions, and appeals create a richer operating dataset over time."),
+        bullet("Trust posture: local/private AI, typed outputs, deterministic decisions, and auditable staff workflows matter in high-stakes benefits access."),
+        bullet("Expansion path: the architecture can evolve into configurable state rule packs rather than one-off scripts for each new market."),
+
+        sectionTitle("09", "Executive Takeaway"),
+        rule(C.teal, 8),
+        para(
+          "HealthCompass MA has the ingredients for a real technology moat: deterministic benefit logic, policy-grounded AI support, multilingual engagement, and facility workflows that produce durable proprietary data. The future blueprint compounds all four.",
+          { size: 24, bold: true, color: C.ink, after: 120 },
+        ),
+        para(
+          "Contact: contact@healthcompassma.com  |  healthcompassma.com",
+          { size: 18, color: C.teal, bold: true, after: 0 },
+        ),
+      ],
     },
-    headers: {
-      default: new Header({
-        children: [
-          new Paragraph({
-            tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
-            border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: STEEL, space: 1 } },
-            spacing: { before: 0, after: 100 },
-            children: [
-              new TextRun({ text: "HealthCompass MA", font: "Arial", size: 18, bold: true, color: NAVY }),
-              new TextRun({ text: "\tExecutive Summary — Investor Briefing  |  March 2026", font: "Arial", size: 16, color: DGRAY }),
-            ],
-          }),
-        ],
-      }),
-    },
-    footers: {
-      default: new Footer({
-        children: [
-          new Paragraph({
-            tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
-            border: { top: { style: BorderStyle.SINGLE, size: 4, color: RULE, space: 1 } },
-            spacing: { before: 80, after: 0 },
-            children: [
-              new TextRun({ text: "Confidential — Not for Distribution", font: "Arial", size: 16, color: DGRAY, italics: true }),
-              new TextRun({ text: "\tPage ", font: "Arial", size: 16, color: DGRAY }),
-              new TextRun({ children: [PageNumber.CURRENT], font: "Arial", size: 16, color: DGRAY }),
-            ],
-          }),
-        ],
-      }),
-    },
-    children: [
-
-      // ── COVER BLOCK ─────────────────────────────────────────────────────────
-      new Table({
-        width: { size: 10080, type: WidthType.DXA },
-        columnWidths: [10080],
-        rows: [new TableRow({
-          children: [new TableCell({
-            borders: {
-              top:    { style: BorderStyle.SINGLE, size: 12, color: TEAL },
-              bottom: { style: BorderStyle.SINGLE, size: 12, color: TEAL },
-              left:   { style: BorderStyle.NONE,   size: 0,  color: WHITE },
-              right:  { style: BorderStyle.NONE,   size: 0,  color: WHITE },
-            },
-            shading: { fill: NAVY, type: ShadingType.CLEAR },
-            margins: { top: 400, bottom: 400, left: 480, right: 480 },
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.LEFT,
-                spacing: { before: 0, after: 80 },
-                children: [new TextRun({ text: "HealthCompass MA", font: "Arial", size: 64, bold: true, color: WHITE })],
-              }),
-              new Paragraph({
-                alignment: AlignmentType.LEFT,
-                spacing: { before: 0, after: 120 },
-                children: [new TextRun({ text: "AI-Powered Public Benefits Navigation Platform", font: "Arial", size: 28, color: "9ECFF4", italics: true })],
-              }),
-              hr(TEAL, 2, 8),
-              sp(60),
-              new Paragraph({
-                alignment: AlignmentType.LEFT,
-                spacing: { before: 60, after: 0 },
-                children: [new TextRun({ text: "Executive Summary  —  Investor Briefing", font: "Arial", size: 22, color: "C8E6F8", bold: true })],
-              }),
-              new Paragraph({
-                alignment: AlignmentType.LEFT,
-                children: [new TextRun({ text: "March 2026  |  Confidential", font: "Arial", size: 19, color: "8BBDD9" })],
-              }),
-            ],
-          })],
-        })],
-      }),
-
-      sp(200),
-
-      // ── 01 MISSION ─────────────────────────────────────────────────────────
-      sectionTitle("01  Mission & Problem"),
-      hr(),
-
-      body(
-        "Massachusetts offers more than a dozen overlapping public benefit programs — " +
-        "MassHealth, SNAP, WIC, LIHEAP, Section 8, EITC, and others — yet the majority of " +
-        "eligible residents never receive the full stack of benefits they qualify for. " +
-        "Applications are siloed, eligibility rules are opaque, and the process demands " +
-        "time and document literacy that many families simply do not have."
-      ),
-      sp(40),
-      body("HealthCompass MA solves this with a single, conversational AI platform that:", { bold: false }),
-      bullet("Instantly screens eligibility across all major Massachusetts programs"),
-      bullet("Guides applicants through an AI-assisted, voice-enabled application workflow"),
-      bullet("Automatically orchestrates the optimal benefit stack for each family profile"),
-      bullet("Keeps applicants informed via a real-time, multi-channel notification system"),
-
-      sp(160),
-
-      // ── 02 PRODUCT ─────────────────────────────────────────────────────────
-      sectionTitle("02  Product — Live Features"),
-      hr(),
-
-      featureTable([
-        [
-          "Eligibility Pre-Screener",
-          "Rule-based, instant eligibility check across all MassHealth tracks. No LLM latency — pure deterministic engine. Results in under 2 seconds.",
-        ],
-        [
-          "Benefit Stack Orchestrator",
-          "Evaluates 9 federal and state programs simultaneously (MassHealth, MSP, SNAP, EITC, Section 8, Child Care, LIHEAP, WIC, TAFDC, EAEDC) and produces an optimized, ranked benefit bundle tailored to the household's income, size, and residency.",
-        ],
-        [
-          "AI Application Assistant",
-          "Chat-guided form completion with voice input, live progress sidebar, and RAG-powered Q&A. The LLM extracts structured fields from natural language, validates addresses in real-time, and prompts for inline document uploads at the right moment.",
-        ],
-        [
-          "Notification Pipeline",
-          "Full end-to-end notification system: database events → Resend transactional email + in-app notification feed → Redux state → real-time bell indicator and inbox UI.",
-        ],
-        [
-          "Customer Dashboard",
-          "Unified landing experience with quick-access cards to all four workflows, application status tracking, and benefit stack summary.",
-        ],
-      ]),
-
-      sp(160),
-
-      // ── 03 PROGRAMS ────────────────────────────────────────────────────────
-      sectionTitle("03  Programs Covered"),
-      hr(),
-
-      body("HealthCompass MA evaluates eligibility for all major Massachusetts benefit programs:"),
-      sp(80),
-
-      programBadgeTable([
-        "MassHealth", "Medicare Savings (MSP)", "SNAP",
-        "EITC", "Section 8 / HCV", "Child Care (CCFA)",
-        "LIHEAP", "WIC", "TAFDC",
-        "EAEDC",
-      ]),
-
-      sp(120),
-      body(
-        "Benefit amounts use FY2026 program constants: $15,060 FPL base (1-person, +$5,380/additional), " +
-        "Boston AMI $141,300, and MA SMI $109,615 for a family of four. Rules are updated annually " +
-        "and maintained in a centralized eligibility engine."
-      ),
-
-      sp(160),
-
-      // ── 04 KPIs ─────────────────────────────────────────────────────────────
-      sectionTitle("04  Traction & Key Metrics"),
-      hr(),
-      sp(80),
-
-      kpiRow([
-        { value: "9",   label: "Benefit Programs",  sub: "Evaluated simultaneously" },
-        { value: "4",   label: "Core Features",     sub: "Live in production" },
-      ]),
-      sp(80),
-      kpiRow([
-        { value: "<2s", label: "Pre-screener Speed", sub: "No-LLM rule engine" },
-        { value: "AI",  label: "Voice + Chat Input", sub: "RAG-powered Q&A" },
-      ]),
-
-      sp(160),
-
-      // ── 05 TECHNOLOGY ──────────────────────────────────────────────────────
-      sectionTitle("05  Technology Architecture"),
-      hr(),
-
-      featureTable([
-        ["Frontend",     "Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, Radix UI — server-first architecture with targeted client components."],
-        ["AI Layer",     "Ollama / llama3.2 for conversational chat. Rule-based eligibility engine for deterministic screening. RAG pipeline for mid-application Q&A."],
-        ["State",        "Redux Toolkit with feature-sliced architecture (notifications, benefit orchestration, active application, auth)."],
-        ["Database",     "Supabase PostgreSQL with Row-Level Security (RLS). Raw SQL via pg Pool for performance-critical queries. Schema covers applicants, benefit profiles, notifications, and draft applications."],
-        ["Email",        "Resend transactional email with React Email templates integrated into the notification pipeline."],
-        ["Security",     "RLS functions (can_access_applicant, is_staff), requireAuthenticatedUser middleware pattern across all API routes, session-based auth via Supabase."],
-        ["Infrastructure", "pnpm monorepo, Node.js v20 LTS, designed for Vercel edge deployment."],
-      ]),
-
-      sp(160),
-
-      // ── 06 MARKET ──────────────────────────────────────────────────────────
-      sectionTitle("06  Market Opportunity"),
-      hr(),
-
-      body(
-        "Massachusetts has ~6.9 million residents. An estimated 1 in 4 households is eligible " +
-        "for at least one public benefit program and does not receive it — a participation gap " +
-        "that HealthCompass MA directly addresses."
-      ),
-      sp(40),
-      bullet("~$3B in unclaimed Massachusetts benefit value annually (estimated)"),
-      bullet("State and federal government agencies increasingly fund digital navigation tools"),
-      bullet("Health plans, ACOs, and community health centers are active payers for social determinants (SDOH) platforms"),
-      bullet("Medicaid managed care organizations (MCOs) face financial incentives to close coverage gaps"),
-
-      sp(160),
-
-      // ── 07 BUSINESS MODEL ──────────────────────────────────────────────────
-      sectionTitle("07  Business Model"),
-      hr(),
-
-      featureTable([
-        ["B2G — Agency SaaS",      "License to MassHealth, DTA, and other state agencies replacing paper-based intake workflows."],
-        ["B2B — Health Plan API",  "Per-member-per-month API access for MCOs and ACOs to embed benefit navigation inside member portals."],
-        ["B2B — CHC / Navigator",  "White-label deployment for Community Health Centers and Certified Application Counselors (CACs)."],
-        ["Grant / Value-Based",    "CMMI and state innovation grants targeting Medicaid re-enrollment and benefits uptake improvement."],
-      ]),
-
-      sp(160),
-
-      // ── 08 ROADMAP ─────────────────────────────────────────────────────────
-      sectionTitle("08  Roadmap"),
-      hr(),
-
-      featureTable([
-        ["Q2 2026 — Document AI",       "Automated document classification and extraction (pay stubs, ID, birth certificates) to complete the application pipeline end-to-end."],
-        ["Q2 2026 — Re-enrollment",     "Proactive eligibility monitoring with automated renewal reminders tied to Supabase scheduled functions."],
-        ["Q3 2026 — Multi-language",    "Spanish, Portuguese, Haitian Creole — MA's top three non-English populations — using LLM translation with locale-aware form rendering."],
-        ["Q3 2026 — Provider Portal",   "Staff-facing dashboard for case workers with bulk action, override, and audit trail capabilities."],
-        ["Q4 2026 — Statewide Expand",  "Expand benefit evaluators to cover federal programs (SSI, Medicare Part D LIS) and remaining MA-specific programs (Emergency Aid, HomeBASE)."],
-        ["2027 — National Scale",       "Configurable state-by-state eligibility engine — same platform, pluggable rule packs for any US state."],
-      ]),
-
-      sp(160),
-
-      // ── 09 ASK ─────────────────────────────────────────────────────────────
-      sectionTitle("09  The Ask"),
-      hr(),
-
-      new Table({
-        width: { size: 9360, type: WidthType.DXA },
-        columnWidths: [9360],
-        rows: [new TableRow({
-          children: [new TableCell({
-            borders: {
-              top:    { style: BorderStyle.SINGLE, size: 8, color: TEAL },
-              bottom: { style: BorderStyle.SINGLE, size: 2, color: RULE },
-              left:   { style: BorderStyle.SINGLE, size: 8, color: TEAL },
-              right:  { style: BorderStyle.NONE,   size: 0, color: WHITE },
-            },
-            shading: { fill: LIGHT, type: ShadingType.CLEAR },
-            margins: { top: 240, bottom: 240, left: 320, right: 320 },
-            children: [
-              new Paragraph({
-                spacing: { before: 0, after: 100 },
-                children: [new TextRun({ text: "Seed Round — $1.5M", font: "Arial", size: 40, bold: true, color: NAVY })],
-              }),
-              new Paragraph({
-                spacing: { before: 0, after: 120 },
-                children: [new TextRun({ text: "18-month runway to first government contract and 10,000 active users", font: "Arial", size: 22, color: TEAL, italics: true })],
-              }),
-              bullet("40%  —  Engineering: Document AI, multi-language, re-enrollment engine"),
-              bullet("30%  —  Go-to-Market: Agency pilots, CHC partnerships, grant writing"),
-              bullet("20%  —  Infrastructure & Compliance: HIPAA BAA, SOC 2 Type II"),
-              bullet("10%  —  Operations & Legal"),
-            ],
-          })],
-        })],
-      }),
-
-      sp(160),
-
-      // ── 10 TEAM / CONTACT ───────────────────────────────────────────────────
-      sectionTitle("10  Team & Contact"),
-      hr(),
-
-      body("HealthCompass MA is built by a team with deep experience in healthcare policy, product engineering, and Massachusetts public programs."),
-      sp(60),
-      body("For partnership and investment inquiries:", { bold: true }),
-      body("contact@healthcompassma.com  |  healthcompassma.com", { color: STEEL }),
-      sp(60),
-      new Paragraph({
-        spacing: { before: 60, after: 0 },
-        children: [
-          new TextRun({ text: "© 2026 HealthCompass MA  —  ", font: "Arial", size: 18, color: DGRAY, italics: true }),
-          new TextRun({ text: "Confidential & Proprietary. Not for distribution without written consent.", font: "Arial", size: 18, color: DGRAY, italics: true }),
-        ],
-      }),
-    ],
-  }],
+  ],
 });
 
-// ── Write file ────────────────────────────────────────────────────────────────
-const outPath = "docs/HealthCompassMA_Executive_Summary_2026.docx";
-Packer.toBuffer(doc).then((buf) => {
-  writeFileSync(outPath, buf);
-  console.log(`✅  Written → ${outPath}`);
-});
+const buf = await Packer.toBuffer(doc);
+writeFileSync(OUT_PATH, buf);
+console.log(`Wrote ${OUT_PATH}`);
