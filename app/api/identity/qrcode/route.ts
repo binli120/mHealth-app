@@ -13,7 +13,7 @@
  */
 
 import { NextResponse } from "next/server"
-import bwipjs from "bwip-js"
+import bwipjs from "bwip-js/node"
 
 const APP_URL =
   process.env.NEXT_PUBLIC_APP_URL ||
@@ -28,9 +28,17 @@ export async function GET(request: Request) {
     return new NextResponse("url param is required", { status: 400 })
   }
 
-  // Security: only allow QR codes that point to our own origin
+  // Security: only allow QR codes pointing to our own origin or local LAN IPs.
+  // In dev the mobile URL uses the machine's LAN IPv4 (192.168.x.x / 10.x.x.x)
+  // rather than localhost, so we allow private-range http:// addresses as well.
   const appOrigin = new URL(APP_URL).origin
-  if (!url.startsWith(appOrigin) && !url.startsWith("http://localhost")) {
+  const isLocalDev =
+    url.startsWith("http://localhost") ||
+    url.startsWith("http://127.") ||
+    /^http:\/\/10\./.test(url) ||
+    /^http:\/\/172\.(1[6-9]|2\d|3[01])\./.test(url) ||
+    /^http:\/\/192\.168\./.test(url)
+  if (!url.startsWith(appOrigin) && !isLocalDev) {
     return new NextResponse("Invalid url", { status: 400 })
   }
 
@@ -39,8 +47,8 @@ export async function GET(request: Request) {
       bcid: "qrcode",
       text: url,
       scale: 3,
-      eclevel: "M",      // Medium error correction — good balance of size vs reliability
-      padding: 4,
+      paddingwidth: 4,
+      paddingheight: 4,
     })
 
     return new NextResponse(svg, {

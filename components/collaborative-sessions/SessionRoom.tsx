@@ -175,7 +175,7 @@ export function SessionRoom({ sessionId, role, backHref }: Props) {
     // in the SW layout keep running after the SW navigates away from this page.
     // resetSession() is called only by the FloatingSessionBar when the session ends.
     return () => { dispatch(role === "sw" ? clearRoomState() : resetSession()) }
-  }, [sessionId, dispatch])
+  }, [sessionId, dispatch, role])
 
   // ── Auto-scroll ────────────────────────────────────────────────────────────
   // Attach messagesEndRef to the scroll container, then set scrollTop directly.

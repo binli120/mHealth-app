@@ -24,6 +24,31 @@ interface RouteParams {
   params: Promise<{ token: string }>
 }
 
+/**
+ * GET /api/identity/mobile-verify/[token]
+ *
+ * Public (no auth) — used by the mobile page on load to check whether the
+ * token is still valid before starting the camera.
+ * Returns { ok, status } where status is the session lifecycle state.
+ */
+export async function GET(_request: Request, { params }: RouteParams) {
+  const { token } = await params
+  if (!token?.trim()) {
+    return NextResponse.json({ ok: false, error: "Invalid token." }, { status: 400 })
+  }
+
+  try {
+    const session = await getSessionByToken(token)
+    if (!session) {
+      return NextResponse.json({ ok: false, error: "Session not found." }, { status: 404 })
+    }
+    return NextResponse.json({ ok: true, status: session.status })
+  } catch (err) {
+    logServerError("Failed to check mobile verify session", err, { module: "mobile-verify" })
+    return NextResponse.json({ ok: false, error: "Failed to check session." }, { status: 500 })
+  }
+}
+
 export async function POST(request: Request, { params }: RouteParams) {
   const { token } = await params
 
@@ -121,12 +146,20 @@ export async function POST(request: Request, { params }: RouteParams) {
       userAgent,
     })
 
-    // ── 7. Mark session as completed ─────────────────────────────────────────
+    // ── 7. Mark session as completed (include extracted demographic fields) ──
     await completeSession(
       token,
       verificationResult.status,
       verificationResult.score,
-      verificationResult.breakdown,
+      verificationResult.breakdown as unknown as Record<string, boolean>,
+      {
+        firstName: licenseData.firstName,
+        lastName: licenseData.lastName,
+        addressLine1: licenseData.addressStreet,
+        city: licenseData.addressCity,
+        state: licenseData.addressState,
+        zip: licenseData.addressZip,
+      },
     )
 
     return NextResponse.json({

@@ -107,10 +107,20 @@ function parseJwtParts(token: string): {
   }
 }
 
+/** Match private LAN IPv4 ranges (for dev access from a phone on the same Wi-Fi). */
+const PRIVATE_IP_RE = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/
+
+function isPrivateLanIp(hostname: string): boolean {
+  return process.env.NODE_ENV === "development" && PRIVATE_IP_RE.test(hostname)
+}
+
 function isLocalRequest(request: Request): boolean {
   try {
     const url = new URL(request.url)
-    return LOCAL_HOSTS.has(url.hostname)
+    if (LOCAL_HOSTS.has(url.hostname) || isPrivateLanIp(url.hostname)) return true
+    // Also check the Host header — Next.js may rewrite request.url internally
+    const headerHost = (request.headers.get("host") ?? "").split(":")[0]
+    return LOCAL_HOSTS.has(headerHost) || isPrivateLanIp(headerHost)
   } catch {
     return false
   }

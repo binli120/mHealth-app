@@ -56,7 +56,21 @@ export default function PreScreenerPage() {
 
   const messagesEndRef = useAutoScroll([messages, isTyping, report])
   const inputRef = useRef<HTMLInputElement>(null)
-  const previousLanguageRef = useRef(language)
+
+  // Track previous language to reset the intro message when the user switches languages.
+  // Using React's render-time state update pattern (no effect needed).
+  const [prevLanguage, setPrevLanguage] = useState(language)
+  if (prevLanguage !== language) {
+    const hasOnlyIntroMessage =
+      messages.length === 1 &&
+      messages[0]?.role === "bot" &&
+      currentStepId === "intro" &&
+      !isComplete
+    if (hasOnlyIntroMessage) {
+      setMessages([{ id: uid(), role: "bot", text: stepMap.intro.botMessage, timestamp: new Date() }])
+    }
+    setPrevLanguage(language)
+  }
 
   const currentStep = stepMap[currentStepId]
   const localizedReport = useMemo(
@@ -67,25 +81,6 @@ export default function PreScreenerPage() {
   useEffect(() => {
     document.documentElement.lang = getPrescreenerLocale(language)
   }, [language])
-
-  useEffect(() => {
-    const hasOnlyIntroMessage =
-      messages.length === 1 &&
-      messages[0]?.role === "bot" &&
-      currentStepId === "intro" &&
-      !isComplete
-
-    if (!hasOnlyIntroMessage) {
-      previousLanguageRef.current = language
-      return
-    }
-
-    if (previousLanguageRef.current !== language) {
-      setMessages([{ id: uid(), role: "bot", text: stepMap.intro.botMessage, timestamp: new Date() }])
-    }
-
-    previousLanguageRef.current = language
-  }, [currentStepId, isComplete, language, messages, stepMap])
 
   function addBotMessage(text: string) {
     setMessages((prev) => [

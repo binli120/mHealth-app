@@ -33,7 +33,11 @@ function normalizeResolveModules(modules) {
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
-  allowedDevOrigins: ["192.168.86.25", "192.168.1.92"],
+  // Keep pdf-parse and pdfjs-dist out of the server bundle.
+  // Both use DOMMatrix / process.getBuiltinModule at module-eval time which
+  // crashes the Turbopack build worker on Node < 22.
+  serverExternalPackages: ["pdf-parse", "pdfjs-dist", "canvas"],
+  allowedDevOrigins: ["192.168.86.25", "192.168.1.92", "192.168.1.47"],
   turbopack: {
     root: projectRoot,
   },

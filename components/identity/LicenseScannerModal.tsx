@@ -15,8 +15,8 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { BarcodeFormat, DecodeHintType, NotFoundException } from "@zxing/library"
-import { BrowserMultiFormatReader } from "@zxing/browser"
+import { DecodeHintType, NotFoundException } from "@zxing/library"
+import { BrowserPDF417Reader } from "@zxing/browser"
 import {
   Dialog,
   DialogContent,
@@ -156,7 +156,7 @@ export function LicenseScannerModal() {
   const handleVerifyResult = useCallback(
     (data: VerifyApiResponse | PollResponse, fromPhone = false) => {
       const status = "verifyStatus" in data ? data.verifyStatus : data.status
-      const score = "verifyScore" in data ? data.verifyScore : data.score
+      const score = "verifyScore" in data ? data.verifyScore : (data as VerifyApiResponse).score
 
       if (!data.ok || !status) {
         const msg = data.error ?? "Verification failed."
@@ -212,19 +212,27 @@ export function LicenseScannerModal() {
     if (!videoRef.current) return
     setCameraError(null)
     setScanState("scanning")
+
+    // BrowserPDF417Reader is purpose-built for PDF417 — no multi-format overhead.
     const hints = new Map<DecodeHintType, unknown>()
-    hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.PDF_417])
     hints.set(DecodeHintType.TRY_HARDER, true)
-    const reader = new BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 200 })
+    const reader = new BrowserPDF417Reader(hints, { delayBetweenScanAttempts: 50 })
 
     try {
       const controls = await reader.decodeFromConstraints(
-        { video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } },
+        {
+          video: {
+            facingMode: { ideal: "environment" },
+            // Request the highest resolution the camera supports.
+            width:  { min: 1280, ideal: 1920 },
+            height: { min:  720, ideal: 1080 },
+          },
+        },
         videoRef.current,
         (result, err) => {
           if (result) {
-            controlsRef.current?.stop()    // freeze camera immediately
-            setBarcodeFlash(true)          // show green "detected" flash
+            controlsRef.current?.stop()
+            setBarcodeFlash(true)
             const raw = result.getText()
             setTimeout(() => {
               setBarcodeFlash(false)
@@ -260,9 +268,8 @@ export function LicenseScannerModal() {
       setScanState("scanning")
       setCameraError(null)
       const hints = new Map<DecodeHintType, unknown>()
-      hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.PDF_417])
       hints.set(DecodeHintType.TRY_HARDER, true)
-      const reader = new BrowserMultiFormatReader(hints)
+      const reader = new BrowserPDF417Reader(hints)
       const url = URL.createObjectURL(file)
       try {
         const result = await reader.decodeFromImageUrl(url)
@@ -548,9 +555,12 @@ export function LicenseScannerModal() {
                       />
                     </div>
                     {/* Hint label */}
-                    <div className="absolute left-0 right-0" style={{ top: "calc(82% + 6px)" }}>
+                    <div className="absolute left-0 right-0 flex flex-col items-center gap-0.5" style={{ top: "calc(82% + 6px)" }}>
                       <p className="text-center text-[11px] text-white/75">
-                        Align barcode on the <strong className="text-white">back</strong> of your license inside the frame
+                        Back of license · barcode side up · fill the frame
+                      </p>
+                      <p className="text-center text-[10px] text-white/50">
+                        Good lighting required — barcode is 6–12 in. from lens
                       </p>
                     </div>
                   </div>

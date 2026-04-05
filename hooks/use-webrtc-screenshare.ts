@@ -249,7 +249,6 @@ export function useWebRTCScreenShare({
   const stopShare = useCallback(() => {
     signal({ type: "share-stopped" })
     teardown()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // ── Supabase signaling channel ────────────────────────────────────────────

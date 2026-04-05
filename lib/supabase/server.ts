@@ -32,7 +32,16 @@ export function getSupabaseServerClient() {
     )
   }
 
-  supabaseServerClient = createClient(supabaseUrl, supabaseAnonKey, {
+  // Prefer the service-role key for server-side auth verification — it is always
+  // a proper HS256 JWT and works reliably with auth.getUser() on local Supabase.
+  // The anon/publishable key (sb_publishable_*) is a non-JWT opaque key that
+  // Supabase v2 uses for browser clients; it may not work server-side.
+  const supabaseKey =
+    (process.env.NODE_ENV !== "production" &&
+      process.env.SUPABASE_SERVICE_ROLE_KEY) ||
+    supabaseAnonKey
+
+  supabaseServerClient = createClient(supabaseUrl, supabaseKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,

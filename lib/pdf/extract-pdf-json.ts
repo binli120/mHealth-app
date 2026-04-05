@@ -8,15 +8,23 @@ import { PDFDocument } from "pdf-lib"
 
 // pdf-parse ships CJS only — its ESM build has no default export.
 // Use createRequire to force CJS resolution and bypass Turbopack's static ESM analysis.
+// NOTE: Do NOT call _require at module scope — pdfjs-dist (a pdf-parse dependency)
+// accesses DOMMatrix / process.getBuiltinModule at evaluation time which crashes the
+// Turbopack build worker on Node < 22. Load it lazily inside the exported function.
 const _require = createRequire(import.meta.url)
 type PdfParseFn = (buf: Buffer) => Promise<{ text: string }>
-const _mod = _require("pdf-parse") as unknown
-const pdfParse: PdfParseFn | null =
-  typeof _mod === "function"
-    ? (_mod as PdfParseFn)
-    : typeof (_mod as { default?: unknown })?.default === "function"
-    ? ((_mod as { default: PdfParseFn }).default)
-    : null
+
+function loadPdfParse(): PdfParseFn | null {
+  try {
+    const _mod = _require("pdf-parse") as unknown
+    if (typeof _mod === "function") return _mod as PdfParseFn
+    if (typeof (_mod as { default?: unknown })?.default === "function")
+      return (_mod as { default: PdfParseFn }).default
+    return null
+  } catch {
+    return null
+  }
+}
 
 interface ExtractPdfJsonInput {
   bytes: Uint8Array
@@ -100,6 +108,7 @@ function getFieldValue(field: unknown): ExtractedField {
 
 export async function extractPdfJson({ bytes, fileName, fileSize }: ExtractPdfJsonInput) {
   const buffer = Buffer.from(bytes)
+  const pdfParse = loadPdfParse()
   const [pdfDoc, parsed] = await Promise.all([
     PDFDocument.load(bytes, { ignoreEncryption: true }),
     pdfParse ? pdfParse(buffer).catch(() => null) : Promise.resolve(null),

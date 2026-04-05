@@ -14,8 +14,11 @@
 CREATE TABLE IF NOT EXISTS mobile_verify_sessions (
   id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
 
-  -- Random URL-safe token shown in the QR code
-  token           TEXT        NOT NULL UNIQUE DEFAULT encode(gen_random_bytes(24), 'base64url'),
+  -- Random URL-safe token shown in the QR code.
+  -- Generated application-side (Node randomBytes base64url) to avoid the pg17-only
+  -- base64url encoding in encode(). The DEFAULT here is a hex fallback for tooling
+  -- that inserts rows directly; the application always supplies the value explicitly.
+  token           TEXT        NOT NULL UNIQUE DEFAULT encode(gen_random_bytes(24), 'hex'),
 
   -- The authenticated desktop user who initiated the session
   user_id         UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,

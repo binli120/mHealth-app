@@ -19,9 +19,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useParams } from "next/navigation"
-import { BarcodeFormat, DecodeHintType, NotFoundException } from "@zxing/library"
-import { BrowserMultiFormatReader } from "@zxing/browser"
-import { ShieldCheck, ScanLine, XCircle, CheckCircle2, Clock, Loader2, AlertTriangle } from "lucide-react"
+import { DecodeHintType, NotFoundException } from "@zxing/library"
+import { BrowserPDF417Reader } from "@zxing/browser"
+import { ShieldCheck, ScanLine, XCircle, CheckCircle2, Clock, Loader2, AlertTriangle, Flashlight, FlashlightOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { cn } from "@/lib/utils"
@@ -51,28 +51,36 @@ interface ApiResponse {
 export default function MobileVerifyPage() {
   const { token } = useParams<{ token: string }>()
 
-  const [pageState, setPageState] = useState<PageState>("loading")
+  // Initialise to "expired" immediately when there is no token so the effect
+  // never has to call setState synchronously in its body.
+  const [pageState, setPageState] = useState<PageState>(() => (!token ? "expired" : "loading"))
   const [apiResult, setApiResult] = useState<ApiResponse | null>(null)
   const [scanError, setScanError] = useState<string | null>(null)
   // Brief green flash after barcode is detected, before API call
   const [barcodeFlash, setBarcodeFlash] = useState(false)
+  const [torchOn, setTorchOn] = useState(false)
+  const [torchAvailable, setTorchAvailable] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const controlsRef = useRef<{ stop(): void } | null>(null)
+  // Signals the useEffect below that it should actually start the camera once
+  // the video element has been mounted (pageState flip happens first, then render,
+  // then the effect runs — at that point videoRef.current is guaranteed non-null).
+  const shouldStartCameraRef = useRef(false)
 
   // ── Validate token on mount ────────────────────────────────────────────────
   useEffect(() => {
-    if (!token) {
-      setPageState("expired")
-      return
-    }
+    // pageState is already "expired" when token is falsy (set via useState initialiser).
+    if (!token) return
 
     let cancelled = false
-    fetch(`/api/identity/mobile-session?token=${encodeURIComponent(token)}`)
+    // Use the public (no-auth) GET on the mobile-verify route — the mobile
+    // device has no session cookie so the authenticated poll endpoint returns 401.
+    fetch(`/api/identity/mobile-verify/${encodeURIComponent(token)}`)
       .then((r) => r.json())
       .then((data: { ok?: boolean; status?: string }) => {
         if (cancelled) return
-        if (!data.ok || data.status === "expired") {
+        if (!data.ok || data.status === "expired" || data.status === "failed") {
           setPageState("expired")
         } else if (data.status === "completed") {
           setPageState("success")
@@ -126,54 +134,93 @@ export default function MobileVerifyPage() {
     [token, stopCamera],
   )
 
-  // ── Start camera ───────────────────────────────────────────────────────────
-  const startCamera = useCallback(async () => {
-    if (!videoRef.current) return
+  // ── Torch toggle ──────────────────────────────────────────────────────────
+  const toggleTorch = useCallback(async () => {
+    const stream = videoRef.current?.srcObject as MediaStream | null
+    const track = stream?.getVideoTracks()[0]
+    if (!track) return
+    try {
+      const next = !torchOn
+      await track.applyConstraints({ advanced: [{ torch: next } as MediaTrackConstraintSet] })
+      setTorchOn(next)
+    } catch {
+      // torch not supported on this device — hide the button
+      setTorchAvailable(false)
+    }
+  }, [torchOn])
+
+  // ── Start camera (click handler) ───────────────────────────────────────────
+  // Only sets state to "scanning" so React re-renders and mounts the <video>
+  // element. The useEffect below does the real work once the ref is non-null.
+  const startCamera = useCallback(() => {
     setScanError(null)
+    shouldStartCameraRef.current = true
     setPageState("scanning")
+  }, [])
+
+  // ── Camera initialisation effect ────────────────────────────────────────────
+  // Runs after every render where pageState === "scanning". On the first render
+  // after startCamera() is called the <video> element is now in the DOM, so
+  // videoRef.current is guaranteed non-null here.
+  useEffect(() => {
+    if (pageState !== "scanning" || !shouldStartCameraRef.current) return
+    shouldStartCameraRef.current = false
+
+    const videoEl = videoRef.current
+    if (!videoEl) return
 
     const hints = new Map<DecodeHintType, unknown>()
-    hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.PDF_417])
     hints.set(DecodeHintType.TRY_HARDER, true)
+    const reader = new BrowserPDF417Reader(hints, { delayBetweenScanAttempts: 50 })
 
-    const reader = new BrowserMultiFormatReader(hints, {
-      delayBetweenScanAttempts: 150,
-    })
+    let cancelled = false
 
-    try {
-      const controls = await reader.decodeFromConstraints(
-        {
-          video: {
-            facingMode: "environment",  // rear camera
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-          },
+    reader.decodeFromConstraints(
+      {
+        video: {
+          facingMode: { ideal: "environment" },
+          width:  { min: 1280, ideal: 1920 },
+          height: { min:  720, ideal: 1080 },
         },
-        videoRef.current,
-        (result, err) => {
-          if (result) {
-            controlsRef.current?.stop()   // freeze camera immediately
-            setBarcodeFlash(true)         // show green "detected" overlay
-            const raw = result.getText()
-            setTimeout(() => {
-              setBarcodeFlash(false)
-              void submitBarcode(raw)
-            }, 750)
-          } else if (err && !(err instanceof NotFoundException)) {
-            console.warn("[MobileVerify] scan warning:", err)
-          }
-        },
-      )
-      controlsRef.current = controls
-    } catch (err) {
-      const msg =
-        err instanceof Error && err.name === "NotAllowedError"
-          ? "Camera access was denied. Please allow camera access in your browser settings and try again."
-          : "Could not start the camera. Please make sure you are using a modern browser."
-      setScanError(msg)
-      setPageState("ready")
-    }
-  }, [submitBarcode])
+      },
+      videoEl,
+      (result, err) => {
+        if (cancelled) return
+        if (result) {
+          controlsRef.current?.stop()
+          setBarcodeFlash(true)
+          const raw = result.getText()
+          setTimeout(() => {
+            setBarcodeFlash(false)
+            void submitBarcode(raw)
+          }, 750)
+        } else if (err && !(err instanceof NotFoundException)) {
+          console.warn("[MobileVerify] scan warning:", err)
+        }
+      },
+    )
+      .then((controls) => {
+        if (cancelled) { controls.stop(); return }
+        controlsRef.current = controls
+        // Detect torch capability after stream starts
+        const track = (videoEl.srcObject as MediaStream | null)?.getVideoTracks()[0]
+        if (track) {
+          const caps = track.getCapabilities() as Record<string, unknown>
+          if (caps.torch) setTorchAvailable(true)
+        }
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return
+        const msg =
+          err instanceof Error && err.name === "NotAllowedError"
+            ? "Camera access was denied. Please allow camera access in your browser settings and try again."
+            : "Could not start the camera. Please make sure you are using a modern browser."
+        setScanError(msg)
+        setPageState("ready")
+      })
+
+    return () => { cancelled = true }
+  }, [pageState, submitBarcode])
 
   // Cleanup on unmount
   useEffect(() => () => { stopCamera() }, [stopCamera])
@@ -293,9 +340,31 @@ export default function MobileVerifyPage() {
                     />
                   </div>
                   {/* Hint below the guide rect */}
-                  <div className="absolute left-0 right-0" style={{ top: "calc(74% + 8px)" }}>
-                    <p className="text-center text-xs text-white/70">Hold steady — scanning…</p>
+                  <div className="absolute left-0 right-0 flex flex-col items-center gap-1" style={{ top: "calc(74% + 8px)" }}>
+                    <p className="text-center text-xs text-white/75">
+                      Hold barcode <strong className="text-white">6–10 in.</strong> from camera · hold steady
+                    </p>
+                    <p className="text-center text-[11px] text-white/50">
+                      Barcode is on the <strong className="text-white/70">back</strong> · good lighting required
+                    </p>
                   </div>
+                  {/* Torch button — only shown when supported */}
+                  {torchAvailable && (
+                    <div className="absolute top-3 right-3">
+                      <button
+                        onClick={toggleTorch}
+                        className={cn(
+                          "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium shadow-md transition-colors",
+                          torchOn
+                            ? "bg-yellow-400 text-yellow-900"
+                            : "bg-black/60 text-white/80 border border-white/20"
+                        )}
+                      >
+                        {torchOn ? <Flashlight className="h-3.5 w-3.5" /> : <FlashlightOff className="h-3.5 w-3.5" />}
+                        {torchOn ? "Light on" : "Light off"}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -164,7 +164,10 @@ PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres \
   -f database/invitations_schema.sql \
   -f database/sw_messaging_schema.sql \
   -f database/collaborative_session_schema.sql \
-  -f database/voice_transcription_migration.sql
+  -f database/voice_transcription_migration.sql \
+  -f database/identity_verification_schema.sql \
+  -f database/migrations/add_mobile_verify_sessions.sql \
+  -f database/migrations/add_mobile_session_extracted_data.sql
 ```
 
 Seed the admin account:
@@ -237,6 +240,61 @@ App runs at **http://localhost:3000**
 | Supabase Studio | http://127.0.0.1:54323 |
 | Supabase API | http://127.0.0.1:54321 |
 | Ollama API | http://127.0.0.1:11434 |
+
+---
+
+## Identity Verification
+
+HealthCompass MA verifies applicant identity by scanning the **PDF417 barcode** on the back of any US driver's license or state ID. The implementation is fully self-hosted — no third-party identity service is required.
+
+### How it works
+
+1. The applicant scans the barcode using their device camera (or their phone camera via a QR code cross-device flow).
+2. The AAMVA standard barcode is parsed to extract name, date of birth, and address.
+3. The extracted fields are compared against the applicant's on-file profile using a weighted scoring algorithm.
+4. The applicant's identity status (`verified`, `needs_review`, or `failed`) is recorded and gates application submission.
+
+### Scoring
+
+| Field | Weight |
+|---|---|
+| Last name | 30 pts |
+| Date of birth | 30 pts |
+| First name | 20 pts |
+| Address / ZIP | 20 pts |
+
+Score ≥ 70 → **verified**. Score 50–69 → **needs review** (staff queue). Score < 50 → **failed**.
+
+### Where verification appears
+
+| Location | Behavior |
+|---|---|
+| **Customer dashboard** | Banner prompts unverified users to scan; disappears when verified |
+| **Application submission** | Hard gate — submit button opens scanner if not verified |
+| **Profile page** | "Auto-fill from license" scan fills name/address fields and runs verify-on-save |
+
+### Cross-device QR flow
+
+When a user cannot easily aim a laptop camera at the barcode, they click "Scan with Phone":
+
+1. Desktop creates a short-lived session token and displays a QR code.
+2. User scans the QR code with their phone — opens a mobile-optimized scan page.
+3. Phone camera scans the DL barcode; result is sent to the server.
+4. Desktop polls for completion and updates automatically.
+
+### Profile auto-fill
+
+Scanning the DL on the profile page populates name and address fields automatically. Each auto-filled field shows a "From license" badge that clears when the user edits it. Saving the profile triggers identity verification against the newly saved data.
+
+### Technical approach
+
+- **Barcode decoder:** `@zxing/browser` + `@zxing/library` (open-source, already in dependencies)
+- **Standard:** AAMVA DL/ID Card Design Standard — all 50 US states
+- **QR code:** `bwip-js` server-side SVG generation
+- **Privacy:** License number is SHA-256 hashed before storage; name/address/DOB are never persisted
+- **Sessions:** 24-byte random token, 10-minute TTL, RLS-enforced
+
+Full technical design: [`docs/IDENTITY_VERIFICATION.md`](docs/IDENTITY_VERIFICATION.md)
 
 ---
 
