@@ -13,6 +13,9 @@ test-results/
 node_modules/
 .next/
 .env*.local
+.env.production
+.env.prod
+database/dumps/
 .DS_Store
 storybook-static/
 debug-storybook.log
