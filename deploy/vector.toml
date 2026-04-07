@@ -1,0 +1,63 @@
+# Vector — container log collector for HealthCompass MA
+# Reads Docker logs from all containers and ships them to OpenObserve.
+#
+# Collected sources:
+#   healthcompass-app      → Next.js structured logs
+#   healthcompass-ollama   → Ollama inference logs
+#   healthcompass-proxy    → Traefik access/error logs
+#   healthcompass-analysis → MassHealth analysis service (when enabled)
+
+# ── Source: Docker container logs ────────────────────────────────────────────
+[sources.docker_logs]
+type = "docker_logs"
+docker_host = "unix:///var/run/docker.sock"
+# Only collect logs from our named containers
+include_containers = [
+  "healthcompass-app",
+  "healthcompass-ollama",
+  "healthcompass-proxy",
+  "healthcompass-analysis",
+]
+
+# ── Transform: normalize fields ──────────────────────────────────────────────
+[transforms.normalize]
+type = "remap"
+inputs = ["docker_logs"]
+source = '''
+# Rename container_name → service for consistency with app logs
+.service  = .container_name
+.env      = "production"
+
+# Try to parse the message as JSON (Next.js structured logs); fall back to raw
+parsed, err = parse_json(.message)
+if err == null {
+  . = merge(., parsed)
+} else {
+  .raw_message = .message
+}
+
+# OpenObserve expects _timestamp in microseconds
+._timestamp = to_unix_timestamp(now(), unit: "microseconds")
+'''
+
+# ── Sink: OpenObserve HTTP ingest ─────────────────────────────────────────────
+[sinks.openobserve]
+type            = "http"
+inputs          = ["normalize"]
+uri             = "${OPENOBSERVE_URL}/api/${OPENOBSERVE_ORG}/${OPENOBSERVE_STREAM_CONTAINERS}/_json"
+method          = "post"
+compression     = "gzip"
+
+encoding.codec  = "json"
+
+[sinks.openobserve.batch]
+max_bytes    = 1_048_576   # 1 MB
+timeout_secs = 5
+
+[sinks.openobserve.auth]
+strategy = "basic"
+user     = "${OPENOBSERVE_USER}"
+password = "${OPENOBSERVE_PASSWORD}"
+
+[sinks.openobserve.request]
+retry_attempts = 5

@@ -150,6 +150,7 @@ OPENOBSERVE_USER=binlee120@gmail.com
 OPENOBSERVE_PASSWORD=
 OPENOBSERVE_ORG=default
 OPENOBSERVE_STREAM=mhealth-app
+OPENOBSERVE_STREAM_CONTAINERS=containers-local   # Vector ships all container logs here
 
 # ── Optional ──────────────────────────────────────────────────────────────────
 PROFILE_ENCRYPTION_KEY=        # 32-byte hex string for profile field encryption
@@ -304,7 +305,8 @@ OPENOBSERVE_URL=http://72.60.29.200:5080
 OPENOBSERVE_USER=binlee120@gmail.com
 OPENOBSERVE_PASSWORD=<your-password>
 OPENOBSERVE_ORG=default
-OPENOBSERVE_STREAM=mhealth-app          # use mhealth-app-prod in production
+OPENOBSERVE_STREAM=mhealth-app                   # Next.js app logs (structured JSON)
+OPENOBSERVE_STREAM_CONTAINERS=containers-prod    # Vector: all container logs (Ollama, Traefik, etc.)
 ```
 
 ### Querying logs
@@ -339,6 +341,34 @@ docker logs openobserve --tail 50 -f
 ```
 
 > **Firewall:** Port 5080 must be open in **hPanel → VPS → Firewall** (Hostinger cloud firewall). UFW is inactive on this server — the Hostinger panel is the only firewall layer.
+
+---
+
+### Vector — Container Log Collector
+
+**Vector** is a sidecar in `docker-compose.yml` that tails Docker logs from every container and ships them to OpenObserve. This means **Ollama, Traefik, masshealth-analysis, and the Next.js app** all appear in a single OpenObserve stream — no code changes needed in any service.
+
+| | Detail |
+|--|--------|
+| Image | `timberio/vector:0.39-alpine` |
+| Config | `deploy/vector.toml` |
+| Source | Docker socket (`/var/run/docker.sock`) |
+| Destination stream | `containers-prod` (configurable via `OPENOBSERVE_STREAM_CONTAINERS`) |
+
+**What you'll see in OpenObserve → `containers-prod`:**
+- Ollama inference requests (`"msg":"inference started"`, model load times, errors)
+- Traefik access logs (HTTP method, path, status, duration)
+- Next.js logs (already structured JSON — parsed automatically by Vector)
+- Analysis service logs when the profile is enabled
+
+**Querying container logs:**
+1. Open **http://72.60.29.200:5080** → **Logs** → select stream **`containers-prod`**
+2. Filter by service:
+   - Ollama: `service = 'healthcompass-ollama'`
+   - Traefik: `service = 'healthcompass-proxy'`
+   - App: `service = 'healthcompass-app'`
+
+**No env var set for `OPENOBSERVE_STREAM_CONTAINERS`?** Vector defaults to `containers-prod` in production (see `docker-compose.yml`).
 
 ---
 
@@ -713,6 +743,7 @@ See the **Setup → Configure environment variables** section above for the full
 | `OPENOBSERVE_PASSWORD` | OpenObserve admin password |
 | `OPENOBSERVE_ORG` | `default` |
 | `OPENOBSERVE_STREAM` | `mhealth-app-prod` |
+| `OPENOBSERVE_STREAM_CONTAINERS` | `containers-prod` |
 
 > **Secrets vs Variables:** All of the above must be stored under **Secrets** (lock icon),
 > not Variables. Secrets use `${{ secrets.NAME }}`; Variables use `${{ vars.NAME }}` — mixing them causes blank values and silent deploy failures.

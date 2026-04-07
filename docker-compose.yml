@@ -96,6 +96,26 @@ services:
     networks:
       - internal
 
+  # ── Vector — container log collector → OpenObserve ───────────────────────
+  vector:
+    image: timberio/vector:0.39-alpine
+    container_name: healthcompass-vector
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro   # read container logs
+      - ./deploy/vector.toml:/etc/vector/vector.toml:ro
+    environment:
+      OPENOBSERVE_URL: ${OPENOBSERVE_URL}
+      OPENOBSERVE_USER: ${OPENOBSERVE_USER}
+      OPENOBSERVE_PASSWORD: ${OPENOBSERVE_PASSWORD}
+      OPENOBSERVE_ORG: ${OPENOBSERVE_ORG:-default}
+      OPENOBSERVE_STREAM_CONTAINERS: ${OPENOBSERVE_STREAM_CONTAINERS:-containers-prod}
+    networks:
+      - internal
+    depends_on:
+      - app
+      - ollama
+
   # ── MassHealth Analysis Service (Python / FastAPI) ────────────────────────
   # Disabled by default — activate with: --profile analysis
   #   docker compose --env-file .env.production.local --profile analysis up -d
