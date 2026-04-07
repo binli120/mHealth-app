@@ -1,0 +1,37 @@
+# /etc/systemd/system/openobserve.service
+#
+# Systemd unit — keeps the OpenObserve monitoring stack running.
+# Starts after Docker daemon; restarts if the compose stack exits.
+#
+# Install:
+#   sudo cp deploy/openobserve.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now openobserve
+#
+# The OpenObserve compose file lives at /root/openobserver/docker-compose.yml.
+
+[Unit]
+Description=OpenObserve — Observability (logs + metrics + traces)
+Documentation=https://openobserve.ai/docs
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/root/openobserver
+
+ExecStart=/usr/bin/docker compose up -d --remove-orphans
+ExecStop=/usr/bin/docker compose down
+ExecReload=/usr/bin/docker compose up -d --remove-orphans
+
+Restart=on-failure
+RestartSec=10s
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=openobserve
+
+[Install]
+WantedBy=multi-user.target

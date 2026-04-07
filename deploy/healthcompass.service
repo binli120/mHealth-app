@@ -1,0 +1,46 @@
+# /etc/systemd/system/healthcompass.service
+#
+# Systemd unit — keeps the HealthCompass MA Docker Compose stack running.
+# Starts after the Docker daemon is ready; restarts the stack if it exits.
+#
+# Install:
+#   sudo cp deploy/healthcompass.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now healthcompass
+#
+# The app directory on the VPS is ~/masshealth_app (resolved to /root/masshealth_app).
+
+[Unit]
+Description=HealthCompass MA — Next.js + Traefik + Ollama
+Documentation=https://github.com/your-org/mHealth-app
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/root/masshealth_app
+
+# Start: bring up the core stack (traefik + app + ollama)
+ExecStart=/usr/bin/docker compose --env-file .env.production.local up -d --remove-orphans
+
+# Optional: also start the analysis service when the profile is enabled
+# ExecStart=/usr/bin/docker compose --env-file .env.production.local --profile analysis up -d --remove-orphans
+
+# Stop: bring everything down cleanly
+ExecStop=/usr/bin/docker compose --env-file .env.production.local down
+
+# Reload: pull new images + recreate changed containers (used by CI/CD)
+ExecReload=/usr/bin/docker compose --env-file .env.production.local up -d --build --remove-orphans
+
+Restart=on-failure
+RestartSec=10s
+
+# Log to journald
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=healthcompass
+
+[Install]
+WantedBy=multi-user.target

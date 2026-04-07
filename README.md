@@ -16,6 +16,7 @@ A collaborative health-application platform that lets patients and social worker
 | AI / LLM | Ollama — llama3.2 |
 | Speech-to-text | OpenAI Whisper CLI |
 | Email | Resend |
+| Observability | OpenObserve + OpenTelemetry |
 | Package manager | pnpm 10 |
 | Node.js | ≥ 20 |
 
@@ -142,6 +143,14 @@ FROM_EMAIL=noreply@yourdomain.com
 NEXT_PUBLIC_MASSHEALTH_FORMS_BASE_URL=http://localhost:8000
 NEXT_PUBLIC_MASSHEALTH_ANALYSIS_BASE_URL=http://localhost:8000
 
+# ── OpenObserve observability ─────────────────────────────────────────────────
+# All three must be set to activate; leave blank to disable silently
+OPENOBSERVE_URL=http://72.60.29.200:5080
+OPENOBSERVE_USER=binlee120@gmail.com
+OPENOBSERVE_PASSWORD=
+OPENOBSERVE_ORG=default
+OPENOBSERVE_STREAM=mhealth-app
+
 # ── Optional ──────────────────────────────────────────────────────────────────
 PROFILE_ENCRYPTION_KEY=        # 32-byte hex string for profile field encryption
 GOOGLE_GEOCODING_API_KEY=      # address geocoding
@@ -227,6 +236,10 @@ App runs at **http://localhost:3000**
 | `pnpm test:e2e:report` | Open last Playwright HTML report |
 | `pnpm db:check` | Verify database connection |
 | `pnpm db:migrate:dev` | Apply pending migrations (dev) |
+| `pnpm db:push:dev` | Push migrations to cloud dev (Supabase CLI) |
+| `pnpm db:push:prod` | Push migrations to cloud prod (`SUPABASE_PROJECT_REF_PROD` required) |
+| `pnpm db:sync:prod` | Dump local public data and restore to cloud (`SUPABASE_DB_URL` required) |
+| `pnpm gen:test-license` | Generate a test PDF417 barcode + HTML DL mockup for identity verification testing |
 
 ---
 
@@ -240,6 +253,92 @@ App runs at **http://localhost:3000**
 | Supabase Studio | http://127.0.0.1:54323 |
 | Supabase API | http://127.0.0.1:54321 |
 | Ollama API | http://127.0.0.1:11434 |
+| OpenObserve dashboard | http://72.60.29.200:5080 |
+
+---
+
+## Observability (OpenObserve + OpenTelemetry)
+
+HealthCompass MA ships structured logs and distributed traces to a self-hosted **OpenObserve** instance running on the Hostinger VPS.
+
+### Architecture
+
+```
+API routes / server functions
+        │
+        ▼
+lib/server/logger.ts          ← logServerError() / logServerInfo()
+        │
+        ├─── console.{info|warn|error}   (always — local dev + prod stdout)
+        │
+        └─── POST /api/{org}/{stream}/_json   ─► OpenObserve (fire-and-forget)
+
+instrumentation.ts            ← OpenTelemetry SDK (auto-loaded by Next.js)
+        │
+        └─── OTLP/HTTP traces  ─────────────────► OpenObserve /api/{org}/traces
+```
+
+### What is collected
+
+| Signal | Details |
+|---|---|
+| **Structured logs** | Every `logServerError` / `logServerInfo` call across 47+ API routes |
+| **Distributed traces** | HTTP requests, DB queries, and more via OpenTelemetry auto-instrumentation |
+| **PII redaction** | Keys matching `authorization`, `token`, `password`, `ssn`, `dob` are automatically replaced with `[redacted]` |
+
+### OpenObserve instance
+
+| | |
+|---|---|
+| **URL** | `http://72.60.29.200:5080` |
+| **Login** | `binlee120@gmail.com` |
+| **Dev stream** | `mhealth-app` |
+| **Prod stream** | `mhealth-app-prod` |
+
+### Environment variables
+
+All three must be set to activate log shipping and tracing. Leave blank to disable silently.
+
+```env
+OPENOBSERVE_URL=http://72.60.29.200:5080
+OPENOBSERVE_USER=binlee120@gmail.com
+OPENOBSERVE_PASSWORD=<your-password>
+OPENOBSERVE_ORG=default
+OPENOBSERVE_STREAM=mhealth-app          # use mhealth-app-prod in production
+```
+
+### Querying logs
+
+1. Open **http://72.60.29.200:5080** → **Logs** → select stream `mhealth-app`
+2. Useful queries:
+   ```sql
+   -- All errors
+   level = 'error'
+
+   -- Errors from a specific module
+   level = 'error' AND context.module = 'mobile-session'
+
+   -- Slow or failed auth
+   level = 'error' AND event LIKE '%auth%'
+   ```
+
+### OpenObserve on VPS (Docker)
+
+The instance runs via Docker Compose at `/root/openobserver/docker-compose.yml` on the Hostinger VPS.
+
+```bash
+# Check status (on VPS)
+docker ps | grep openobserve
+curl http://localhost:5080/healthz
+
+# Restart
+cd /root/openobserver && docker compose restart
+
+# View logs
+docker logs openobserve --tail 50 -f
+```
+
+> **Firewall:** Port 5080 must be open in **hPanel → VPS → Firewall** (Hostinger cloud firewall). UFW is inactive on this server — the Hostinger panel is the only firewall layer.
 
 ---
 
@@ -359,6 +458,15 @@ Test audio files are included at `public/test-audio/`:
 ---
 
 ### Patient / Customer
+
+| Field    | Value                     |
+|----------|---------------------------|
+| Email    | `patient@healthcompass.dev` |
+| Password | `password`                |
+| Portal   | `/customer/dashboard`     |
+| Notes    | General-purpose dev patient account. No special role — standard applicant experience. |
+
+**E2E test account (created by Playwright global setup):**
 
 | Field    | Value                     |
 |----------|---------------------------|
@@ -600,9 +708,93 @@ See the **Setup → Configure environment variables** section above for the full
 | `FROM_EMAIL` | Sender address |
 | `OLLAMA_BASE_URL` | `http://ollama:11434` |
 | `OLLAMA_MODEL` | `llama3.2` |
+| `OPENOBSERVE_URL` | `http://72.60.29.200:5080` |
+| `OPENOBSERVE_USER` | OpenObserve admin email |
+| `OPENOBSERVE_PASSWORD` | OpenObserve admin password |
+| `OPENOBSERVE_ORG` | `default` |
+| `OPENOBSERVE_STREAM` | `mhealth-app-prod` |
 
 > **Secrets vs Variables:** All of the above must be stored under **Secrets** (lock icon),
 > not Variables. Secrets use `${{ secrets.NAME }}`; Variables use `${{ vars.NAME }}` — mixing them causes blank values and silent deploy failures.
+
+---
+
+### Always-On Services — Systemd Daemon Setup
+
+Docker's `restart: unless-stopped` restarts individual containers when they crash, but it does **not** bring the stack back after a full VPS reboot. Systemd units fill that gap.
+
+Two unit files live in `deploy/`:
+
+| File | Service | Manages |
+|------|---------|---------|
+| `deploy/healthcompass.service` | `healthcompass` | Next.js app + Traefik + Ollama (+ analysis when profile enabled) |
+| `deploy/openobserve.service` | `openobserve` | OpenObserve monitoring stack |
+
+#### Install on the VPS (one-time)
+
+```bash
+# ── HealthCompass app stack ───────────────────────────────────────────────────
+sudo cp ~/masshealth_app/deploy/healthcompass.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now healthcompass      # start now + auto-start on boot
+
+# ── OpenObserve monitoring stack ─────────────────────────────────────────────
+sudo cp ~/masshealth_app/deploy/openobserve.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now openobserve
+
+# ── Verify both are active ───────────────────────────────────────────────────
+systemctl status healthcompass openobserve
+```
+
+#### Day-to-day systemd commands
+
+```bash
+# Status
+systemctl status healthcompass          # show running state + last 10 log lines
+systemctl status openobserve
+
+# Restart (e.g. after config change)
+systemctl restart healthcompass
+systemctl restart openobserve
+
+# Logs via journald (follows live)
+journalctl -u healthcompass -f
+journalctl -u openobserve -f
+
+# Stop (won't auto-restart until you start it again)
+systemctl stop healthcompass
+```
+
+#### MassHealth Analysis Service
+
+The `masshealth-analysis` service is defined in `docker-compose.yml` under a `profiles: [analysis]` guard so it does **not** start by default.
+
+When the analysis service is ready to deploy:
+1. Build its image on the VPS: `docker build -t healthcompass-analysis:latest /path/to/analysis-repo`
+2. Enable the profile for all future starts — edit `/etc/systemd/system/healthcompass.service` and uncomment the `--profile analysis` ExecStart line (or override inline):
+
+```bash
+# One-off start including analysis:
+cd ~/masshealth_app
+docker compose --env-file .env.production.local --profile analysis up -d
+
+# OR permanently — edit the systemd unit:
+sudo sed -i 's|up -d --remove-orphans|--profile analysis up -d --remove-orphans|' \
+  /etc/systemd/system/healthcompass.service
+sudo systemctl daemon-reload && sudo systemctl restart healthcompass
+```
+
+#### How restart protection works (layers)
+
+```
+VPS reboot
+  └─► systemd starts Docker daemon (docker.service)
+        └─► systemd starts healthcompass.service  → docker compose up -d
+              └─► Docker runs containers with restart: unless-stopped
+                    └─► if any container crashes → Docker restarts it automatically
+                          └─► if docker compose exits → systemd restarts the unit (Restart=on-failure)
+```
 
 ---
 
@@ -673,6 +865,51 @@ git push main
 ```
 
 Manual trigger: **GitHub → Actions → Deploy to Hostinger VPS → Run workflow**
+
+---
+
+### Managing the Running App (on VPS)
+
+> **Preferred:** once the systemd units are installed (see above), use `systemctl restart healthcompass` instead of docker compose directly. Both work — systemd just adds boot-time auto-start.
+
+All docker compose commands run from `~/masshealth_app` using the env file:
+
+```bash
+cd ~/masshealth_app
+
+# ── Status ────────────────────────────────────────────────────────────────────
+docker compose --env-file .env.production.local ps          # all service statuses
+docker ps                                                    # quick container list
+
+# ── Start / Stop / Restart ────────────────────────────────────────────────────
+docker compose --env-file .env.production.local up -d                        # start all
+docker compose --env-file .env.production.local down                         # stop all
+docker compose --env-file .env.production.local restart app                  # restart Next.js only
+docker compose --env-file .env.production.local restart traefik              # restart reverse proxy only
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+docker compose --env-file .env.production.local logs -f app                  # Next.js live logs
+docker compose --env-file .env.production.local logs -f traefik              # Traefik live logs
+docker compose --env-file .env.production.local logs -f ollama               # Ollama live logs
+docker compose --env-file .env.production.local logs --tail 100 app          # last 100 lines
+
+# ── SSL Certificate (Let's Encrypt via Traefik) ───────────────────────────────
+# If cert is self-signed or expired, clear the ACME cache and restart:
+docker exec healthcompass-proxy rm -f /letsencrypt/acme.json
+docker compose --env-file .env.production.local restart traefik
+# Watch for cert issuance:
+docker compose --env-file .env.production.local logs -f traefik 2>&1 | grep -iE "acme|cert|obtain|challeng|error"
+
+# Verify the live cert:
+echo | openssl s_client -connect healthcompass.cloud:443 -servername healthcompass.cloud 2>/dev/null \
+  | openssl x509 -noout -issuer -dates
+
+# ── Ollama model ──────────────────────────────────────────────────────────────
+docker exec healthcompass-ollama ollama list                 # list downloaded models
+docker exec healthcompass-ollama ollama pull llama3.2       # pull / update model
+```
+
+> **Services:** `app` = Next.js · `traefik` (container: `healthcompass-proxy`) = reverse proxy + SSL · `ollama` = local LLM
 
 ---
 

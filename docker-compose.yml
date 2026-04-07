@@ -96,6 +96,35 @@ services:
     networks:
       - internal
 
+  # ── MassHealth Analysis Service (Python / FastAPI) ────────────────────────
+  # Disabled by default — activate with: --profile analysis
+  #   docker compose --env-file .env.production.local --profile analysis up -d
+  # The image must be built separately from the analysis service repo before enabling.
+  masshealth-analysis:
+    profiles:
+      - analysis
+    image: healthcompass-analysis:latest
+    container_name: healthcompass-analysis
+    restart: unless-stopped
+    expose:
+      - "8000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+    env_file:
+      - .env.production.local
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.analysis.rule=Host(`${DOMAIN}`) && PathPrefix(`/api/analysis`)"
+      - "traefik.http.routers.analysis.entrypoints=websecure"
+      - "traefik.http.routers.analysis.tls=true"
+      - "traefik.http.routers.analysis.tls.certresolver=le"
+      - "traefik.http.services.analysis.loadbalancer.server.port=8000"
+    networks:
+      - proxy
+      - internal
+
 networks:
   proxy:
     name: proxy          # shared network — Traefik uses this to reach containers
