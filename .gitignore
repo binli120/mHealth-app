@@ -1,3 +1,6 @@
+# Google OAuth credentials (never commit)
+keys/
+
 # v0 runtime files
 __v0_runtime_loader.js
 __v0_devtools.tsx

@@ -41,9 +41,7 @@ function isLocalUrl(url: string | undefined): boolean | null {
 
 function resolveLocalRuntime(): boolean {
   const bySupabaseUrl = isLocalUrl(
-    process.env.NEXT_PUBLIC_SUPABASE_URL_LOCAL ||
-      process.env.NEXT_PUBLIC_SUPABASE_URL ||
-      process.env.SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL,
   )
   if (bySupabaseUrl !== null) {
     return bySupabaseUrl
