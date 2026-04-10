@@ -34,6 +34,9 @@ export default function RootLayout({
             <ConditionalChatWidget />
             <Analytics />
           </ReduxProvider>
+          <footer className="fixed bottom-1 right-2 text-[10px] text-muted-foreground/40 select-none pointer-events-none">
+            v{process.env.NEXT_PUBLIC_APP_VERSION}
+          </footer>
         </ThemeProvider>
       </body>
     </html>

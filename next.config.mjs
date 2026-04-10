@@ -4,7 +4,11 @@
  */
 
 import path from "node:path"
+import { createRequire } from "node:module"
 import { fileURLToPath } from "node:url"
+
+const require = createRequire(import.meta.url)
+const { version } = require("./package.json")
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url))
 const projectNodeModules = path.join(projectRoot, "node_modules")
@@ -32,6 +36,9 @@ function normalizeResolveModules(modules) {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  env: {
+    NEXT_PUBLIC_APP_VERSION: version,
+  },
   output: "standalone",
   // Keep pdf-parse and pdfjs-dist out of the server bundle.
   // Both use DOMMatrix / process.getBuiltinModule at module-eval time which
