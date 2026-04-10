@@ -45,50 +45,30 @@ export class BenefitStackPage {
   async runHappyPath() {
     await this.goto()
 
-    // Wait for wizard to load
-    await this.page.waitForSelector("form, [data-testid='benefit-wizard']", { timeout: 10_000 })
+    // FamilyProfileWizard renders a div-based step wizard — no <form> tag.
+    // Step 0 (About You) always shows #age.
+    await this.page.waitForSelector("#age", { timeout: 10_000 })
 
-    // Step through the FamilyProfileWizard
-    // The wizard varies per implementation — we target common labels
+    // Step 0: fill age so the profile is non-trivial
+    await this.page.fill("#age", "35")
 
-    // Household size
-    const householdInput = this.page.getByLabel(/household size|number of people/i)
-    if (await householdInput.isVisible()) {
-      await householdInput.fill("3")
-    }
-
-    // Annual income
-    const incomeInput = this.page.getByLabel(/annual income|yearly income/i)
-    if (await incomeInput.isVisible()) {
-      await incomeInput.fill("42000")
-    }
-
-    // Monthly income (some wizards use monthly)
-    const monthlyInput = this.page.getByLabel(/monthly income/i)
-    if (await monthlyInput.isVisible()) {
-      await monthlyInput.fill("3500")
-    }
-
-    // Citizenship
-    const citizenOption = this.page.getByLabel(/citizen|citizenship/i)
-    if (await citizenOption.isVisible()) {
-      await citizenOption.check().catch(() => {})
-    }
-
-    // Click Next/Continue through wizard steps — exclude Next.js dev tools button
+    // Navigate through steps 0→5 by clicking the "Next" nav button each time.
+    // Uses getByRole for reliable accessible-name matching (avoids fragile
+    // CSS-selector + text-filter combos that break with whitespace or icons).
     for (let i = 0; i < 5; i++) {
-      const nextBtn = this.page.locator('button[data-slot="button"]').filter({ hasText: /^next$|^continue$/i }).first()
-      if (await nextBtn.isVisible()) {
+      // The bottom-nav "Next" button is the only button with this accessible name.
+      const nextBtn = this.page.getByRole("button", { name: /^next$/i })
+      if (await nextBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
         await nextBtn.click()
-        await this.page.waitForTimeout(500)
+        await this.page.waitForTimeout(600)
       } else {
         break
       }
     }
 
-    // Submit / Evaluate
-    const submitBtn = this.page.getByRole("button", { name: /submit|check|evaluate|see.*benefit/i })
-    if (await submitBtn.isVisible()) {
+    // Step 5 (Review): submit button text is "See My Benefits Stack"
+    const submitBtn = this.page.getByRole("button", { name: /see my benefits|submit|check|evaluate/i })
+    if (await submitBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
       await submitBtn.click()
     }
 

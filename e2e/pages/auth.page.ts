@@ -24,6 +24,10 @@ export class AuthPage {
     password: string
   }) {
     await this.page.goto("/auth/register")
+    // Register page opens on a role-select step — click "Applying for Benefits"
+    // to advance to the form step where the input fields appear.
+    await this.page.getByRole("button", { name: /applying for benefits/i }).click()
+    await this.page.waitForSelector("#firstName", { timeout: 5_000 })
     await this.page.fill("#firstName", opts.firstName)
     await this.page.fill("#lastName", opts.lastName)
     await this.page.fill("#email", opts.email)

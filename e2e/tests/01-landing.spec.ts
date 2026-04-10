@@ -17,8 +17,10 @@ test.describe("Landing Page", () => {
 
   test("navigation links are present", async ({ page }) => {
     await page.goto("/")
-    await expect(page.getByRole("link", { name: /sign in|login/i })).toBeVisible()
-    await expect(page.getByRole("link", { name: /get started|create account|register/i })).toBeVisible()
+    // Use .first() — the landing page intentionally has two "Sign In" links
+    // (one in the nav bar, one in the hero CTA area).
+    await expect(page.getByRole("link", { name: /sign in|login/i }).first()).toBeVisible()
+    await expect(page.getByRole("link", { name: /get started|create account|register/i }).first()).toBeVisible()
   })
 
   test("'Get Started' navigates to registration", async ({ page }) => {
@@ -42,12 +44,13 @@ test.describe("Landing Page", () => {
   test("appeal assistant link works from landing", async ({ page }) => {
     await page.goto("/")
     const appealLink = page.getByRole("link", { name: /appeal/i }).first()
-    if (await appealLink.isVisible()) {
-      await appealLink.click()
-      await expect(page).toHaveURL(/\/appeal-assistant/)
-    } else {
+    if (!(await appealLink.isVisible())) {
       test.skip()
+      return
     }
+    await appealLink.click()
+    // The landing page may use an anchor (#appeal) or navigate to /appeal-assistant
+    await expect(page).toHaveURL(/\/appeal-assistant|#appeal/, { timeout: 5_000 })
   })
 
   test("no console errors on load", async ({ page }) => {

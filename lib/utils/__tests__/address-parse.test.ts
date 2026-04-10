@@ -48,4 +48,25 @@ describe("lib/utils/address-parse", () => {
     expect(parsePastedUsAddress("1 Main St Boston MA 02139")).toBeNull()
     expect(parsePastedUsAddress("just text")).toBeNull()
   })
+
+  it("returns null for empty string", () => {
+    expect(parsePastedUsAddress("")).toBeNull()
+  })
+
+  it("supports 'United States' country suffix", () => {
+    expect(
+      parsePastedUsAddress("1 Main St, Cambridge, MA 02139, United States")
+    ).toMatchObject({ streetAddress: "1 Main St", city: "Cambridge", state: "MA" })
+  })
+
+  it("handles missing zip code", () => {
+    const result = parsePastedUsAddress("100 Federal St, Boston, MA")
+    expect(result).not.toBeNull()
+    expect(result?.zipCode).toBe("")
+  })
+
+  it("returns null when regex matches but street is empty", () => {
+    // Pathological case: comma-only / spaces
+    expect(parsePastedUsAddress(",  , MA 02108")).toBeNull()
+  })
 })

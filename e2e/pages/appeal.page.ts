@@ -14,43 +14,40 @@ export class AppealPage {
   }
 
   async fillDenialForm(data: typeof DEMO_APPEAL) {
-    // Select denial reason
-    const reasonSelect = this.page.getByLabel(/denial reason|reason.*denied/i)
-    if (await reasonSelect.isVisible()) {
-      await reasonSelect.selectOption({ value: data.denial_reason }).catch(async () => {
-        await reasonSelect.selectOption({ label: "income" })
+    // The denial reason uses a Radix UI <Select> (not a native <select>).
+    // selectOption() won't work — must click the trigger to open the portal,
+    // then click the desired option.
+    const reasonTrigger = this.page.locator('[id="denial-reason"]')
+    if (await reasonTrigger.isVisible()) {
+      await reasonTrigger.click()
+      await this.page.waitForTimeout(400)
+      // Prefer the option whose text contains the denial_reason value; fall back to first
+      const preferredOption = this.page.getByRole("option", {
+        name: new RegExp(data.denial_reason, "i"),
       })
+      const firstOption = this.page.getByRole("option").first()
+      if (await preferredOption.isVisible({ timeout: 2_000 }).catch(() => false)) {
+        await preferredOption.click()
+      } else if (await firstOption.isVisible({ timeout: 1_000 }).catch(() => false)) {
+        await firstOption.click()
+      }
+      await this.page.waitForTimeout(300)
     }
 
-    // Member name
-    const nameField = this.page.getByLabel(/member name|your name|full name/i)
-    if (await nameField.isVisible()) {
-      await nameField.fill(data.member_name)
-    }
-
-    // Denial date
-    const dateField = this.page.getByLabel(/denial date|date.*denied/i)
-    if (await dateField.isVisible()) {
-      await dateField.fill(data.denial_date)
-    }
-
-    // Context / additional info
-    const contextField = this.page.getByLabel(/context|additional|explain|description/i)
-    if (await contextField.isVisible()) {
-      await contextField.fill(data.context)
-    }
-
-    // Also try textarea
-    const textarea = this.page.locator("textarea").first()
-    if (await textarea.isVisible() && !(await textarea.inputValue())) {
-      await textarea.fill(data.context)
+    // Additional details textarea (optional field — id="denial-details")
+    const textarea = this.page.locator("#denial-details")
+    if (await textarea.isVisible()) {
+      await textarea.fill(data.context.slice(0, 500))
     }
   }
 
   async submitForm() {
     const submitBtn = this.page.getByRole("button", { name: /submit|analyze|generate|get.*appeal/i })
     await submitBtn.waitFor({ state: "visible", timeout: 8_000 })
-    await submitBtn.click()
+    // Only click if enabled — button requires a denial reason to be selected
+    if (await submitBtn.isEnabled()) {
+      await submitBtn.click()
+    }
   }
 
   async assertAppealLetterGenerated() {

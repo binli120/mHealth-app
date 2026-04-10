@@ -5,8 +5,22 @@
 
 import { test, expect } from "@playwright/test"
 import * as path from "path"
+import * as fs from "fs"
 
 test.use({ storageState: path.join(__dirname, "../.auth/user.json") })
+
+const _hasAuth = (() => {
+  try {
+    const s = JSON.parse(fs.readFileSync(path.join(__dirname, "../.auth/user.json"), "utf8"))
+    // Supabase uses localStorage (not cookies) for JWT storage
+    return s.origins?.some((o: { localStorage?: { name: string }[] }) =>
+      o.localStorage?.some((item: { name: string }) =>
+        item.name.startsWith("sb-") && item.name.endsWith("-auth-token")
+      )
+    ) ?? false
+  } catch { return false }
+})()
+test.skip(!_hasAuth, "No auth session — create a test user in the Supabase dashboard to run these tests")
 
 test.describe("User Profile", () => {
   test("profile page loads", async ({ page }) => {

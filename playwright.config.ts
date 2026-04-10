@@ -34,10 +34,18 @@ export default defineConfig({
     video: IS_DEMO ? "on" : "off",
   },
   projects: [
-    // Setup project: creates the demo user once before all tests
+    // Setup project: creates the demo user once before all tests.
+    // Uses a dedicated timeout — ensureUser (×2, up to 10s each) +
+    // loginAndSaveState waitForURL (×2, up to 20s each) can exceed the
+    // default 30s global timeout.
     {
       name: "setup",
+      // global.setup.ts lives in e2e/ (not e2e/tests/), so we need to
+      // override testDir here; otherwise the global testDir setting prevents
+      // Playwright from finding the file and the project silently skips.
+      testDir: "./e2e",
       testMatch: /global\.setup\.ts/,
+      timeout: 120_000,
     },
     {
       name: "chromium",

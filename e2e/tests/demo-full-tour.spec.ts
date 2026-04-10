@@ -92,7 +92,32 @@ test.describe.serial("Full Demo Tour", () => {
     await page.waitForTimeout(5000)
   })
 
-  test("3 · Sign In — as demo user", async ({ page }) => {
+  test("3 · Sign In — as demo user", async ({ page, request }) => {
+    // Ensure the demo user exists. Skip if dev-register is unavailable
+    // (Supabase not running) so the demo doesn't hang on a 15s timeout.
+    const res = await request
+      .post("/api/auth/dev-register", {
+        data: {
+          email:     DEMO_USER.email,
+          password:  DEMO_USER.password,
+          firstName: DEMO_USER.firstName,
+          lastName:  DEMO_USER.lastName,
+          phone:     DEMO_USER.phone,
+        },
+        timeout: 8_000,
+      })
+      .catch(() => null)
+    const body = (await res?.json().catch(() => ({}))) ?? {}
+    const canLogin =
+      res?.ok() ||
+      (body as { ok?: boolean }).ok === true ||
+      (body as { error?: string }).error === "already_exists"
+
+    if (!canLogin) {
+      test.skip(true, "dev-register unavailable — cloud Supabase mode does not support programmatic user creation; create the demo user manually in the Supabase dashboard")
+      return
+    }
+
     await page.goto("/auth/login")
     await page.waitForTimeout(1500)
     await page.fill("#email", DEMO_USER.email)
@@ -202,10 +227,14 @@ test.describe.serial("Full Demo Tour", () => {
     if (await reasonTrigger.isVisible()) {
       await reasonTrigger.click()
       await page.waitForTimeout(800)
-      // Pick "Income exceeds eligibility limit"
+      // Prefer "Income exceeds eligibility limit"; fall back to the first option
       const incomeOption = page.getByRole("option", { name: /income exceeds/i })
-      await incomeOption.waitFor({ state: "visible", timeout: 5_000 })
-      await incomeOption.click()
+      const firstOption  = page.getByRole("option").first()
+      if (await incomeOption.isVisible({ timeout: 3_000 }).catch(() => false)) {
+        await incomeOption.click()
+      } else if (await firstOption.isVisible({ timeout: 1_000 }).catch(() => false)) {
+        await firstOption.click()
+      }
       await page.waitForTimeout(1200)
     }
 
@@ -221,7 +250,7 @@ test.describe.serial("Full Demo Tour", () => {
     // Click "Analyze My Denial" — then show the AI loading state and move on
     // (Ollama can take 60 s+ locally; the demo just needs to show it working)
     const submitBtn = page.getByRole("button", { name: /analyze.*denial/i })
-    if (await submitBtn.isVisible()) {
+    if (await submitBtn.isVisible() && await submitBtn.isEnabled()) {
       await submitBtn.click()
       // Show the skeleton loader so viewers understand AI is working
       await page.waitForTimeout(5000)

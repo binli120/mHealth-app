@@ -66,8 +66,12 @@ export function isLocalAuthHelperEnabled(): boolean {
     parseBoolean(process.env.NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS) ??
     parseBoolean(process.env.ENABLE_LOCAL_AUTH_HELPERS)
 
+  // When the flag is explicitly set, trust it completely — don't AND with the
+  // URL heuristic.  This lets cloud-Supabase dev environments opt-in by setting
+  // NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS=true in .env.local without needing a
+  // localhost Supabase URL.
   if (explicit !== null) {
-    return explicit && resolveLocalRuntime()
+    return explicit
   }
 
   return resolveLocalRuntime()

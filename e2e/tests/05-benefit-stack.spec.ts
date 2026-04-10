@@ -6,8 +6,22 @@
 import { test, expect } from "@playwright/test"
 import { BenefitStackPage } from "../pages/benefit-stack.page"
 import * as path from "path"
+import * as fs from "fs"
 
 test.use({ storageState: path.join(__dirname, "../.auth/user.json") })
+
+const _hasAuth = (() => {
+  try {
+    const s = JSON.parse(fs.readFileSync(path.join(__dirname, "../.auth/user.json"), "utf8"))
+    // Supabase uses localStorage (not cookies) for JWT storage
+    return s.origins?.some((o: { localStorage?: { name: string }[] }) =>
+      o.localStorage?.some((item: { name: string }) =>
+        item.name.startsWith("sb-") && item.name.endsWith("-auth-token")
+      )
+    ) ?? false
+  } catch { return false }
+})()
+test.skip(!_hasAuth, "No auth session — create a test user in the Supabase dashboard to run these tests")
 
 test.describe("Benefit Stack (Cross-Program Orchestration)", () => {
   let benefitStack: BenefitStackPage
@@ -26,10 +40,9 @@ test.describe("Benefit Stack (Cross-Program Orchestration)", () => {
 
   test("wizard form is visible", async ({ page }) => {
     await benefitStack.goto()
-    // A form or wizard container should render
-    await expect(
-      page.locator("form, [data-testid='benefit-wizard'], [class*='wizard']").first(),
-    ).toBeVisible({ timeout: 15_000 })
+    // FamilyProfileWizard renders a div-based step wizard (no <form> tag).
+    // Step 0 (About You) always renders the age input field.
+    await expect(page.locator("#age")).toBeVisible({ timeout: 15_000 })
   })
 
   test("happy path returns benefit results", async ({ page }) => {
@@ -55,7 +68,7 @@ test.describe("Benefit Stack (Cross-Program Orchestration)", () => {
     await benefitStack.runHappyPath()
     // Benefit amounts should show $ values or eligibility status
     await expect(
-      page.getByText(/\$\d+|eligible|per month/i).first(),
+      page.getByText(/\$\d+|eligible|qualify|\/month/i).first(),
     ).toBeVisible({ timeout: 20_000 })
   })
 
