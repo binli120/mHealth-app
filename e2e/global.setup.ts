@@ -22,25 +22,10 @@
  * (cloud Supabase mode).  Auth-dependent tests skip gracefully in that case.
  */
 
-import { test as setup } from "@playwright/test"
+import { test as setup, expect } from "@playwright/test"
 import { DEMO_USER, REVIEWER_USER } from "./fixtures/demo-data"
 import * as fs from "fs"
 import * as path from "path"
-
-const BASE_URL = process.env.E2E_BASE_URL ?? "http://localhost:3000"
-const IS_REMOTE = !BASE_URL.startsWith("http://localhost") && !BASE_URL.startsWith("http://127.0.0.1")
-
-// Allow credential overrides for pre-existing cloud accounts (set via GitHub secrets)
-const CLOUD_DEMO_USER = {
-  ...DEMO_USER,
-  email:    process.env.E2E_DEMO_EMAIL    ?? DEMO_USER.email,
-  password: process.env.E2E_DEMO_PASSWORD ?? DEMO_USER.password,
-}
-const CLOUD_REVIEWER_USER = {
-  ...REVIEWER_USER,
-  email:    process.env.E2E_REVIEWER_EMAIL    ?? REVIEWER_USER.email,
-  password: process.env.E2E_REVIEWER_PASSWORD ?? REVIEWER_USER.password,
-}
 
 const AUTH_DIR        = path.join(__dirname, ".auth")
 const AUTH_FILE       = path.join(AUTH_DIR, "user.json")
@@ -117,26 +102,17 @@ async function loginAndSaveState(
 setup("create demo users and save auth state", async ({ page, request }) => {
   ensureAuthDir()
 
-  const demoUser     = IS_REMOTE ? CLOUD_DEMO_USER     : DEMO_USER
-  const reviewerUser = IS_REMOTE ? CLOUD_REVIEWER_USER : REVIEWER_USER
-
-  if (IS_REMOTE) {
-    // dev-register is disabled in production — accounts must exist in cloud Supabase already.
-    // Use E2E_DEMO_EMAIL / E2E_DEMO_PASSWORD (and reviewer equivalents) as GitHub secrets.
-    console.log(`[setup] 🌐 Cloud mode — skipping dev-register, using pre-existing accounts`)
-  }
-
   // ── Demo / customer user ────────────────────────────────────────────────────
-  if (!IS_REMOTE) await ensureUser(request, demoUser)
-  await loginAndSaveState(page, demoUser, AUTH_FILE)
+  await ensureUser(request, DEMO_USER)
+  await loginAndSaveState(page, DEMO_USER, AUTH_FILE)
 
   // ── Reviewer / staff user ───────────────────────────────────────────────────
-  if (!IS_REMOTE) await ensureUser(request, reviewerUser)
+  await ensureUser(request, REVIEWER_USER)
 
   const reviewerContext = await page.context().browser()!.newContext()
   const reviewerPage   = await reviewerContext.newPage()
   try {
-    await loginAndSaveState(reviewerPage, reviewerUser, REVIEWER_AUTH_FILE)
+    await loginAndSaveState(reviewerPage, REVIEWER_USER, REVIEWER_AUTH_FILE)
   } finally {
     await reviewerContext.close()
   }
