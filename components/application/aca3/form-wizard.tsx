@@ -409,7 +409,10 @@ function inferCitizenshipStatus(primaryCoverage: FormRecord): CitizenshipStatus 
   return "UNDOCUMENTED"
 }
 
-function mapWizardToEligibilityInput(data: WizardData): Aca3EligibilityApplicantInput {
+function mapWizardToEligibilityInput(
+  data: WizardData,
+  incomeVerifiedOverride: boolean,
+): Aca3EligibilityApplicantInput {
   const person1 = data.persons[0] ?? makeDefaultPersonState(0)
   const coverage = person1.coverage
   const tax = person1.tax
@@ -496,7 +499,7 @@ function mapWizardToEligibilityInput(data: WizardData): Aca3EligibilityApplicant
         : incomeInput,
     verification: {
       ssnVerified: hasSsn && ssnDigits.length === 9,
-      incomeVerified: directAnnualTotal > 0 || wagesAnnual > 0 || !toBooleanYesNo(incomeSection.has_income),
+      incomeVerified: incomeVerifiedOverride,
       immigrationVerified:
         toBooleanYesNo(coverage.us_citizen) ||
         toBooleanYesNo(coverage.eligible_immigration_status),
@@ -830,6 +833,26 @@ function FormProvider({
   const saveTimeoutRef = useRef<number | null>(null)
   const saveFailureBackoffUntilRef = useRef(0)
 
+  // ── Income verification: API-backed flag ──────────────────────────────────
+  // Fetched from the income verification case; never inferred from form fields.
+  const [apiIncomeVerified, setApiIncomeVerified] = useState(false)
+
+  useEffect(() => {
+    if (!resolvedApplicationId || resolvedApplicationId === DEFAULT_APPLICATION_ID) return
+
+    let cancelled = false
+
+    authenticatedFetch(`/api/masshealth/income-verification/${resolvedApplicationId}`)
+      .then(async (resp) => {
+        if (cancelled || !resp.ok) return
+        const data = (await resp.json()) as { incomeVerified?: boolean }
+        if (!cancelled) setApiIncomeVerified(Boolean(data.incomeVerified))
+      })
+      .catch(() => { /* non-fatal — flag stays false */ })
+
+    return () => { cancelled = true }
+  }, [resolvedApplicationId])
+
   useEffect(() => {
     if (!applicationRecord) {
       reduxDispatch(
@@ -1037,8 +1060,9 @@ function FormProvider({
       dispatch,
       applicationId: resolvedApplicationId,
       saveDraftNow,
+      apiIncomeVerified,
     }),
-    [resolvedApplicationId, saveDraftNow, state],
+    [resolvedApplicationId, saveDraftNow, state, apiIncomeVerified],
   )
 
   return <FormContext.Provider value={value}>{children}</FormContext.Provider>
@@ -3247,7 +3271,7 @@ function getEngineRuleFixTarget(ruleId: string): { step: number; label: string }
 }
 
 function ValidateAndSubmitStep({ onBackToReview, onGoToStep }: ValidateAndSubmitStepProps) {
-  const { state, dispatch, applicationId, saveDraftNow } = useFormContext()
+  const { state, dispatch, applicationId, saveDraftNow, apiIncomeVerified } = useFormContext()
   const reduxDispatch = useAppDispatch()
   const validateStep = useStepValidation()
   const identityStatus = useAppSelector((rootState) => rootState.identityVerification.status)
@@ -3411,7 +3435,7 @@ function ValidateAndSubmitStep({ onBackToReview, onGoToStep }: ValidateAndSubmit
       }
 
       if (!nextFindings.some((finding) => finding.level === "error")) {
-        const eligibilityInput = mapWizardToEligibilityInput(state.data)
+        const eligibilityInput = mapWizardToEligibilityInput(state.data, apiIncomeVerified)
         const result = evaluateAca3Eligibility(eligibilityInput)
         setEligibilityResult(result)
 
@@ -3761,7 +3785,7 @@ function StepContent({
 }
 
 function FormWizardBody() {
-  const { state, dispatch, saveDraftNow } = useFormContext()
+  const { state, dispatch, saveDraftNow, apiIncomeVerified } = useFormContext()
   const router = useRouter()
   const validateStep = useStepValidation()
   const firstErrorRef = useRef<HTMLDivElement | null>(null)
