@@ -10,6 +10,8 @@ import { ReduxProvider } from '@/components/providers/redux-provider'
 import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
 
+const shouldRenderVercelAnalytics = process.env.VERCEL === '1'
+
 export const metadata: Metadata = {
   title: 'HealthCompass MA - Apply for Health Coverage',
   description: 'Navigate MassHealth and other MA benefits with HealthCompass MA. Check eligibility, apply, and manage your coverage online.',
@@ -32,7 +34,7 @@ export default function RootLayout({
           <ReduxProvider>
             {children}
             <ConditionalChatWidget />
-            <Analytics />
+            {shouldRenderVercelAnalytics ? <Analytics /> : null}
           </ReduxProvider>
           <footer className="fixed bottom-1 right-2 text-[10px] text-muted-foreground/40 select-none pointer-events-none">
             v{process.env.NEXT_PUBLIC_APP_VERSION}
