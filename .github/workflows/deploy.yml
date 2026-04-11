@@ -112,7 +112,7 @@ jobs:
             # ── 6. Health check (inside container — port 3000 is not bound to host) ──
             echo "⏳ Waiting for app (up to 2 min)..."
             for i in $(seq 1 24); do
-              if docker exec healthcompass-app wget -qO- --timeout=5 http://localhost:3000 > /dev/null 2>&1; then
+              if docker exec healthcompass-app wget -qO- --timeout=5 http://localhost:3000/api/health > /dev/null 2>&1; then
                 echo "✅ App is up after $((i * 5))s"
                 break
               fi
