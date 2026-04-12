@@ -4,13 +4,10 @@
  */
 
 import type { Metadata } from 'next'
-import { Analytics } from '@vercel/analytics/next'
 import { ConditionalChatWidget } from '@/components/chat/conditional-chat-widget'
 import { ReduxProvider } from '@/components/providers/redux-provider'
 import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
-
-const shouldRenderVercelAnalytics = process.env.VERCEL === '1'
 
 export const metadata: Metadata = {
   title: 'HealthCompass MA - Apply for Health Coverage',
@@ -34,7 +31,6 @@ export default function RootLayout({
           <ReduxProvider>
             {children}
             <ConditionalChatWidget />
-            {shouldRenderVercelAnalytics ? <Analytics /> : null}
           </ReduxProvider>
           <footer className="fixed bottom-1 right-2 text-[10px] text-muted-foreground/40 select-none pointer-events-none">
             v{process.env.NEXT_PUBLIC_APP_VERSION}
