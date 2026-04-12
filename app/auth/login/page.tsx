@@ -12,7 +12,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { isConfiguredDevAdminEmail } from "@/lib/auth/dev-admin"
 import { getSupabaseClient } from "@/lib/supabase/client"
+import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { isLocalAuthHelperEnabled, normalizeAuthEmail } from "@/lib/auth/local-auth"
 import { Eye, EyeOff, ArrowLeft } from "lucide-react"
 import { ShieldHeartIcon } from "@/lib/icons"
@@ -106,6 +108,15 @@ function LoginPageContent() {
       const normalizedEmail = normalizeAuthEmail(email)
       const localAuthHelperEnabled = isLocalAuthHelperEnabled()
 
+      const finalizeSignIn = async (accessToken: string) => {
+        if (localAuthHelperEnabled && isConfiguredDevAdminEmail(normalizedEmail)) {
+          await authenticatedFetch("/api/auth/dev-grant-admin", { method: "POST" }).catch(() => null)
+        }
+
+        router.push(await resolveRedirect(nextPath, accessToken))
+        router.refresh()
+      }
+
       if (!normalizedEmail) {
         setErrorMessage("Email is required.")
         return
@@ -183,8 +194,7 @@ function LoginPageContent() {
             })
 
             if (!retry.error) {
-              router.push(await resolveRedirect(nextPath, retry.data.session?.access_token ?? ""))
-              router.refresh()
+              await finalizeSignIn(retry.data.session?.access_token ?? "")
               return
             }
 
@@ -203,8 +213,7 @@ function LoginPageContent() {
           })
 
           if (repaired.ok) {
-            router.push(await resolveRedirect(nextPath, repaired.accessToken))
-            router.refresh()
+            await finalizeSignIn(repaired.accessToken)
             return
           }
 
@@ -216,8 +225,7 @@ function LoginPageContent() {
         return
       }
 
-      router.push(await resolveRedirect(nextPath, signIn.data.session?.access_token ?? ""))
-      router.refresh()
+      await finalizeSignIn(signIn.data.session?.access_token ?? "")
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to sign in.")
     } finally {

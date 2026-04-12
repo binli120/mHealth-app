@@ -17,8 +17,9 @@ vi.mock("@/lib/auth/require-admin", () => ({
 
 vi.mock("@/lib/db/admin", () => ({
   listUsers:              vi.fn(),
-  setUserActive:          vi.fn(),
+  setUserLifecycleStatus: vi.fn(),
   setUserRole:            vi.fn(),
+  softDeletePatientUser:  vi.fn(),
   listCompaniesForSelect: vi.fn(),
 }))
 
@@ -26,7 +27,13 @@ vi.mock("@/lib/db/admin", () => ({
 
 import { GET, PATCH } from "@/app/api/admin/users/route"
 import { requireAdmin } from "@/lib/auth/require-admin"
-import { listUsers, setUserActive, setUserRole, listCompaniesForSelect } from "@/lib/db/admin"
+import {
+  listUsers,
+  setUserLifecycleStatus,
+  setUserRole,
+  softDeletePatientUser,
+  listCompaniesForSelect,
+} from "@/lib/db/admin"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -58,12 +65,14 @@ const SAMPLE_USER = {
   id: TARGET_UID,
   email: "patient@example.com",
   is_active: true,
+  lifecycle_status: "active",
   created_at: "2026-01-01T00:00:00.000Z",
   roles: ["applicant"],
   first_name: "Jane",
   last_name: "Doe",
   company_id: null,
   company_name: null,
+  is_patient: true,
 }
 
 const SAMPLE_COMPANY_SELECT = [
@@ -206,25 +215,25 @@ describe("PATCH /api/admin/users", () => {
 
   // ── set_active ─────────────────────────────────────────────────────────────
 
-  it("calls setUserActive(userId, false) to deactivate a user", async () => {
+  it("maps set_active false to lifecycle_status inactive", async () => {
     mockAdmin()
-    vi.mocked(setUserActive).mockResolvedValue(undefined)
+    vi.mocked(setUserLifecycleStatus).mockResolvedValue(undefined)
 
     const res = await PATCH(makePatch("/api/admin/users", { userId: TARGET_UID, action: "set_active", isActive: false }))
     const json = await res.json()
 
     expect(res.status).toBe(200)
     expect(json.ok).toBe(true)
-    expect(setUserActive).toHaveBeenCalledWith(TARGET_UID, false)
+    expect(setUserLifecycleStatus).toHaveBeenCalledWith(TARGET_UID, "inactive")
   })
 
-  it("calls setUserActive(userId, true) to reactivate a user", async () => {
+  it("maps set_active true to lifecycle_status active", async () => {
     mockAdmin()
-    vi.mocked(setUserActive).mockResolvedValue(undefined)
+    vi.mocked(setUserLifecycleStatus).mockResolvedValue(undefined)
 
     await PATCH(makePatch("/api/admin/users", { userId: TARGET_UID, action: "set_active", isActive: true }))
 
-    expect(setUserActive).toHaveBeenCalledWith(TARGET_UID, true)
+    expect(setUserLifecycleStatus).toHaveBeenCalledWith(TARGET_UID, "active")
   })
 
   it("returns 400 for set_active when isActive is not a boolean", async () => {
@@ -235,7 +244,7 @@ describe("PATCH /api/admin/users", () => {
     expect(res.status).toBe(400)
     expect(json.ok).toBe(false)
     expect(json.error).toMatch(/isActive/i)
-    expect(setUserActive).not.toHaveBeenCalled()
+    expect(setUserLifecycleStatus).not.toHaveBeenCalled()
   })
 
   it("returns 400 for set_active when isActive is omitted", async () => {
@@ -243,6 +252,48 @@ describe("PATCH /api/admin/users", () => {
     const res = await PATCH(makePatch("/api/admin/users", { userId: TARGET_UID, action: "set_active" }))
 
     expect(res.status).toBe(400)
+  })
+
+  it("calls setUserLifecycleStatus for set_status active", async () => {
+    mockAdmin()
+    vi.mocked(setUserLifecycleStatus).mockResolvedValue(undefined)
+
+    const res = await PATCH(makePatch("/api/admin/users", {
+      userId: TARGET_UID,
+      action: "set_status",
+      status: "active",
+    }))
+
+    expect(res.status).toBe(200)
+    expect(setUserLifecycleStatus).toHaveBeenCalledWith(TARGET_UID, "active")
+  })
+
+  it("calls softDeletePatientUser for set_status deleted", async () => {
+    mockAdmin()
+    vi.mocked(softDeletePatientUser).mockResolvedValue(undefined)
+
+    const res = await PATCH(makePatch("/api/admin/users", {
+      userId: TARGET_UID,
+      action: "set_status",
+      status: "deleted",
+    }))
+
+    expect(res.status).toBe(200)
+    expect(softDeletePatientUser).toHaveBeenCalledWith(TARGET_UID)
+  })
+
+  it("returns 400 for set_status when status is invalid", async () => {
+    mockAdmin()
+
+    const res = await PATCH(makePatch("/api/admin/users", {
+      userId: TARGET_UID,
+      action: "set_status",
+      status: "paused",
+    }))
+
+    expect(res.status).toBe(400)
+    expect(setUserLifecycleStatus).not.toHaveBeenCalled()
+    expect(softDeletePatientUser).not.toHaveBeenCalled()
   })
 
   // ── set_role ───────────────────────────────────────────────────────────────

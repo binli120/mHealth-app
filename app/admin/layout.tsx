@@ -21,6 +21,13 @@ import {
   X,
   AlertCircle,
   Loader2,
+  HeartPulse,
+  Flag,
+  ClipboardList,
+  BarChart3,
+  Bell,
+  Lock,
+  FileDown,
 } from "lucide-react"
 
 const NAV_LINKS = [
@@ -28,6 +35,19 @@ const NAV_LINKS = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/companies", label: "Companies", icon: Building2 },
   { href: "/admin/social-workers", label: "Social Workers", icon: UserCheck },
+]
+
+const SYSTEM_NAV_LINKS = [
+  { href: "/admin/system-health", label: "System Health", icon: HeartPulse },
+  { href: "/admin/feature-flags", label: "Feature Flags", icon: Flag },
+]
+
+const COMING_SOON_LINKS = [
+  { href: "#", label: "Applications", icon: ClipboardList },
+  { href: "#", label: "Analytics", icon: BarChart3 },
+  { href: "#", label: "Audit Log", icon: Lock },
+  { href: "#", label: "Notifications", icon: Bell },
+  { href: "#", label: "Reports & Export", icon: FileDown },
 ]
 
 type AuthState = "loading" | "unauthenticated" | "not-admin" | "ready"
@@ -151,7 +171,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </button>
         </div>
 
-        <nav className="px-3 py-4 flex-1">
+        <nav className="px-3 py-4 flex-1 overflow-y-auto">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-2">Management</p>
           {NAV_LINKS.map(({ href, label, icon: Icon, exact }) => (
             <Link
               key={href}
@@ -168,6 +189,38 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Icon className="w-4 h-4 flex-shrink-0" />
               {label}
             </Link>
+          ))}
+
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mt-5 mb-2">System</p>
+          {SYSTEM_NAV_LINKS.map(({ href, label, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              onClick={() => setSidebarOpen(false)}
+              className={`
+                flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm font-medium transition-colors
+                ${isActive(href)
+                  ? "bg-blue-600 text-white"
+                  : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                }
+              `}
+            >
+              <Icon className="w-4 h-4 flex-shrink-0" />
+              {label}
+            </Link>
+          ))}
+
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mt-5 mb-2">Coming Soon</p>
+          {COMING_SOON_LINKS.map(({ href, label, icon: Icon }) => (
+            <span
+              key={label}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm font-medium text-slate-600 cursor-not-allowed select-none"
+              title="Coming soon"
+            >
+              <Icon className="w-4 h-4 flex-shrink-0" />
+              {label}
+              <span className="ml-auto text-[10px] bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded">soon</span>
+            </span>
           ))}
         </nav>
 

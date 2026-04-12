@@ -7,16 +7,76 @@ import "server-only"
 
 import { getDbPool } from "@/lib/db/server"
 
+let ensureUserLifecycleSchemaPromise: Promise<void> | null = null
+
 export interface AdminUser {
   id: string
   email: string
   is_active: boolean
+  lifecycle_status: UserLifecycleStatus
   created_at: string
   roles: string[]
   first_name: string | null
   last_name: string | null
   company_id: string | null
   company_name: string | null
+  is_patient: boolean
+}
+
+export type UserLifecycleStatus = "active" | "inactive" | "deleted"
+
+const STAFF_ROLE_NAMES = new Set(["admin", "social_worker", "reviewer"])
+
+async function ensureUserLifecycleSchema(): Promise<void> {
+  if (!ensureUserLifecycleSchemaPromise) {
+    ensureUserLifecycleSchemaPromise = (async () => {
+      const pool = getDbPool()
+      await pool.query(`
+        ALTER TABLE public.users
+          ADD COLUMN IF NOT EXISTS lifecycle_status TEXT
+      `)
+
+      await pool.query(`
+        UPDATE public.users
+        SET lifecycle_status = CASE
+          WHEN is_active THEN 'active'
+          ELSE 'inactive'
+        END
+        WHERE lifecycle_status IS NULL
+      `)
+
+      await pool.query(`
+        ALTER TABLE public.users
+          ALTER COLUMN lifecycle_status SET DEFAULT 'active'
+      `)
+
+      await pool.query(`
+        ALTER TABLE public.users
+          ALTER COLUMN lifecycle_status SET NOT NULL
+      `)
+
+      await pool.query(`
+        ALTER TABLE public.users
+          DROP CONSTRAINT IF EXISTS users_lifecycle_status_check
+      `)
+
+      await pool.query(`
+        ALTER TABLE public.users
+          ADD CONSTRAINT users_lifecycle_status_check
+          CHECK (lifecycle_status IN ('active', 'inactive', 'deleted'))
+      `)
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_users_lifecycle_status
+          ON public.users(lifecycle_status)
+      `)
+    })().catch((error) => {
+      ensureUserLifecycleSchemaPromise = null
+      throw error
+    })
+  }
+
+  await ensureUserLifecycleSchemaPromise
 }
 
 export interface CompanySelectOption {
@@ -64,6 +124,8 @@ export async function listUsers(opts: {
   limit?: number
   offset?: number
 }): Promise<{ users: AdminUser[]; total: number }> {
+  await ensureUserLifecycleSchema()
+
   const pool = getDbPool()
   const { search, role, companyId, limit = 50, offset = 0 } = opts
 
@@ -109,23 +171,27 @@ export async function listUsers(opts: {
     id: string
     email: string
     is_active: boolean
+    lifecycle_status: UserLifecycleStatus
     created_at: string
     roles: string
     first_name: string | null
     last_name: string | null
     company_id: string | null
     company_name: string | null
+    has_applicant_profile: boolean
   }>(
     `
       SELECT
         u.id,
         u.email,
         u.is_active,
+        u.lifecycle_status,
         u.created_at,
         ap.first_name,
         ap.last_name,
         u.company_id,
         c.name AS company_name,
+        (ap.user_id IS NOT NULL) AS has_applicant_profile,
         COALESCE(
           string_agg(DISTINCT r.name, ',' ORDER BY r.name),
           ''
@@ -136,7 +202,17 @@ export async function listUsers(opts: {
       LEFT JOIN public.user_roles ur ON ur.user_id = u.id
       LEFT JOIN public.roles r ON r.id = ur.role_id
       WHERE ${whereClause}
-      GROUP BY u.id, u.email, u.is_active, u.created_at, ap.first_name, ap.last_name, u.company_id, c.name
+      GROUP BY
+        u.id,
+        u.email,
+        u.is_active,
+        u.lifecycle_status,
+        u.created_at,
+        ap.user_id,
+        ap.first_name,
+        ap.last_name,
+        u.company_id,
+        c.name
       ORDER BY u.created_at DESC
       LIMIT $${paramIdx} OFFSET $${paramIdx + 1}
     `,
@@ -144,10 +220,16 @@ export async function listUsers(opts: {
   )
 
   return {
-    users: usersResult.rows.map((row) => ({
-      ...row,
-      roles: row.roles ? row.roles.split(",") : [],
-    })),
+    users: usersResult.rows.map((row) => {
+      const roles = row.roles ? row.roles.split(",") : []
+      const hasStaffRole = roles.some((roleName) => STAFF_ROLE_NAMES.has(roleName))
+
+      return {
+        ...row,
+        roles,
+        is_patient: row.has_applicant_profile && !hasStaffRole,
+      }
+    }),
     total: parseInt(countResult.rows[0]?.count ?? "0", 10),
   }
 }
@@ -163,11 +245,22 @@ export async function listCompaniesForSelect(): Promise<CompanySelectOption[]> {
   return result.rows
 }
 
-export async function setUserActive(userId: string, isActive: boolean): Promise<void> {
+export async function setUserLifecycleStatus(
+  userId: string,
+  lifecycleStatus: UserLifecycleStatus,
+): Promise<void> {
+  await ensureUserLifecycleSchema()
+
   const pool = getDbPool()
   await pool.query(
-    `UPDATE public.users SET is_active = $1 WHERE id = $2::uuid`,
-    [isActive, userId],
+    `
+      UPDATE public.users
+      SET
+        is_active = CASE WHEN $1 = 'active' THEN true ELSE false END,
+        lifecycle_status = $1
+      WHERE id = $2::uuid
+    `,
+    [lifecycleStatus, userId],
   )
 }
 
@@ -191,6 +284,69 @@ export async function setUserRole(userId: string, roleName: string, add: boolean
       `,
       [userId, roleName],
     )
+  }
+}
+
+export async function softDeletePatientUser(userId: string): Promise<void> {
+  await ensureUserLifecycleSchema()
+
+  const pool = getDbPool()
+  const client = await pool.connect()
+
+  try {
+    await client.query("BEGIN")
+
+    const userResult = await client.query<{
+      has_applicant_profile: boolean
+      roles: string[]
+    }>(
+      `
+        SELECT
+          EXISTS (
+            SELECT 1
+            FROM public.applicants ap
+            WHERE ap.user_id = $1::uuid
+          ) AS has_applicant_profile,
+          COALESCE(
+            array_agg(DISTINCT r.name) FILTER (WHERE r.name IS NOT NULL),
+            ARRAY[]::text[]
+          ) AS roles
+        FROM public.users u
+        LEFT JOIN public.user_roles ur ON ur.user_id = u.id
+        LEFT JOIN public.roles r ON r.id = ur.role_id
+        WHERE u.id = $1::uuid
+        GROUP BY u.id
+      `,
+      [userId],
+    )
+
+    if (userResult.rowCount === 0) {
+      throw new Error("User not found.")
+    }
+
+    const user = userResult.rows[0]
+    const hasStaffRole = user.roles.some((roleName) => STAFF_ROLE_NAMES.has(roleName))
+    if (!user.has_applicant_profile || hasStaffRole) {
+      throw new Error("Only patient/applicant users can be deleted.")
+    }
+
+    await client.query(
+      `
+        UPDATE public.users
+        SET
+          is_active = false,
+          lifecycle_status = 'deleted'
+        WHERE id = $1::uuid
+      `,
+      [userId],
+    )
+
+    await client.query("COMMIT")
+  } catch (error) {
+    await client.query("ROLLBACK")
+    throw error
+  } finally {
+    client.release()
   }
 }
 

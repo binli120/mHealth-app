@@ -11,7 +11,10 @@
 
 import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { isConfiguredDevAdminEmail } from "@/lib/auth/dev-admin"
+import { isLocalAuthHelperEnabled } from "@/lib/auth/local-auth"
 import { getSupabaseClient } from "@/lib/supabase/client"
+import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { ShieldHeartIcon } from "@/lib/icons"
 import { Loader2 } from "lucide-react"
 import Link from "next/link"
@@ -48,9 +51,14 @@ function CallbackContent() {
     const next = getSafeNextPath(searchParams.get("next"))
     let redirected = false
 
-    const doRedirect = async (accessToken: string) => {
+    const doRedirect = async (accessToken: string, email?: string | null) => {
       if (redirected) return
       redirected = true
+
+      if (isLocalAuthHelperEnabled() && isConfiguredDevAdminEmail(email)) {
+        await authenticatedFetch("/api/auth/dev-grant-admin", { method: "POST" }).catch(() => null)
+      }
+
       const destination = await resolveRoleRedirect(accessToken, next)
       router.push(destination)
       router.refresh()
@@ -68,7 +76,7 @@ function CallbackContent() {
             return
           }
           if (data.session) {
-            doRedirect(data.session.access_token)
+            doRedirect(data.session.access_token, data.session.user.email)
           }
         })
       return
@@ -81,13 +89,13 @@ function CallbackContent() {
     // Subscribe first so we never miss the SIGNED_IN event.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session) {
-        doRedirect(session.access_token)
+        doRedirect(session.access_token, session.user.email)
       }
     })
 
     // Also check in case the session was already set before we subscribed.
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) doRedirect(session.access_token)
+      if (session) doRedirect(session.access_token, session.user.email)
     })
 
     // Timeout fallback

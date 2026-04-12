@@ -5,7 +5,14 @@
 
 import { NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/auth/require-admin"
-import { listUsers, setUserActive, setUserRole, listCompaniesForSelect } from "@/lib/db/admin"
+import {
+  listUsers,
+  setUserLifecycleStatus,
+  setUserRole,
+  listCompaniesForSelect,
+  softDeletePatientUser,
+  type UserLifecycleStatus,
+} from "@/lib/db/admin"
 
 export const runtime = "nodejs"
 
@@ -37,8 +44,9 @@ export async function PATCH(request: Request) {
 
   const body = (await request.json().catch(() => ({}))) as {
     userId?: string
-    action?: "set_active" | "set_role"
+    action?: "set_active" | "set_role" | "set_status"
     isActive?: boolean
+    status?: UserLifecycleStatus
     roleName?: string
     add?: boolean
   }
@@ -47,21 +55,41 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: false, error: "userId and action required" }, { status: 400 })
   }
 
-  if (body.action === "set_active") {
-    if (typeof body.isActive !== "boolean") {
-      return NextResponse.json({ ok: false, error: "isActive required" }, { status: 400 })
+  try {
+    if (body.action === "set_active") {
+      if (typeof body.isActive !== "boolean") {
+        return NextResponse.json({ ok: false, error: "isActive required" }, { status: 400 })
+      }
+      await setUserLifecycleStatus(body.userId, body.isActive ? "active" : "inactive")
+      return NextResponse.json({ ok: true })
     }
-    await setUserActive(body.userId, body.isActive)
-    return NextResponse.json({ ok: true })
-  }
 
-  if (body.action === "set_role") {
-    if (!body.roleName || typeof body.add !== "boolean") {
-      return NextResponse.json({ ok: false, error: "roleName and add required" }, { status: 400 })
+    if (body.action === "set_status") {
+      if (!body.status || !["active", "inactive", "deleted"].includes(body.status)) {
+        return NextResponse.json({ ok: false, error: "Valid status required" }, { status: 400 })
+      }
+
+      if (body.status === "deleted") {
+        await softDeletePatientUser(body.userId)
+      } else {
+        await setUserLifecycleStatus(body.userId, body.status)
+      }
+
+      return NextResponse.json({ ok: true })
     }
-    await setUserRole(body.userId, body.roleName, body.add)
-    return NextResponse.json({ ok: true })
-  }
 
-  return NextResponse.json({ ok: false, error: "Unknown action" }, { status: 400 })
+    if (body.action === "set_role") {
+      if (!body.roleName || typeof body.add !== "boolean") {
+        return NextResponse.json({ ok: false, error: "roleName and add required" }, { status: 400 })
+      }
+      await setUserRole(body.userId, body.roleName, body.add)
+      return NextResponse.json({ ok: true })
+    }
+
+    return NextResponse.json({ ok: false, error: "Unknown action" }, { status: 400 })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to update user."
+    const status = /not found|only patient\/applicant/i.test(message) ? 400 : 500
+    return NextResponse.json({ ok: false, error: message }, { status })
+  }
 }

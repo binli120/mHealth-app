@@ -7,7 +7,14 @@ import nextConfig from "eslint-config-next"
 
 const config = [
   {
-    ignores: ["**/.next/**", "storybook-static/**", ".claude/**", "debug-storybook.log"],
+    ignores: [
+      "**/.next/**",
+      "coverage/**",
+      "e2e/report/**",
+      "storybook-static/**",
+      ".claude/**",
+      "debug-storybook.log",
+    ],
   },
   ...nextConfig,
 ]

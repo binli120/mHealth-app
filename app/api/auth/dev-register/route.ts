@@ -5,6 +5,7 @@
 
 import { NextResponse } from "next/server"
 import { getDbPool } from "@/lib/db/server"
+import { isConfiguredDevAdminEmail } from "@/lib/auth/dev-admin"
 import { isLocalAuthHelperEnabled, normalizeAuthEmail } from "@/lib/auth/local-auth"
 
 interface DevRegisterRequestBody {
@@ -30,8 +31,6 @@ interface DevRegisterRequestBody {
 const MIN_PASSWORD_LENGTH = 8
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const DEFAULT_INSTANCE_ID = "00000000-0000-0000-0000-000000000000"
-const ADMIN_EMAIL = "binli120@gmail.com"
-
 function sanitizeText(value?: string): string | null {
   if (!value) {
     return null
@@ -258,6 +257,14 @@ export async function POST(request: Request) {
       ],
     )
 
+    await client.query(
+      `
+        INSERT INTO public.roles (name)
+        VALUES ('admin'), ('social_worker')
+        ON CONFLICT (name) DO NOTHING
+      `,
+    )
+
     // Ensure app tables are in sync even if trigger was missed.
     await client.query(
       `
@@ -310,7 +317,7 @@ export async function POST(request: Request) {
     )
 
     // Auto-assign admin role for the configured admin email
-    if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+    if (isConfiguredDevAdminEmail(email)) {
       await client.query(
         `
           INSERT INTO public.user_roles (user_id, role_id)
