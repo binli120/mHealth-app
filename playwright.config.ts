@@ -7,6 +7,8 @@ import { defineConfig, devices } from "@playwright/test"
 
 const BASE_URL = process.env.E2E_BASE_URL ?? "http://localhost:3000"
 const IS_DEMO = process.env.DEMO_MODE === "true"
+// When targeting a remote URL (cloud/staging), skip starting a local dev server
+const IS_REMOTE = !BASE_URL.startsWith("http://localhost") && !BASE_URL.startsWith("http://127.0.0.1")
 
 export default defineConfig({
   testDir: "./e2e/tests",
@@ -56,14 +58,18 @@ export default defineConfig({
       dependencies: ["setup"],
     },
   ],
-  // Start dev server if not already running
-  webServer: {
-    command: "pnpm dev",
-    url: BASE_URL,
-    reuseExistingServer: true,
-    timeout: 120_000,
-    env: {
-      PATH: `/Users/blee/.nvm/versions/node/v20.12.2/bin:${process.env.PATH}`,
-    },
-  },
+  // Start dev server only for local runs; skip when targeting a remote URL
+  ...(IS_REMOTE
+    ? {}
+    : {
+        webServer: {
+          command: "pnpm dev",
+          url: BASE_URL,
+          reuseExistingServer: true,
+          timeout: 120_000,
+          env: {
+            PATH: `/Users/blee/.nvm/versions/node/v20.12.2/bin:${process.env.PATH}`,
+          },
+        },
+      }),
 })
