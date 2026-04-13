@@ -17,7 +17,7 @@ import {
   type ReactNode,
 } from "react"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, CalendarIcon, CheckCircle2, ChevronDown, CircleCheck } from "lucide-react"
+import { AlertTriangle, CalendarIcon, CheckCircle2, ChevronDown, CircleCheck, FileCheck2 } from "lucide-react"
 import { WizardLayout } from "@/components/application/wizard-layout"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -96,6 +96,7 @@ import {
 } from "@/lib/masshealth/aca3-eligibility-engine"
 import { IdentityVerificationBanner } from "@/components/identity/IdentityVerificationBanner"
 import { openScanner } from "@/lib/redux/features/identity-verification-slice"
+import { IncomeEvidenceChecklist } from "@/components/application/income-verification/income-evidence-checklist"
 import type {
   AddressGroupFieldProps,
   AddressValidationResponse,
@@ -3644,6 +3645,52 @@ function ValidateAndSubmitStep({ onBackToReview, onGoToStep }: ValidateAndSubmit
         <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
           Submission is blocked because the current result status is {eligibilityResult?.status}.
         </div>
+      ) : null}
+
+      {/* Income proof upload — shown whenever applicationId is available */}
+      {applicationId ? (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <FileCheck2 className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-base">Income Proof Documents</CardTitle>
+            </div>
+            <CardDescription>
+              Upload supporting documents for each income source. Verified documents strengthen your application.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <IncomeEvidenceChecklist
+              applicationId={applicationId}
+              householdMembers={state.data.persons.map((p, i) => {
+                const income = p.income as Record<string, unknown> | undefined
+                const jobs = Array.isArray(income?.employment_jobs) ? income!.employment_jobs as Array<Record<string, unknown>> : []
+                const other = (income?.other_income as Record<string, { selected?: boolean }>) ?? {}
+                const sources: string[] = []
+                if (jobs.length > 0) sources.push("employment")
+                if (income?.self_employment_net_income) sources.push("self_employment")
+                if (other.unemployment?.selected) sources.push("unemployment")
+                if (other.social_security?.selected) sources.push("social_security")
+                if (other.pension_annuity?.selected) sources.push("pension_annuity")
+                if (other.rental?.selected) sources.push("rental")
+                if (other.interest_dividend?.selected) sources.push("interest_dividend")
+                const hasIncome = sources.length > 0
+                if (!hasIncome) sources.push("zero_income")
+                return {
+                  memberId: `person-${i}`,
+                  memberName: String(p.identity?.name ?? "") || (i === 0 ? String(state.data.contact.p1_name ?? "") : `Member ${i + 1}`),
+                  incomeSources: sources as import("@/lib/masshealth/types").IncomeSourceType[],
+                  hasIncome,
+                }
+              })}
+              onCaseUpdated={(updatedCase) => {
+                // apiIncomeVerified is refreshed from the API on the next poll;
+                // for immediate feedback update context state via a dispatch if needed
+                void updatedCase
+              }}
+            />
+          </CardContent>
+        </Card>
       ) : null}
 
       <label className="flex items-start gap-3 rounded-md border p-3 text-sm">

@@ -152,30 +152,36 @@ export interface UpsertChecklistParams {
 /**
  * Idempotent: create or refresh requirements from intake data, then initialise
  * (or update) the case row.  Safe to call multiple times.
+ *
+ * Uses a dedicated connection for the transaction so concurrent requests on
+ * the shared pool cannot interleave BEGIN/COMMIT across connections.
+ * Returns the actual DB rows (with real UUIDs), not the engine-built objects.
  */
 export async function upsertIncomeChecklist(
   params: UpsertChecklistParams,
 ): Promise<IncomeEvidenceRequirement[]> {
   const { applicationId, householdMembers } = params
   const pool = getDbPool()
-  const requirements = buildEvidenceRequirements(householdMembers)
+  const engineRequirements = buildEvidenceRequirements(householdMembers)
 
-  await pool.query("BEGIN")
+  // Acquire a dedicated connection so BEGIN/COMMIT are scoped to one socket.
+  const client = await pool.connect()
   try {
-    // Upsert each requirement
-    for (const req of requirements) {
-      await pool.query(
+    await client.query("BEGIN")
+
+    // Upsert each requirement — let the DB generate the UUID primary key.
+    for (const req of engineRequirements) {
+      await client.query(
         `INSERT INTO public.income_evidence_requirements
-           (id, application_id, member_id, member_name, income_source_type,
+           (application_id, member_id, member_name, income_source_type,
             accepted_doc_types, is_required, verification_status)
-         VALUES ($1, $2::uuid, $3::uuid, $4, $5, $6, $7, $8)
+         VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6, $7)
          ON CONFLICT (application_id, member_id, income_source_type)
          DO UPDATE SET
            member_name        = EXCLUDED.member_name,
            accepted_doc_types = EXCLUDED.accepted_doc_types,
            is_required        = EXCLUDED.is_required`,
         [
-          req.id,
           applicationId,
           req.memberId,
           req.memberName,
@@ -188,8 +194,8 @@ export async function upsertIncomeChecklist(
     }
 
     // Upsert the case row
-    const requiredCount = requirements.filter((r) => r.isRequired).length
-    await pool.query(
+    const requiredCount = engineRequirements.filter((r) => r.isRequired).length
+    await client.query(
       `INSERT INTO public.income_verification_cases
          (application_id, status, required_source_count, verified_source_count,
           income_verified)
@@ -199,13 +205,22 @@ export async function upsertIncomeChecklist(
       [applicationId, requiredCount],
     )
 
-    await pool.query("COMMIT")
+    await client.query("COMMIT")
   } catch (err) {
-    await pool.query("ROLLBACK")
+    await client.query("ROLLBACK")
     throw err
+  } finally {
+    client.release()
   }
 
-  return requirements
+  // Re-query the actual DB rows so callers get real UUIDs, not composite strings.
+  const { rows } = await pool.query(
+    `SELECT * FROM public.income_evidence_requirements
+     WHERE application_id = $1::uuid
+     ORDER BY member_name, income_source_type`,
+    [applicationId],
+  )
+  return rows.map((r) => toRequirement(r as Record<string, unknown>))
 }
 
 // ── Document insert ───────────────────────────────────────────────────────────

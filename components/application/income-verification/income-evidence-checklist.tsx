@@ -316,10 +316,10 @@ export function IncomeEvidenceChecklist({
         `/api/masshealth/income-verification/${applicationId}`,
       )
       if (!resp.ok) return
-      const data = (await resp.json()) as IncomeVerificationCase & { ok: boolean }
-      setRequirements(data.requirements ?? [])
-      setCaseStatus(data.status)
-      onCaseUpdated?.(data)
+      const { ok: _ok, ...verificationCase } = (await resp.json()) as IncomeVerificationCase & { ok: boolean }
+      setRequirements(verificationCase.requirements ?? [])
+      setCaseStatus(verificationCase.status)
+      onCaseUpdated?.(verificationCase)
     } catch {
       // Silently retry — user-visible error is handled on initial load
     }
