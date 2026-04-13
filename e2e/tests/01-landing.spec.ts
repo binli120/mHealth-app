@@ -54,12 +54,26 @@ test.describe("Landing Page", () => {
   })
 
   test("no console errors on load", async ({ page }) => {
-    const errors: string[] = []
+    const consoleErrors: string[] = []
+    const failedRequests: string[] = []
+
     page.on("console", (msg) => {
-      if (msg.type() === "error") errors.push(msg.text())
+      if (msg.type() === "error") consoleErrors.push(msg.text())
     })
+    // Capture 404s with their URL so failures are actionable in CI logs
+    page.on("response", (response) => {
+      if (response.status() === 404) {
+        failedRequests.push(`404 → ${response.url()}`)
+      }
+    })
+
     await page.goto("/")
     await page.waitForLoadState("networkidle")
-    expect(errors.filter((e) => !e.includes("Warning:"))).toHaveLength(0)
+
+    const allErrors = [
+      ...consoleErrors.filter((e) => !e.includes("Warning:")),
+      ...failedRequests,
+    ]
+    expect(allErrors).toHaveLength(0)
   })
 })

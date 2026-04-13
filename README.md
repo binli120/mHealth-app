@@ -463,7 +463,7 @@ Test audio files are included at `public/test-audio/`:
 
 | Field    | Value                   |
 |----------|-------------------------|
-| Email    | `binli120@gmail.com`    |
+| Email    | `no-reply@healthcompass.cloud` |
 | Password | `password`              |
 | Portal   | `/admin/dashboard`      |
 | Notes    | Auto-seeded by `database/seed_admin.sql`. Can approve social worker accounts. |

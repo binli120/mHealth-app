@@ -4,7 +4,6 @@
  */
 
 import type { Metadata } from 'next'
-import { Analytics } from '@vercel/analytics/next'
 import { ConditionalChatWidget } from '@/components/chat/conditional-chat-widget'
 import { ReduxProvider } from '@/components/providers/redux-provider'
 import { ThemeProvider } from '@/components/theme-provider'
@@ -32,7 +31,6 @@ export default function RootLayout({
           <ReduxProvider>
             {children}
             <ConditionalChatWidget />
-            <Analytics />
           </ReduxProvider>
           <footer className="fixed bottom-1 right-2 text-[10px] text-muted-foreground/40 select-none pointer-events-none">
             v{process.env.NEXT_PUBLIC_APP_VERSION}
