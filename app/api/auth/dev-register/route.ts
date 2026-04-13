@@ -30,7 +30,7 @@ interface DevRegisterRequestBody {
 const MIN_PASSWORD_LENGTH = 8
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const DEFAULT_INSTANCE_ID = "00000000-0000-0000-0000-000000000000"
-const ADMIN_EMAIL = "binli120@gmail.com"
+const ADMIN_EMAIL = "no-reply@healthcompass.cloud"
 
 function sanitizeText(value?: string): string | null {
   if (!value) {
