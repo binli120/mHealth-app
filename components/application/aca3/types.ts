@@ -145,6 +145,11 @@ export interface FormContextValue {
   dispatch: Dispatch<WizardAction>
   applicationId: string
   saveDraftNow: (overrideState?: WizardState) => Promise<boolean>
+  /**
+   * True only when ALL required income sources have been verified by evidence
+   * rules via the income verification API.  Never inferred from form fields.
+   */
+  apiIncomeVerified: boolean
 }
 
 export interface DependentEntry {

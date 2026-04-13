@@ -24,6 +24,33 @@ export const REVIEWER_USER = {
   password: "Staff@2026!",
 }
 
+export const ADMIN_USER = {
+  firstName: "Avery",
+  lastName: "Admin",
+  email: "admin.e2e@masshealth-test.local",
+  phone: "(617)555-0187",
+  password: "Admin@2026!",
+  role: "admin",
+}
+
+export const SOCIAL_WORKER_USER = {
+  firstName: "Sofia",
+  lastName: "Rivera",
+  email: "social.worker.e2e@masshealth-test.local",
+  phone: "(617)555-0186",
+  password: "Social@2026!",
+  role: "social_worker",
+  companyName: "Demo Community Health",
+  companyNpi: "1234567890",
+  companyAddress: "101 Main Street",
+  companyCity: "Boston",
+  companyState: "MA",
+  companyZip: "02108",
+  companyEmailDomain: "demo-health.local",
+  licenseNumber: "SW-DEMO-2026",
+  jobTitle: "Community Health Social Worker",
+}
+
 /** Household used for the Benefit Stack wizard */
 export const DEMO_HOUSEHOLD = {
   household_size: 3,
