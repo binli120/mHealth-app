@@ -1,10 +1,12 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import { createUIMessageStream, createUIMessageStreamResponse, streamText } from "ai"
+import type { ModelMessage, UIMessageStreamWriter } from "ai"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 
 import {
@@ -26,8 +28,7 @@ import {
   extractFormFields,
   type FormSection,
 } from "@/lib/masshealth/form-field-extraction"
-import { callOllama, OllamaError } from "@/lib/masshealth/ollama-client"
-import type { HouseholdMember, IncomeSource } from "@/lib/redux/features/application-slice"
+import { getOllamaModel } from "@/lib/masshealth/ollama-provider"
 import { runEligibilityCheck } from "@/lib/eligibility-engine"
 import { retrieveRelevantChunks, formatChunksForPrompt } from "@/lib/rag/retrieve"
 import { extractHouseholdRelationshipHints } from "@/lib/masshealth/household-relationships"
@@ -113,8 +114,10 @@ function getLastUserMessage(messages: ChatMessage[]): ChatMessage | undefined {
   return undefined
 }
 
-function buildOllamaMessages(messages: ChatMessage[]): ChatMessage[] {
-  return messages.slice(-OLLAMA_MESSAGES_CONTEXT_LIMIT)
+// Payload messages are {role:"user"|"assistant", content:string} — structurally
+// compatible with ModelMessage user/assistant variants; safe to cast.
+function buildContextMessages(messages: ChatMessage[]): ModelMessage[] {
+  return messages.slice(-OLLAMA_MESSAGES_CONTEXT_LIMIT) as ModelMessage[]
 }
 
 function isMassHealthConversation(messages: ChatMessage[]): boolean {
@@ -129,15 +132,17 @@ function resolveLanguage(input: string | undefined): SupportedLanguage {
   return DEFAULT_CHAT_LANGUAGE
 }
 
-function getModel(): string {
-  return process.env.OLLAMA_MODEL || DEFAULT_OLLAMA_MODEL
+function getModelName(): string {
+  return process.env.OLLAMA_MODEL ?? DEFAULT_OLLAMA_MODEL
 }
 
-function ollamaErrorResponse(err: unknown) {
-  if (err instanceof OllamaError) {
-    return NextResponse.json({ ok: false, error: err.message, detail: err.detail }, { status: 502 })
-  }
-  return null
+// Writes a custom data chunk to the UI message stream.
+// The type must start with "data-" per the UIMessageChunk union schema.
+function writeData(writer: UIMessageStreamWriter, data: Record<string, unknown>): void {
+  writer.write({
+    type: "data-masshealth" as `data-${string}`,
+    data,
+  })
 }
 
 // ── Mode handlers ─────────────────────────────────────────────────────────────
@@ -146,8 +151,8 @@ async function handleBenefitAdvisor(
   payload: ValidatedPayload,
   lastUserMessage: ChatMessage,
   language: SupportedLanguage,
-): Promise<NextResponse> {
-  // 1. Extract structured eligibility facts from conversation
+): Promise<Response> {
+  // Pre-processing (blocking — completes before streaming opens)
   const facts = await extractEligibilityFacts(payload.messages, language)
 
   let eligibilityReport = null
@@ -160,46 +165,50 @@ async function handleBenefitAdvisor(
     ragQuery = topPrograms || lastUserMessage.content
   }
 
-  // 2. Retrieve relevant policy chunks
   const ragChunks = await retrieveRelevantChunks(ragQuery, RAG_TOP_K_ADVISOR).catch(() => [])
   const ragContext = formatChunksForPrompt(ragChunks)
-
-  // 3. Build system prompt and call Ollama
   const systemPrompt = buildBenefitAdvisorSystemPrompt(language, facts, eligibilityReport, ragContext)
 
-  let reply: string
-  try {
-    reply = await callOllama({
-      model: getModel(),
-      temperature: OLLAMA_TEMPERATURE,
-      timeoutMs: OLLAMA_TIMEOUT_MS,
-      systemPrompt,
-      messages: buildOllamaMessages(payload.messages),
-    })
-  } catch (err) {
-    return ollamaErrorResponse(err) ?? NextResponse.json({ ok: false, error: String(err) }, { status: 502 })
-  }
+  return createUIMessageStreamResponse({
+    stream: createUIMessageStream({
+      execute({ writer }) {
+        // Structured metadata arrives before first text token so the client
+        // can render eligibility badges while the explanation is still streaming.
+        writeData(writer, {
+          ok: true,
+          outOfScope: false,
+          factsExtracted: facts,
+          eligibilityResults: eligibilityReport
+            ? {
+                fplPercent: eligibilityReport.fplPercent,
+                annualFPL: eligibilityReport.annualFPL,
+                summary: eligibilityReport.summary,
+                results: eligibilityReport.results.map((r) => ({
+                  program: r.program,
+                  status: r.status,
+                  tagline: r.tagline,
+                  actionLabel: r.actionLabel,
+                  actionHref: r.actionHref,
+                  color: r.color,
+                })),
+              }
+            : null,
+        })
 
-  return NextResponse.json({
-    ok: true,
-    outOfScope: false,
-    reply,
-    factsExtracted: facts,
-    eligibilityResults: eligibilityReport
-      ? {
-          fplPercent: eligibilityReport.fplPercent,
-          annualFPL: eligibilityReport.annualFPL,
-          summary: eligibilityReport.summary,
-          results: eligibilityReport.results.map((r) => ({
-            program: r.program,
-            status: r.status,
-            tagline: r.tagline,
-            actionLabel: r.actionLabel,
-            actionHref: r.actionHref,
-            color: r.color,
-          })),
-        }
-      : null,
+        const result = streamText({
+          model: getOllamaModel(),
+          system: systemPrompt,
+          messages: buildContextMessages(payload.messages),
+          temperature: OLLAMA_TEMPERATURE,
+          abortSignal: AbortSignal.timeout(OLLAMA_TIMEOUT_MS),
+        })
+        writer.merge(result.toUIMessageStream())
+      },
+      onError(error) {
+        logServerError(ERROR_LOG_PREFIX, error, { route: "/api/chat/masshealth", mode: "benefit_advisor" })
+        return ERROR_CHAT_REQUEST_FAILED
+      },
+    }),
   })
 }
 
@@ -207,11 +216,11 @@ async function handleFormAssistant(
   payload: ValidatedPayload,
   lastUserMessage: ChatMessage,
   language: SupportedLanguage,
-): Promise<NextResponse> {
+): Promise<Response> {
   const collectedSummary = payload.currentFields ?? ""
   const currentSection: FormSection = (payload.currentSection as FormSection) ?? "personal"
 
-  // Run field extraction and RAG retrieval in parallel — single RAG call (P1)
+  // Field extraction and RAG retrieval run in parallel (pre-processing)
   const [extractionResult, ragChunks] = await Promise.all([
     extractFormFields(
       payload.messages,
@@ -234,26 +243,33 @@ async function handleFormAssistant(
     ragContext || undefined,
   )
 
-  let reply: string
-  try {
-    reply = await callOllama({
-      model: getModel(),
-      temperature: OLLAMA_TEMPERATURE,
-      timeoutMs: OLLAMA_TIMEOUT_MS,
-      systemPrompt,
-      messages: buildOllamaMessages(payload.messages),
-    })
-  } catch (err) {
-    return ollamaErrorResponse(err) ?? NextResponse.json({ ok: false, error: String(err) }, { status: 502 })
-  }
+  return createUIMessageStreamResponse({
+    stream: createUIMessageStream({
+      execute({ writer }) {
+        // Send extracted form fields before text so the form can update
+        // immediately while the assistant's explanation is still streaming.
+        writeData(writer, {
+          ok: true,
+          extractedFields: extractionResult.fields,
+          noHouseholdMembers: extractionResult.noHouseholdMembers,
+          noIncome: extractionResult.noIncome,
+          extractionFailed: extractionResult.extractionFailed ?? false,
+        })
 
-  return NextResponse.json({
-    ok: true,
-    reply,
-    extractedFields: extractionResult.fields,
-    noHouseholdMembers: extractionResult.noHouseholdMembers,
-    noIncome: extractionResult.noIncome,
-    extractionFailed: extractionResult.extractionFailed ?? false,
+        const result = streamText({
+          model: getOllamaModel(),
+          system: systemPrompt,
+          messages: buildContextMessages(payload.messages),
+          temperature: OLLAMA_TEMPERATURE,
+          abortSignal: AbortSignal.timeout(OLLAMA_TIMEOUT_MS),
+        })
+        writer.merge(result.toUIMessageStream())
+      },
+      onError(error) {
+        logServerError(ERROR_LOG_PREFIX, error, { route: "/api/chat/masshealth", mode: "form_assistant" })
+        return ERROR_CHAT_REQUEST_FAILED
+      },
+    }),
   })
 }
 
@@ -272,41 +288,28 @@ function buildIntakeHouseholdHintsMessage(message: string): string | null {
   ].join("\n")
 }
 
-function hasRelationshipQuestion(reply: string): boolean {
-  const normalized = reply.toLowerCase()
-  return (
-    normalized.includes("relationship to you") ||
-    normalized.includes("relationship with you") ||
-    (normalized.includes("how is") && normalized.includes("related to you")) ||
-    (normalized.includes("what is") && normalized.includes("relationship"))
-  )
-}
-
-function toPossessive(name: string): string {
-  return name.toLowerCase().endsWith("s") ? `${name}'` : `${name}'s`
-}
-
-function sanitizeIntakeReply(reply: string, latestUserMessage: string): string {
-  const hints = extractHouseholdRelationshipHints(latestUserMessage)
-  if (hints.length === 0 || !hasRelationshipQuestion(reply)) return reply
-  const primaryHint = hints[0]
-  if (primaryHint?.memberName) {
-    return `Thanks, I have ${primaryHint.memberName} as your ${primaryHint.relationship}. What is ${toPossessive(primaryHint.memberName)} date of birth (MM/DD/YYYY)?`
-  }
-  return "Thanks, I have that relationship noted. What is this household member's date of birth (MM/DD/YYYY)?"
-}
-
 async function handleAssistantOrIntake(
   payload: ValidatedPayload,
   lastUserMessage: ChatMessage,
   language: SupportedLanguage,
   isIntakeMode: boolean,
-): Promise<NextResponse> {
-  if (!isIntakeMode && !isMassHealthTopic(lastUserMessage.content) && !isMassHealthConversation(payload.messages)) {
-    return NextResponse.json({
-      ok: true,
-      outOfScope: true,
-      reply: getMassHealthOutOfScopeResponse(language),
+): Promise<Response> {
+  // Out-of-scope: data-only stream (no LLM call wasted)
+  if (
+    !isIntakeMode &&
+    !isMassHealthTopic(lastUserMessage.content) &&
+    !isMassHealthConversation(payload.messages)
+  ) {
+    return createUIMessageStreamResponse({
+      stream: createUIMessageStream({
+        execute({ writer }) {
+          writeData(writer, {
+            ok: true,
+            outOfScope: true,
+            reply: getMassHealthOutOfScopeResponse(language),
+          })
+        },
+      }),
     })
   }
 
@@ -318,7 +321,6 @@ async function handleAssistantOrIntake(
   if (isIntakeMode) {
     systemPrompt = buildMassHealthIntakeSystemPrompt(language, payload.applicationType)
   } else {
-    // Single RAG call for assistant mode (P1 — no duplication with form_assistant)
     const ragChunks = await retrieveRelevantChunks(lastUserMessage.content, RAG_TOP_K).catch(() => [])
     const ragContext = formatChunksForPrompt(ragChunks)
     systemPrompt = ragContext
@@ -326,24 +328,34 @@ async function handleAssistantOrIntake(
       : buildMassHealthSystemPrompt(language)
   }
 
-  let reply: string
-  try {
-    reply = await callOllama({
-      model: getModel(),
-      temperature: OLLAMA_TEMPERATURE,
-      timeoutMs: OLLAMA_TIMEOUT_MS,
-      systemPrompt,
-      extraSystemMessages: intakeHintsMessage ? [intakeHintsMessage] : [],
-      messages: buildOllamaMessages(payload.messages),
-    })
-  } catch (err) {
-    return ollamaErrorResponse(err) ?? NextResponse.json({ ok: false, error: String(err) }, { status: 502 })
-  }
+  // Merge relationship hints directly into the system prompt so a single
+  // system field covers both the base instructions and any known facts.
+  // Note: intake reply sanitization (relationship-question suppression) is a
+  // known Phase-1 trade-off; full per-turn sanitization lands in Phase 2.
+  const fullSystem = intakeHintsMessage
+    ? `${systemPrompt}\n\n${intakeHintsMessage}`
+    : systemPrompt
 
-  return NextResponse.json({
-    ok: true,
-    outOfScope: false,
-    reply: isIntakeMode ? sanitizeIntakeReply(reply, lastUserMessage.content) : reply,
+  return createUIMessageStreamResponse({
+    stream: createUIMessageStream({
+      execute({ writer }) {
+        writeData(writer, { ok: true, outOfScope: false })
+
+        const result = streamText({
+          model: getOllamaModel(),
+          system: fullSystem,
+          messages: buildContextMessages(payload.messages),
+          temperature: OLLAMA_TEMPERATURE,
+          abortSignal: AbortSignal.timeout(OLLAMA_TIMEOUT_MS),
+        })
+        writer.merge(result.toUIMessageStream())
+      },
+      onError(error) {
+        const mode = isIntakeMode ? "application_intake" : "assistant"
+        logServerError(ERROR_LOG_PREFIX, error, { route: "/api/chat/masshealth", mode })
+        return ERROR_CHAT_REQUEST_FAILED
+      },
+    }),
   })
 }
 
@@ -360,7 +372,7 @@ export async function POST(request: Request) {
     const lastUserMessage = getLastUserMessage(payload.messages)
 
     // Fire-and-forget — never let logging failures affect the response
-    void logChatRequest(authResult.userId, payload.mode, getModel()).catch(() => {})
+    void logChatRequest(authResult.userId, payload.mode, getModelName()).catch(() => {})
 
     if (!lastUserMessage) {
       return NextResponse.json({ ok: false, error: "At least one user message is required." }, { status: 400 })

@@ -1,6 +1,6 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  *
  * SW conversation view — 1:1 direct chat between SW and a specific patient.
  */

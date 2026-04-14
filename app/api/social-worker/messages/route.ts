@@ -1,6 +1,6 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  *
  * GET /api/social-worker/messages
  * Returns all DM threads for the authenticated SW (one row per patient).

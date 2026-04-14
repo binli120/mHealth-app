@@ -2,7 +2,7 @@
  * GET  /api/auth/invite/[token]  — verify the token is valid (public, no auth needed)
  * POST /api/auth/invite/[token]  — accept the invitation: create account + set password
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 import { NextResponse } from "next/server"

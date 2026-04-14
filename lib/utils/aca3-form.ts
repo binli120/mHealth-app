@@ -1,6 +1,6 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 import { DATE_PATTERN, MAX_DOB_AGE_YEARS } from "@/lib/constant"

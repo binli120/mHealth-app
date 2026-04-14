@@ -3,7 +3,7 @@
 -- Direct messages: async 1:1 chat between patient and their assigned SW
 --
 -- @author Bin Lee
--- @email binlee120@gmail.com
+-- @email blee@healthcompass.cloud
 -- Run after: social_worker_schema.sql, notifications_schema.sql, collaborative_session_schema.sql
 
 -- ── Engagement requests ──────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 "use client"
@@ -32,6 +32,7 @@ import {
 } from "@/lib/redux/features/application-slice"
 import { setLanguage } from "@/lib/redux/features/app-slice"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { readChatStream } from "@/lib/chat/read-stream"
 import { isSupportedLanguage, SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/lib/i18n/languages"
 import { createUuid } from "@/lib/utils/random-id"
 import {
@@ -129,7 +130,13 @@ const SPEECH_LANG: Record<SupportedLanguage, string> = {
 type InputFieldType = "phone" | "ssn" | "date" | "email" | "money" | "text"
 
 function detectInputFieldType(lastAssistantMsg: string): InputFieldType {
-  const msg = lastAssistantMsg.toLowerCase()
+  const full = lastAssistantMsg.toLowerCase()
+  // Use only the last clause (the actual question being asked). This prevents
+  // confirmed context — e.g. "I have your date of birth as 01/15/1990" — from
+  // misidentifying the field type when the follow-up question is different.
+  const clauses = full.split(/(?<=[.!?])\s+/)
+  const lastClause = clauses[clauses.length - 1]?.trim() ?? ""
+  const msg = lastClause.length >= 15 ? lastClause : full
   if (/social.?security|ssn|\bss#/.test(msg)) return "ssn"
   if (/\bphone\b|telephone|cell|mobile|call you|phone number/.test(msg)) return "phone"
   if (/date of birth|when were you born|\bdob\b|birthday|born on/.test(msg)) return "date"
@@ -533,23 +540,25 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
             existingSources: formData.incomeSources ?? [],
           }),
         })
-        if (response.ok) {
-          const data = await response.json() as { ok: boolean; reply: string }
-          if (data.ok && data.reply) {
-            setMessages((prev) => [
-              ...prev,
-              { id: createUuid(), type: "text" as const, role: "assistant" as const, content: data.reply },
-            ])
-          } else {
-            // API returned ok:false or empty reply — show a nudge so the user isn't stuck
-            setMessages((prev) => [
-              ...prev,
-              { id: createUuid(), type: "text" as const, role: "assistant" as const, content: getFormAssistantGreeting(language) },
-            ])
-          }
-        } else {
-          throw new Error(`API error ${response.status}`)
-        }
+        if (!response.ok) throw new Error(`API error ${response.status}`)
+
+        const placeholderId = createUuid()
+        setMessages((prev) => [
+          ...prev,
+          { id: placeholderId, type: "text" as const, role: "assistant" as const, content: "" },
+        ])
+
+        const { text } = await readChatStream(response, (_token, accumulated) => {
+          setMessages((prev) =>
+            prev.map((m) => m.id === placeholderId ? { ...m, content: accumulated } : m),
+          )
+        })
+
+        // Ensure final text is set (handles any trailing buffering)
+        const finalReply = text.trim() || getFormAssistantGreeting(language)
+        setMessages((prev) =>
+          prev.map((m) => m.id === placeholderId ? { ...m, content: finalReply } : m),
+        )
       } catch {
         // Surface a short nudge so the user knows they can continue typing
         setMessages((prev) => [
@@ -731,20 +740,34 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
           }),
         })
 
-        if (!response.ok) {
-          throw new Error(`API error ${response.status}`)
-        }
+        if (!response.ok) throw new Error(`API error ${response.status}`)
 
-        const data = await response.json() as {
-          ok: boolean
-          reply: string
-          extractedFields?: Partial<ApplicationFormData>
-          noHouseholdMembers?: boolean
-          noIncome?: boolean
-        }
+        // Add a streaming placeholder for the assistant reply
+        const placeholderId = createUuid()
+        setMessages((prev) => [
+          ...prev,
+          { id: placeholderId, type: "text" as const, role: "assistant" as const, content: "" },
+        ])
 
-        if (!data.ok || !data.reply) {
-          throw new Error("No reply from assistant")
+        const { text, annotation } = await readChatStream(response, (_token, accumulated) => {
+          setMessages((prev) =>
+            prev.map((m) => m.id === placeholderId ? { ...m, content: accumulated } : m),
+          )
+        })
+
+        if (!text.trim()) throw new Error("No reply from assistant")
+
+        // Finalise the streamed message
+        setMessages((prev) =>
+          prev.map((m) => m.id === placeholderId ? { ...m, content: text.trim() } : m),
+        )
+
+        // Structured fields come from the data annotation (arrives before text tokens)
+        const data = {
+          extractedFields: annotation?.extractedFields as Partial<ApplicationFormData> | undefined,
+          noHouseholdMembers: annotation?.noHouseholdMembers as boolean | undefined,
+          noIncome: annotation?.noIncome as boolean | undefined,
+          reply: text.trim(),
         }
 
         // Apply extracted fields — update localFields immediately for instant UI
@@ -882,16 +905,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
 
         if (data.noHouseholdMembers) setNoHouseholdMembers(true)
         if (data.noIncome) setNoIncome(true)
-
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: createUuid(),
-            type: "text",
-            role: "assistant",
-            content: data.reply,
-          },
-        ])
+        // Reply already applied to the streaming placeholder above
       } catch {
         setMessages((prev) => [
           ...prev,

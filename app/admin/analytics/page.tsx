@@ -2,7 +2,7 @@
 
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 import { useEffect, useReducer, useState } from "react"
@@ -405,7 +405,11 @@ export default function AdminAnalyticsPage() {
       )}
 
       {/* ── Drill-down panel ── */}
-      <DrillDownPanel drill={drillDown} onClose={() => setDrillDown(null)} />
+      <DrillDownPanel
+        key={drillDown ? `${drillDown.type}:${drillDown.value}` : "closed"}
+        drill={drillDown}
+        onClose={() => setDrillDown(null)}
+      />
     </div>
   )
 }
@@ -418,11 +422,6 @@ function DrillDownPanel({ drill, onClose }: { drill: DrillDownSpec; onClose: () 
     asyncReducer as (s: AsyncState<DrillDownResult>, a: AsyncAction<DrillDownResult>) => AsyncState<DrillDownResult>,
     { status: "loading", data: null },
   )
-
-  // Reset page when drill target changes
-  useEffect(() => {
-    setPage(1)
-  }, [drill?.type, drill?.value])
 
   useEffect(() => {
     if (!drill) return

@@ -4,7 +4,7 @@
  * /auth/invite/[token]
  * Accept an admin invitation: user sets their name + password, then is redirected to login.
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 import { useEffect, useState } from "react"

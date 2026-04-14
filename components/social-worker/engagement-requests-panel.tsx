@@ -1,6 +1,6 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  *
  * SW portal: panel showing incoming patient engagement requests with accept/reject actions.
  */

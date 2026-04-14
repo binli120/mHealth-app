@@ -1,6 +1,6 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 "use client"
@@ -18,6 +18,7 @@ import { getChatWidgetCopy, type ChatWidgetCopy } from "@/lib/i18n/chat-widget"
 import { setLanguage } from "@/lib/redux/features/app-slice"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { readChatStream, type ChatStreamAnnotation } from "@/lib/chat/read-stream"
 import { useAutoScroll } from "@/hooks/use-auto-scroll"
 import {
   getBenefitAdvisorGreeting,
@@ -240,42 +241,77 @@ export function MassHealthChatWidget() {
     const currentMessages = isAdvisorView ? advisorMessages : messages
     const setCurrentMessages = isAdvisorView ? setAdvisorMessages : setMessages
 
-    const nextMessages: WidgetMessage[] = [
+    // Messages sent to the API (history + new user turn, no placeholder)
+    const apiMessages: WidgetMessage[] = [
       ...currentMessages,
       { id: createMessageId(), role: "user", content: message },
     ]
-    setCurrentMessages(nextMessages)
+
+    // Stable ID for the streaming assistant placeholder
+    const assistantId = createMessageId()
+
+    setCurrentMessages([
+      ...apiMessages,
+      { id: assistantId, role: "assistant", content: "" },
+    ])
 
     try {
       const response = await authenticatedFetch("/api/chat/masshealth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: nextMessages.slice(-12).map(({ role, content }) => ({ role, content })),
+          messages: apiMessages.slice(-12).map(({ role, content }) => ({ role, content })),
           language: selectedLanguage,
           ...(isAdvisorView ? { mode: "benefit_advisor" } : {}),
         }),
       })
 
-      const data = (await response.json()) as ChatApiResponse
-      const reply = data.reply?.trim() || (data.outOfScope ? outOfScopeReply : copy.fallbackReply)
-      const systemKey: WidgetSystemMessageKey | undefined = data.reply?.trim()
-        ? undefined
-        : data.outOfScope
-          ? "outOfScope"
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+
+      const { text, annotation } = await readChatStream(
+        response,
+        (_token, accumulated) => {
+          // Update the placeholder character-by-character as tokens arrive
+          setCurrentMessages((previous) =>
+            previous.map((m) =>
+              m.id === assistantId ? { ...m, content: accumulated } : m,
+            ),
+          )
+        },
+      )
+
+      // Out-of-scope: no text stream — reply comes from the data annotation
+      const isOutOfScope = annotation?.outOfScope === true
+      const finalText = isOutOfScope
+        ? ((annotation as ChatStreamAnnotation).reply ?? outOfScopeReply)
+        : (text.trim() || copy.fallbackReply)
+
+      const systemKey: WidgetSystemMessageKey | undefined = isOutOfScope
+        ? "outOfScope"
+        : text.trim()
+          ? undefined
           : "requestFailed"
 
-      setCurrentMessages((previous) => [
-        ...previous,
-        createAssistantMessage(reply, systemKey, data.eligibilityResults),
-      ])
+      const eligibilityResults = annotation?.eligibilityResults as ChatApiResponse["eligibilityResults"]
+
+      setCurrentMessages((previous) =>
+        previous.map((m) =>
+          m.id === assistantId
+            ? { ...m, content: finalText, systemKey, eligibilityResults }
+            : m,
+        ),
+      )
     } catch (error) {
       console.error("MassHealth chat request failed", error)
-      const setMsg = isAdvisorView ? setAdvisorMessages : setMessages
-      setMsg((previous) => [
-        ...previous,
-        createAssistantMessage(copy.serviceUnavailable, "serviceUnavailable"),
-      ])
+      setCurrentMessages((previous) =>
+        previous.map((m) =>
+          m.id === assistantId
+            ? { ...m, content: copy.serviceUnavailable, systemKey: "serviceUnavailable" }
+            : m,
+        ),
+      )
     } finally {
       setIsLoading(false)
     }
