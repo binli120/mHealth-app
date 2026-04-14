@@ -21,6 +21,8 @@ import {
   X,
   AlertCircle,
   Loader2,
+  BarChart2,
+  Download,
 } from "lucide-react"
 
 const NAV_LINKS = [
@@ -28,6 +30,8 @@ const NAV_LINKS = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/companies", label: "Companies", icon: Building2 },
   { href: "/admin/social-workers", label: "Social Workers", icon: UserCheck },
+  { href: "/admin/analytics", label: "Analytics", icon: BarChart2 },
+  { href: "/admin/reports", label: "Reports", icon: Download },
 ]
 
 type AuthState = "loading" | "unauthenticated" | "not-admin" | "ready"

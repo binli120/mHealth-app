@@ -32,6 +32,7 @@ import { runEligibilityCheck } from "@/lib/eligibility-engine"
 import { retrieveRelevantChunks, formatChunksForPrompt } from "@/lib/rag/retrieve"
 import { extractHouseholdRelationshipHints } from "@/lib/masshealth/household-relationships"
 import { logServerError } from "@/lib/server/logger"
+import { logChatRequest } from "@/lib/db/admin-analytics"
 import { isSupportedLanguage, type SupportedLanguage } from "@/lib/i18n/languages"
 import {
   CHAT_MESSAGE_CONTENT_MAX_LENGTH,
@@ -357,6 +358,9 @@ export async function POST(request: Request) {
     const payload = requestSchema.parse(body)
     const language = resolveLanguage(payload.language)
     const lastUserMessage = getLastUserMessage(payload.messages)
+
+    // Fire-and-forget — never let logging failures affect the response
+    void logChatRequest(authResult.userId, payload.mode, getModel()).catch(() => {})
 
     if (!lastUserMessage) {
       return NextResponse.json({ ok: false, error: "At least one user message is required." }, { status: 400 })
