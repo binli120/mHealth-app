@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { getSafeAuthNextPath } from "@/lib/auth/navigation"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { isLocalAuthHelperEnabled, normalizeAuthEmail } from "@/lib/auth/local-auth"
 import { formatPhoneNumber } from "@/lib/utils/input-format"
@@ -21,7 +22,6 @@ import {
 } from "lucide-react"
 import { ShieldHeartIcon } from "@/lib/icons"
 import type { RegisterStep, AccountRole, CompanyResult, DevRegisterResponse } from "./page.types"
-import { getSafeNextPath } from "./page.utils"
 
 function RegisterPageContent() {
   const router = useRouter()
@@ -51,7 +51,7 @@ function RegisterPageContent() {
   const [companySearching, setCompanySearching] = useState(false)
 
   const nextPath = useMemo(
-    () => getSafeNextPath(searchParams.get("next"), "/application/type"),
+    () => getSafeAuthNextPath(searchParams.get("next"), "/application/type"),
     [searchParams],
   )
   const loginHref = useMemo(

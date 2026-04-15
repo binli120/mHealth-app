@@ -11,6 +11,14 @@ import {
   Search, ArrowRight, Users, MapPin, Phone, Calendar,
   ChevronDown, X, Filter, MessageCircle,
 } from "lucide-react"
+import { APPLICATION_STATUS_LABELS } from "@/lib/application-status"
+import {
+  SOCIAL_WORKER_CITIZENSHIP_LABELS,
+  SOCIAL_WORKER_PATIENT_STATUS_FILTER_OPTIONS,
+  SOCIAL_WORKER_PATIENT_STATUS_STYLES,
+} from "@/lib/social-worker/constants"
+import type { SocialWorkerPatient, SocialWorkerPatientStatusFilter } from "@/lib/social-worker/types"
+import { getAgeFromDateOfBirth, getSocialWorkerPatientDisplayName } from "@/lib/social-worker/utils"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import {
@@ -21,67 +29,14 @@ import {
 } from "@/components/ui/dialog"
 import { SwDirectChatPanel, type DirectMessage } from "@/components/chat/sw-direct-chat-panel"
 
-interface Patient {
-  access_id: string
-  patient_user_id: string
-  email: string
-  first_name: string | null
-  last_name: string | null
-  dob: string | null
-  phone: string | null
-  city: string | null
-  state: string | null
-  zip: string | null
-  citizenship_status: string | null
-  granted_at: string
-  application_count: number
-  latest_application_status: string | null
-}
-
-const APP_STATUS_OPTIONS = [
-  { value: "", label: "All Statuses" },
-  { value: "draft", label: "Draft" },
-  { value: "submitted", label: "Submitted" },
-  { value: "needs_review", label: "Needs Review" },
-  { value: "approved", label: "Approved" },
-  { value: "denied", label: "Denied" },
-  { value: "rfi_requested", label: "RFI Requested" },
-  { value: "no_applications", label: "No Applications" },
-]
-
-const STATUS_STYLE: Record<string, string> = {
-  approved: "bg-emerald-100 text-emerald-700",
-  denied: "bg-red-100 text-red-700",
-  submitted: "bg-blue-100 text-blue-700",
-  draft: "bg-gray-100 text-gray-600",
-  needs_review: "bg-amber-100 text-amber-700",
-  rfi_requested: "bg-orange-100 text-orange-700",
-  ai_extracted: "bg-purple-100 text-purple-700",
-}
-
-const CITIZENSHIP_LABEL: Record<string, string> = {
-  citizen: "US Citizen",
-  permanent_resident: "Permanent Resident",
-  refugee: "Refugee",
-  asylum_seeker: "Asylum Seeker",
-  visa_holder: "Visa Holder",
-  undocumented: "Undocumented",
-}
-
-function age(dob: string | null): string | null {
-  if (!dob) return null
-  const diff = Date.now() - new Date(dob).getTime()
-  return String(Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25)))
-}
-
 export default function SocialWorkerPatientsPage() {
-  const [patients, setPatients] = useState<Patient[]>([])
+  const [patients, setPatients] = useState<SocialWorkerPatient[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState("")
+  const [statusFilter, setStatusFilter] = useState<SocialWorkerPatientStatusFilter>("")
   const [cityFilter, setCityFilter] = useState("")
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-  const [chatPatient, setChatPatient] = useState<Patient | null>(null)
+  const [chatPatient, setChatPatient] = useState<SocialWorkerPatient | null>(null)
   // Persist messages per patient so reopening the dialog doesn't flash a loading state.
   // The ref holds the cache; chatInitialMessages carries the snapshot into the panel
   // so we never read ref.current during render (react-hooks/refs).
@@ -103,16 +58,13 @@ export default function SocialWorkerPatientsPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const fullName = (p: Patient) =>
-    [p.first_name, p.last_name].filter(Boolean).join(" ") || p.email
-
   // Unique cities for filter
   const cities = Array.from(new Set(patients.map((p) => p.city).filter(Boolean))).sort() as string[]
 
   const filtered = patients.filter((p) => {
     const q = search.toLowerCase()
     const matchSearch = !q ||
-      fullName(p).toLowerCase().includes(q) ||
+      getSocialWorkerPatientDisplayName(p).toLowerCase().includes(q) ||
       p.email.toLowerCase().includes(q) ||
       (p.city ?? "").toLowerCase().includes(q) ||
       (p.phone ?? "").includes(q)
@@ -156,10 +108,10 @@ export default function SocialWorkerPatientsPage() {
           <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => setStatusFilter(e.target.value as SocialWorkerPatientStatusFilter)}
             className="pl-8 pr-8 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white"
           >
-            {APP_STATUS_OPTIONS.map((o) => (
+            {SOCIAL_WORKER_PATIENT_STATUS_FILTER_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
@@ -224,13 +176,13 @@ export default function SocialWorkerPatientsPage() {
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-gray-900 text-sm">{fullName(p)}</span>
+                    <span className="font-semibold text-gray-900 text-sm">{getSocialWorkerPatientDisplayName(p)}</span>
                     {p.dob && (
-                      <span className="text-xs text-gray-400">Age {age(p.dob)}</span>
+                      <span className="text-xs text-gray-400">Age {getAgeFromDateOfBirth(p.dob)}</span>
                     )}
                     {p.citizenship_status && (
                       <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
-                        {CITIZENSHIP_LABEL[p.citizenship_status] ?? p.citizenship_status}
+                        {SOCIAL_WORKER_CITIZENSHIP_LABELS[p.citizenship_status] ?? p.citizenship_status}
                       </span>
                     )}
                   </div>
@@ -260,8 +212,8 @@ export default function SocialWorkerPatientsPage() {
                   {p.application_count} app{p.application_count !== 1 ? "s" : ""}
                 </div>
                 {p.latest_application_status ? (
-                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLE[p.latest_application_status] ?? "bg-gray-100 text-gray-600"}`}>
-                    {p.latest_application_status.replace(/_/g, " ")}
+                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${SOCIAL_WORKER_PATIENT_STATUS_STYLES[p.latest_application_status] ?? "bg-gray-100 text-gray-600"}`}>
+                    {APPLICATION_STATUS_LABELS[p.latest_application_status] ?? p.latest_application_status.replace(/_/g, " ")}
                   </span>
                 ) : (
                   <span className="text-xs text-gray-400 italic">no apps</span>
@@ -276,7 +228,7 @@ export default function SocialWorkerPatientsPage() {
                     setChatPatient(p)
                   }}
                   className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-100 transition-colors"
-                  title={`Chat with ${fullName(p)}`}
+                  title={`Chat with ${getSocialWorkerPatientDisplayName(p)}`}
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
                   Chat
@@ -307,13 +259,13 @@ export default function SocialWorkerPatientsPage() {
         <DialogContent className="flex h-[600px] max-h-[90vh] flex-col gap-0 p-0 sm:max-w-md">
           <DialogHeader className="sr-only">
             <DialogTitle>
-              Chat with {chatPatient ? fullName(chatPatient) : "Patient"}
+              Chat with {chatPatient ? getSocialWorkerPatientDisplayName(chatPatient) : "Patient"}
             </DialogTitle>
           </DialogHeader>
           {chatPatient && currentUserId && (
             <SwDirectChatPanel
               swUserId={chatPatient.patient_user_id}
-              swName={fullName(chatPatient)}
+              swName={getSocialWorkerPatientDisplayName(chatPatient)}
               currentUserId={currentUserId}
               contactRole="Patient"
               initialMessages={chatInitialMessages}

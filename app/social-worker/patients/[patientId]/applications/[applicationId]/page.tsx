@@ -12,9 +12,8 @@ import { useParams } from "next/navigation"
 import { ApplicationAssistant } from "@/components/application/aca3/application-assistant"
 import { FormWizard } from "@/components/application/aca3/form-wizard"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import type { ApplicationEntryMode } from "@/lib/applications/types"
 import { Sparkles } from "lucide-react"
-
-type ApplicationEntryMode = "chat" | "wizard"
 
 export default function SWEditApplicationPage() {
   const params = useParams()

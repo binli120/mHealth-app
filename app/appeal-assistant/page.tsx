@@ -19,18 +19,7 @@ import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { APPEAL_DENIAL_REASONS } from "@/lib/appeals/constants"
 import type { AppealAnalysis, AppealRequest } from "@/lib/appeals/types"
 import { useAppSelector } from "@/lib/redux/hooks"
-
-type PageState = "form" | "loading" | "result" | "error"
-
-interface AppealApiResponse {
-  ok: true
-  analysis: AppealAnalysis
-}
-
-interface AppealApiErrorResponse {
-  ok: false
-  error: string
-}
+import type { AppealApiErrorResponse, AppealApiResponse, PageState } from "./page.types"
 
 export default function AppealAssistantPage() {
   const language = useAppSelector((state) => state.app.language)

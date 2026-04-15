@@ -9,13 +9,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Users, Building2, UserCheck, AlertCircle, ArrowRight } from "lucide-react"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
-
-interface Stats {
-  totalUsers: number
-  pendingSwApprovals: number
-  totalCompanies: number
-  pendingCompanies: number
-}
+import type { QuickActionProps, StatCardProps, Stats } from "./page.types"
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null)
@@ -92,14 +86,7 @@ function StatCard({
   href,
   bg,
   alert,
-}: {
-  label: string
-  value: string
-  icon: React.ReactNode
-  href: string
-  bg: string
-  alert?: boolean
-}) {
+}: StatCardProps) {
   return (
     <Link
       href={href}
@@ -117,7 +104,7 @@ function StatCard({
   )
 }
 
-function QuickAction({ href, label }: { href: string; label: string }) {
+function QuickAction({ href, label }: QuickActionProps) {
   return (
     <Link
       href={href}

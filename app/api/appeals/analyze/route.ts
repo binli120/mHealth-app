@@ -9,6 +9,7 @@ import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 import { retrieveRelevantChunks, formatChunksForPrompt } from "@/lib/rag/retrieve"
 import { logServerError } from "@/lib/server/logger"
 import { buildAppealSystemPrompt } from "@/lib/appeals/prompts"
+import { reviewAppealLetterQuality } from "@/lib/agents/reflection/quality-gate"
 import {
   APPEAL_DENIAL_REASONS,
   APPEAL_DENIAL_REASON_IDS,
@@ -124,7 +125,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: ERROR_APPEAL_OLLAMA_FAILED }, { status: 502 })
     }
 
-    return NextResponse.json({ ok: true, analysis }, { status: 200 })
+    const qualityGate = await reviewAppealLetterQuality({
+      appealLetter: analysis.appealLetter,
+      explanation: analysis.explanation,
+      evidenceChecklist: analysis.evidenceChecklist,
+      policyContext: ragContext,
+    })
+
+    return NextResponse.json({
+      ok: true,
+      analysis: { ...analysis, appealLetter: qualityGate.finalText },
+      reflection: qualityGate.review,
+    }, { status: 200 })
   } catch (error) {
     logServerError(ERROR_APPEAL_LOG_PREFIX, error, { route: "/api/appeals/analyze" })
     return NextResponse.json({ ok: false, error: ERROR_APPEAL_OLLAMA_FAILED }, { status: 500 })

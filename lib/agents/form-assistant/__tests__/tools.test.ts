@@ -25,6 +25,7 @@ import { extractFormFields } from "@/lib/masshealth/form-field-extraction"
 import { retrieveRelevantChunks, formatChunksForPrompt } from "@/lib/rag/retrieve"
 import type { UIMessageStreamWriter } from "ai"
 import type { FormAssistantToolContext } from "@/lib/agents/form-assistant/tools"
+import type { PolicyChunk } from "@/lib/rag/types"
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -35,6 +36,17 @@ const CTX: FormAssistantToolContext = {
   currentSection: "personal" as const,
   existingMembers: [],
   existingSources: [],
+}
+
+const POLICY_CHUNK: PolicyChunk = {
+  id: "chunk-1",
+  documentId: "doc-1",
+  chunkIndex: 0,
+  content: "Applicants may need proof of citizenship.",
+  score: 0.79,
+  documentTitle: "Acceptable Verifications List",
+  sourceUrl: "https://www.mass.gov/doc/acceptable-verifications/download",
+  docType: "verifications",
 }
 
 function makeMockWriter() {
@@ -150,6 +162,26 @@ describe("retrieve_policy tool", () => {
     const tools = buildFormAssistantTools(CTX, makeMockWriter())
     const result = await exec(tools, "retrieve_policy", { query: "personal section" }) as { context: string }
     expect(result.context).toBe("Policy context: personal section requires legal name...")
+  })
+
+  it("returns and emits RAG quality metadata", async () => {
+    vi.mocked(retrieveRelevantChunks).mockResolvedValue([POLICY_CHUNK])
+    const writer = makeMockWriter()
+    const tools = buildFormAssistantTools(CTX, writer)
+
+    const result = await exec(tools, "retrieve_policy", { query: "citizenship documentation requirements" }) as {
+      rag: { returnedChunkCount: number; sources: Array<{ sourceType?: string }> }
+    }
+
+    expect(result.rag.returnedChunkCount).toBe(1)
+    expect(result.rag.sources[0]).toMatchObject({ sourceType: "verifications" })
+    expect(writer.write).toHaveBeenCalledWith({
+      type: "data-masshealth",
+      data: expect.objectContaining({
+        ok: true,
+        rag: expect.objectContaining({ returnedChunkCount: 1 }),
+      }),
+    })
   })
 
   it("returns a fallback message when no chunks are found", async () => {

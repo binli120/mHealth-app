@@ -25,26 +25,7 @@ import { ShieldCheck, ScanLine, XCircle, CheckCircle2, Clock, Loader2, AlertTria
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { cn } from "@/lib/utils"
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type PageState =
-  | "loading"       // checking token validity
-  | "expired"       // token expired or already used
-  | "ready"         // waiting for user to tap Start
-  | "scanning"      // camera active, looking for barcode
-  | "processing"    // barcode found, calling API
-  | "success"       // verified / pending review
-  | "failed"        // low match score
-
-interface ApiResponse {
-  ok: boolean
-  status?: "verified" | "needs_review" | "failed"
-  score?: number
-  extractedName?: string
-  message?: string
-  error?: string
-}
+import type { ApiResponse, PageState } from "./page.types"
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 

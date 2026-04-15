@@ -9,80 +9,29 @@ import { useCallback, useMemo, useState } from "react"
 import { useAsyncData } from "@/hooks/use-async-data"
 import { useDebounce } from "@/hooks/use-debounce"
 import { getMessage } from "@/lib/i18n/messages"
-import { type SupportedLanguage } from "@/lib/i18n/languages"
 import { formatDate } from "@/lib/utils/format"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { MASSHEALTH_APPLICATION_TYPES } from "@/lib/masshealth/application-types"
-import { type ApplicationStatus } from "@/lib/application-status"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
-import {
-  AlertCircle,
-  ArrowLeft,
-  CheckCircle2,
-  ChevronRight,
-  Clock,
-  FileText,
-  Filter,
-  Search,
-} from "lucide-react"
+import { ArrowLeft, ChevronRight, Filter, Search } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ShieldHeartIcon } from "@/lib/icons"
 import { useAppSelector } from "@/lib/redux/hooks"
-
-type StatusFilter = "all" | ApplicationStatus
-
-interface ApplicationListRecord {
-  id: string
-  status: ApplicationStatus
-  applicationType: string | null
-  draftStep: number | null
-  lastSavedAt: string | null
-  submittedAt: string | null
-  createdAt: string
-  updatedAt: string
-  applicantName: string | null
-  householdSize: number | null
-}
-
-interface ApplicationListApiResponse {
-  ok: boolean
-  records?: ApplicationListRecord[]
-  total?: number
-  error?: string
-}
-
-const APPLICATION_TYPE_LABELS = new Map<string, string>(
-  MASSHEALTH_APPLICATION_TYPES.map((item) => [item.id, item.shortLabel]),
-)
-
-function getApplicationTypeLabel(type: string | null, language: SupportedLanguage): string {
-  if (!type) {
-    return getMessage(language, "statusListApplicationFallback")
-  }
-
-  return APPLICATION_TYPE_LABELS.get(type) ?? type.toUpperCase()
-}
+import type { ApplicationListApiResponse, StatusFilter } from "./page.types"
+import {
+  getLocalizedApplicationTypeLabel,
+  getStatusConfig,
+  getStatusFilterOptions,
+} from "./page.utils"
 
 export default function StatusListPage() {
   const language = useAppSelector((state) => state.app.language)
   const [searchInput, setSearchInput] = useState("")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
-
-  const statusConfig = useMemo<Record<ApplicationStatus, { label: string; color: string; icon: typeof FileText }>>(
-    () => ({
-      draft: { label: getMessage(language, "dashboardStatusDraft"), color: "bg-secondary text-secondary-foreground", icon: FileText },
-      submitted: { label: getMessage(language, "dashboardStatusSubmitted"), color: "bg-primary/10 text-primary", icon: Clock },
-      ai_extracted: { label: getMessage(language, "dashboardStatusAiExtracted"), color: "bg-accent/10 text-accent", icon: Clock },
-      needs_review: { label: getMessage(language, "dashboardStatusNeedsReview"), color: "bg-accent/10 text-accent", icon: Clock },
-      rfi_requested: { label: getMessage(language, "dashboardStatusRfiRequested"), color: "bg-warning/10 text-warning", icon: AlertCircle },
-      approved: { label: getMessage(language, "dashboardStatusApproved"), color: "bg-success/10 text-success", icon: CheckCircle2 },
-      denied: { label: getMessage(language, "dashboardStatusDenied"), color: "bg-destructive/10 text-destructive", icon: AlertCircle },
-    }),
-    [language],
-  )
+  const statusConfig = useMemo(() => getStatusConfig(language), [language])
+  const statusFilterOptions = useMemo(() => getStatusFilterOptions(language), [language])
 
   // Debounce search so we don't fire on every keystroke
   const debouncedSearch = useDebounce(searchInput, 250)
@@ -164,14 +113,11 @@ export default function StatusListPage() {
                   <SelectValue placeholder={getMessage(language, "statusListFilterPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{getMessage(language, "statusListAllStatus")}</SelectItem>
-                  <SelectItem value="draft">{getMessage(language, "dashboardStatusDraft")}</SelectItem>
-                  <SelectItem value="submitted">{getMessage(language, "dashboardStatusSubmitted")}</SelectItem>
-                  <SelectItem value="ai_extracted">{getMessage(language, "dashboardStatusAiExtracted")}</SelectItem>
-                  <SelectItem value="needs_review">{getMessage(language, "dashboardStatusNeedsReview")}</SelectItem>
-                  <SelectItem value="rfi_requested">{getMessage(language, "dashboardStatusRfiRequested")}</SelectItem>
-                  <SelectItem value="approved">{getMessage(language, "dashboardStatusApproved")}</SelectItem>
-                  <SelectItem value="denied">{getMessage(language, "dashboardStatusDenied")}</SelectItem>
+                  {statusFilterOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -228,7 +174,7 @@ export default function StatusListPage() {
                           <div>
                             <div className="flex items-center gap-2">
                               <h3 className="font-semibold text-foreground">
-                                {getApplicationTypeLabel(app.applicationType, language)}
+                                {getLocalizedApplicationTypeLabel(app.applicationType, language)}
                               </h3>
                               {needsAction ? (
                                 <span className="rounded-full bg-warning px-2 py-0.5 text-xs font-medium text-warning-foreground">

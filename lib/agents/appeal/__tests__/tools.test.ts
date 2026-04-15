@@ -16,9 +16,15 @@ vi.mock("@/lib/rag/retrieve", () => ({
   formatChunksForPrompt: vi.fn(),
 }))
 
+vi.mock("@/lib/agents/reflection/quality-gate", () => ({
+  reviewAppealLetterQuality: vi.fn(),
+}))
+
 import { buildAppealTools } from "@/lib/agents/appeal/tools"
 import { retrieveRelevantChunks, formatChunksForPrompt } from "@/lib/rag/retrieve"
+import { reviewAppealLetterQuality } from "@/lib/agents/reflection/quality-gate"
 import type { UIMessageStreamWriter } from "ai"
+import type { PolicyChunk } from "@/lib/rag/types"
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -41,12 +47,33 @@ const FINISH_ARGS = {
   evidenceChecklist: ["Recent pay stubs (last 3 months)", "Tax return (prior year)", "Letter from employer"],
 }
 
+const POLICY_CHUNK: PolicyChunk = {
+  id: "chunk-1",
+  documentId: "doc-1",
+  chunkIndex: 0,
+  content: "Applicants may request a fair hearing.",
+  score: 0.84,
+  documentTitle: "MassHealth Fair Hearing Rules",
+  sourceUrl: "https://www.mass.gov/how-to/how-to-appeal-a-masshealth-decision",
+  docType: "faq",
+}
+
 // ── Setup ─────────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(retrieveRelevantChunks).mockResolvedValue([])
   vi.mocked(formatChunksForPrompt).mockReturnValue("Appeal policy: 130 CMR 610.000 governs hearings...")
+  vi.mocked(reviewAppealLetterQuality).mockResolvedValue({
+    finalText: FINISH_ARGS.appealLetter,
+    review: {
+      reviewed: true,
+      factuallyAccurate: true,
+      clearToLayperson: true,
+      hasSpecificEvidence: true,
+      issues: [],
+    },
+  })
 })
 
 // ── retrieve_policy ───────────────────────────────────────────────────────────
@@ -65,6 +92,26 @@ describe("retrieve_policy tool", () => {
     const tools = buildAppealTools(makeMockWriter())
     const result = await exec(tools, "retrieve_policy", { query: "appeal rights" }) as { context: string }
     expect(result.context).toBe("Appeal policy: 130 CMR 610.000 governs hearings...")
+  })
+
+  it("returns and emits RAG quality metadata", async () => {
+    vi.mocked(retrieveRelevantChunks).mockResolvedValue([POLICY_CHUNK])
+    const writer = makeMockWriter()
+    const tools = buildAppealTools(writer)
+
+    const result = await exec(tools, "retrieve_policy", { query: "appeal rights" }) as {
+      rag: { confidence: string; sources: Array<{ sourceType?: string; score: number }> }
+    }
+
+    expect(result.rag.confidence).toBe("high")
+    expect(result.rag.sources[0]).toMatchObject({ sourceType: "faq", score: 0.84 })
+    expect(writer.write).toHaveBeenCalledWith({
+      type: "data-masshealth",
+      data: expect.objectContaining({
+        ok: true,
+        rag: expect.objectContaining({ confidence: "high" }),
+      }),
+    })
   })
 
   it("returns a fallback message when no chunks are found", async () => {
@@ -113,6 +160,7 @@ describe("finish_appeal tool", () => {
     expect(analysis.explanation).toBe(FINISH_ARGS.explanation)
     expect(analysis.appealLetter).toContain("[APPLICANT NAME]")
     expect(analysis.evidenceChecklist).toHaveLength(3)
+    expect(data.reflection).toMatchObject({ reviewed: true, factuallyAccurate: true })
   })
 
   it("returns committed:true", async () => {
@@ -132,5 +180,42 @@ describe("finish_appeal tool", () => {
     const tools = buildAppealTools(writer)
     await exec(tools, "finish_appeal", FINISH_ARGS)
     expect(retrieveRelevantChunks).not.toHaveBeenCalled()
+  })
+
+  it("reviews the appeal letter before writing it to the client", async () => {
+    const writer = makeMockWriter()
+    const tools = buildAppealTools(writer)
+    await exec(tools, "retrieve_policy", { query: "income appeal" })
+    await exec(tools, "finish_appeal", FINISH_ARGS)
+
+    expect(reviewAppealLetterQuality).toHaveBeenCalledWith({
+      appealLetter: FINISH_ARGS.appealLetter,
+      explanation: FINISH_ARGS.explanation,
+      evidenceChecklist: FINISH_ARGS.evidenceChecklist,
+      policyContext: "Appeal policy: 130 CMR 610.000 governs hearings...",
+    })
+  })
+
+  it("writes the revised appeal letter when the quality gate provides one", async () => {
+    vi.mocked(reviewAppealLetterQuality).mockResolvedValue({
+      finalText: "Reviewed appeal letter",
+      review: {
+        reviewed: true,
+        factuallyAccurate: false,
+        clearToLayperson: true,
+        hasSpecificEvidence: false,
+        issues: ["Added specific evidence."],
+      },
+    })
+    const writer = makeMockWriter()
+    const tools = buildAppealTools(writer)
+
+    await exec(tools, "finish_appeal", FINISH_ARGS)
+
+    const [written] = vi.mocked(writer.write).mock.calls[0]
+    const data = (written as { data: Record<string, unknown> }).data
+    const analysis = data.analysis as typeof FINISH_ARGS
+    expect(analysis.appealLetter).toBe("Reviewed appeal letter")
+    expect(data.reflection).toMatchObject({ issues: ["Added specific evidence."] })
   })
 })

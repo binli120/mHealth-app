@@ -17,16 +17,12 @@ import { createUuid } from "@/lib/utils/random-id"
 import { ArrowLeft, FileText, ChevronRight } from "lucide-react"
 import { ShieldHeartIcon } from "@/lib/icons"
 
-function createApplicationId() {
-  return createUuid()
-}
-
 export default function ApplicationTypePage() {
   const router = useRouter()
   const dispatch = useAppDispatch()
 
   const handleSelectType = async (applicationType: (typeof MASSHEALTH_APPLICATION_TYPES)[number]["id"]) => {
-    const applicationId = createApplicationId()
+    const applicationId = createUuid()
     try {
       await authenticatedFetch("/api/applications", {
         method: "POST",

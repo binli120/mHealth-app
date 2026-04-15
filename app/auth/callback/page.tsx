@@ -11,32 +11,11 @@
 
 import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { getSafeAuthNextPath, resolvePostAuthRedirect } from "@/lib/auth/navigation"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { ShieldHeartIcon } from "@/lib/icons"
 import { Loader2 } from "lucide-react"
 import Link from "next/link"
-
-function getSafeNextPath(next: string | null): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/auth/")) {
-    return "/customer/dashboard"
-  }
-  return next
-}
-
-async function resolveRoleRedirect(accessToken: string, fallback: string): Promise<string> {
-  try {
-    const res = await fetch("/api/auth/me", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
-    if (!res.ok) return fallback
-    const data = (await res.json()) as { roles: string[]; swStatus: string | null }
-    if (data.roles.includes("admin")) return "/admin"
-    if (data.roles.includes("social_worker")) return "/social-worker/dashboard"
-  } catch {
-    // fall through to default
-  }
-  return fallback
-}
 
 function CallbackContent() {
   const router = useRouter()
@@ -45,13 +24,13 @@ function CallbackContent() {
 
   useEffect(() => {
     const supabase = getSupabaseClient()
-    const next = getSafeNextPath(searchParams.get("next"))
+    const next = getSafeAuthNextPath(searchParams.get("next"), "/customer/dashboard")
     let redirected = false
 
     const doRedirect = async (accessToken: string) => {
       if (redirected) return
       redirected = true
-      const destination = await resolveRoleRedirect(accessToken, next)
+      const destination = await resolvePostAuthRedirect(next, accessToken)
       router.push(destination)
       router.refresh()
     }

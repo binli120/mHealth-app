@@ -35,6 +35,8 @@ export async function retrieveRelevantChunks(
       content: string
       score: number
       document_title: string
+      source_url: string | null
+      doc_type: string | null
     }>(
       `SELECT
          pc.id,
@@ -42,7 +44,9 @@ export async function retrieveRelevantChunks(
          pc.chunk_index,
          pc.content,
          1 - (pc.embedding <=> $1::vector) AS score,
-         pd.title AS document_title
+         pd.title AS document_title,
+         pd.source_url,
+         pd.doc_type
        FROM policy_chunks pc
        JOIN policy_documents pd ON pd.id = pc.document_id
        WHERE pc.embedding IS NOT NULL
@@ -58,6 +62,8 @@ export async function retrieveRelevantChunks(
       content: row.content,
       score: parseFloat(String(row.score)),
       documentTitle: row.document_title,
+      sourceUrl: row.source_url ?? undefined,
+      docType: row.doc_type ?? undefined,
     }))
   } catch {
     // Graceful degradation — if RAG is unavailable, chat still works with static prompts

@@ -22,11 +22,18 @@ describe("buildBenefitAdvisorAgentSystemPrompt", () => {
     expect(prompt).toContain("Simplified Chinese")
   })
 
-  it("references all three tool names", () => {
+  it("references all four tool names", () => {
     const prompt = buildBenefitAdvisorAgentSystemPrompt("en")
     expect(prompt).toContain("extract_eligibility_facts")
     expect(prompt).toContain("check_eligibility")
     expect(prompt).toContain("retrieve_policy")
+    expect(prompt).toContain("finish_eligibility_explanation")
+  })
+
+  it("requires reflection review before streaming the final eligibility explanation", () => {
+    const prompt = buildBenefitAdvisorAgentSystemPrompt("en")
+    expect(prompt).toMatch(/reflection review/i)
+    expect(prompt).toMatch(/finalExplanation exactly/i)
   })
 
   it("instructs the agent to ask ONE question when facts are missing", () => {

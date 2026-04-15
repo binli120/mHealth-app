@@ -31,11 +31,13 @@ import {
 } from "@/lib/masshealth/fact-extraction"
 import { runEligibilityCheck } from "@/lib/eligibility-engine"
 import { retrieveRelevantChunks, formatChunksForPrompt } from "@/lib/rag/retrieve"
+import { buildRagQualityMetadata } from "@/lib/rag/metadata"
 import { mergeAndSaveAgentMemory } from "@/lib/agents/memory"
 import type { ChatMessage } from "@/lib/masshealth/types"
 import type { SupportedLanguage } from "@/lib/i18n/languages"
 import { RAG_TOP_K_ADVISOR } from "@/app/api/chat/masshealth/constants"
 import type { ScreenerData } from "@/lib/eligibility-engine"
+import { reviewEligibilityExplanationQuality } from "@/lib/agents/reflection/quality-gate"
 
 // ── Zod schema for partial screener data ──────────────────────────────────────
 
@@ -56,6 +58,27 @@ const partialScreenerSchema = z.object({
   citizenshipStatus: z.enum(["citizen", "qualified_immigrant", "undocumented", "other"]).optional(),
 })
 
+function formatEligibilityContext(
+  facts: Partial<ScreenerData>,
+  report: ReturnType<typeof runEligibilityCheck>,
+): string {
+  return JSON.stringify(
+    {
+      facts,
+      fplPercent: report.fplPercent,
+      annualFPL: report.annualFPL,
+      summary: report.summary,
+      results: report.results.map((r) => ({
+        program: r.program,
+        status: r.status,
+        tagline: r.tagline,
+      })),
+    },
+    null,
+    2,
+  )
+}
+
 // ── Tool factory ──────────────────────────────────────────────────────────────
 
 /**
@@ -73,6 +96,9 @@ export function buildBenefitAdvisorTools(
   userId: string,
   knownFacts: Partial<ScreenerData> = {},
 ) {
+  let latestEligibilityContext = ""
+  let latestPolicyContext = ""
+
   return {
     // ── Tool 1: Extract eligibility facts ─────────────────────────────────────
     extract_eligibility_facts: tool({
@@ -111,6 +137,7 @@ export function buildBenefitAdvisorTools(
       execute: async (facts) => {
         const screenerData = applyFactDefaults(facts)
         const report = runEligibilityCheck(screenerData)
+        latestEligibilityContext = formatEligibilityContext(facts, report)
 
         // Write the structured eligibility result as a data annotation so the
         // frontend can render eligibility badges while the text is still streaming.
@@ -164,11 +191,64 @@ export function buildBenefitAdvisorTools(
         topK: z.number().int().min(1).max(8).default(RAG_TOP_K_ADVISOR).optional(),
       }),
       execute: async ({ query, topK }) => {
-        const chunks = await retrieveRelevantChunks(query, topK ?? RAG_TOP_K_ADVISOR).catch(() => [])
-        const context = formatChunksForPrompt(chunks)
+        const requestedTopK = topK ?? RAG_TOP_K_ADVISOR
+        const chunks = await retrieveRelevantChunks(query, requestedTopK).catch(() => [])
+        latestPolicyContext = formatChunksForPrompt(chunks)
+        const rag = buildRagQualityMetadata(query, chunks, requestedTopK)
+
+        writer.write({
+          type: "data-masshealth" as `data-${string}`,
+          data: {
+            ok: true,
+            outOfScope: false,
+            rag,
+          },
+        })
+
         return {
-          context: context || "No policy documents found for this query.",
+          context: latestPolicyContext || "No policy documents found for this query.",
           chunkCount: chunks.length,
+          rag,
+        }
+      },
+    }),
+
+    // ── Tool 4: Review and commit final explanation ──────────────────────────
+    finish_eligibility_explanation: tool({
+      description:
+        "Submit the final MassHealth eligibility explanation for a reflection quality review before it reaches the user. " +
+        "Call this only AFTER check_eligibility and retrieve_policy. The tool returns the reviewed explanation.",
+      inputSchema: z.object({
+        explanation: z
+          .string()
+          .min(1)
+          .max(4000)
+          .describe("The complete plain-language eligibility explanation drafted from the eligibility and policy tool results."),
+      }),
+      execute: async ({ explanation }) => {
+        const qualityGate = await reviewEligibilityExplanationQuality({
+          explanation,
+          eligibilityContext: latestEligibilityContext,
+          policyContext: latestPolicyContext,
+          language,
+        })
+
+        writer.write({
+          type: "data-masshealth" as `data-${string}`,
+          data: {
+            ok: true,
+            outOfScope: false,
+            eligibilityExplanation: qualityGate.finalText,
+            reflection: qualityGate.review,
+          },
+        })
+
+        return {
+          committed: true,
+          finalExplanation: qualityGate.finalText,
+          reflection: qualityGate.review,
+          nextStep:
+            "Stream finalExplanation exactly as returned by this tool. Do not add new eligibility claims.",
         }
       },
     }),

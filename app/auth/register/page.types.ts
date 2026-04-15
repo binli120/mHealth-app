@@ -18,7 +18,4 @@ export interface CompanyResult {
   email_domain: string | null
 }
 
-export interface DevRegisterResponse {
-  ok?: boolean
-  error?: string
-}
+export type { DevRegisterResponse } from "@/lib/auth/types"

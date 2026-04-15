@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 const requireAuthenticatedUserMock = vi.fn()
 const logServerErrorMock = vi.fn()
 const logServerInfoMock = vi.fn()
+const reviewAppealLetterQualityMock = vi.fn()
 
 vi.mock("@/lib/auth/require-auth", () => ({
   requireAuthenticatedUser: requireAuthenticatedUserMock,
@@ -18,6 +19,10 @@ vi.mock("@/lib/server/logger", () => ({
   logServerInfo: logServerInfoMock,
 }))
 
+vi.mock("@/lib/agents/reflection/quality-gate", () => ({
+  reviewAppealLetterQuality: reviewAppealLetterQualityMock,
+}))
+
 const USER_ID = "00000000-0000-4000-8000-000000000001"
 
 describe("app/api/masshealth/appeals/draft/route", () => {
@@ -26,7 +31,18 @@ describe("app/api/masshealth/appeals/draft/route", () => {
     requireAuthenticatedUserMock.mockReset()
     logServerErrorMock.mockReset()
     logServerInfoMock.mockReset()
+    reviewAppealLetterQualityMock.mockReset()
     requireAuthenticatedUserMock.mockResolvedValue({ ok: true, userId: USER_ID })
+    reviewAppealLetterQualityMock.mockResolvedValue({
+      finalText: "Reviewed appeal draft",
+      review: {
+        reviewed: true,
+        factuallyAccurate: true,
+        clearToLayperson: true,
+        hasSpecificEvidence: true,
+        issues: [],
+      },
+    })
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -60,6 +76,10 @@ describe("app/api/masshealth/appeals/draft/route", () => {
       "user-id": USER_ID,
     })
     expect(init?.body).toBe(JSON.stringify({ applicant_name: "Maria Santos", top_k: 5 }))
+    expect(await response.json()).toMatchObject({
+      letter_text: "Reviewed appeal draft",
+      reflection: { reviewed: true },
+    })
   })
 
   it("forwards multipart draft requests with the PDF file and form fields", async () => {
@@ -95,5 +115,42 @@ describe("app/api/masshealth/appeals/draft/route", () => {
     expect(forwardedFormData.get("facts")).toBe(JSON.stringify({ "Monthly income": "$1,150 from part-time work" }))
     expect(forwardedFormData.get("file")).toBeInstanceOf(File)
     expect((forwardedFormData.get("file") as File).name).toBe("denial-letter.pdf")
+  })
+
+  it("passes citation context into the reflection quality gate", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({
+          status: "ok",
+          letter_text: "Appeal draft",
+          citations: [
+            {
+              title: "MassHealth fair hearing rules",
+              trust_tier: "official",
+              excerpt: "Applicants may request a fair hearing.",
+            },
+          ],
+        }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    )
+    const { POST } = await import("@/app/api/masshealth/appeals/draft/route")
+    const request = new Request("http://localhost/api/masshealth/appeals/draft", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ applicant_name: "Maria Santos", top_k: 5 }),
+    })
+
+    await POST(request)
+
+    expect(reviewAppealLetterQualityMock).toHaveBeenCalledWith({
+      appealLetter: "Appeal draft",
+      explanation: "",
+      evidenceChecklist: [],
+      policyContext: expect.stringContaining("MassHealth fair hearing rules"),
+    })
   })
 })

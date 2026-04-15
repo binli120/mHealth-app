@@ -23,9 +23,7 @@ import {
   KNOWLEDGE_ARTICLES,
   KNOWLEDGE_DOCUMENTS,
 } from "@/lib/masshealth/knowledge-center"
-
-const VIDEO_PREVIEW_COUNT = 6
-const ARTICLE_PREVIEW_COUNT = 4
+import { ARTICLE_PREVIEW_COUNT, VIDEO_PREVIEW_COUNT } from "./page.constants"
 
 export default function KnowledgeCenterPage() {
   const selectedLanguage = useAppSelector((state) => state.app.language)

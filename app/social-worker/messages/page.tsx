@@ -15,20 +15,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { formatRelativeTime } from "@/lib/utils/format"
 import { EngagementRequestsPanel } from "@/components/social-worker/engagement-requests-panel"
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-interface MessageThread {
-  patientUserId: string
-  patientName: string | null
-  patientEmail: string
-  lastMessageAt: string | null
-  lastMessageContent: string | null
-  unreadCount: number
-}
-
-type Tab = "requests" | "messages"
+import type { MessageThread, Tab } from "./page.types"
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -63,19 +52,6 @@ export default function SwMessagesPage() {
     void fetchThreads()
     void fetchPendingCount()
   }, [fetchThreads, fetchPendingCount])
-
-  function formatRelative(iso: string | null): string {
-    if (!iso) return ""
-    const date = new Date(iso)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMin = Math.floor(diffMs / 60_000)
-    if (diffMin < 1) return "Just now"
-    if (diffMin < 60) return `${diffMin}m ago`
-    const diffHr = Math.floor(diffMin / 60)
-    if (diffHr < 24) return `${diffHr}h ago`
-    return date.toLocaleDateString([], { month: "short", day: "numeric" })
-  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 p-6">
@@ -173,7 +149,7 @@ export default function SwMessagesPage() {
                           {thread.patientName ?? thread.patientEmail}
                         </p>
                         <span className="shrink-0 text-xs text-muted-foreground">
-                          {formatRelative(thread.lastMessageAt)}
+                          {thread.lastMessageAt ? formatRelativeTime(thread.lastMessageAt, { capitalize: true }) : ""}
                         </span>
                       </div>
                       <p className="truncate text-xs text-muted-foreground">

@@ -17,17 +17,20 @@ import "server-only"
 
 import { tool } from "ai"
 import { z } from "zod"
+import type { UIMessageStreamWriter } from "ai"
 
 import { retrieveRelevantChunks, formatChunksForPrompt } from "@/lib/rag/retrieve"
+import { buildRagQualityMetadata } from "@/lib/rag/metadata"
 import { RAG_TOP_K } from "@/app/api/chat/masshealth/constants"
 
 // ── Tool factory ──────────────────────────────────────────────────────────────
 
 /**
  * Build tool definitions for the ChatAgent.
- * No closure state needed — the tool is stateless; the LLM supplies the query.
+ * `writer` is optional for tests and non-streaming callers. When present, the
+ * tool emits RAG quality metadata as a data annotation.
  */
-export function buildChatTools() {
+export function buildChatTools(writer?: UIMessageStreamWriter) {
   return {
     // ── Tool 1: RAG policy retrieval ──────────────────────────────────────────
     retrieve_policy: tool({
@@ -47,10 +50,22 @@ export function buildChatTools() {
         topK: z.number().int().min(1).max(6).default(RAG_TOP_K).optional(),
       }),
       execute: async ({ query, topK }) => {
-        const chunks = await retrieveRelevantChunks(query, topK ?? RAG_TOP_K).catch(() => [])
+        const requestedTopK = topK ?? RAG_TOP_K
+        const chunks = await retrieveRelevantChunks(query, requestedTopK).catch(() => [])
+        const rag = buildRagQualityMetadata(query, chunks, requestedTopK)
+
+        writer?.write({
+          type: "data-masshealth" as `data-${string}`,
+          data: {
+            ok: true,
+            rag,
+          },
+        })
+
         return {
           context: formatChunksForPrompt(chunks) || "No policy documents found for this query.",
           chunkCount: chunks.length,
+          rag,
         }
       },
     }),

@@ -21,6 +21,7 @@ import type { UIMessageStreamWriter } from "ai"
 
 import { extractFormFields } from "@/lib/masshealth/form-field-extraction"
 import { retrieveRelevantChunks, formatChunksForPrompt } from "@/lib/rag/retrieve"
+import { buildRagQualityMetadata } from "@/lib/rag/metadata"
 import type { ChatMessage } from "@/lib/masshealth/types"
 import type { SupportedLanguage } from "@/lib/i18n/languages"
 import type { HouseholdMember, IncomeSource } from "@/lib/redux/features/application-slice"
@@ -107,10 +108,22 @@ export function buildFormAssistantTools(ctx: FormAssistantToolContext, writer: U
         topK: z.number().int().min(1).max(6).default(RAG_TOP_K).optional(),
       }),
       execute: async ({ query, topK }) => {
-        const chunks = await retrieveRelevantChunks(query, topK ?? RAG_TOP_K).catch(() => [])
+        const requestedTopK = topK ?? RAG_TOP_K
+        const chunks = await retrieveRelevantChunks(query, requestedTopK).catch(() => [])
+        const rag = buildRagQualityMetadata(query, chunks, requestedTopK)
+
+        writer.write({
+          type: "data-masshealth" as `data-${string}`,
+          data: {
+            ok: true,
+            rag,
+          },
+        })
+
         return {
           context: formatChunksForPrompt(chunks) || "No policy documents found for this query.",
           chunkCount: chunks.length,
+          rag,
         }
       },
     }),

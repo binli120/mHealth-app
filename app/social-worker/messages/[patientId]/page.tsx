@@ -26,106 +26,18 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { getSafeSupabaseSession } from "@/lib/supabase/client"
+import { formatTime } from "@/lib/utils/format"
 import { useAutoScroll } from "@/hooks/use-auto-scroll"
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-interface DirectMessage {
-  id: string
-  senderId: string
-  senderName: string | null
-  messageType: "text" | "voice" | "image"
-  content: string | null
-  storagePath: string | null
-  signedUrl?: string | null
-  durationSec: number | null
-  readAt: string | null
-  createdAt: string
-}
-
-type Params = { params: Promise<{ patientId: string }> }
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-}
-
-function formatDateLabel(iso: string) {
-  const date = new Date(iso)
-  const today = new Date()
-  const yesterday = new Date(today)
-  yesterday.setDate(today.getDate() - 1)
-  if (date.toDateString() === today.toDateString()) return "Today"
-  if (date.toDateString() === yesterday.toDateString()) return "Yesterday"
-  return date.toLocaleDateString([], { month: "short", day: "numeric" })
-}
-
-function groupByDate(msgs: DirectMessage[]) {
-  const groups = new Map<string, DirectMessage[]>()
-  for (const m of [...msgs].reverse()) {
-    const key = new Date(m.createdAt).toDateString()
-    if (!groups.has(key)) groups.set(key, [])
-    groups.get(key)!.push(m)
-  }
-  return Array.from(groups.values()).map((g) => ({ date: g[0].createdAt, messages: g }))
-}
-
-// ── Audio recorder ────────────────────────────────────────────────────────────
-
-function useAudioRecorder() {
-  const [recording, setRecording] = useState(false)
-  const [durationSec, setDurationSec] = useState(0)
-  const mediaRef = useRef<MediaRecorder | null>(null)
-  const chunksRef = useRef<Blob[]>([])
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  const start = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mr = new MediaRecorder(stream)
-      chunksRef.current = []
-      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
-      mr.start()
-      mediaRef.current = mr
-      setRecording(true)
-      setDurationSec(0)
-      timerRef.current = setInterval(() => setDurationSec((s) => s + 1), 1000)
-    } catch { /* mic unavailable */ }
-  }, [])
-
-  const stop = useCallback((): Promise<{ blob: Blob; durationSec: number } | null> => {
-    return new Promise((resolve) => {
-      const mr = mediaRef.current
-      if (!mr) { resolve(null); return }
-      const dur = durationSec
-      mr.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" })
-        mr.stream.getTracks().forEach((t) => t.stop())
-        if (timerRef.current) clearInterval(timerRef.current)
-        setRecording(false)
-        setDurationSec(0)
-        mediaRef.current = null
-        resolve({ blob, durationSec: dur })
-      }
-      mr.stop()
-    })
-  }, [durationSec])
-
-  const cancel = useCallback(() => {
-    mediaRef.current?.stream.getTracks().forEach((t) => t.stop())
-    mediaRef.current = null
-    if (timerRef.current) clearInterval(timerRef.current)
-    setRecording(false)
-    setDurationSec(0)
-  }, [])
-
-  return { recording, durationSec, start, stop, cancel }
-}
+import type { DirectMessage, MessageBubbleProps, PageParams } from "./page.types"
+import {
+  formatConversationDateLabel,
+  groupMessagesByDate,
+  useAudioRecorder,
+} from "./page.utils"
 
 // ── Message bubble ────────────────────────────────────────────────────────────
 
-function MessageBubble({ message, isOwn }: { message: DirectMessage; isOwn: boolean }) {
+function MessageBubble({ message, isOwn }: MessageBubbleProps) {
   const [playing, setPlaying] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
@@ -175,7 +87,7 @@ function MessageBubble({ message, isOwn }: { message: DirectMessage; isOwn: bool
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function SwPatientConversationPage({ params }: Params) {
+export default function SwPatientConversationPage({ params }: PageParams) {
   const [patientId, setPatientId] = useState<string | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [patientName, setPatientName] = useState<string | null>(null)
@@ -283,7 +195,7 @@ export default function SwPatientConversationPage({ params }: Params) {
     }
   }
 
-  const grouped = groupByDate(messages)
+  const grouped = groupMessagesByDate(messages)
   const displayName = patientName ?? "Patient"
 
   return (
@@ -320,7 +232,7 @@ export default function SwPatientConversationPage({ params }: Params) {
           <div className="space-y-4 py-3">
             {grouped.map(({ date, messages: groupMsgs }) => (
               <div key={date} className="space-y-2">
-                <p className="text-center text-xs text-muted-foreground">{formatDateLabel(date)}</p>
+                <p className="text-center text-xs text-muted-foreground">{formatConversationDateLabel(date)}</p>
                 {groupMsgs.map((msg) => (
                   <MessageBubble key={msg.id} message={msg} isOwn={msg.senderId === currentUserId} />
                 ))}

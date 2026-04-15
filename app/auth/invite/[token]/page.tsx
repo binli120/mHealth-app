@@ -10,23 +10,15 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Building2, CheckCircle, Eye, EyeOff, Loader2, ShieldAlert } from "lucide-react"
-
-interface InvitationInfo {
-  email: string
-  company_id: string | null
-  company_name: string | null
-  role: string
-  expires_at: string
-}
-
-type PageState = "loading" | "ready" | "invalid" | "submitting" | "done"
+import { INVITE_ROLE_LABELS } from "./page.constants"
+import type { InvitationInfo, InvitePageState } from "./page.types"
 
 export default function AcceptInvitePage() {
   const params = useParams<{ token: string }>()
   const router = useRouter()
   const token = params.token
 
-  const [pageState, setPageState] = useState<PageState>("loading")
+  const [pageState, setPageState] = useState<InvitePageState>("loading")
   const [invitation, setInvitation] = useState<InvitationInfo | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
@@ -77,13 +69,6 @@ export default function AcceptInvitePage() {
       setErrorMsg(data.error ?? "Failed to create account.")
       setPageState("ready")
     }
-  }
-
-  const roleLabel: Record<string, string> = {
-    applicant: "Applicant",
-    social_worker: "Social Worker",
-    reviewer: "Reviewer",
-    admin: "Admin",
   }
 
   // ── Loading ────────────────────────────────────────────────────────────────
@@ -165,7 +150,7 @@ export default function AcceptInvitePage() {
               )}
               <div>
                 <span className="text-blue-500">Role:</span>{" "}
-                {roleLabel[invitation.role] ?? invitation.role}
+                {INVITE_ROLE_LABELS[invitation.role] ?? invitation.role}
               </div>
             </div>
           </div>

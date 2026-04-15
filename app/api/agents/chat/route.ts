@@ -114,7 +114,7 @@ export async function POST(request: Request) {
             model: getOllamaModel(),
             system: buildChatAgentSystemPrompt(language),
             messages,
-            tools: buildChatTools(),
+            tools: buildChatTools(writer),
             stopWhen: stepCountIs(3),
             temperature: 0.3,
             abortSignal: AbortSignal.timeout(90_000),

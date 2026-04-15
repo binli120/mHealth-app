@@ -36,6 +36,12 @@ describe("buildAppealAgentSystemPrompt", () => {
     expect(prompt).toContain("finish_appeal")
   })
 
+  it("requires finish_appeal to run the reflection quality gate before delivery", () => {
+    const prompt = buildAppealAgentSystemPrompt(INCOME_DENIAL, "en")
+    expect(prompt).toMatch(/reflection quality gate/i)
+    expect(prompt).toMatch(/reviewed letter/i)
+  })
+
   it("includes the MassHealth Hearings Unit address", () => {
     const prompt = buildAppealAgentSystemPrompt(INCOME_DENIAL, "en")
     expect(prompt).toContain("Milford, MA")
