@@ -20,6 +20,8 @@ import {
   RotateCcw,
   FileSearch,
   Download,
+  AlertCircle,
+  Paperclip,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -53,6 +55,7 @@ import {
   buildAppealDraftWordHtml,
   fillAppealDraftPlaceholders,
 } from "@/lib/appeals/draft-personalization"
+import { MAX_DOCUMENT_UPLOAD_BYTES } from "@/lib/appeals/constants"
 import type { UserProfile } from "@/lib/user-profile/types"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -134,6 +137,7 @@ class AuthNeededError extends Error {
 
 const LOGIN_PATH = "/auth/login"
 const THIS_PATH  = "/masshealth-appeals"
+const PDF_MIME_TYPE = "application/pdf"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -177,6 +181,11 @@ function triggerDownload(blob: Blob, filename: string) {
   URL.revokeObjectURL(url)
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.ceil(bytes / 1024)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MassHealthAppealsPage() {
@@ -200,6 +209,9 @@ export default function MassHealthAppealsPage() {
   const [contactInformation, setContactInformation] = useState("")
   const [applicantId, setApplicantId] = useState("")
   const [householdSummary, setHouseholdSummary] = useState("")
+  const [requestedRelief, setRequestedRelief] = useState("")
+  const [denialLetterFile, setDenialLetterFile] = useState<File | null>(null)
+  const [denialLetterError, setDenialLetterError] = useState<string | null>(null)
   const [facts, setFacts] = useState<Array<{ key: string; value: string }>>([
     { key: "", value: "" },
   ])
@@ -323,17 +335,20 @@ export default function MassHealthAppealsPage() {
       factsObj["Contact information"] = contactInformation.trim()
     }
 
+    const formData = new FormData()
+    if (denialLetterFile) formData.append("file", denialLetterFile, denialLetterFile.name)
+    if (denialText.trim()) formData.append("denial_notice_text", denialText.trim())
+    if (applicantName.trim()) formData.append("applicant_name", applicantName.trim())
+    if (applicantId.trim()) formData.append("applicant_id", applicantId.trim())
+    if (householdSummary.trim()) formData.append("household_summary", householdSummary.trim())
+    if (requestedRelief.trim()) formData.append("requested_relief", requestedRelief.trim())
+    if (Object.keys(factsObj).length > 0) formData.append("facts", JSON.stringify(factsObj))
+    formData.append("top_k", "5")
+
     try {
       const res = await masshealthFetch("/api/masshealth/appeals/draft", {
         method: "POST",
-        body: JSON.stringify({
-          denial_notice_text: denialText,
-          applicant_name: applicantName || undefined,
-          applicant_id: applicantId || undefined,
-          household_summary: householdSummary || undefined,
-          facts: Object.keys(factsObj).length > 0 ? factsObj : undefined,
-          top_k: 5,
-        }),
+        body: formData,
       })
 
       if (res.status === 401) { goToLogin(); return }
@@ -370,6 +385,9 @@ export default function MassHealthAppealsPage() {
     setContactInformation(prefilledFields.contactInformation)
     setApplicantId("")
     setHouseholdSummary(prefilledFields.householdSummary)
+    setRequestedRelief("")
+    setDenialLetterFile(null)
+    setDenialLetterError(null)
     setFacts([{ key: "", value: "" }])
     setCopied(false)
   }
@@ -409,6 +427,33 @@ export default function MassHealthAppealsPage() {
 
   function removeFact(index: number) {
     setFacts((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev))
+  }
+
+  function handleDenialLetterFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null
+    event.target.value = ""
+    setDenialLetterError(null)
+
+    if (!file) return
+
+    if (file.type !== PDF_MIME_TYPE && !file.name.toLowerCase().endsWith(".pdf")) {
+      setDenialLetterFile(null)
+      setDenialLetterError("Upload a PDF denial letter.")
+      return
+    }
+
+    if (file.size > MAX_DOCUMENT_UPLOAD_BYTES) {
+      setDenialLetterFile(null)
+      setDenialLetterError("PDF must be 10 MB or smaller.")
+      return
+    }
+
+    setDenialLetterFile(file)
+  }
+
+  function handleClearDenialLetterFile() {
+    setDenialLetterFile(null)
+    setDenialLetterError(null)
   }
 
   const resolvedDraftText = draftResult
@@ -704,6 +749,68 @@ export default function MassHealthAppealsPage() {
                 </div>
 
                 <div className="space-y-1.5">
+                  <Label htmlFor="requested-relief">Requested Relief</Label>
+                  <Input
+                    id="requested-relief"
+                    placeholder="Approval of MassHealth Standard coverage"
+                    value={requestedRelief}
+                    onChange={(e) => setRequestedRelief(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="denial-letter-pdf">Denial Letter PDF</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Attach the original PDF for a more grounded draft.
+                  </p>
+
+                  {denialLetterFile ? (
+                    <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-gray-800">
+                          {denialLetterFile.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          PDF · {formatFileSize(denialLetterFile.size)}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleClearDenialLetterFile}
+                        className="shrink-0 text-muted-foreground hover:text-destructive"
+                        aria-label="Remove denial letter PDF"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <input
+                        id="denial-letter-pdf"
+                        type="file"
+                        accept={PDF_MIME_TYPE}
+                        className="sr-only"
+                        onChange={handleDenialLetterFileChange}
+                      />
+                      <Label
+                        htmlFor="denial-letter-pdf"
+                        className="flex cursor-pointer items-center gap-2 rounded-lg border-2 border-dashed border-gray-200 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+                      >
+                        <Paperclip className="h-4 w-4 shrink-0" />
+                        Attach denial letter PDF
+                      </Label>
+                    </div>
+                  )}
+
+                  {denialLetterError && (
+                    <p className="flex items-center gap-1.5 text-xs text-destructive">
+                      <AlertCircle className="h-3.5 w-3.5" />
+                      {denialLetterError}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
                   <Label htmlFor="contact-information">Contact Information</Label>
                   <Textarea
                     id="contact-information"
@@ -755,7 +862,11 @@ export default function MassHealthAppealsPage() {
                   </Button>
                 </div>
 
-                <Button className="w-full" onClick={() => void handleDraft()}>
+                <Button
+                  className="w-full"
+                  onClick={() => void handleDraft()}
+                  disabled={Boolean(denialLetterError)}
+                >
                   <Scale className="mr-2 h-4 w-4" />
                   Generate Appeal Letter
                 </Button>
