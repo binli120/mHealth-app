@@ -2,41 +2,20 @@
 
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Users, FileText, ArrowRight, MapPin } from "lucide-react"
+import { APPLICATION_STATUS_LABELS } from "@/lib/application-status"
+import { SOCIAL_WORKER_PATIENT_STATUS_STYLES } from "@/lib/social-worker/constants"
+import type { SocialWorkerPatient } from "@/lib/social-worker/types"
+import { getSocialWorkerPatientDisplayName } from "@/lib/social-worker/utils"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 
-interface Patient {
-  access_id: string
-  patient_user_id: string
-  email: string
-  first_name: string | null
-  last_name: string | null
-  dob: string | null
-  phone: string | null
-  city: string | null
-  state: string | null
-  granted_at: string
-  application_count: number
-  latest_application_status: string | null
-}
-
-const STATUS_STYLE: Record<string, string> = {
-  approved: "bg-emerald-100 text-emerald-700",
-  denied: "bg-red-100 text-red-700",
-  submitted: "bg-blue-100 text-blue-700",
-  draft: "bg-gray-100 text-gray-600",
-  needs_review: "bg-amber-100 text-amber-700",
-  rfi_requested: "bg-orange-100 text-orange-700",
-  ai_extracted: "bg-purple-100 text-purple-700",
-}
-
 export default function SocialWorkerDashboardPage() {
-  const [patients, setPatients] = useState<Patient[]>([])
+  const [patients, setPatients] = useState<SocialWorkerPatient[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -48,9 +27,6 @@ export default function SocialWorkerDashboardPage() {
       .catch(() => null)
       .finally(() => setLoading(false))
   }, [])
-
-  const fullName = (p: Patient) =>
-    [p.first_name, p.last_name].filter(Boolean).join(" ") || p.email
 
   const activeApps = patients.reduce((sum, p) => sum + p.application_count, 0)
 
@@ -110,12 +86,12 @@ export default function SocialWorkerDashboardPage() {
                 className="flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 text-sm font-medium text-blue-700">
-                    {(p.first_name?.[0] ?? p.email[0]).toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-medium text-gray-900 text-sm">{fullName(p)}</div>
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 text-sm font-medium text-blue-700">
+                  {(p.first_name?.[0] ?? p.email[0]).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <div className="font-medium text-gray-900 text-sm">{getSocialWorkerPatientDisplayName(p)}</div>
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
                       <span className="truncate">{p.email}</span>
                       {p.city && (
                         <span className="flex items-center gap-0.5 flex-shrink-0">
@@ -128,8 +104,8 @@ export default function SocialWorkerDashboardPage() {
                 <div className="flex items-center gap-3 flex-shrink-0">
                   <div className="text-xs text-gray-500">{p.application_count} apps</div>
                   {p.latest_application_status && (
-                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLE[p.latest_application_status] ?? "bg-gray-100 text-gray-600"}`}>
-                      {p.latest_application_status.replace("_", " ")}
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${SOCIAL_WORKER_PATIENT_STATUS_STYLES[p.latest_application_status] ?? "bg-gray-100 text-gray-600"}`}>
+                      {APPLICATION_STATUS_LABELS[p.latest_application_status] ?? p.latest_application_status.replace("_", " ")}
                     </span>
                   )}
                   <ArrowRight className="w-4 h-4 text-gray-400" />

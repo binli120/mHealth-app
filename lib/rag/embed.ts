@@ -1,6 +1,6 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 import "server-only"
@@ -15,6 +15,8 @@ import {
   OLLAMA_EMBED_ENDPOINT,
 } from "./constants"
 import type { OllamaEmbedResponse } from "./types"
+import { getCachedEmbedding, setCachedEmbedding } from "./embed-cache"
+import { incrementCounter } from "@/lib/server/counters"
 
 function getOllamaBaseUrl(): string {
   const baseUrl = process.env.OLLAMA_BASE_URL || DEFAULT_OLLAMA_BASE_URL
@@ -24,8 +26,17 @@ function getOllamaBaseUrl(): string {
 /**
  * Generate a 768-dimensional embedding for a single text string using
  * Ollama's nomic-embed-text model (fully local, no external API calls).
+ *
+ * Results are cached in-process for 5 minutes (see embed-cache.ts) so that
+ * repeated queries within the same Fluid Compute instance skip the Ollama
+ * round-trip entirely.
  */
 export async function embedText(text: string): Promise<number[]> {
+  // ── Cache hit ──────────────────────────────────────────────────────────────
+  const cached = getCachedEmbedding(text)
+  if (cached) return cached
+
+  // ── Ollama call ───────────────────────────────────────────────────────────
   const url = `${getOllamaBaseUrl()}${OLLAMA_EMBED_ENDPOINT}`
 
   const response = await fetch(url, {
@@ -38,15 +49,19 @@ export async function embedText(text: string): Promise<number[]> {
 
   if (!response.ok) {
     const detail = await response.text().catch(() => "")
+    incrementCounter("rag_embedding_error")
     throw new Error(`Ollama embedding failed (${response.status}): ${detail}`)
   }
 
   const data = (await response.json()) as OllamaEmbedResponse
 
   if (!data.embedding || data.embedding.length === 0) {
+    incrementCounter("rag_embedding_error")
     throw new Error("Ollama returned an empty embedding vector")
   }
 
+  // ── Cache store ───────────────────────────────────────────────────────────
+  setCachedEmbedding(text, data.embedding)
   return data.embedding
 }
 

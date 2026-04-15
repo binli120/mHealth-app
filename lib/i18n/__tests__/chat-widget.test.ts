@@ -11,7 +11,7 @@
  *   6. All 6 locales are covered (regression against missing catalog entry).
  *
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 import { describe, it, expect } from "vitest"

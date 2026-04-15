@@ -1,6 +1,6 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 import "server-only"
@@ -14,6 +14,7 @@ import {
   EXTRACT_TIMEOUT_MS,
   EXTRACT_MESSAGE_WINDOW,
 } from "./constants"
+import { incrementCounter } from "@/lib/server/counters"
 
 const EXTRACT_MODEL = process.env.OLLAMA_MODEL ?? "llama3.2"
 
@@ -100,7 +101,10 @@ function parseExtractedFacts(raw: string): Partial<ScreenerData> {
   // Find the outermost JSON object
   const start = cleaned.indexOf("{")
   const end = cleaned.lastIndexOf("}")
-  if (start === -1 || end === -1) return {}
+  if (start === -1 || end === -1) {
+    incrementCounter("extraction_parse_failure", { extractor: "eligibility_facts", reason: "no_json" })
+    return {}
+  }
 
   try {
     const parsed = JSON.parse(cleaned.slice(start, end + 1)) as Record<string, unknown>
@@ -131,6 +135,7 @@ function parseExtractedFacts(raw: string): Partial<ScreenerData> {
 
     return facts
   } catch {
+    incrementCounter("extraction_parse_failure", { extractor: "eligibility_facts", reason: "json_parse" })
     return {}
   }
 }

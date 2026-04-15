@@ -1,14 +1,67 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 import { defineConfig, devices } from "@playwright/test"
+import * as fs from "fs"
+import * as path from "path"
 
 const BASE_URL = process.env.E2E_BASE_URL ?? "http://localhost:3000"
 const IS_DEMO = process.env.DEMO_MODE === "true"
 // When targeting a remote URL (cloud/staging), skip starting a local dev server
 const IS_REMOTE = !BASE_URL.startsWith("http://localhost") && !BASE_URL.startsWith("http://127.0.0.1")
+const DEMO_ENV_KEYS = [
+  "DATABASE_URL",
+  "DATABASE_URL_DEV",
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "NEXT_PUBLIC_SUPABASE_URL_LOCAL",
+  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+  "NEXT_PUBLIC_SUPABASE_ANON_KEY_LOCAL",
+  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY_LOCAL",
+  "NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS",
+  "SUPABASE_SERVICE_ROLE_KEY",
+] as const
+
+function loadEnvFile(filePath: string): Record<string, string> {
+  if (!fs.existsSync(filePath)) {
+    return {}
+  }
+
+  return fs.readFileSync(filePath, "utf8")
+    .split(/\r?\n/)
+    .reduce<Record<string, string>>((env, rawLine) => {
+      const line = rawLine.trim()
+      if (!line || line.startsWith("#")) return env
+
+      const separator = line.indexOf("=")
+      if (separator === -1) return env
+
+      const key = line.slice(0, separator).trim()
+      let value = line.slice(separator + 1).trim()
+      if (
+        (value.startsWith("\"") && value.endsWith("\"")) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1)
+      }
+      env[key] = value
+      return env
+    }, {})
+}
+
+const demoEnvFile = loadEnvFile(path.join(__dirname, ".env.prod"))
+const LOCAL_DEMO_ENV = IS_DEMO && !IS_REMOTE
+  ? Object.fromEntries(
+      DEMO_ENV_KEYS.flatMap((key) => {
+        const value = demoEnvFile[key]
+        return value ? [[key, value]] : []
+      }),
+    )
+  : {}
+
+Object.assign(process.env, LOCAL_DEMO_ENV)
 
 export default defineConfig({
   testDir: "./e2e/tests",
@@ -68,6 +121,7 @@ export default defineConfig({
           reuseExistingServer: true,
           timeout: 120_000,
           env: {
+            ...LOCAL_DEMO_ENV,
             PATH: `/Users/blee/.nvm/versions/node/v20.12.2/bin:${process.env.PATH}`,
           },
         },

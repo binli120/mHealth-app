@@ -1,6 +1,6 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 import type { CitizenshipStatus } from "@/lib/benefit-orchestration/types"

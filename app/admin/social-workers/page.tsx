@@ -2,7 +2,7 @@
 
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 import { Suspense, useEffect, useState, useCallback } from "react"

@@ -1,6 +1,6 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 import { FPL_TABLE_2026, FPL_INCREMENT_AFTER_4 } from "./constants"

@@ -1,5 +1,5 @@
 /**
- * Seed admin account: binli120@gmail.com / password
+ * Seed admin account: no-reply@healthcompass.cloud / password
  * Run after mHealth_schema.sql in local development
  * @author Bin Lee
  */
@@ -8,7 +8,7 @@ DO $$
 DECLARE
   v_user_id UUID;
   v_admin_role_id INT;
-  v_email TEXT := 'binli120@gmail.com';
+  v_email TEXT := 'no-reply@healthcompass.cloud';
   v_password TEXT := 'password';
   v_instance_id UUID := '00000000-0000-0000-0000-000000000000';
 BEGIN

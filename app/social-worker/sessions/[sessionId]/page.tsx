@@ -7,12 +7,9 @@
 
 import { use } from "react"
 import { SessionRoom } from "@/components/collaborative-sessions/SessionRoom"
+import type { SessionPageProps } from "./page.types"
 
-interface Props {
-  params: Promise<{ sessionId: string }>
-}
-
-export default function SWSessionRoomPage({ params }: Props) {
+export default function SWSessionRoomPage({ params }: SessionPageProps) {
   const { sessionId } = use(params)
 
   return (

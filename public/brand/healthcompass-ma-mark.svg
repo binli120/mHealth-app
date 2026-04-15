@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">HealthCompass MA mark</title>
+  <desc id="desc">A shield, compass needle, and heart mark for Massachusetts benefits navigation.</desc>
+  <defs>
+    <clipPath id="hcma-mark-shield-clip">
+      <path d="M128 42l72 29v57c0 50-34 78-72 101-38-23-72-51-72-101V71z" />
+    </clipPath>
+  </defs>
+  <rect width="256" height="256" rx="52" fill="#f7fbfa" />
+  <circle cx="128" cy="128" r="92" fill="#e7f4f1" />
+  <circle cx="128" cy="128" r="78" fill="#ffffff" stroke="#0f766e" stroke-width="8" />
+  <g clip-path="url(#hcma-mark-shield-clip)">
+    <path d="M128 42l72 29v57c0 50-34 78-72 101-38-23-72-51-72-101V71z" fill="#0f766e" />
+    <path d="M128 42l72 29v57c0 50-34 78-72 101z" fill="#11645f" />
+    <path d="M128 61l54 22v44c0 36-22 58-54 78-32-20-54-42-54-78V83z" fill="#ffffff" />
+    <path d="M128 61l54 22v44c0 36-22 58-54 78z" fill="#f7fbfa" />
+  </g>
+  <path d="M128 42l72 29v57c0 50-34 78-72 101-38-23-72-51-72-101V71z" fill="none" stroke="#0a4f4a" stroke-width="6" stroke-linejoin="round" />
+  <path d="M154 74l-17 62-35 46 17-62z" fill="#e96f5b" />
+  <path d="M154 74l-35 46-17 62 35-46z" fill="#c95545" opacity=".72" />
+  <circle cx="128" cy="128" r="18" fill="#ffffff" stroke="#0a4f4a" stroke-width="5" />
+  <path d="M128 148s-25-15-25-31c0-11 9-20 20-20 6 0 11 3 15 7 4-4 9-7 15-7 11 0 20 9 20 20 0 16-25 31-25 31z" fill="#e96f5b" stroke="#ffffff" stroke-width="6" stroke-linejoin="round" />
+  <path d="M84 129h-15M187 129h-15M128 85V70M128 187v-15" stroke="#0a4f4a" stroke-width="6" stroke-linecap="round" />
+</svg>

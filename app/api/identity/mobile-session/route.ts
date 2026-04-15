@@ -1,6 +1,6 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  *
  * POST /api/identity/mobile-session
  *   Creates a new cross-device verify session.

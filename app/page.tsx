@@ -1,6 +1,6 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  *
  * Landing page for HealthCompass MA.
  * Data lives in page.constants.tsx, hooks in page.hooks.ts,

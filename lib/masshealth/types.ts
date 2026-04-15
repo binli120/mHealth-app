@@ -1,6 +1,6 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 /**
@@ -307,6 +307,195 @@ export interface ExtractWorkflowResponse {
 export interface HouseholdRelationshipHint {
   relationship: string
   memberName?: string
+}
+
+// ── Income Verification ───────────────────────────────────────────────────────
+
+/**
+ * Income source categories, aligned with MassHealth acceptable verifications list.
+ */
+export type IncomeSourceType =
+  | "employment"
+  | "self_employment"
+  | "tax_return"
+  | "w2"
+  | "form_1099"
+  | "unemployment"
+  | "social_security"
+  | "pension_annuity"
+  | "rental"
+  | "interest_dividend"
+  | "zero_income"
+
+/**
+ * Accepted document types for income verification.
+ * Maps to MassHealth forms and acceptable verifications list.
+ */
+export type IncomeDocType =
+  | "pay_stub"
+  | "employer_statement"
+  | "tax_return"
+  | "w2"
+  | "form_1099"
+  | "profit_loss_statement"
+  | "self_employment_form"
+  | "unemployment_letter"
+  | "social_security_letter"
+  | "pension_statement"
+  | "rental_agreement"
+  | "interest_statement"
+  | "zero_income_affidavit"
+  | "attestation_form"
+
+/** Per-source verification status after deterministic rule evaluation. */
+export type IncomeVerificationStatus =
+  | "verified"
+  | "needs_clarification"
+  | "needs_additional_document"
+  | "manual_review"
+  | "attested_pending_review"
+  | "pending"
+
+/** Aggregate case-level status. */
+export type IncomeVerificationCaseStatus =
+  | "pending_documents"
+  | "in_review"
+  | "verified"
+  | "rfi_sent"
+  | "manual_review"
+
+/**
+ * Per-member, per-source document requirement.
+ * Built by buildEvidenceRequirements() from household income data.
+ */
+export interface IncomeEvidenceRequirement {
+  id: string
+  memberId: string
+  memberName: string
+  incomeSourceType: IncomeSourceType
+  acceptedDocTypes: IncomeDocType[]
+  isRequired: boolean
+  verificationStatus: IncomeVerificationStatus
+}
+
+/** Document record associated with an income source. */
+export interface IncomeDocumentRecord {
+  id: string
+  applicationId: string
+  memberId: string
+  docTypeClaimed: IncomeDocType
+  storageKey: string
+  mimeType: string
+  uploadedAt: string
+  jobId: string
+  extractionStatus: "pending" | "processing" | "complete" | "failed"
+}
+
+/**
+ * Structured fields extracted from an income document by the LLM/OCR layer.
+ * The model must not set incomeVerified; only the deterministic engine does.
+ */
+export interface IncomeDocumentExtraction {
+  documentId: string
+  docType: IncomeDocType | null
+  issuer: string | null
+  personName: string | null
+  employerName: string | null
+  dateRangeStart: string | null
+  dateRangeEnd: string | null
+  grossAmount: number | null
+  netAmount: number | null
+  /** Normalized pay period as reported in the document. */
+  frequency: "weekly" | "biweekly" | "semimonthly" | "monthly" | "annual" | null
+  incomeSourceType: IncomeSourceType | null
+  /** 0–1 extraction confidence from the model. */
+  confidence: number
+  needsManualReview: boolean
+  reasons: string[]
+  modelVersion: string
+}
+
+/** Reviewer or engine decision on a single income source for one member. */
+export interface IncomeVerificationDecision {
+  id: string
+  memberId: string
+  sourceType: IncomeSourceType
+  status: IncomeVerificationStatus
+  matchedAmount: number | null
+  matchedFrequency: string | null
+  reviewerId: string | null
+  reasonCode: string
+  decidedAt: string
+}
+
+/** Aggregate verification case for an application. */
+export interface IncomeVerificationCase {
+  applicationId: string
+  status: IncomeVerificationCaseStatus
+  requiredSourceCount: number
+  verifiedSourceCount: number
+  decisionReason: string | null
+  requirements: IncomeEvidenceRequirement[]
+  decisions: IncomeVerificationDecision[]
+  /** True only when ALL required income sources are verified by evidence rules. */
+  incomeVerified: boolean
+}
+
+/** RFI event requesting missing income proof from the applicant. */
+export interface IncomeRfiEvent {
+  id: string
+  applicationId: string
+  reasonCode: string
+  requestedDocs: IncomeDocType[]
+  sentAt: string
+  resolvedAt: string | null
+}
+
+// ── Income Verification API contracts ────────────────────────────────────────
+
+export interface IncomeChecklistMember {
+  memberId: string
+  memberName: string
+  /** Income source types reported by the household member during intake. */
+  incomeSources: IncomeSourceType[]
+  hasIncome: boolean
+}
+
+export interface IncomeChecklistRequest {
+  applicationId: string
+  householdMembers: IncomeChecklistMember[]
+}
+
+export interface IncomeChecklistResponse {
+  applicationId: string
+  requirements: IncomeEvidenceRequirement[]
+  caseStatus: IncomeVerificationCaseStatus
+}
+
+export interface IncomeDocumentUploadResponse {
+  jobId: string
+  documentId: string
+  status: "queued" | "processing"
+}
+
+/**
+ * Strict JSON schema the LLM extractor must emit.
+ * The engine, not the model, decides legal sufficiency.
+ */
+export interface IncomeExtractionResult {
+  docType: IncomeDocType | null
+  issuer: string | null
+  personName: string | null
+  employerName: string | null
+  dateRangeStart: string | null
+  dateRangeEnd: string | null
+  grossAmount: number | null
+  netAmount: number | null
+  frequency: "weekly" | "biweekly" | "semimonthly" | "monthly" | "annual" | null
+  incomeSourceType: IncomeSourceType | null
+  confidence: number
+  needsManualReview: boolean
+  reasons: string[]
 }
 
 // ── Knowledge center ──────────────────────────────────────────────────────────

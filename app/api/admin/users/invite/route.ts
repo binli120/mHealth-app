@@ -3,7 +3,7 @@
  * Admin creates an invitation for a user email, optionally linked to a company.
  * Sends the invitation link via Resend; falls back to console.log in dev.
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 import { NextResponse } from "next/server"
