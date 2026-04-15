@@ -46,4 +46,37 @@ describe("buildBenefitAdvisorAgentSystemPrompt", () => {
       expect(prompt.length).toBeGreaterThan(100)
     }
   })
+
+  // ── Phase 4: known-facts injection ─────────────────────────────────────────
+
+  it("does NOT include a known-facts section when knownFacts is empty", () => {
+    const prompt = buildBenefitAdvisorAgentSystemPrompt("en", {})
+    expect(prompt).not.toMatch(/already known from this user/i)
+  })
+
+  it("injects known age into the system prompt", () => {
+    const prompt = buildBenefitAdvisorAgentSystemPrompt("en", { age: 42 })
+    expect(prompt).toContain("Age: 42")
+  })
+
+  it("injects known household size and annual income", () => {
+    const prompt = buildBenefitAdvisorAgentSystemPrompt("en", { householdSize: 3, annualIncome: 45000 })
+    expect(prompt).toContain("Household size: 3")
+    expect(prompt).toContain("Annual income: $45,000")
+  })
+
+  it("injects citizenship status when known", () => {
+    const prompt = buildBenefitAdvisorAgentSystemPrompt("en", { citizenshipStatus: "citizen" })
+    expect(prompt).toContain("citizen")
+  })
+
+  it("instructs the agent NOT to re-ask for known facts", () => {
+    const prompt = buildBenefitAdvisorAgentSystemPrompt("en", { age: 30 })
+    expect(prompt).toMatch(/do not ask.*already listed|not.*re.?ask/i)
+  })
+
+  it("works correctly when knownFacts param is omitted (default to no facts section)", () => {
+    const prompt = buildBenefitAdvisorAgentSystemPrompt("en")
+    expect(prompt).not.toMatch(/already known from this user/i)
+  })
 })

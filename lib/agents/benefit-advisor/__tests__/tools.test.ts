@@ -27,16 +27,22 @@ vi.mock("@/lib/rag/retrieve", () => ({
   formatChunksForPrompt: vi.fn(),
 }))
 
+vi.mock("@/lib/agents/memory", () => ({
+  mergeAndSaveAgentMemory: vi.fn().mockResolvedValue(undefined),
+}))
+
 import { buildBenefitAdvisorTools } from "@/lib/agents/benefit-advisor/tools"
 import { extractEligibilityFacts, applyFactDefaults, isSufficientForEvaluation, summarizeExtractedFacts } from "@/lib/masshealth/fact-extraction"
 import { runEligibilityCheck } from "@/lib/eligibility-engine"
 import { retrieveRelevantChunks, formatChunksForPrompt } from "@/lib/rag/retrieve"
+import { mergeAndSaveAgentMemory } from "@/lib/agents/memory"
 import type { UIMessageStreamWriter } from "ai"
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const MESSAGES = [{ role: "user" as const, content: "I am 34, household of 4, earning $3k/month" }]
 const LANGUAGE = "en" as const
+const USER_ID = "dddddddd-dddd-4ddd-8ddd-dddddddddddd"
 
 function makeMockWriter() {
   return { write: vi.fn(), merge: vi.fn() } as unknown as UIMessageStreamWriter
@@ -72,13 +78,13 @@ beforeEach(() => {
 
 describe("extract_eligibility_facts tool", () => {
   it("calls extractEligibilityFacts with the messages and language from closure", async () => {
-    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, makeMockWriter())
+    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, makeMockWriter(), USER_ID)
     await exec(tools, "extract_eligibility_facts", {})
     expect(extractEligibilityFacts).toHaveBeenCalledWith(MESSAGES, LANGUAGE)
   })
 
   it("returns sufficient=true when isSufficientForEvaluation returns true", async () => {
-    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, makeMockWriter())
+    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, makeMockWriter(), USER_ID)
     const result = await exec(tools, "extract_eligibility_facts", {}) as { sufficient: boolean }
     expect(result.sufficient).toBe(true)
   })
@@ -88,16 +94,74 @@ describe("extract_eligibility_facts tool", () => {
     vi.mocked(isSufficientForEvaluation).mockReturnValue(false)
     vi.mocked(summarizeExtractedFacts).mockReturnValue("No eligibility facts extracted yet.")
 
-    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, makeMockWriter())
+    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, makeMockWriter(), USER_ID)
     const result = await exec(tools, "extract_eligibility_facts", {}) as { sufficient: boolean; nextStep: string }
     expect(result.sufficient).toBe(false)
     expect(result.nextStep).toMatch(/ask/i)
   })
 
   it("includes the extracted facts in the returned object", async () => {
-    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, makeMockWriter())
+    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, makeMockWriter(), USER_ID)
     const result = await exec(tools, "extract_eligibility_facts", {}) as { facts: Record<string, unknown> }
     expect(result.facts).toMatchObject({ age: 34, householdSize: 4, annualIncome: 36000 })
+  })
+})
+
+// ── Phase 4: memory persistence ───────────────────────────────────────────────
+
+describe("extract_eligibility_facts — Phase 4 memory persistence", () => {
+  it("merges persisted known facts with newly extracted facts before checking sufficiency", async () => {
+    vi.mocked(extractEligibilityFacts).mockResolvedValue({ householdSize: 4, annualIncome: 36000 })
+    const tools = buildBenefitAdvisorTools(
+      MESSAGES,
+      LANGUAGE,
+      makeMockWriter(),
+      USER_ID,
+      { age: 34 },
+    )
+
+    const result = await exec(tools, "extract_eligibility_facts", {}) as { facts: Record<string, unknown> }
+
+    expect(result.facts).toEqual({ age: 34, householdSize: 4, annualIncome: 36000 })
+    expect(isSufficientForEvaluation).toHaveBeenCalledWith({ age: 34, householdSize: 4, annualIncome: 36000 })
+    expect(summarizeExtractedFacts).toHaveBeenCalledWith({ age: 34, householdSize: 4, annualIncome: 36000 })
+  })
+
+  it("lets newly extracted facts override stale persisted facts", async () => {
+    vi.mocked(extractEligibilityFacts).mockResolvedValue({ age: 35, householdSize: 4, annualIncome: 36000 })
+    const tools = buildBenefitAdvisorTools(
+      MESSAGES,
+      LANGUAGE,
+      makeMockWriter(),
+      USER_ID,
+      { age: 34 },
+    )
+
+    const result = await exec(tools, "extract_eligibility_facts", {}) as { facts: Record<string, unknown> }
+
+    expect(result.facts.age).toBe(35)
+    expect(isSufficientForEvaluation).toHaveBeenCalledWith({ age: 35, householdSize: 4, annualIncome: 36000 })
+  })
+
+  it("calls mergeAndSaveAgentMemory with the extracted facts and userId", async () => {
+    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, makeMockWriter(), USER_ID)
+    await exec(tools, "extract_eligibility_facts", {})
+
+    // Allow the fire-and-forget promise to settle
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(mergeAndSaveAgentMemory).toHaveBeenCalledWith(
+      USER_ID,
+      { extractedFacts: { age: 34, householdSize: 4, annualIncome: 36000 } },
+    )
+  })
+
+  it("does NOT block the tool return even when mergeAndSaveAgentMemory rejects", async () => {
+    vi.mocked(mergeAndSaveAgentMemory).mockRejectedValue(new Error("DB down"))
+    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, makeMockWriter(), USER_ID)
+
+    // The tool should still resolve successfully despite the DB failure
+    await expect(exec(tools, "extract_eligibility_facts", {})).resolves.toBeDefined()
   })
 })
 
@@ -106,7 +170,7 @@ describe("extract_eligibility_facts tool", () => {
 describe("check_eligibility tool", () => {
   it("calls applyFactDefaults then runEligibilityCheck with the defaults", async () => {
     const writer = makeMockWriter()
-    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, writer)
+    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, writer, USER_ID)
     await exec(tools, "check_eligibility", { age: 34, householdSize: 4, annualIncome: 36000 })
 
     expect(applyFactDefaults).toHaveBeenCalledWith({ age: 34, householdSize: 4, annualIncome: 36000 })
@@ -115,7 +179,7 @@ describe("check_eligibility tool", () => {
 
   it("writes a data-masshealth annotation to the stream writer", async () => {
     const writer = makeMockWriter()
-    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, writer)
+    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, writer, USER_ID)
     await exec(tools, "check_eligibility", { age: 34, householdSize: 4, annualIncome: 36000 })
 
     expect(writer.write).toHaveBeenCalledOnce()
@@ -125,7 +189,7 @@ describe("check_eligibility tool", () => {
 
   it("annotation contains ok:true and eligibilityResults", async () => {
     const writer = makeMockWriter()
-    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, writer)
+    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, writer, USER_ID)
     await exec(tools, "check_eligibility", { age: 34, householdSize: 4, annualIncome: 36000 })
 
     const [written] = vi.mocked(writer.write).mock.calls[0]
@@ -136,7 +200,7 @@ describe("check_eligibility tool", () => {
   })
 
   it("returns fplPercent, summary, and topPrograms from the eligibility report", async () => {
-    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, makeMockWriter())
+    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, makeMockWriter(), USER_ID)
     const result = await exec(tools, "check_eligibility", { age: 34, householdSize: 4, annualIncome: 36000 }) as {
       fplPercent: number; summary: string; topPrograms: string[]
     }
@@ -150,27 +214,27 @@ describe("check_eligibility tool", () => {
 
 describe("retrieve_policy tool", () => {
   it("calls retrieveRelevantChunks with the provided query", async () => {
-    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, makeMockWriter())
+    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, makeMockWriter(), USER_ID)
     await exec(tools, "retrieve_policy", { query: "MassHealth CarePlus income limits" })
     expect(retrieveRelevantChunks).toHaveBeenCalledWith("MassHealth CarePlus income limits", expect.any(Number))
   })
 
   it("returns the formatted context string", async () => {
-    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, makeMockWriter())
+    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, makeMockWriter(), USER_ID)
     const result = await exec(tools, "retrieve_policy", { query: "CarePlus" }) as { context: string }
     expect(result.context).toBe("Policy context: CarePlus covers adults...")
   })
 
   it("returns a fallback message when no chunks are found", async () => {
     vi.mocked(formatChunksForPrompt).mockReturnValue("")
-    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, makeMockWriter())
+    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, makeMockWriter(), USER_ID)
     const result = await exec(tools, "retrieve_policy", { query: "CarePlus" }) as { context: string }
     expect(result.context).toMatch(/no policy documents found/i)
   })
 
   it("gracefully handles retrieveRelevantChunks failures", async () => {
     vi.mocked(retrieveRelevantChunks).mockRejectedValue(new Error("DB unavailable"))
-    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, makeMockWriter())
+    const tools = buildBenefitAdvisorTools(MESSAGES, LANGUAGE, makeMockWriter(), USER_ID)
     await expect(exec(tools, "retrieve_policy", { query: "CarePlus" })).resolves.toBeDefined()
   })
 })

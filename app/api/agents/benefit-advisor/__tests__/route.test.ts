@@ -34,6 +34,10 @@ vi.mock("@/lib/agents/benefit-advisor/prompts", () => ({
   buildBenefitAdvisorAgentSystemPrompt: vi.fn().mockReturnValue("benefit-advisor-system-prompt"),
 }))
 
+vi.mock("@/lib/agents/memory", () => ({
+  loadUserAgentMemory: vi.fn().mockResolvedValue(null),
+}))
+
 vi.mock("ai", () => {
   const fakeWriter = { write: vi.fn(), merge: vi.fn() }
   const fakeStream = Symbol("fakeStream")
@@ -52,6 +56,9 @@ vi.mock("ai", () => {
 
 import { POST } from "@/app/api/agents/benefit-advisor/route"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
+import { buildBenefitAdvisorTools } from "@/lib/agents/benefit-advisor/tools"
+import { buildBenefitAdvisorAgentSystemPrompt } from "@/lib/agents/benefit-advisor/prompts"
+import { loadUserAgentMemory } from "@/lib/agents/memory"
 import { createUIMessageStreamResponse } from "ai"
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -72,6 +79,7 @@ function makeRequest(body: Record<string, unknown>): Request {
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(requireAuthenticatedUser).mockResolvedValue({ ok: true, userId: USER_ID } as never)
+  vi.mocked(loadUserAgentMemory).mockResolvedValue(null)
 })
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -143,20 +151,42 @@ describe("POST /api/agents/benefit-advisor — happy path", () => {
   })
 
   it("defaults to 'en' when no language is provided", async () => {
-    const { buildBenefitAdvisorAgentSystemPrompt } = await import("@/lib/agents/benefit-advisor/prompts")
     await POST(makeRequest({ messages: ONE_USER_MESSAGE }))
-    expect(buildBenefitAdvisorAgentSystemPrompt).toHaveBeenCalledWith("en")
+    expect(buildBenefitAdvisorAgentSystemPrompt).toHaveBeenCalledWith("en", {})
   })
 
   it("uses the provided language when it is a supported locale", async () => {
-    const { buildBenefitAdvisorAgentSystemPrompt } = await import("@/lib/agents/benefit-advisor/prompts")
     await POST(makeRequest({ messages: ONE_USER_MESSAGE, language: "es" }))
-    expect(buildBenefitAdvisorAgentSystemPrompt).toHaveBeenCalledWith("es")
+    expect(buildBenefitAdvisorAgentSystemPrompt).toHaveBeenCalledWith("es", {})
   })
 
   it("falls back to 'en' for an unsupported language code", async () => {
-    const { buildBenefitAdvisorAgentSystemPrompt } = await import("@/lib/agents/benefit-advisor/prompts")
     await POST(makeRequest({ messages: ONE_USER_MESSAGE, language: "klingon" }))
-    expect(buildBenefitAdvisorAgentSystemPrompt).toHaveBeenCalledWith("en")
+    expect(buildBenefitAdvisorAgentSystemPrompt).toHaveBeenCalledWith("en", {})
+  })
+
+  it("loads persisted memory and passes known facts to the prompt and tools", async () => {
+    const knownFacts = { age: 42, householdSize: 3, annualIncome: 45000 }
+    vi.mocked(loadUserAgentMemory).mockResolvedValue({
+      id: "memory-1",
+      userId: USER_ID,
+      sessionId: "sess-1",
+      extractedFacts: knownFacts,
+      formProgress: {},
+      createdAt: new Date("2026-01-01T00:00:00Z"),
+      updatedAt: new Date("2026-01-02T00:00:00Z"),
+    })
+
+    await POST(makeRequest({ messages: ONE_USER_MESSAGE }))
+
+    expect(loadUserAgentMemory).toHaveBeenCalledWith(USER_ID)
+    expect(buildBenefitAdvisorAgentSystemPrompt).toHaveBeenCalledWith("en", knownFacts)
+    expect(buildBenefitAdvisorTools).toHaveBeenCalledWith(
+      ONE_USER_MESSAGE,
+      "en",
+      expect.any(Object),
+      USER_ID,
+      knownFacts,
+    )
   })
 })

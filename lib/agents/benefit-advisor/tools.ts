@@ -12,6 +12,9 @@
  *   2. check_eligibility          → run rule engine (only when facts are sufficient)
  *   3. retrieve_policy            → ground explanation in official policy text
  *   4. (LLM streams final reply)
+ *
+ * Phase 4: extract_eligibility_facts now persists extracted facts to
+ * user_agent_memory (fire-and-forget) so they are available across sessions.
  */
 
 import "server-only"
@@ -28,9 +31,11 @@ import {
 } from "@/lib/masshealth/fact-extraction"
 import { runEligibilityCheck } from "@/lib/eligibility-engine"
 import { retrieveRelevantChunks, formatChunksForPrompt } from "@/lib/rag/retrieve"
+import { mergeAndSaveAgentMemory } from "@/lib/agents/memory"
 import type { ChatMessage } from "@/lib/masshealth/types"
 import type { SupportedLanguage } from "@/lib/i18n/languages"
 import { RAG_TOP_K_ADVISOR } from "@/app/api/chat/masshealth/constants"
+import type { ScreenerData } from "@/lib/eligibility-engine"
 
 // ── Zod schema for partial screener data ──────────────────────────────────────
 
@@ -56,13 +61,17 @@ const partialScreenerSchema = z.object({
 /**
  * Build tool definitions for the BenefitAdvisorAgent.
  *
- * `messages`, `language`, and `writer` are captured from the route-handler
- * closure so the LLM never has to pass raw message arrays as tool arguments.
+ * `messages`, `language`, `writer`, and `userId` are captured from the
+ * route-handler closure so the LLM never has to pass raw message arrays as
+ * tool arguments.  `userId` enables Phase 4 memory persistence — extracted
+ * facts are saved after each extraction step.
  */
 export function buildBenefitAdvisorTools(
   messages: ChatMessage[],
   language: SupportedLanguage,
   writer: UIMessageStreamWriter,
+  userId: string,
+  knownFacts: Partial<ScreenerData> = {},
 ) {
   return {
     // ── Tool 1: Extract eligibility facts ─────────────────────────────────────
@@ -73,7 +82,13 @@ export function buildBenefitAdvisorTools(
         "Always call this first before deciding whether to run the eligibility engine.",
       inputSchema: z.object({}),
       execute: async () => {
-        const facts = await extractEligibilityFacts(messages, language)
+        const extractedFacts = await extractEligibilityFacts(messages, language)
+        const facts = { ...knownFacts, ...extractedFacts }
+
+        // Phase 4: persist extracted facts — fire-and-forget so DB latency
+        // never blocks the streaming response.
+        mergeAndSaveAgentMemory(userId, { extractedFacts }).catch(() => {})
+
         const sufficient = isSufficientForEvaluation(facts)
         return {
           facts,

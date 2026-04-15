@@ -21,6 +21,7 @@ import { isSupportedLanguage } from "@/lib/i18n/languages"
 import { logServerError, logServerInfo } from "@/lib/server/logger"
 import { buildBenefitAdvisorTools } from "@/lib/agents/benefit-advisor/tools"
 import { buildBenefitAdvisorAgentSystemPrompt } from "@/lib/agents/benefit-advisor/prompts"
+import { loadUserAgentMemory } from "@/lib/agents/memory"
 import type { ChatMessage } from "@/lib/masshealth/types"
 
 const AGENT = "benefit-advisor"
@@ -58,16 +59,22 @@ export async function POST(request: Request) {
     const requestStart = Date.now()
     logServerInfo(`${AGENT}.request`, { userId: authResult.userId, language, messageCount: messages.length })
 
+    // Phase 4: load persisted facts from prior sessions so the agent never
+    // re-asks questions it already knows the answer to.
+    const memory = await loadUserAgentMemory(authResult.userId).catch(() => null)
+    const knownFactCount = Object.keys(memory?.extractedFacts ?? {}).length
+    logServerInfo(`${AGENT}.memory`, { userId: authResult.userId, knownFactCount, hasMemory: !!memory })
+
     return createUIMessageStreamResponse({
       stream: createUIMessageStream({
         async execute({ writer }) {
           const result = streamText({
             model: getOllamaModel(),
-            system: buildBenefitAdvisorAgentSystemPrompt(language),
+            system: buildBenefitAdvisorAgentSystemPrompt(language, memory?.extractedFacts ?? {}),
             messages,
             // Tools are built with the writer in closure so check_eligibility
             // can write the eligibility annotation mid-stream.
-            tools: buildBenefitAdvisorTools(messages, language, writer),
+            tools: buildBenefitAdvisorTools(messages, language, writer, authResult.userId, memory?.extractedFacts ?? {}),
             stopWhen: stepCountIs(5),
             temperature: 0.2,
             abortSignal: AbortSignal.timeout(120_000),
