@@ -34,7 +34,8 @@
     "demo:auth": "DEMO_MODE=true playwright test e2e/tests/02-auth.spec.ts --project=chromium",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "stack": "pnpm lint && pnpm test && pnpm run build-storybook && pnpm dev"
+    "clean": "rm -rf .next",
+    "stack": "pnpm clean && pnpm lint && pnpm test && pnpm run build-storybook && pnpm dev"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.52",
