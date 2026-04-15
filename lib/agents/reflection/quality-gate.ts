@@ -15,6 +15,7 @@ import { z } from "zod"
 
 import { getOllamaModel } from "@/lib/masshealth/ollama-provider"
 import type { SupportedLanguage } from "@/lib/i18n/languages"
+import { incrementCounter } from "@/lib/server/counters"
 
 // ── Schemas ──────────────────────────────────────────────────────────────────
 
@@ -109,6 +110,13 @@ export async function reviewAppealLetterQuality(
     const review = result.output
     const revised = review.revisedLetter?.trim()
 
+    if (revised) {
+      incrementCounter("reflection_revision", {
+        type: "appeal",
+        issueCount: String(normaliseIssues(review.issues).length),
+      })
+    }
+
     return {
       finalText: revised || input.appealLetter,
       review: {
@@ -120,6 +128,7 @@ export async function reviewAppealLetterQuality(
       },
     }
   } catch {
+    incrementCounter("reflection_gate_unavailable", { type: "appeal" })
     return {
       finalText: input.appealLetter,
       review: fallbackReview("Reflection quality gate unavailable; original appeal letter returned unchanged."),
@@ -154,6 +163,13 @@ export async function reviewEligibilityExplanationQuality(
     const review = result.output
     const revised = review.revisedExplanation?.trim()
 
+    if (revised) {
+      incrementCounter("reflection_revision", {
+        type: "eligibility",
+        issueCount: String(normaliseIssues(review.issues).length),
+      })
+    }
+
     return {
       finalText: revised || input.explanation,
       review: {
@@ -165,6 +181,7 @@ export async function reviewEligibilityExplanationQuality(
       },
     }
   } catch {
+    incrementCounter("reflection_gate_unavailable", { type: "eligibility" })
     return {
       finalText: input.explanation,
       review: fallbackReview("Reflection quality gate unavailable; original eligibility explanation returned unchanged."),

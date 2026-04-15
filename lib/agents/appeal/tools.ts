@@ -27,6 +27,7 @@ import { retrieveRelevantChunks, formatChunksForPrompt } from "@/lib/rag/retriev
 import { buildRagQualityMetadata } from "@/lib/rag/metadata"
 import { APPEAL_RAG_TOP_K } from "@/lib/appeals/constants"
 import { reviewAppealLetterQuality } from "@/lib/agents/reflection/quality-gate"
+import { incrementCounter } from "@/lib/server/counters"
 
 // ── Tool factory ──────────────────────────────────────────────────────────────
 
@@ -61,6 +62,11 @@ export function buildAppealTools(writer: UIMessageStreamWriter) {
         latestPolicyContext = formatChunksForPrompt(chunks)
         const rag = buildRagQualityMetadata(query, chunks, requestedTopK)
 
+        const isLowConfidence = rag.confidence === "none" || rag.confidence === "low"
+        if (isLowConfidence) {
+          incrementCounter("rag_low_confidence_used", { agent: "appeal" })
+        }
+
         writer.write({
           type: "data-masshealth" as `data-${string}`,
           data: {
@@ -73,6 +79,12 @@ export function buildAppealTools(writer: UIMessageStreamWriter) {
           context: latestPolicyContext || "No policy documents found — use general MassHealth appeal principles.",
           chunkCount: chunks.length,
           rag,
+          ...(isLowConfidence && {
+            groundingWarning:
+              "Policy context is absent or low-confidence. Draft the appeal letter from general MassHealth " +
+              "appeal principles only. Do not cite specific regulation numbers or policy rules you cannot verify. " +
+              "Recommend the user confirm details at mass.gov/masshealth or by calling 1-800-841-2900.",
+          }),
         }
       },
     }),

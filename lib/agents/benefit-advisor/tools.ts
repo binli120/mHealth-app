@@ -38,6 +38,7 @@ import type { SupportedLanguage } from "@/lib/i18n/languages"
 import { RAG_TOP_K_ADVISOR } from "@/app/api/chat/masshealth/constants"
 import type { ScreenerData } from "@/lib/eligibility-engine"
 import { reviewEligibilityExplanationQuality } from "@/lib/agents/reflection/quality-gate"
+import { incrementCounter } from "@/lib/server/counters"
 
 // ── Zod schema for partial screener data ──────────────────────────────────────
 
@@ -196,6 +197,12 @@ export function buildBenefitAdvisorTools(
         latestPolicyContext = formatChunksForPrompt(chunks)
         const rag = buildRagQualityMetadata(query, chunks, requestedTopK)
 
+        // Warn when grounding is absent or weak so the LLM self-limits its claims.
+        const isLowConfidence = rag.confidence === "none" || rag.confidence === "low"
+        if (isLowConfidence) {
+          incrementCounter("rag_low_confidence_used", { agent: "benefit-advisor" })
+        }
+
         writer.write({
           type: "data-masshealth" as `data-${string}`,
           data: {
@@ -209,6 +216,12 @@ export function buildBenefitAdvisorTools(
           context: latestPolicyContext || "No policy documents found for this query.",
           chunkCount: chunks.length,
           rag,
+          ...(isLowConfidence && {
+            groundingWarning:
+              "Policy context is absent or low-confidence. Do not assert specific income limits, " +
+              "program names, or eligibility rules without qualifying them as approximate. " +
+              "Recommend the user verify at mass.gov or by calling 1-800-841-2900.",
+          }),
         }
       },
     }),

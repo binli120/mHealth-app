@@ -19,6 +19,7 @@ import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 import { getOllamaModel } from "@/lib/masshealth/ollama-provider"
 import { isSupportedLanguage } from "@/lib/i18n/languages"
 import { logServerError, logServerInfo } from "@/lib/server/logger"
+import { incrementCounter } from "@/lib/server/counters"
 import { buildBenefitAdvisorTools } from "@/lib/agents/benefit-advisor/tools"
 import { buildBenefitAdvisorAgentSystemPrompt } from "@/lib/agents/benefit-advisor/prompts"
 import { loadUserAgentMemory } from "@/lib/agents/memory"
@@ -88,6 +89,9 @@ export async function POST(request: Request) {
                 finishReason,
                 elapsedMs: Date.now() - requestStart,
               })
+              for (const tc of toolCalls) {
+                incrementCounter("tool_call", { agent: AGENT, tool: tc.toolName })
+              }
             },
             onFinish({ steps, totalUsage }) {
               logServerInfo(`${AGENT}.done`, {
@@ -96,6 +100,10 @@ export async function POST(request: Request) {
                 totalOutputTokens: totalUsage.outputTokens,
                 elapsedMs: Date.now() - requestStart,
               })
+              const sequence = steps.flatMap((s) => s.toolCalls.map((tc) => tc.toolName)).join("→")
+              if (sequence) {
+                incrementCounter("tool_call_sequence", { agent: AGENT, sequence })
+              }
             },
           })
 

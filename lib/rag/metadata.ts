@@ -11,6 +11,12 @@ import type {
   RagQualityMetadata,
   RagSourceTier,
 } from "./types"
+import {
+  RAG_CONFIDENCE_HIGH_MAX,
+  RAG_CONFIDENCE_HIGH_AVG,
+  RAG_CONFIDENCE_MED_MAX,
+  RAG_CONFIDENCE_MED_AVG,
+} from "./constants"
 
 function isPolicyChunk(value: unknown): value is PolicyChunk {
   return (
@@ -47,8 +53,8 @@ function inferSourceTier(chunk: PolicyChunk): RagSourceTier {
 
 function confidenceFromScores(returnedChunkCount: number, maxScore: number | null, averageScore: number | null): RagConfidence {
   if (returnedChunkCount === 0 || maxScore === null || averageScore === null) return "none"
-  if (maxScore >= 0.82 && averageScore >= 0.74) return "high"
-  if (maxScore >= 0.68 && averageScore >= 0.58) return "medium"
+  if (maxScore >= RAG_CONFIDENCE_HIGH_MAX && averageScore >= RAG_CONFIDENCE_HIGH_AVG) return "high"
+  if (maxScore >= RAG_CONFIDENCE_MED_MAX  && averageScore >= RAG_CONFIDENCE_MED_AVG)  return "medium"
   return "low"
 }
 

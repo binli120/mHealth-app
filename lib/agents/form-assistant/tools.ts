@@ -27,6 +27,7 @@ import type { SupportedLanguage } from "@/lib/i18n/languages"
 import type { HouseholdMember, IncomeSource } from "@/lib/redux/features/application-slice"
 import type { FormSection } from "@/lib/masshealth/form-sections"
 import { RAG_TOP_K } from "@/app/api/chat/masshealth/constants"
+import { incrementCounter } from "@/lib/server/counters"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -112,6 +113,11 @@ export function buildFormAssistantTools(ctx: FormAssistantToolContext, writer: U
         const chunks = await retrieveRelevantChunks(query, requestedTopK).catch(() => [])
         const rag = buildRagQualityMetadata(query, chunks, requestedTopK)
 
+        const isLowConfidence = rag.confidence === "none" || rag.confidence === "low"
+        if (isLowConfidence) {
+          incrementCounter("rag_low_confidence_used", { agent: "form-assistant" })
+        }
+
         writer.write({
           type: "data-masshealth" as `data-${string}`,
           data: {
@@ -124,6 +130,11 @@ export function buildFormAssistantTools(ctx: FormAssistantToolContext, writer: U
           context: formatChunksForPrompt(chunks) || "No policy documents found for this query.",
           chunkCount: chunks.length,
           rag,
+          ...(isLowConfidence && {
+            groundingWarning:
+              "Policy context is absent or low-confidence. Answer from general knowledge only " +
+              "and qualify any specific claims as approximate. Recommend the user verify at mass.gov.",
+          }),
         }
       },
     }),
