@@ -1,6 +1,6 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 /**
@@ -44,4 +44,35 @@ export interface PolicyChunk {
   /** Cosine similarity score in range [0, 1]. Higher = more relevant. */
   score: number
   documentTitle?: string
+  sourceUrl?: string
+  docType?: string
+}
+
+export type RagSourceTier = "official" | "legal_aid" | "community" | "unknown"
+export type RagConfidence = "none" | "low" | "medium" | "high"
+
+export interface RagSourceMetadata {
+  chunkId: string
+  documentId: string
+  chunkIndex: number
+  title: string
+  url?: string
+  sourceType?: string
+  sourceTier: RagSourceTier
+  score: number | null
+}
+
+export interface RagQualityMetadata {
+  query: string
+  requestedTopK: number
+  returnedChunkCount: number
+  confidence: RagConfidence
+  maxScore: number | null
+  averageScore: number | null
+  citationCoverage: {
+    citedChunkCount: number
+    coverageRatio: number
+    hasCitations: boolean
+  }
+  sources: RagSourceMetadata[]
 }

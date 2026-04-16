@@ -3,7 +3,7 @@
  * Returns patient profile + applications in the same camelCase shape that
  * the customer dashboard expects, so the same UI can be reused.
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 import { NextResponse } from "next/server"

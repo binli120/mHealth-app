@@ -1,6 +1,6 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 import "server-only"
@@ -15,6 +15,7 @@ import {
 } from "./constants"
 import type { FormSection } from "./form-sections"
 import { callOllama } from "./ollama-client"
+import { incrementCounter } from "@/lib/server/counters"
 
 // Re-export for server-side consumers
 export type { FormSection }
@@ -152,6 +153,7 @@ function parseExtractedFormFields(
   const start = cleaned.indexOf("{")
   const end = cleaned.lastIndexOf("}")
   if (start === -1 || end === -1) {
+    incrementCounter("extraction_parse_failure", { extractor: "form_fields", reason: "no_json" })
     return { fields: {}, noHouseholdMembers: false, noIncome: false, extractionFailed: true }
   }
 
@@ -159,6 +161,7 @@ function parseExtractedFormFields(
   try {
     parsed = JSON.parse(cleaned.slice(start, end + 1)) as RawExtracted
   } catch {
+    incrementCounter("extraction_parse_failure", { extractor: "form_fields", reason: "json_parse" })
     return { fields: {}, noHouseholdMembers: false, noIncome: false, extractionFailed: true }
   }
 

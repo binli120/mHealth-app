@@ -34,9 +34,11 @@
     "demo:auth": "DEMO_MODE=true playwright test e2e/tests/02-auth.spec.ts --project=chromium",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "stack": "pnpm lint && pnpm test && pnpm run build-storybook && pnpm dev"
+    "clean": "rm -rf .next",
+    "stack": "pnpm clean && pnpm lint && pnpm test && pnpm run build-storybook && pnpm dev"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^3.0.52",
     "@fontsource/caveat": "^5.2.8",
     "@hookform/resolvers": "^3.9.1",
     "@opentelemetry/auto-instrumentations-node": "^0.72.0",
@@ -78,6 +80,7 @@
     "@vercel/analytics": "1.6.1",
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",
+    "ai": "^6.0.159",
     "autoprefixer": "^10.4.20",
     "bwip-js": "^4.8.0",
     "class-variance-authority": "^0.7.1",

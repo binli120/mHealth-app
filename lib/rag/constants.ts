@@ -1,6 +1,6 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 /**
@@ -30,9 +30,29 @@ export const CHUNK_MIN_LENGTH = 20; // filter out trivially short chunks
 
 // ── Retrieval ─────────────────────────────────────────────────────────────────
 
-export const RAG_DEFAULT_TOP_K = 4;
-export const RAG_ADVISOR_TOP_K = 3;
-export const RAG_CHUNK_CONTENT_MAX_LEN = 600; // truncate chunk content in prompts
+/** Maximum chunks returned by a retrieval call (env: RAG_DEFAULT_TOP_K). */
+export const RAG_DEFAULT_TOP_K = parseInt(process.env.RAG_DEFAULT_TOP_K ?? "4", 10)
+/** Advisor agent default topK — slightly tighter than general (env: RAG_ADVISOR_TOP_K). */
+export const RAG_ADVISOR_TOP_K = parseInt(process.env.RAG_ADVISOR_TOP_K ?? "3", 10)
+/** Max character length for chunk content included in prompts (env: RAG_CHUNK_CONTENT_MAX_LEN). */
+export const RAG_CHUNK_CONTENT_MAX_LEN = parseInt(process.env.RAG_CHUNK_CONTENT_MAX_LEN ?? "600", 10)
+/**
+ * Minimum cosine similarity score [0–1] a chunk must reach to be returned.
+ * Chunks below this threshold are filtered before the LLM ever sees them.
+ * Lower = more recall, higher = more precision. Default 0.60 (env: RAG_MIN_SCORE).
+ */
+export const RAG_MIN_SCORE = parseFloat(process.env.RAG_MIN_SCORE ?? "0.60")
+/** Retrieval round-trip warning threshold in ms (env: RAG_LATENCY_WARN_MS). */
+export const RAG_LATENCY_WARN_MS = parseInt(process.env.RAG_LATENCY_WARN_MS ?? "2000", 10)
+
+// ── Confidence score bins ─────────────────────────────────────────────────────
+// Thresholds used by buildRagQualityMetadata to classify retrieval confidence.
+// All tuneable via environment variables without a redeploy.
+
+export const RAG_CONFIDENCE_HIGH_MAX = parseFloat(process.env.RAG_CONFIDENCE_HIGH_MAX ?? "0.82")
+export const RAG_CONFIDENCE_HIGH_AVG = parseFloat(process.env.RAG_CONFIDENCE_HIGH_AVG ?? "0.74")
+export const RAG_CONFIDENCE_MED_MAX  = parseFloat(process.env.RAG_CONFIDENCE_MED_MAX  ?? "0.68")
+export const RAG_CONFIDENCE_MED_AVG  = parseFloat(process.env.RAG_CONFIDENCE_MED_AVG  ?? "0.58")
 
 // ── Document types ────────────────────────────────────────────────────────────
 

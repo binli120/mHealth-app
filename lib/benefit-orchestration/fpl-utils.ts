@@ -1,6 +1,6 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 // Re-export FPL utilities from the existing engine and add profile-level helpers

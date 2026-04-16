@@ -1,11 +1,12 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 import { describe, it, expect } from "vitest"
 
 import { formatChunksForPrompt } from "../retrieve"
+import { buildRagQualityMetadata } from "../metadata"
 import type { PolicyChunk } from "../types"
 
 function makeChunk(overrides: Partial<PolicyChunk> = {}): PolicyChunk {
@@ -16,6 +17,8 @@ function makeChunk(overrides: Partial<PolicyChunk> = {}): PolicyChunk {
     content: "MassHealth provides health coverage to eligible Massachusetts residents.",
     score: 0.85,
     documentTitle: "MassHealth Member Booklet",
+    sourceUrl: "https://www.mass.gov/doc/member-booklet/download",
+    docType: "member_booklet",
     ...overrides,
   }
 }
@@ -81,5 +84,51 @@ describe("formatChunksForPrompt", () => {
     const titleIndex = result.indexOf("Eligibility Guide")
     const contentIndex = result.indexOf("Income limits apply.")
     expect(titleIndex).toBeLessThan(contentIndex)
+  })
+})
+
+// ── buildRagQualityMetadata ──────────────────────────────────────────────────
+
+describe("buildRagQualityMetadata", () => {
+  it("summarizes chunk scores and official source metadata", () => {
+    const result = buildRagQualityMetadata("CarePlus", [
+      makeChunk({ id: "a", score: 0.9 }),
+      makeChunk({ id: "b", score: 0.8, documentTitle: "Eligibility Guide", docType: "eligibility_guide" }),
+    ], 4)
+
+    expect(result.query).toBe("CarePlus")
+    expect(result.requestedTopK).toBe(4)
+    expect(result.returnedChunkCount).toBe(2)
+    expect(result.confidence).toBe("high")
+    expect(result.maxScore).toBe(0.9)
+    expect(result.averageScore).toBe(0.85)
+    expect(result.citationCoverage).toEqual({
+      citedChunkCount: 2,
+      coverageRatio: 1,
+      hasCitations: true,
+    })
+    expect(result.sources[0]).toMatchObject({
+      title: "MassHealth Member Booklet",
+      sourceTier: "official",
+      sourceType: "member_booklet",
+      score: 0.9,
+    })
+  })
+
+  it("returns confidence none when no policy chunks are retrieved", () => {
+    const result = buildRagQualityMetadata("unknown", [], 4)
+
+    expect(result.returnedChunkCount).toBe(0)
+    expect(result.confidence).toBe("none")
+    expect(result.maxScore).toBeNull()
+    expect(result.averageScore).toBeNull()
+    expect(result.citationCoverage.hasCitations).toBe(false)
+  })
+
+  it("ignores malformed chunk values when building metadata", () => {
+    const result = buildRagQualityMetadata("appeal", ["chunk1", null, makeChunk()] as unknown[], 4)
+
+    expect(result.returnedChunkCount).toBe(1)
+    expect(result.sources).toHaveLength(1)
   })
 })

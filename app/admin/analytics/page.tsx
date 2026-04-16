@@ -2,7 +2,7 @@
 
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 import { useEffect, useReducer, useState } from "react"
@@ -17,80 +17,32 @@ import {
   MousePointerClick,
 } from "lucide-react"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
-import type { AnalyticsData, DrillDownColumn, DrillDownResult } from "@/lib/db/admin-analytics"
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-const PERIOD_OPTIONS = [
-  { label: "3 months",  value: 3 },
-  { label: "6 months",  value: 6 },
-  { label: "12 months", value: 12 },
-]
-
-const STATUS_LABELS: Record<string, string> = {
-  draft:          "Draft",
-  submitted:      "Submitted",
-  ai_extracted:   "AI Extracted",
-  needs_review:   "Needs Review",
-  rfi_requested:  "RFI Requested",
-  approved:       "Approved",
-  denied:         "Denied",
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  draft:          "#94a3b8",
-  submitted:      "#3b82f6",
-  ai_extracted:   "#8b5cf6",
-  needs_review:   "#f59e0b",
-  rfi_requested:  "#f97316",
-  approved:       "#22c55e",
-  denied:         "#ef4444",
-}
-
-const PROGRAM_COLORS = [
-  "#3b82f6","#8b5cf6","#22c55e","#f59e0b",
-  "#ef4444","#06b6d4","#f97316","#ec4899","#14b8a6","#a855f7",
-]
-
-const MODULE_COLORS: Record<string, string> = {
-  "Applications":    "#3b82f6",
-  "Benefit Stack":   "#8b5cf6",
-  "Pre-Screener":    "#22c55e",
-  "AI Chat":         "#06b6d4",
-  "SW Messaging":    "#f59e0b",
-  "Collab Sessions": "#f97316",
-  "Identity Verify": "#ec4899",
-  "Documents":       "#14b8a6",
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function fmt(ym: string): string {
-  const [y, m] = ym.split("-")
-  return new Date(parseInt(y), parseInt(m) - 1).toLocaleString("default", { month: "short", year: "2-digit" })
-}
-
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const m = Math.floor(diff / 60_000)
-  if (m < 1)   return "just now"
-  if (m < 60)  return `${m}m ago`
-  const h = Math.floor(m / 60)
-  if (h < 24)  return `${h}h ago`
-  return `${Math.floor(h / 24)}d ago`
-}
-
-// ── Shared reducer factory ────────────────────────────────────────────────────
-
-type AsyncState<T> =
-  | { status: "loading"; data: T | null }
-  | { status: "success"; data: T }
-  | { status: "error";   data: null }
-
-type AsyncAction<T> =
-  | { type: "fetch" }
-  | { type: "success"; data: T }
-  | { type: "error" }
+import type { AnalyticsData, DrillDownResult } from "@/lib/db/admin-analytics"
+import { DRILL_DOWN_PAGE_SIZE, PERIOD_OPTIONS, STATUS_LABELS } from "./page.constants"
+import {
+  ANALYTICS_CHART_STYLES,
+  ANALYTICS_SERIES_COLORS,
+  MODULE_COLORS,
+  PROGRAM_COLORS,
+  STATUS_BADGE_STYLES,
+  STATUS_COLORS,
+} from "./page.styles"
+import type {
+  AsyncAction,
+  AsyncState,
+  CellValueProps,
+  ChartCardProps,
+  ChartSkeletonProps,
+  DrillDownPanelProps,
+  DrillDownSpec,
+  KpiCardProps,
+  MonthChartDatum,
+  SectionHeaderProps,
+  StatusBadgeProps,
+  StatusChartDatum,
+  TrendOverviewChartProps,
+} from "./page.types"
+import { formatAnalyticsMonth, formatRelativeActivityTime } from "./page.utils"
 
 function asyncReducer<T>(state: AsyncState<T>, action: AsyncAction<T>): AsyncState<T> {
   switch (action.type) {
@@ -99,14 +51,6 @@ function asyncReducer<T>(state: AsyncState<T>, action: AsyncAction<T>): AsyncSta
     case "error":   return { status: "error",   data: null }
   }
 }
-
-// ── Drill-down spec ───────────────────────────────────────────────────────────
-
-type DrillDownSpec = {
-  type: string      // "apps-month" | "apps-status" | "users-month" | "ai-month"
-  value: string
-  title: string
-} | null
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -190,18 +134,18 @@ export default function AdminAnalyticsPage() {
           {/* Applications filed by month */}
           <ChartCard title="Applications Filed by Month" subtitle={`Last ${period} months — click a bar to see those applications`} className="mb-6">
             <ResponsiveContainer width="100%" height={200}>
-              <ComposedChart data={data.applicationsByMonth.map((d) => ({ rawMonth: d.month, month: fmt(d.month), count: d.count }))}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} width={28} />
-                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}
+              <ComposedChart data={data.applicationsByMonth.map((d) => ({ rawMonth: d.month, month: formatAnalyticsMonth(d.month), count: d.count }))}>
+                <CartesianGrid strokeDasharray="3 3" stroke={ANALYTICS_CHART_STYLES.gridStroke} vertical={false} />
+                <XAxis dataKey="month" tick={ANALYTICS_CHART_STYLES.xAxisTick} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} tick={ANALYTICS_CHART_STYLES.yAxisTick} axisLine={false} tickLine={false} width={28} />
+                <Tooltip contentStyle={ANALYTICS_CHART_STYLES.tooltip}
                   formatter={(v: number) => [v, "Applications"]} />
-                <Bar dataKey="count" fill="#93c5fd" radius={[4,4,0,0]} cursor="pointer"
-                  onClick={(d: { rawMonth: string; month: string }) =>
+                <Bar dataKey="count" fill={ANALYTICS_SERIES_COLORS.applications.bar} radius={[4,4,0,0]} cursor="pointer"
+                  onClick={(d: MonthChartDatum) =>
                     open({ type: "apps-month", value: d.rawMonth, title: `Applications filed in ${d.month}` })}
                 />
-                <Line type="monotone" dataKey="count" stroke="#2563eb" strokeWidth={2}
-                  dot={{ r: 3, fill: "#2563eb", strokeWidth: 0 }}
+                <Line type="monotone" dataKey="count" stroke={ANALYTICS_SERIES_COLORS.applications.line} strokeWidth={2}
+                  dot={{ r: 3, fill: ANALYTICS_SERIES_COLORS.applications.line, strokeWidth: 0 }}
                   activeDot={{ r: 5 }} />
               </ComposedChart>
             </ResponsiveContainer>
@@ -215,13 +159,13 @@ export default function AdminAnalyticsPage() {
                   <BarChart layout="vertical"
                     data={data.applicationsByStatus.map((d) => ({ ...d, label: STATUS_LABELS[d.status] ?? d.status }))}
                     margin={{ left: 8, right: 16 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-                    <YAxis type="category" dataKey="label" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} width={96} />
-                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}
+                    <CartesianGrid strokeDasharray="3 3" stroke={ANALYTICS_CHART_STYLES.gridStroke} horizontal={false} />
+                    <XAxis type="number" allowDecimals={false} tick={ANALYTICS_CHART_STYLES.yAxisTick} axisLine={false} tickLine={false} />
+                    <YAxis type="category" dataKey="label" tick={ANALYTICS_CHART_STYLES.xAxisTick} axisLine={false} tickLine={false} width={96} />
+                    <Tooltip contentStyle={ANALYTICS_CHART_STYLES.tooltip}
                       formatter={(v: number) => [v, "Applications"]} />
                     <Bar dataKey="count" radius={[0,4,4,0]} cursor="pointer"
-                      onClick={(d: { status: string; label: string }) =>
+                      onClick={(d: StatusChartDatum) =>
                         open({ type: "apps-status", value: d.status, title: `${d.label} Applications` })}>
                       {data.applicationsByStatus.map((e) => (
                         <Cell key={e.status} fill={STATUS_COLORS[e.status] ?? "#3b82f6"} />
@@ -236,10 +180,10 @@ export default function AdminAnalyticsPage() {
               {data.applicationsByProgram.length === 0 ? <EmptyChart /> : (
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart layout="vertical" data={data.applicationsByProgram} margin={{ left: 8, right: 16 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-                    <YAxis type="category" dataKey="program" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} width={120} />
-                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}
+                    <CartesianGrid strokeDasharray="3 3" stroke={ANALYTICS_CHART_STYLES.gridStroke} horizontal={false} />
+                    <XAxis type="number" allowDecimals={false} tick={ANALYTICS_CHART_STYLES.yAxisTick} axisLine={false} tickLine={false} />
+                    <YAxis type="category" dataKey="program" tick={ANALYTICS_CHART_STYLES.xAxisTick} axisLine={false} tickLine={false} width={120} />
+                    <Tooltip contentStyle={ANALYTICS_CHART_STYLES.tooltip}
                       formatter={(v: number) => [v, "Screenings"]} />
                     <Bar dataKey="count" radius={[0,4,4,0]}>
                       {data.applicationsByProgram.map((e, i) => (
@@ -266,18 +210,18 @@ export default function AdminAnalyticsPage() {
             <ChartCard title="User Registrations" subtitle={`Last ${period} months — click a bar to see new users`}>
               {data.userRegistrationsByMonth.length === 0 ? <EmptyChart /> : (
                 <ResponsiveContainer width="100%" height={200}>
-                  <ComposedChart data={data.userRegistrationsByMonth.map((d) => ({ rawMonth: d.month, month: fmt(d.month), count: d.count }))}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} width={28} />
-                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}
+                  <ComposedChart data={data.userRegistrationsByMonth.map((d) => ({ rawMonth: d.month, month: formatAnalyticsMonth(d.month), count: d.count }))}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={ANALYTICS_CHART_STYLES.gridStroke} vertical={false} />
+                    <XAxis dataKey="month" tick={ANALYTICS_CHART_STYLES.xAxisTick} axisLine={false} tickLine={false} />
+                    <YAxis allowDecimals={false} tick={ANALYTICS_CHART_STYLES.yAxisTick} axisLine={false} tickLine={false} width={28} />
+                    <Tooltip contentStyle={ANALYTICS_CHART_STYLES.tooltip}
                       formatter={(v: number) => [v, "New users"]} />
-                    <Bar dataKey="count" fill="#c4b5fd" radius={[4,4,0,0]} cursor="pointer"
-                      onClick={(d: { rawMonth: string; month: string }) =>
+                    <Bar dataKey="count" fill={ANALYTICS_SERIES_COLORS.users.bar} radius={[4,4,0,0]} cursor="pointer"
+                      onClick={(d: MonthChartDatum) =>
                         open({ type: "users-month", value: d.rawMonth, title: `Users registered in ${d.month}` })}
                     />
-                    <Line type="monotone" dataKey="count" stroke="#7c3aed" strokeWidth={2}
-                      dot={{ r: 3, fill: "#7c3aed", strokeWidth: 0 }}
+                    <Line type="monotone" dataKey="count" stroke={ANALYTICS_SERIES_COLORS.users.line} strokeWidth={2}
+                      dot={{ r: 3, fill: ANALYTICS_SERIES_COLORS.users.line, strokeWidth: 0 }}
                       activeDot={{ r: 5 }} />
                   </ComposedChart>
                 </ResponsiveContainer>
@@ -288,10 +232,10 @@ export default function AdminAnalyticsPage() {
               {data.moduleUsage.length === 0 ? <EmptyChart /> : (
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart layout="vertical" data={data.moduleUsage} margin={{ left: 8, right: 16 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-                    <YAxis type="category" dataKey="module" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} width={112} />
-                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}
+                    <CartesianGrid strokeDasharray="3 3" stroke={ANALYTICS_CHART_STYLES.gridStroke} horizontal={false} />
+                    <XAxis type="number" allowDecimals={false} tick={ANALYTICS_CHART_STYLES.yAxisTick} axisLine={false} tickLine={false} />
+                    <YAxis type="category" dataKey="module" tick={ANALYTICS_CHART_STYLES.xAxisTick} axisLine={false} tickLine={false} width={112} />
+                    <Tooltip contentStyle={ANALYTICS_CHART_STYLES.tooltip}
                       formatter={(v: number) => [v, "Interactions"]} />
                     <Bar dataKey="count" radius={[0,4,4,0]}>
                       {data.moduleUsage.map((e) => (
@@ -317,18 +261,18 @@ export default function AdminAnalyticsPage() {
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height={200}>
-                  <ComposedChart data={data.aiChatByMonth.map((d) => ({ rawMonth: d.month, month: fmt(d.month), count: d.count }))}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} width={28} />
-                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}
+                  <ComposedChart data={data.aiChatByMonth.map((d) => ({ rawMonth: d.month, month: formatAnalyticsMonth(d.month), count: d.count }))}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={ANALYTICS_CHART_STYLES.gridStroke} vertical={false} />
+                    <XAxis dataKey="month" tick={ANALYTICS_CHART_STYLES.xAxisTick} axisLine={false} tickLine={false} />
+                    <YAxis allowDecimals={false} tick={ANALYTICS_CHART_STYLES.yAxisTick} axisLine={false} tickLine={false} width={28} />
+                    <Tooltip contentStyle={ANALYTICS_CHART_STYLES.tooltip}
                       formatter={(v: number) => [v, "Requests"]} />
-                    <Bar dataKey="count" fill="#a5f3fc" radius={[4,4,0,0]} cursor="pointer"
-                      onClick={(d: { rawMonth: string; month: string }) =>
+                    <Bar dataKey="count" fill={ANALYTICS_SERIES_COLORS.aiRequests.bar} radius={[4,4,0,0]} cursor="pointer"
+                      onClick={(d: MonthChartDatum) =>
                         open({ type: "ai-month", value: d.rawMonth, title: `AI requests in ${d.month}` })}
                     />
-                    <Line type="monotone" dataKey="count" stroke="#0891b2" strokeWidth={2}
-                      dot={{ r: 3, fill: "#0891b2", strokeWidth: 0 }}
+                    <Line type="monotone" dataKey="count" stroke={ANALYTICS_SERIES_COLORS.aiRequests.line} strokeWidth={2}
+                      dot={{ r: 3, fill: ANALYTICS_SERIES_COLORS.aiRequests.line, strokeWidth: 0 }}
                       activeDot={{ r: 5 }} />
                   </ComposedChart>
                 </ResponsiveContainer>
@@ -347,7 +291,10 @@ export default function AdminAnalyticsPage() {
                 <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                   {data.recentActivity.map((e, i) => (
                     <div key={i} className="flex items-start gap-2.5 py-1.5 border-b border-gray-50 last:border-0">
-                      <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 flex-shrink-0" />
+                      <div
+                        className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
+                        style={{ backgroundColor: ANALYTICS_SERIES_COLORS.recentActivity }}
+                      />
                       <div className="min-w-0 flex-1">
                         <span className="text-xs font-medium text-gray-700">{e.action}</span>
                         {e.user_email && (
@@ -357,7 +304,7 @@ export default function AdminAnalyticsPage() {
                           <span className="text-xs text-gray-300 ml-1">· #{e.application_id.slice(0,8)}</span>
                         )}
                       </div>
-                      <span className="text-xs text-gray-300 flex-shrink-0">{timeAgo(e.created_at)}</span>
+                      <span className="text-xs text-gray-300 flex-shrink-0">{formatRelativeActivityTime(e.created_at)}</span>
                     </div>
                   ))}
                 </div>
@@ -373,12 +320,12 @@ export default function AdminAnalyticsPage() {
               {data.fplDistribution.length === 0 ? <EmptyChart /> : (
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={data.fplDistribution} margin={{ left: 0, right: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                    <XAxis dataKey="bucket" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} width={28} />
-                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}
+                    <CartesianGrid strokeDasharray="3 3" stroke={ANALYTICS_CHART_STYLES.gridStroke} vertical={false} />
+                    <XAxis dataKey="bucket" tick={ANALYTICS_CHART_STYLES.xAxisTick} axisLine={false} tickLine={false} />
+                    <YAxis allowDecimals={false} tick={ANALYTICS_CHART_STYLES.yAxisTick} axisLine={false} tickLine={false} width={28} />
+                    <Tooltip contentStyle={ANALYTICS_CHART_STYLES.tooltip}
                       formatter={(v: number) => [v, "Applicants"]} />
-                    <Bar dataKey="count" fill="#3b82f6" radius={[4,4,0,0]} />
+                    <Bar dataKey="count" fill={ANALYTICS_SERIES_COLORS.fpl} radius={[4,4,0,0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -390,12 +337,12 @@ export default function AdminAnalyticsPage() {
                   <BarChart
                     data={data.householdSizeDistribution.map((d) => ({ ...d, label: d.size >= 8 ? "8+" : String(d.size) }))}
                     margin={{ left: 0, right: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} width={28} />
-                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}
+                    <CartesianGrid strokeDasharray="3 3" stroke={ANALYTICS_CHART_STYLES.gridStroke} vertical={false} />
+                    <XAxis dataKey="label" tick={ANALYTICS_CHART_STYLES.xAxisTick} axisLine={false} tickLine={false} />
+                    <YAxis allowDecimals={false} tick={ANALYTICS_CHART_STYLES.yAxisTick} axisLine={false} tickLine={false} width={28} />
+                    <Tooltip contentStyle={ANALYTICS_CHART_STYLES.tooltip}
                       formatter={(v: number) => [v, "Applications"]} />
-                    <Bar dataKey="count" fill="#8b5cf6" radius={[4,4,0,0]} />
+                    <Bar dataKey="count" fill={ANALYTICS_SERIES_COLORS.household} radius={[4,4,0,0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -405,31 +352,30 @@ export default function AdminAnalyticsPage() {
       )}
 
       {/* ── Drill-down panel ── */}
-      <DrillDownPanel drill={drillDown} onClose={() => setDrillDown(null)} />
+      <DrillDownPanel
+        key={drillDown ? `${drillDown.type}:${drillDown.value}` : "closed"}
+        drill={drillDown}
+        onClose={() => setDrillDown(null)}
+      />
     </div>
   )
 }
 
 // ── Drill-down panel ──────────────────────────────────────────────────────────
 
-function DrillDownPanel({ drill, onClose }: { drill: DrillDownSpec; onClose: () => void }) {
+function DrillDownPanel({ drill, onClose }: DrillDownPanelProps) {
   const [page, setPage] = useState(1)
   const [state, dispatch] = useReducer(
     asyncReducer as (s: AsyncState<DrillDownResult>, a: AsyncAction<DrillDownResult>) => AsyncState<DrillDownResult>,
     { status: "loading", data: null },
   )
 
-  // Reset page when drill target changes
-  useEffect(() => {
-    setPage(1)
-  }, [drill?.type, drill?.value])
-
   useEffect(() => {
     if (!drill) return
     let cancelled = false
     dispatch({ type: "fetch" })
     const qs = new URLSearchParams({
-      type: drill.type, value: drill.value, page: String(page), limit: "20",
+      type: drill.type, value: drill.value, page: String(page), limit: String(DRILL_DOWN_PAGE_SIZE),
     })
     authenticatedFetch(`/api/admin/analytics/drill-down?${qs}`)
       .then((r) => r.json())
@@ -446,7 +392,7 @@ function DrillDownPanel({ drill, onClose }: { drill: DrillDownSpec; onClose: () 
 
   const { status, data } = state
   const total      = data?.total ?? 0
-  const totalPages = Math.ceil(total / 20)
+  const totalPages = Math.ceil(total / DRILL_DOWN_PAGE_SIZE)
 
   return (
     <>
@@ -545,7 +491,7 @@ function DrillDownPanel({ drill, onClose }: { drill: DrillDownSpec; onClose: () 
 
 // ── Cell renderer ─────────────────────────────────────────────────────────────
 
-function CellValue({ value, col }: { value: unknown; col: DrillDownColumn }) {
+function CellValue({ value, col }: CellValueProps) {
   if (value === null || value === undefined || value === "") {
     return <span className="text-gray-300">—</span>
   }
@@ -566,18 +512,9 @@ function CellValue({ value, col }: { value: unknown; col: DrillDownColumn }) {
   }
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const palette: Record<string, string> = {
-    draft:          "bg-gray-100 text-gray-600",
-    submitted:      "bg-blue-100 text-blue-700",
-    ai_extracted:   "bg-purple-100 text-purple-700",
-    needs_review:   "bg-amber-100 text-amber-700",
-    rfi_requested:  "bg-orange-100 text-orange-700",
-    approved:       "bg-green-100 text-green-700",
-    denied:         "bg-red-100 text-red-700",
-  }
+function StatusBadge({ status }: StatusBadgeProps) {
   return (
-    <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold ${palette[status] ?? "bg-gray-100 text-gray-600"}`}>
+    <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold ${STATUS_BADGE_STYLES[status] ?? "bg-gray-100 text-gray-600"}`}>
       {STATUS_LABELS[status] ?? status}
     </span>
   )
@@ -585,7 +522,7 @@ function StatusBadge({ status }: { status: string }) {
 
 // ── Trends overview (multi-line) ─────────────────────────────────────────────
 
-function TrendOverviewChart({ data, period }: { data: AnalyticsData; period: number }) {
+function TrendOverviewChart({ data, period }: TrendOverviewChartProps) {
   // Merge all months from the three series into a single sorted list
   const months = Array.from(
     new Set([
@@ -596,7 +533,7 @@ function TrendOverviewChart({ data, period }: { data: AnalyticsData; period: num
   ).sort()
 
   const chartData = months.map((m) => ({
-    month: fmt(m),
+    month: formatAnalyticsMonth(m),
     Applications: data.applicationsByMonth.find((d) => d.month === m)?.count ?? 0,
     Users:        data.userRegistrationsByMonth.find((d) => d.month === m)?.count ?? 0,
     "AI Requests": data.aiChatByMonth.find((d) => d.month === m)?.count ?? 0,
@@ -610,18 +547,18 @@ function TrendOverviewChart({ data, period }: { data: AnalyticsData; period: num
     >
       <ResponsiveContainer width="100%" height={220}>
         <LineChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-          <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
-          <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} width={28} />
-          <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }} />
-          <Legend wrapperStyle={{ fontSize: 11, paddingTop: 12 }} iconType="circle" iconSize={8} />
-          <Line type="monotone" dataKey="Applications" stroke="#2563eb" strokeWidth={2}
-            dot={{ r: 3, fill: "#2563eb", strokeWidth: 0 }} activeDot={{ r: 5 }} />
-          <Line type="monotone" dataKey="Users" stroke="#7c3aed" strokeWidth={2}
-            dot={{ r: 3, fill: "#7c3aed", strokeWidth: 0 }} activeDot={{ r: 5 }} />
-          <Line type="monotone" dataKey="AI Requests" stroke="#0891b2" strokeWidth={2}
+          <CartesianGrid strokeDasharray="3 3" stroke={ANALYTICS_CHART_STYLES.gridStroke} />
+          <XAxis dataKey="month" tick={ANALYTICS_CHART_STYLES.xAxisTick} axisLine={false} tickLine={false} />
+          <YAxis allowDecimals={false} tick={ANALYTICS_CHART_STYLES.yAxisTick} axisLine={false} tickLine={false} width={28} />
+          <Tooltip contentStyle={ANALYTICS_CHART_STYLES.tooltip} />
+          <Legend wrapperStyle={ANALYTICS_CHART_STYLES.legend} iconType="circle" iconSize={8} />
+          <Line type="monotone" dataKey="Applications" stroke={ANALYTICS_SERIES_COLORS.applications.line} strokeWidth={2}
+            dot={{ r: 3, fill: ANALYTICS_SERIES_COLORS.applications.line, strokeWidth: 0 }} activeDot={{ r: 5 }} />
+          <Line type="monotone" dataKey="Users" stroke={ANALYTICS_SERIES_COLORS.users.line} strokeWidth={2}
+            dot={{ r: 3, fill: ANALYTICS_SERIES_COLORS.users.line, strokeWidth: 0 }} activeDot={{ r: 5 }} />
+          <Line type="monotone" dataKey="AI Requests" stroke={ANALYTICS_SERIES_COLORS.aiRequests.line} strokeWidth={2}
             strokeDasharray="5 3"
-            dot={{ r: 3, fill: "#0891b2", strokeWidth: 0 }} activeDot={{ r: 5 }} />
+            dot={{ r: 3, fill: ANALYTICS_SERIES_COLORS.aiRequests.line, strokeWidth: 0 }} activeDot={{ r: 5 }} />
         </LineChart>
       </ResponsiveContainer>
     </ChartCard>
@@ -630,7 +567,7 @@ function TrendOverviewChart({ data, period }: { data: AnalyticsData; period: num
 
 // ── Shared UI primitives ──────────────────────────────────────────────────────
 
-function SectionHeader({ title }: { title: string }) {
+function SectionHeader({ title }: SectionHeaderProps) {
   return (
     <div className="flex items-center gap-3 mb-4 mt-2">
       <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">{title}</span>
@@ -639,9 +576,7 @@ function SectionHeader({ title }: { title: string }) {
   )
 }
 
-function ChartCard({ title, subtitle, children, className = "" }: {
-  title: string; subtitle: string; children: React.ReactNode; className?: string
-}) {
+function ChartCard({ title, subtitle, children, className = "" }: ChartCardProps) {
   return (
     <div className={`bg-white rounded-xl border border-gray-200 p-6 ${className}`}>
       <div className="mb-4">
@@ -653,10 +588,7 @@ function ChartCard({ title, subtitle, children, className = "" }: {
   )
 }
 
-function KpiCard({ label, value, icon, bg, loading, decimals = 0 }: {
-  label: string; value: number | undefined; icon: React.ReactNode
-  bg: string; loading: boolean; decimals?: number
-}) {
+function KpiCard({ label, value, icon, bg, loading, decimals = 0 }: KpiCardProps) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-center gap-4">
       <div className={`${bg} p-2.5 rounded-lg flex-shrink-0`}>{icon}</div>
@@ -674,7 +606,7 @@ function EmptyChart() {
   return <div className="h-48 flex items-center justify-center text-sm text-gray-400">No data yet</div>
 }
 
-function ChartSkeleton({ rows = 2 }: { rows?: number }) {
+function ChartSkeleton({ rows = 2 }: ChartSkeletonProps) {
   return (
     <div className="space-y-6">
       {Array.from({ length: rows }).map((_, i) => (

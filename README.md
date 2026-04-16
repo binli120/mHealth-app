@@ -146,7 +146,7 @@ NEXT_PUBLIC_MASSHEALTH_ANALYSIS_BASE_URL=http://localhost:8000
 # ── OpenObserve observability ─────────────────────────────────────────────────
 # All three must be set to activate; leave blank to disable silently
 OPENOBSERVE_URL=http://72.60.29.200:5080
-OPENOBSERVE_USER=binlee120@gmail.com
+OPENOBSERVE_USER=blee@healthcompass.cloud
 OPENOBSERVE_PASSWORD=
 OPENOBSERVE_ORG=default
 OPENOBSERVE_STREAM=mhealth-app
@@ -222,6 +222,12 @@ App runs at **http://localhost:3000**
 
 ---
 
+## Requirements and Planning
+
+The implementation-facing requirements package lives in [`docs/requirements/README.md`](docs/requirements/README.md). It covers product, functional, AI agent, API, data/security, non-functional, roadmap, and traceability requirements generated from the current codebase.
+
+---
+
 ## Commands
 
 | Command | Description |
@@ -292,7 +298,7 @@ instrumentation.ts            ← OpenTelemetry SDK (auto-loaded by Next.js)
 | | |
 |---|---|
 | **URL** | `http://72.60.29.200:5080` |
-| **Login** | `binlee120@gmail.com` |
+| **Login** | `blee@healthcompass.cloud` |
 | **Dev stream** | `mhealth-app` |
 | **Prod stream** | `mhealth-app-prod` |
 
@@ -302,7 +308,7 @@ All three must be set to activate log shipping and tracing. Leave blank to disab
 
 ```env
 OPENOBSERVE_URL=http://72.60.29.200:5080
-OPENOBSERVE_USER=binlee120@gmail.com
+OPENOBSERVE_USER=blee@healthcompass.cloud
 OPENOBSERVE_PASSWORD=<your-password>
 OPENOBSERVE_ORG=default
 OPENOBSERVE_STREAM=mhealth-app                   # Next.js app logs (structured JSON)

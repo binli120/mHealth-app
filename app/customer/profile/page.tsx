@@ -1,6 +1,6 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 "use client"
@@ -33,23 +33,8 @@ import { setLanguage } from "@/lib/redux/features/app-slice"
 import { ShieldHeartIcon } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 import type { UserProfile } from "@/lib/user-profile/types"
-
-type SectionId = "personal" | "family" | "education" | "bank" | "settings" | "notifications"
-
-const NAV_ITEMS: { id: SectionId; label: string; icon: React.ElementType }[] = [
-  { id: "personal",      label: "Personal",          icon: User          },
-  { id: "family",        label: "Family & Income",    icon: Users         },
-  { id: "education",     label: "Education",          icon: GraduationCap },
-  { id: "bank",          label: "Bank",               icon: CreditCard    },
-  { id: "settings",      label: "Settings",           icon: Settings      },
-  { id: "notifications", label: "Notifications",      icon: Bell          },
-]
-
-interface UserProfileApiResponse {
-  ok: boolean
-  profile?: UserProfile
-  error?: string
-}
+import { NAV_ITEMS } from "./page.constants"
+import type { SectionId, UserProfileApiResponse } from "./page.types"
 
 export default function CustomerProfilePage() {
   const dispatch = useAppDispatch()

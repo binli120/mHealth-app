@@ -4,7 +4,7 @@
  * Social worker view of a patient — renders the exact same dashboard
  * experience the patient sees, in read-only mode.
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react"
@@ -12,68 +12,13 @@ import { useParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { MASSHEALTH_APPLICATION_TYPES } from "@/lib/masshealth/application-types"
+import { getApplicationTypeLabel } from "@/lib/masshealth/application-types"
 import { MASSHEALTH_PHONE, MASSHEALTH_TTY_DIRECT } from "@/lib/masshealth/constants"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { formatDate } from "@/lib/utils/format"
-import {
-  AlertCircle,
-  ArrowLeft,
-  BookOpenText,
-  Calendar,
-  CheckCircle2,
-  ChevronRight,
-  Clock,
-  FileText,
-  Loader2,
-  Scale,
-  Upload,
-  UserCheck,
-  X,
-} from "lucide-react"
-
-// ── Types (same shape as customer dashboard) ─────────────────────────────────
-interface ApplicationRecord {
-  id: string
-  status: string
-  applicationType: string | null
-  draftStep: number | null
-  lastSavedAt: string | null
-  submittedAt: string | null
-  createdAt: string
-  updatedAt: string
-  applicantName: string | null
-  householdSize: number | null
-}
-
-interface PatientInfo {
-  email: string
-  firstName: string | null
-  lastName: string | null
-  dob: string | null
-  phone: string | null
-  city: string | null
-  state: string | null
-}
-
-// ── Status config (mirrors customer dashboard) ────────────────────────────────
-const STATUS_META: Record<string, { label: string; color: string; icon: typeof FileText }> = {
-  draft:        { label: "In Progress",       color: "bg-secondary text-secondary-foreground", icon: FileText },
-  submitted:    { label: "Submitted",          color: "bg-primary/10 text-primary",             icon: Clock },
-  ai_extracted: { label: "AI Extracted",       color: "bg-accent/10 text-accent",               icon: Clock },
-  needs_review: { label: "Needs Review",       color: "bg-accent/10 text-accent",               icon: Clock },
-  rfi_requested:{ label: "Info Requested",     color: "bg-warning/10 text-warning",             icon: AlertCircle },
-  approved:     { label: "Approved",           color: "bg-success/10 text-success",             icon: CheckCircle2 },
-  denied:       { label: "Denied",             color: "bg-destructive/10 text-destructive",     icon: AlertCircle },
-}
-
-const APPLICATION_TYPE_LABELS = new Map<string, string>(
-  MASSHEALTH_APPLICATION_TYPES.map((item) => [item.id, item.shortLabel]),
-)
-function getApplicationTypeLabel(type: string | null) {
-  if (!type) return "Application"
-  return APPLICATION_TYPE_LABELS.get(type) ?? type.toUpperCase()
-}
+import { AlertCircle, ArrowLeft, BookOpenText, Calendar, ChevronRight, Clock, FileText, Loader2, Scale, Upload, UserCheck, X } from "lucide-react"
+import { STATUS_META } from "./page.constants"
+import type { ApplicationRecord, PatientInfo } from "./page.types"
 
 // ─────────────────────────────────────────────────────────────────────────────
 

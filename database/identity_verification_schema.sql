@@ -1,6 +1,6 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  *
  * Identity Verification Schema
  * Adds driver's license / REAL ID verification fields to the applicants table

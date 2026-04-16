@@ -1,6 +1,6 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 "use client"
@@ -12,52 +12,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { getSafeAuthNextPath, resolvePostAuthRedirect } from "@/lib/auth/navigation"
+import type { DevAutoConfirmResponse, DevRegisterResponse } from "@/lib/auth/types"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { isLocalAuthHelperEnabled, normalizeAuthEmail } from "@/lib/auth/local-auth"
 import { Eye, EyeOff, ArrowLeft } from "lucide-react"
 import { ShieldHeartIcon } from "@/lib/icons"
-
-interface DevAutoConfirmResponse {
-  ok?: boolean
-  error?: string
-}
-
-interface DevRegisterResponse {
-  ok?: boolean
-  error?: string
-}
-
-function getSafeNextPath(nextPath: string | null, fallback: string): string {
-  if (!nextPath || !nextPath.startsWith("/") || nextPath.startsWith("//") || nextPath.startsWith("/auth/")) {
-    return fallback
-  }
-  return nextPath
-}
-
-/**
- * After a successful Supabase sign-in, pick the right landing dashboard.
- * Requires the JWT access token so the server-side API can authenticate the call.
- */
-async function resolveRedirect(explicitNext: string, accessToken: string): Promise<string> {
-  // If the user navigated to login with an explicit ?next= (e.g. from a deep link),
-  // always honour it — don't override with a role-based redirect.
-  if (explicitNext !== "/customer/dashboard") return explicitNext
-
-  try {
-    const res = await fetch("/api/auth/me", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
-    if (!res.ok) return explicitNext
-    const data = (await res.json()) as { roles: string[]; swStatus: string | null }
-
-    if (data.roles.includes("admin")) return "/admin"
-    if (data.roles.includes("social_worker"))
-      return "/social-worker/dashboard" // layout handles pending/rejected screens
-  } catch {
-    // Fall through to default
-  }
-  return explicitNext
-}
 
 function LoginPageContent() {
   const router = useRouter()
@@ -68,7 +28,7 @@ function LoginPageContent() {
   const [password, setPassword] = useState("")
   const [errorMessage, setErrorMessage] = useState("")
   const nextPath = useMemo(
-    () => getSafeNextPath(searchParams.get("next"), "/customer/dashboard"),
+    () => getSafeAuthNextPath(searchParams.get("next"), "/customer/dashboard"),
     [searchParams],
   )
   const registerHref = useMemo(
@@ -183,7 +143,7 @@ function LoginPageContent() {
             })
 
             if (!retry.error) {
-              router.push(await resolveRedirect(nextPath, retry.data.session?.access_token ?? ""))
+              router.push(await resolvePostAuthRedirect(nextPath, retry.data.session?.access_token ?? ""))
               router.refresh()
               return
             }
@@ -203,7 +163,7 @@ function LoginPageContent() {
           })
 
           if (repaired.ok) {
-            router.push(await resolveRedirect(nextPath, repaired.accessToken))
+            router.push(await resolvePostAuthRedirect(nextPath, repaired.accessToken))
             router.refresh()
             return
           }
@@ -216,7 +176,7 @@ function LoginPageContent() {
         return
       }
 
-      router.push(await resolveRedirect(nextPath, signIn.data.session?.access_token ?? ""))
+      router.push(await resolvePostAuthRedirect(nextPath, signIn.data.session?.access_token ?? ""))
       router.refresh()
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to sign in.")

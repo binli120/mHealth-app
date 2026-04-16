@@ -2,37 +2,13 @@
 
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 import { useState } from "react"
 import { Download, FileText, Users, Loader2, CheckCircle } from "lucide-react"
-import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
-
-const APPLICATION_STATUSES = [
-  { value: "", label: "All statuses" },
-  { value: "draft", label: "Draft" },
-  { value: "submitted", label: "Submitted" },
-  { value: "ai_extracted", label: "AI Extracted" },
-  { value: "needs_review", label: "Needs Review" },
-  { value: "rfi_requested", label: "RFI Requested" },
-  { value: "approved", label: "Approved" },
-  { value: "denied", label: "Denied" },
-]
-
-async function downloadCsv(url: string, filename: string) {
-  const res = await authenticatedFetch(url)
-  if (!res.ok) throw new Error("Export failed")
-  const blob = await res.blob()
-  const objectUrl = URL.createObjectURL(blob)
-  const a = document.createElement("a")
-  a.href = objectUrl
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(objectUrl)
-}
+import { APPLICATION_STATUS_FILTER_OPTIONS } from "@/lib/application-status"
+import { downloadCsv } from "./page.utils"
 
 export default function AdminReportsPage() {
   // Applications export state
@@ -116,7 +92,7 @@ export default function AdminReportsPage() {
                 onChange={(e) => setAppStatus(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               >
-                {APPLICATION_STATUSES.map((s) => (
+                {APPLICATION_STATUS_FILTER_OPTIONS.map((s) => (
                   <option key={s.value} value={s.value}>{s.label}</option>
                 ))}
               </select>

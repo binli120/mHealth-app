@@ -1,6 +1,6 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  *
  * Patient-side panel: search for social workers and send engagement requests.
  */

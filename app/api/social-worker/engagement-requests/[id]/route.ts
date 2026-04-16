@@ -1,6 +1,6 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  *
  * PATCH /api/social-worker/engagement-requests/[id]
  * SW accepts or rejects a pending engagement request.

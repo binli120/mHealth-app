@@ -14,7 +14,7 @@
  * derived from that object), then translate it in every locale block.
  *
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 import { type SupportedLanguage } from "@/lib/i18n/languages"

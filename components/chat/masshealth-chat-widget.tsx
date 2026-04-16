@@ -1,12 +1,12 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 "use client"
 
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react"
-import { ExternalLink, ListChecks, Loader2, Lock, LogIn, MessageCircle, RotateCcw, SendHorizontal, ShieldCheck, UserSearch, X } from "lucide-react"
+import { ExternalLink, ListChecks, Loader2, LogIn, MessageCircle, RotateCcw, SendHorizontal, ShieldCheck, UserSearch, X } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -18,6 +18,7 @@ import { getChatWidgetCopy, type ChatWidgetCopy } from "@/lib/i18n/chat-widget"
 import { setLanguage } from "@/lib/redux/features/app-slice"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { readChatStream, type ChatStreamAnnotation } from "@/lib/chat/read-stream"
 import { useAutoScroll } from "@/hooks/use-auto-scroll"
 import {
   getBenefitAdvisorGreeting,
@@ -240,42 +241,77 @@ export function MassHealthChatWidget() {
     const currentMessages = isAdvisorView ? advisorMessages : messages
     const setCurrentMessages = isAdvisorView ? setAdvisorMessages : setMessages
 
-    const nextMessages: WidgetMessage[] = [
+    // Messages sent to the API (history + new user turn, no placeholder)
+    const apiMessages: WidgetMessage[] = [
       ...currentMessages,
       { id: createMessageId(), role: "user", content: message },
     ]
-    setCurrentMessages(nextMessages)
+
+    // Stable ID for the streaming assistant placeholder
+    const assistantId = createMessageId()
+
+    setCurrentMessages([
+      ...apiMessages,
+      { id: assistantId, role: "assistant", content: "" },
+    ])
 
     try {
       const response = await authenticatedFetch("/api/chat/masshealth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: nextMessages.slice(-12).map(({ role, content }) => ({ role, content })),
+          messages: apiMessages.slice(-12).map(({ role, content }) => ({ role, content })),
           language: selectedLanguage,
           ...(isAdvisorView ? { mode: "benefit_advisor" } : {}),
         }),
       })
 
-      const data = (await response.json()) as ChatApiResponse
-      const reply = data.reply?.trim() || (data.outOfScope ? outOfScopeReply : copy.fallbackReply)
-      const systemKey: WidgetSystemMessageKey | undefined = data.reply?.trim()
-        ? undefined
-        : data.outOfScope
-          ? "outOfScope"
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+
+      const { text, annotation } = await readChatStream(
+        response,
+        (_token, accumulated) => {
+          // Update the placeholder character-by-character as tokens arrive
+          setCurrentMessages((previous) =>
+            previous.map((m) =>
+              m.id === assistantId ? { ...m, content: accumulated } : m,
+            ),
+          )
+        },
+      )
+
+      // Out-of-scope: no text stream — reply comes from the data annotation
+      const isOutOfScope = annotation?.outOfScope === true
+      const finalText = isOutOfScope
+        ? ((annotation as ChatStreamAnnotation).reply ?? outOfScopeReply)
+        : (text.trim() || copy.fallbackReply)
+
+      const systemKey: WidgetSystemMessageKey | undefined = isOutOfScope
+        ? "outOfScope"
+        : text.trim()
+          ? undefined
           : "requestFailed"
 
-      setCurrentMessages((previous) => [
-        ...previous,
-        createAssistantMessage(reply, systemKey, data.eligibilityResults),
-      ])
+      const eligibilityResults = annotation?.eligibilityResults as ChatApiResponse["eligibilityResults"]
+
+      setCurrentMessages((previous) =>
+        previous.map((m) =>
+          m.id === assistantId
+            ? { ...m, content: finalText, systemKey, eligibilityResults }
+            : m,
+        ),
+      )
     } catch (error) {
       console.error("MassHealth chat request failed", error)
-      const setMsg = isAdvisorView ? setAdvisorMessages : setMessages
-      setMsg((previous) => [
-        ...previous,
-        createAssistantMessage(copy.serviceUnavailable, "serviceUnavailable"),
-      ])
+      setCurrentMessages((previous) =>
+        previous.map((m) =>
+          m.id === assistantId
+            ? { ...m, content: copy.serviceUnavailable, systemKey: "serviceUnavailable" }
+            : m,
+        ),
+      )
     } finally {
       setIsLoading(false)
     }
@@ -300,6 +336,76 @@ export function MassHealthChatWidget() {
   const activeMessages = isAdvisorView ? advisorMessages : messages
   const chatPlaceholder = isAdvisorView ? copy.advisorPlaceholder : copy.chatPlaceholder
 
+  // ── Guest popup — shown instead of the full panel when not signed in ─────────
+  const guestPopup = open && authStatus === "guest" ? (
+    <div
+      role="dialog"
+      aria-label="Sign in to use HealthCompass AI Assistant"
+      className="fixed right-5 bottom-24 z-40 w-[min(92vw,320px)] rounded-2xl border bg-card shadow-2xl overflow-hidden"
+    >
+      {/* Header stripe */}
+      <div className="flex items-center justify-between border-b px-4 py-3">
+        <span className="text-sm font-semibold">HealthCompass AI Assistant</span>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="ghost"
+          aria-label={copy.close}
+          onClick={() => setOpen(false)}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Body */}
+      <div className="flex flex-col items-center gap-4 px-5 py-6 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+          <LogIn className="h-5 w-5 text-primary" />
+        </div>
+        <div className="space-y-1.5">
+          <p className="text-sm font-semibold leading-snug">Sign in to get started</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Check your MassHealth eligibility, chat with an AI advisor, and connect with a social worker.
+          </p>
+        </div>
+
+        <div className="flex w-full flex-col gap-2">
+          <a
+            href="/auth/login"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow transition-colors hover:bg-primary/90"
+          >
+            <LogIn className="h-4 w-4" />
+            Sign In
+          </a>
+          <a
+            href="/auth/register"
+            className="inline-flex w-full items-center justify-center rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors hover:bg-muted"
+          >
+            Create Account
+          </a>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => { setOpen(false); setView("faq") }}
+          className="text-[11px] text-muted-foreground underline-offset-2 hover:underline"
+        >
+          Browse FAQs without signing in →
+        </button>
+      </div>
+    </div>
+  ) : null
+
+  // ── Auth loading mini-popup — tiny spinner while session resolves ──────────
+  const loadingPopup = open && authStatus === "loading" ? (
+    <div
+      className="fixed right-5 bottom-24 z-40 flex h-16 w-[min(92vw,320px)] items-center justify-center rounded-2xl border bg-card shadow-2xl"
+      aria-busy="true"
+    >
+      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+    </div>
+  ) : null
+
   return (
     <>
       <Button
@@ -309,10 +415,19 @@ export function MassHealthChatWidget() {
         aria-expanded={open}
         onClick={() => setOpen((previous) => !previous)}
       >
-        <MessageCircle className="h-6 w-6" />
+        {authStatus === "loading" && open
+          ? <Loader2 className="h-5 w-5 animate-spin" />
+          : <MessageCircle className="h-6 w-6" />}
       </Button>
 
-      {open ? (
+      {/* Guest: compact login card */}
+      {guestPopup}
+
+      {/* Loading: tiny spinner card */}
+      {loadingPopup}
+
+      {/* Authenticated: full chat panel */}
+      {open && authStatus === "authenticated" ? (
         <section
           role="dialog"
           aria-label={copy.dialogLabel}
@@ -366,48 +481,37 @@ export function MassHealthChatWidget() {
             </p>
           </header>
 
-          {/* Tab bar */}
+          {/* Tab bar — all tabs unlocked; panel only renders for authenticated users */}
           <div className="border-b">
             <div className="grid grid-cols-4">
               {(
                 [
-                  { id: "live", label: "Live Assistant", icon: UserSearch, requiresAuth: true, isActive: view === "find_sw" || view === "sw_chat", onClick: () => setView(swChatTarget ? "sw_chat" : "find_sw") },
-                  { id: "advisor", label: "Benefit Advisor", icon: ShieldCheck, requiresAuth: true, isActive: view === "advisor", onClick: () => setView("advisor") },
-                  { id: "faq", label: "Common Questions", icon: ListChecks, requiresAuth: false, isActive: view === "faq", onClick: () => setView("faq") },
-                  { id: "chat", label: "Ask Question", icon: MessageCircle, requiresAuth: true, isActive: view === "chat", onClick: () => setView("chat") },
+                  { id: "live", label: "Live Assistant", icon: UserSearch, isActive: view === "find_sw" || view === "sw_chat", onClick: () => setView(swChatTarget ? "sw_chat" : "find_sw") },
+                  { id: "advisor", label: "Benefit Advisor", icon: ShieldCheck, isActive: view === "advisor", onClick: () => setView("advisor") },
+                  { id: "faq", label: "Common Questions", icon: ListChecks, isActive: view === "faq", onClick: () => setView("faq") },
+                  { id: "chat", label: "Ask Question", icon: MessageCircle, isActive: view === "chat", onClick: () => setView("chat") },
                 ] as const
-              ).map(({ id, label, icon: Icon, requiresAuth, isActive, onClick }) => {
-                const locked = requiresAuth && authStatus !== "authenticated"
-                return (
-                  <button
-                    key={id}
-                    type="button"
-
-                    onClick={locked ? undefined : onClick}
-                    aria-label={label}
-                    className={[
-                      "relative flex flex-col items-center gap-1 border-b-2 px-1 py-2.5 text-center text-[10px] font-medium transition-colors",
-                      locked
-                        ? "cursor-not-allowed border-transparent text-muted-foreground/40"
-                        : isActive
-                          ? "border-primary text-primary"
-                          : "border-transparent text-muted-foreground hover:text-foreground",
-                    ].join(" ")}
-                  >
-                    <span className="relative inline-flex">
-                      <Icon className="h-4 w-4 shrink-0" />
-                      {locked && (
-                        <Lock className="absolute -right-1.5 -top-1 h-2.5 w-2.5 text-muted-foreground/50" />
-                      )}
-                    </span>
-                    <span className="leading-tight">{label}</span>
-                  </button>
-                )
-              })}
+              ).map(({ id, label, icon: Icon, isActive, onClick }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={onClick}
+                  aria-label={label}
+                  className={[
+                    "flex flex-col items-center gap-1 border-b-2 px-1 py-2.5 text-center text-[10px] font-medium transition-colors",
+                    isActive
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:text-foreground",
+                  ].join(" ")}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="leading-tight">{label}</span>
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Main content area — always rendered; overlaid when auth is pending or user is a guest */}
+          {/* Main content area */}
           <div className="relative min-h-0 flex-1 flex flex-col overflow-hidden">
 
             {/* ── FAQ view (always accessible) ── */}
@@ -448,8 +552,8 @@ export function MassHealthChatWidget() {
               </ScrollArea>
             )}
 
-            {/* ── Live Assistant / SW Chat views (auth-required) ── */}
-            {view === "find_sw" && authStatus === "authenticated" && (
+            {/* ── Live Assistant / SW Chat views ── */}
+            {view === "find_sw" && (
               <SwFinderPanel
                 onOpenChat={(userId, name) => {
                   setSwChatTarget({ userId, name })
@@ -457,7 +561,7 @@ export function MassHealthChatWidget() {
                 }}
               />
             )}
-            {view === "sw_chat" && authStatus === "authenticated" && swChatTarget && currentUserId && (
+            {view === "sw_chat" && swChatTarget && currentUserId && (
               <SwDirectChatPanel
                 swUserId={swChatTarget.userId}
                 swName={swChatTarget.name}
@@ -469,21 +573,10 @@ export function MassHealthChatWidget() {
                 onBack={() => setView("find_sw")}
               />
             )}
-            {/* Stub shown behind the overlay for Live Assistant when not authed */}
-            {(view === "find_sw" || view === "sw_chat") && authStatus !== "authenticated" && (
-              <div className="flex min-h-0 flex-1 flex-col gap-3 p-4 pointer-events-none select-none">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-16 rounded-xl border bg-muted/30" />
-                ))}
-              </div>
-            )}
 
             {/* ── Chat / Advisor view ── */}
             {(view === "advisor" || view === "chat") && (
-              <div className={[
-                "flex min-h-0 flex-1 flex-col",
-                authStatus !== "authenticated" ? "pointer-events-none select-none" : "",
-              ].join(" ")}>
+              <div className="flex min-h-0 flex-1 flex-col">
                 {isAdvisorView && (
                   <div className="bg-muted/40 border-b px-4 py-2 text-xs text-muted-foreground">
                     <ShieldCheck className="mr-1 inline h-3 w-3" />
@@ -525,52 +618,6 @@ export function MassHealthChatWidget() {
                     </p>
                   )}
                 </form>
-              </div>
-            )}
-
-            {/* ── Auth loading overlay ── */}
-            {authStatus === "loading" && view !== "faq" && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/70 backdrop-blur-[2px]">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            )}
-
-            {/* ── Guest overlay — content visible but grayed out behind this ── */}
-            {authStatus === "guest" && view !== "faq" && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/75 backdrop-blur-[2px]">
-                <div className="mx-5 w-full max-w-[260px] rounded-2xl border bg-card p-5 text-center shadow-lg space-y-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 mx-auto">
-                    <LogIn className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm font-semibold">Sign in to use this feature</p>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Chat with a social worker, check eligibility, and manage your applications.
-                    </p>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <a
-                      href="/auth/login"
-                      className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow transition-colors hover:bg-primary/90"
-                    >
-                      <LogIn className="h-3.5 w-3.5" />
-                      Sign In
-                    </a>
-                    <a
-                      href="/auth/register"
-                      className="inline-flex w-full items-center justify-center rounded-lg border px-4 py-2 text-xs font-medium transition-colors hover:bg-muted"
-                    >
-                      Create Account
-                    </a>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setView("faq")}
-                    className="text-[11px] text-muted-foreground underline-offset-2 hover:underline"
-                  >
-                    Browse FAQs without signing in
-                  </button>
-                </div>
               </div>
             )}
 

@@ -1,6 +1,6 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 import { createClient, type Session, type SupabaseClient, type User } from "@supabase/supabase-js"

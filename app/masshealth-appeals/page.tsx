@@ -1,6 +1,6 @@
 /**
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 "use client"
@@ -61,129 +61,23 @@ import {
   fillAppealDraftPlaceholders,
 } from "@/lib/appeals/draft-personalization"
 import type { UserProfile } from "@/lib/user-profile/types"
+import { LOGIN_PATH, PDF_MIME_TYPE, THIS_PATH } from "./page.constants"
+import type {
+  CategoryEntry,
+  DraftResult,
+  PageState,
+  PrefilledAppealFields,
+  ResearchResult,
+} from "./page.types"
+import {
+  AuthNeededError,
+  formatAppealDraftFileSize,
+  getTrustTierBadgeClass,
+  masshealthFetch,
+  triggerBrowserDownload,
+} from "./page.utils"
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface CategoryEntry {
-  code: string
-  label: string
-  description: string
-  notice_keywords: string[]
-  evidence_needed: string[]
-  argument_themes: string[]
-  missing_info_questions: string[]
-}
-
-interface MatchedCategory {
-  code: string
-  label: string
-  score: number
-  rationale: string
-}
-
-type TrustTier = "official" | "legal_aid" | "community"
-
-interface TopSource {
-  source_id: string
-  title: string
-  url: string
-  source_type: string
-  trust_tier: TrustTier
-  score: number
-  summary: string
-  key_points: string[]
-}
-
-interface ResearchResult {
-  status: string
-  matched_categories: MatchedCategory[]
-  evidence_checklist: string[]
-  argument_themes: string[]
-  missing_information_questions: string[]
-  top_sources: TopSource[]
-  grounding_warnings: string[]
-}
-
-interface DraftResult {
-  status: string
-  letter_text: string
-  citations: Array<{
-    source_id: string
-    title: string
-    trust_tier: string
-    excerpt: string
-  }>
-  model_used: string
-  error: string
-}
-
-type PageState =
-  | "form"
-  | "researching"
-  | "research_results"
-  | "drafting"
-  | "draft_result"
-  | "error"
-
-interface PrefilledAppealFields {
-  applicantName: string
-  contactInformation: string
-  householdSummary: string
-}
-
-// ─── Auth sentinel ────────────────────────────────────────────────────────────
-
-/** Thrown by masshealthFetch when there is no valid session. Caught by the page
- *  component which then redirects to login rather than showing an error card. */
-class AuthNeededError extends Error {
-  constructor() { super("auth-needed") }
-}
-
-const LOGIN_PATH = "/auth/login"
-const THIS_PATH  = "/masshealth-appeals"
 const ACCEPTED_MIME_STRING = [...ACCEPTED_DOCUMENT_MIME_TYPES].join(",")
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-async function masshealthFetch(url: string, init: RequestInit = {}): Promise<Response> {
-  const { session, error } = await getSafeSupabaseSession()
-  if (error || !session) throw new AuthNeededError()
-
-  const headers = new Headers(init.headers)
-  headers.set("Authorization", `Bearer ${session.access_token}`)
-  headers.set("user-id", session.user.id)
-  if (typeof init.body === "string" && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json")
-  }
-
-  return fetch(url, { ...init, headers })
-}
-
-const TRUST_TIER_CLASSES: Record<TrustTier, string> = {
-  official: "bg-blue-100 text-blue-800",
-  legal_aid: "bg-emerald-100 text-emerald-800",
-  community: "bg-amber-100 text-amber-800",
-}
-
-function trustBadge(tier: string) {
-  const cls = TRUST_TIER_CLASSES[tier as TrustTier] ?? "bg-gray-100 text-gray-700"
-  return (
-    <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${cls}`}>
-      {tier.replace("_", " ")}
-    </span>
-  )
-}
-
-function triggerDownload(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement("a")
-  anchor.href = url
-  anchor.download = filename
-  document.body.appendChild(anchor)
-  anchor.click()
-  anchor.remove()
-  URL.revokeObjectURL(url)
-}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -217,6 +111,9 @@ export default function MassHealthAppealsPage() {
   const [contactInformation, setContactInformation] = useState("")
   const [applicantId, setApplicantId] = useState("")
   const [householdSummary, setHouseholdSummary] = useState("")
+  const [requestedRelief, setRequestedRelief] = useState("")
+  const [denialLetterFile, setDenialLetterFile] = useState<File | null>(null)
+  const [denialLetterError, setDenialLetterError] = useState<string | null>(null)
   const [facts, setFacts] = useState<Array<{ key: string; value: string }>>([
     { key: "", value: "" },
   ])
@@ -353,17 +250,20 @@ export default function MassHealthAppealsPage() {
       factsObj["Contact information"] = contactInformation.trim()
     }
 
+    const formData = new FormData()
+    if (denialLetterFile) formData.append("file", denialLetterFile, denialLetterFile.name)
+    if (denialText.trim()) formData.append("denial_notice_text", denialText.trim())
+    if (applicantName.trim()) formData.append("applicant_name", applicantName.trim())
+    if (applicantId.trim()) formData.append("applicant_id", applicantId.trim())
+    if (householdSummary.trim()) formData.append("household_summary", householdSummary.trim())
+    if (requestedRelief.trim()) formData.append("requested_relief", requestedRelief.trim())
+    if (Object.keys(factsObj).length > 0) formData.append("facts", JSON.stringify(factsObj))
+    formData.append("top_k", "5")
+
     try {
       const res = await masshealthFetch("/api/masshealth/appeals/draft", {
         method: "POST",
-        body: JSON.stringify({
-          denial_notice_text: denialText,
-          applicant_name: applicantName || undefined,
-          applicant_id: applicantId || undefined,
-          household_summary: householdSummary || undefined,
-          facts: Object.keys(factsObj).length > 0 ? factsObj : undefined,
-          top_k: 5,
-        }),
+        body: formData,
       })
 
       if (res.status === 401) { goToLogin(); return }
@@ -401,6 +301,9 @@ export default function MassHealthAppealsPage() {
     setContactInformation(prefilledFields.contactInformation)
     setApplicantId("")
     setHouseholdSummary(prefilledFields.householdSummary)
+    setRequestedRelief("")
+    setDenialLetterFile(null)
+    setDenialLetterError(null)
     setFacts([{ key: "", value: "" }])
     setCopied(false)
   }
@@ -414,7 +317,7 @@ export default function MassHealthAppealsPage() {
 
   function handleDownloadText() {
     if (!draftResult) return
-    triggerDownload(
+    triggerBrowserDownload(
       new Blob([resolvedDraftText], { type: "text/plain;charset=utf-8" }),
       `${buildAppealDraftFilename(applicantName)}.txt`,
     )
@@ -422,7 +325,7 @@ export default function MassHealthAppealsPage() {
 
   function handleDownloadWord() {
     if (!draftResult) return
-    triggerDownload(
+    triggerBrowserDownload(
       new Blob([buildAppealDraftWordHtml(resolvedDraftText)], { type: "application/msword;charset=utf-8" }),
       `${buildAppealDraftFilename(applicantName)}.doc`,
     )
@@ -440,6 +343,33 @@ export default function MassHealthAppealsPage() {
 
   function removeFact(index: number) {
     setFacts((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev))
+  }
+
+  function handleDenialLetterFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null
+    event.target.value = ""
+    setDenialLetterError(null)
+
+    if (!file) return
+
+    if (file.type !== PDF_MIME_TYPE && !file.name.toLowerCase().endsWith(".pdf")) {
+      setDenialLetterFile(null)
+      setDenialLetterError("Upload a PDF denial letter.")
+      return
+    }
+
+    if (file.size > MAX_DOCUMENT_UPLOAD_BYTES) {
+      setDenialLetterFile(null)
+      setDenialLetterError("PDF must be 10 MB or smaller.")
+      return
+    }
+
+    setDenialLetterFile(file)
+  }
+
+  function handleClearDenialLetterFile() {
+    setDenialLetterFile(null)
+    setDenialLetterError(null)
   }
 
   const resolvedDraftText = draftResult
@@ -752,7 +682,9 @@ export default function MassHealthAppealsPage() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="text-sm font-medium">{src.title}</span>
-                          {trustBadge(src.trust_tier)}
+                          <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${getTrustTierBadgeClass(src.trust_tier)}`}>
+                            {src.trust_tier.replace("_", " ")}
+                          </span>
                         </div>
                         {src.url && (
                           <a
@@ -841,6 +773,68 @@ export default function MassHealthAppealsPage() {
                 </div>
 
                 <div className="space-y-1.5">
+                  <Label htmlFor="requested-relief">Requested Relief</Label>
+                  <Input
+                    id="requested-relief"
+                    placeholder="Approval of MassHealth Standard coverage"
+                    value={requestedRelief}
+                    onChange={(e) => setRequestedRelief(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="denial-letter-pdf">Denial Letter PDF</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Attach the original PDF for a more grounded draft.
+                  </p>
+
+                  {denialLetterFile ? (
+                    <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-gray-800">
+                          {denialLetterFile.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          PDF · {formatAppealDraftFileSize(denialLetterFile.size)}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleClearDenialLetterFile}
+                        className="shrink-0 text-muted-foreground hover:text-destructive"
+                        aria-label="Remove denial letter PDF"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <input
+                        id="denial-letter-pdf"
+                        type="file"
+                        accept={PDF_MIME_TYPE}
+                        className="sr-only"
+                        onChange={handleDenialLetterFileChange}
+                      />
+                      <Label
+                        htmlFor="denial-letter-pdf"
+                        className="flex cursor-pointer items-center gap-2 rounded-lg border-2 border-dashed border-gray-200 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+                      >
+                        <Paperclip className="h-4 w-4 shrink-0" />
+                        Attach denial letter PDF
+                      </Label>
+                    </div>
+                  )}
+
+                  {denialLetterError && (
+                    <p className="flex items-center gap-1.5 text-xs text-destructive">
+                      <AlertCircle className="h-3.5 w-3.5" />
+                      {denialLetterError}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
                   <Label htmlFor="contact-information">Contact Information</Label>
                   <Textarea
                     id="contact-information"
@@ -892,7 +886,11 @@ export default function MassHealthAppealsPage() {
                   </Button>
                 </div>
 
-                <Button className="w-full" onClick={() => void handleDraft()}>
+                <Button
+                  className="w-full"
+                  onClick={() => void handleDraft()}
+                  disabled={Boolean(denialLetterError)}
+                >
                   <Scale className="mr-2 h-4 w-4" />
                   Generate Appeal Letter
                 </Button>
@@ -978,7 +976,9 @@ export default function MassHealthAppealsPage() {
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-medium">{cit.title}</span>
-                          {trustBadge(cit.trust_tier)}
+                          <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${getTrustTierBadgeClass(cit.trust_tier)}`}>
+                            {cit.trust_tier.replace("_", " ")}
+                          </span>
                         </div>
                         <p className="mt-0.5 text-xs text-muted-foreground">
                           {cit.excerpt}

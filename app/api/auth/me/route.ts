@@ -3,7 +3,7 @@
  * Returns the authenticated user's roles and SW profile status.
  * Used by the login page to redirect to the correct dashboard.
  * @author Bin Lee
- * @email binlee120@gmail.com
+ * @email blee@healthcompass.cloud
  */
 
 import { NextResponse } from "next/server"
