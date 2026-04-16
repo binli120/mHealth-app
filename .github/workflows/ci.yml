@@ -76,6 +76,33 @@ jobs:
           RESULTS_FILE:      test-results.json
         run: node scripts/create-ci-issues.mjs
 
+  # ── Dependency security audit ───────────────────────────────────────────────
+  audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit production dependencies
+        # Fails the job on high or critical severity vulnerabilities in prod deps.
+        # moderate/low are reported but do not block — address them as part of
+        # normal dependency maintenance.
+        run: pnpm audit --audit-level high --prod
+
   # ── Lint ────────────────────────────────────────────────────────────────────
   lint:
     name: Lint
