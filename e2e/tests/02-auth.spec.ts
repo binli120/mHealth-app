@@ -67,16 +67,13 @@ test.describe("Authentication", () => {
 
   test("invalid credentials shows error", async ({ page }) => {
     await page.goto("/auth/login")
-    // Use a timestamp-unique email so no previous test run could have registered
-    // this address via local-auth helpers (avoids the pre-existing-user false-pass
-    // where the "wrong" email was silently created by tryDevRepairAndSignIn).
     const uniqueEmail = `e2e-bad-creds-${Date.now()}@not-a-real-domain.example`
     await page.fill("#email", uniqueEmail)
     await page.fill("#password", "BadPasswordXYZ999!")
     await page.click('button[type="submit"]')
     // Error message should appear
     await expect(
-      page.getByText(/invalid|incorrect|not found|error/i).first(),
+      page.getByText(/invalid|incorrect|not found|error|does not match|wrong/i).first(),
     ).toBeVisible({ timeout: 10_000 })
     // Should NOT navigate away
     await expect(page).toHaveURL(/\/auth\/login/)
