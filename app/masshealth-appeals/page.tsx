@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import {
   Scale,
+  AlertCircle,
   CheckCircle2,
   ChevronRight,
   Plus,
@@ -20,7 +21,6 @@ import {
   RotateCcw,
   FileSearch,
   Download,
-  AlertCircle,
   Paperclip,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -49,13 +49,17 @@ import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton"
 import { ErrorCard } from "@/components/shared/ErrorCard"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { getSafeSupabaseSession, getSafeSupabaseUser } from "@/lib/supabase/client"
+import { useDocumentUpload } from "@/hooks/use-document-upload"
+import {
+  ACCEPTED_DOCUMENT_MIME_TYPES,
+  MAX_DOCUMENT_UPLOAD_BYTES,
+} from "@/lib/appeals/constants"
 import {
   buildAppealDraftFilename,
   buildAppealDraftPrefill,
   buildAppealDraftWordHtml,
   fillAppealDraftPlaceholders,
 } from "@/lib/appeals/draft-personalization"
-import { MAX_DOCUMENT_UPLOAD_BYTES } from "@/lib/appeals/constants"
 import type { UserProfile } from "@/lib/user-profile/types"
 import { LOGIN_PATH, PDF_MIME_TYPE, THIS_PATH } from "./page.constants"
 import type {
@@ -73,6 +77,8 @@ import {
   triggerBrowserDownload,
 } from "./page.utils"
 
+const ACCEPTED_MIME_STRING = [...ACCEPTED_DOCUMENT_MIME_TYPES].join(",")
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MassHealthAppealsPage() {
@@ -89,6 +95,15 @@ export default function MassHealthAppealsPage() {
   const [categories, setCategories] = useState<CategoryEntry[]>([])
   const [denialText, setDenialText] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("")
+  const {
+    state: documentState,
+    fileInputRef,
+    handleFile,
+    clear: clearUploadedDocument,
+  } = useDocumentUpload({
+    extractEndpoint: "/api/appeals/extract-document",
+    maxBytes: MAX_DOCUMENT_UPLOAD_BYTES,
+  })
 
   // Step 2 — research result + draft details
   const [researchResult, setResearchResult] = useState<ResearchResult | null>(null)
@@ -160,6 +175,13 @@ export default function MassHealthAppealsPage() {
     }
   }, [])
 
+  useEffect(() => {
+    if (documentState.status !== "ready") return
+
+    const extractedText = documentState.extractedText.trim()
+    if (extractedText) setDenialText(extractedText)
+  }, [documentState])
+
   // Load categories on mount (non-fatal if it fails)
   useEffect(() => {
     void (async () => {
@@ -205,6 +227,12 @@ export default function MassHealthAppealsPage() {
       setErrorMessage(e instanceof Error ? e.message : "Failed to analyze denial notice")
       setPageState("error")
     }
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    void handleFile(file)
   }
 
   // ── Step 2 → draft ───────────────────────────────────────────────────────
@@ -265,6 +293,7 @@ export default function MassHealthAppealsPage() {
     setPageState("form")
     setDenialText("")
     setSelectedCategory("")
+    clearUploadedDocument()
     setResearchResult(null)
     setDraftResult(null)
     setErrorMessage(null)
@@ -388,17 +417,123 @@ export default function MassHealthAppealsPage() {
             <CardHeader>
               <CardTitle className="text-lg">Analyze Your Denial Notice</CardTitle>
               <CardDescription>
-                Paste the text from your MassHealth denial letter to begin.
+                Upload a PDF notice or paste the text from your MassHealth denial letter to begin.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
+              <div className="space-y-2">
+                <Label>
+                  Denial Notice PDF{" "}
+                  <span className="font-normal text-muted-foreground">(optional)</span>
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Upload a PDF, JPEG, PNG, or WEBP denial notice. The extracted text will fill the
+                  notice box below.
+                </p>
+
+                {documentState.status === "idle" && (
+                  <div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept={ACCEPTED_MIME_STRING}
+                      className="sr-only"
+                      id="denial-notice-upload"
+                      onChange={handleFileChange}
+                    />
+                    <Label
+                      htmlFor="denial-notice-upload"
+                      className="flex cursor-pointer items-center gap-2 rounded-lg border-2 border-dashed border-gray-200 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+                    >
+                      <Paperclip className="h-4 w-4 shrink-0" />
+                      Upload denial notice PDF
+                    </Label>
+                  </div>
+                )}
+
+                {documentState.status === "extracting" && (
+                  <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                    <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-gray-700">
+                        {documentState.fileName}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Reading document text...</p>
+                    </div>
+                  </div>
+                )}
+
+                {documentState.status === "ready" && (
+                  <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="truncate text-sm font-medium text-emerald-800">
+                          {documentState.fileName}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={clearUploadedDocument}
+                          className="shrink-0 text-emerald-600 hover:text-emerald-800"
+                          aria-label="Remove uploaded notice"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      {documentState.extractedText.trim() ? (
+                        <p className="text-xs text-emerald-700">
+                          Document text extracted and added below.
+                        </p>
+                      ) : (
+                        <p className="text-xs text-amber-700">
+                          No readable text was found. Paste the notice text below.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {documentState.status === "error" && (
+                  <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="truncate text-sm font-medium text-destructive">
+                          {documentState.fileName}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={clearUploadedDocument}
+                          className="shrink-0 text-destructive/70 hover:text-destructive"
+                          aria-label="Dismiss upload error"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <p className="text-xs text-destructive/80">{documentState.message}</p>
+                    </div>
+                  </div>
+                )}
+
+                {documentState.status !== "idle" && documentState.status !== "extracting" && (
+                  <button
+                    type="button"
+                    onClick={clearUploadedDocument}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    <Paperclip className="h-3.5 w-3.5" />
+                    Choose another file
+                  </button>
+                )}
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="denial-text">
                   Denial Notice Text <span className="text-destructive">*</span>
                 </Label>
                 <Textarea
                   id="denial-text"
-                  placeholder="Paste the full text of your denial notice here…"
+                  placeholder="Upload a PDF above or paste the full text of your denial notice here..."
                   value={denialText}
                   onChange={(e) => setDenialText(e.target.value)}
                   rows={8}
@@ -441,7 +576,7 @@ export default function MassHealthAppealsPage() {
               <Button
                 className="w-full"
                 onClick={() => void handleResearch()}
-                disabled={denialText.trim().length < 20}
+                disabled={denialText.trim().length < 20 || documentState.status === "extracting"}
               >
                 <FileSearch className="mr-2 h-4 w-4" />
                 Analyze Denial Notice
