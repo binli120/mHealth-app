@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label"
 import { getSafeAuthNextPath } from "@/lib/auth/navigation"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { isLocalAuthHelperEnabled, normalizeAuthEmail } from "@/lib/auth/local-auth"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import { formatPhoneNumber } from "@/lib/utils/input-format"
 import {
   Eye, EyeOff, ArrowLeft, CheckCircle2,
@@ -85,9 +86,9 @@ function RegisterPageContent() {
           redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
         },
       })
-      if (error) setErrorMessage(error.message)
+      if (error) setErrorMessage(toUserFacingError(error, { fallback: "Unable to sign up with Google.", context: "auth" }))
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unable to sign up with Google.")
+      setErrorMessage(toUserFacingError(error, { fallback: "Unable to sign up with Google.", context: "auth" }))
     } finally {
       setIsLoading(false)
     }
@@ -220,10 +221,10 @@ function RegisterPageContent() {
             router.push(role === "social_worker" ? "/social-worker/dashboard" : nextPath)
             return
           }
-          setErrorMessage(recovered.error || error.message)
+          setErrorMessage(toUserFacingError(recovered.error || error, { fallback: "Registration failed.", context: "auth" }))
           return
         }
-        setErrorMessage(error.message)
+        setErrorMessage(toUserFacingError(error, { fallback: "Registration failed.", context: "auth" }))
         return
       }
 
@@ -239,7 +240,10 @@ function RegisterPageContent() {
             router.push(role === "social_worker" ? "/social-worker/dashboard" : nextPath)
             return
           }
-          setErrorMessage(recovered.error || "An account with this email already exists.")
+          setErrorMessage(toUserFacingError(recovered.error || "An account with this email already exists.", {
+            fallback: "An account with this email already exists. Please sign in instead.",
+            context: "auth",
+          }))
           return
         }
         setErrorMessage("An account with this email already exists. Please sign in instead.")
@@ -264,14 +268,17 @@ function RegisterPageContent() {
           router.push(role === "social_worker" ? "/social-worker/dashboard" : nextPath)
           return
         }
-        setErrorMessage(recovered.error || "Local auto-confirm failed.")
+        setErrorMessage(toUserFacingError(recovered.error || "Local auto-confirm failed.", {
+          fallback: "Registration failed.",
+          context: "auth",
+        }))
         return
       }
 
       setStep("verify")
       setInfoMessage("Account created. Please check your email for a confirmation link.")
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Registration failed.")
+      setErrorMessage(toUserFacingError(error, { fallback: "Registration failed.", context: "auth" }))
     } finally {
       setIsLoading(false)
     }
@@ -286,10 +293,13 @@ function RegisterPageContent() {
         type: "signup",
         email: normalizeAuthEmail(email),
       })
-      if (error) { setErrorMessage(error.message); return }
+      if (error) {
+        setErrorMessage(toUserFacingError(error, { fallback: "Unable to resend confirmation email.", context: "auth" }))
+        return
+      }
       setInfoMessage("Confirmation email resent.")
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unable to resend confirmation email.")
+      setErrorMessage(toUserFacingError(error, { fallback: "Unable to resend confirmation email.", context: "auth" }))
     } finally {
       setIsLoading(false)
     }

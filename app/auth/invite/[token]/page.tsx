@@ -10,6 +10,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Building2, CheckCircle, Eye, EyeOff, Loader2, ShieldAlert } from "lucide-react"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import { INVITE_ROLE_LABELS } from "./page.constants"
 import type { InvitationInfo, InvitePageState } from "./page.types"
 
@@ -31,13 +32,18 @@ export default function AcceptInvitePage() {
   // Verify token on mount
   useEffect(() => {
     const verify = async () => {
-      const res = await fetch(`/api/auth/invite/${token}`)
-      const data = await res.json()
-      if (data.ok) {
-        setInvitation(data.invitation)
-        setPageState("ready")
-      } else {
-        setErrorMsg(data.error ?? "Invalid invitation.")
+      try {
+        const res = await fetch(`/api/auth/invite/${token}`)
+        const data = await res.json()
+        if (data.ok) {
+          setInvitation(data.invitation)
+          setPageState("ready")
+        } else {
+          setErrorMsg(toUserFacingError(data.error, { fallback: "Invalid invitation.", context: "invitation" }))
+          setPageState("invalid")
+        }
+      } catch (error) {
+        setErrorMsg(toUserFacingError(error, { fallback: "Invalid invitation.", context: "invitation" }))
         setPageState("invalid")
       }
     }
@@ -57,16 +63,21 @@ export default function AcceptInvitePage() {
     setErrorMsg(null)
     setPageState("submitting")
 
-    const res = await fetch(`/api/auth/invite/${token}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ firstName, lastName, password }),
-    })
-    const data = await res.json()
-    if (data.ok) {
-      setPageState("done")
-    } else {
-      setErrorMsg(data.error ?? "Failed to create account.")
+    try {
+      const res = await fetch(`/api/auth/invite/${token}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firstName, lastName, password }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setPageState("done")
+      } else {
+        setErrorMsg(toUserFacingError(data.error, { fallback: "Failed to create account.", context: "invitation" }))
+        setPageState("ready")
+      }
+    } catch (error) {
+      setErrorMsg(toUserFacingError(error, { fallback: "Failed to create account.", context: "invitation" }))
       setPageState("ready")
     }
   }

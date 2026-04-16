@@ -6,6 +6,7 @@
 "use client"
 
 import { useCallback, useEffect, useReducer, useState } from "react"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 
 export interface UseAsyncDataResult<T> {
   data: T | null
@@ -80,7 +81,7 @@ export function useAsyncData<T>(fetcher: () => Promise<T>): UseAsyncDataResult<T
         if (!cancelled)
           dispatch({
             type: "error",
-            error: err instanceof Error ? err.message : "Failed to load data",
+            error: err instanceof Error ? toUserFacingError(err, "Failed to load data") : "Failed to load data",
           })
       })
 

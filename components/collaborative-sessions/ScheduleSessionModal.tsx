@@ -11,6 +11,7 @@ import { X, Video, Calendar, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { getSupabaseClient } from "@/lib/supabase/client"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import { useAppDispatch } from "@/lib/redux/hooks"
 import { upsertSession } from "@/lib/redux/features/collaborative-session-slice"
 import type { SessionSummary } from "@/lib/collaborative-sessions/types"
@@ -90,7 +91,7 @@ export function ScheduleSessionModal({ open, onClose, preselectedPatient }: Prop
       const data = (await res.json()) as { ok: boolean; session?: SessionSummary; error?: string }
 
       if (!data.ok) {
-        setError(data.error ?? "Failed to create session.")
+        setError(toUserFacingError(data.error, "Failed to create session."))
         return
       }
 
@@ -108,8 +109,8 @@ export function ScheduleSessionModal({ open, onClose, preselectedPatient }: Prop
       void supabase.removeChannel(ch)
 
       onClose()
-    } catch {
-      setError("Network error. Please try again.")
+    } catch (error) {
+      setError(toUserFacingError(error, "Failed to create session."))
     } finally {
       setSubmitting(false)
     }

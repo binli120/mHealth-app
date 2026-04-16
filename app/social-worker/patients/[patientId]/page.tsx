@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { getApplicationTypeLabel } from "@/lib/masshealth/application-types"
 import { MASSHEALTH_PHONE, MASSHEALTH_TTY_DIRECT } from "@/lib/masshealth/constants"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import { formatDate } from "@/lib/utils/format"
 import { AlertCircle, ArrowLeft, BookOpenText, Calendar, ChevronRight, Clock, FileText, Loader2, Scale, Upload, UserCheck, X } from "lucide-react"
 import { STATUS_META } from "./page.constants"
@@ -37,11 +38,11 @@ export default function SWPatientDashboardPage() {
     try {
       const res = await authenticatedFetch(`/api/social-worker/patients/${patientId}/dashboard`)
       const data = await res.json()
-      if (!data.ok) { setError(data.error ?? "Access denied"); return }
+      if (!data.ok) { setError(toUserFacingError(data.error, "Access denied.")); return }
       setApplications(data.records ?? [])
       setPatient(data.patient ?? null)
-    } catch {
-      setError("Failed to load patient data.")
+    } catch (error) {
+      setError(toUserFacingError(error, "Failed to load patient data."))
     } finally {
       setLoading(false)
     }

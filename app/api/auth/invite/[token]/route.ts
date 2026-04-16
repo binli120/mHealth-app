@@ -8,6 +8,7 @@
 import { NextResponse } from "next/server"
 import { getDbPool } from "@/lib/db/server"
 import { claimInvitationByToken, getInvitationByToken } from "@/lib/db/invitations"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 
 export const runtime = "nodejs"
 
@@ -227,7 +228,7 @@ export async function POST(
     await client.query("ROLLBACK")
     console.error("[invite/accept]", error)
     return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : "Failed to create account." },
+      { ok: false, error: toUserFacingError(error, { fallback: "Failed to create account.", context: "invitation" }) },
       { status: 500 },
     )
   } finally {

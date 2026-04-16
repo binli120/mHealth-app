@@ -23,15 +23,52 @@ import {
   Loader2,
   BarChart2,
   Download,
+  KeyRound,
+  Monitor,
+  type LucideIcon,
 } from "lucide-react"
 
-const NAV_LINKS = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/admin/users", label: "Users", icon: Users },
-  { href: "/admin/companies", label: "Companies", icon: Building2 },
-  { href: "/admin/social-workers", label: "Social Workers", icon: UserCheck },
-  { href: "/admin/analytics", label: "Analytics", icon: BarChart2 },
-  { href: "/admin/reports", label: "Reports", icon: Download },
+type NavItem = {
+  href: string
+  label: string
+  icon: LucideIcon
+  exact?: boolean
+}
+
+type NavGroup = {
+  title: string | null   // null = no section header (top-level)
+  items: NavItem[]
+}
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    title: null,
+    items: [
+      { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
+    ],
+  },
+  {
+    title: "People & Access",
+    items: [
+      { href: "/admin/users",          label: "Users",          icon: Users },
+      { href: "/admin/companies",      label: "Companies",      icon: Building2 },
+      { href: "/admin/social-workers", label: "Social Workers", icon: UserCheck },
+      { href: "/admin/roles",          label: "Roles",          icon: KeyRound },
+    ],
+  },
+  {
+    title: "Analytics & Reports",
+    items: [
+      { href: "/admin/analytics", label: "Analytics", icon: BarChart2 },
+      { href: "/admin/reports",   label: "Reports",   icon: Download },
+    ],
+  },
+  {
+    title: "System",
+    items: [
+      { href: "/admin/sessions", label: "Sessions", icon: Monitor },
+    ],
+  },
 ]
 
 type AuthState = "loading" | "unauthenticated" | "not-admin" | "ready"
@@ -155,23 +192,32 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </button>
         </div>
 
-        <nav className="px-3 py-4 flex-1">
-          {NAV_LINKS.map(({ href, label, icon: Icon, exact }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => setSidebarOpen(false)}
-              className={`
-                flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm font-medium transition-colors
-                ${isActive(href, exact)
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-300 hover:bg-slate-800 hover:text-white"
-                }
-              `}
-            >
-              <Icon className="w-4 h-4 flex-shrink-0" />
-              {label}
-            </Link>
+        <nav className="px-3 py-4 flex-1 overflow-y-auto">
+          {NAV_GROUPS.map((group, gi) => (
+            <div key={gi} className={gi > 0 ? "mt-5" : ""}>
+              {group.title && (
+                <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500 select-none">
+                  {group.title}
+                </p>
+              )}
+              {group.items.map(({ href, label, icon: Icon, exact }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`
+                    flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 text-sm font-medium transition-colors
+                    ${isActive(href, exact)
+                      ? "bg-blue-600 text-white"
+                      : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                    }
+                  `}
+                >
+                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  {label}
+                </Link>
+              ))}
+            </div>
           ))}
         </nav>
 

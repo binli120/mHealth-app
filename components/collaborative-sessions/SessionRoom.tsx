@@ -48,6 +48,7 @@ import { useSessionRTC } from "@/lib/collaborative-sessions/session-rtc-context"
 import { useSessionRealtime }     from "@/hooks/use-session-realtime"
 import { useWebRTCScreenShare }   from "@/hooks/use-webrtc-screenshare"
 import { authenticatedFetch }     from "@/lib/supabase/authenticated-fetch"
+import { toUserFacingError }      from "@/lib/errors/user-facing"
 import { getSafeSupabaseUser }    from "@/lib/supabase/client"
 import { ChatBubble }             from "./ChatBubble"
 import { ChatInput }              from "./ChatInput"
@@ -153,7 +154,7 @@ export function SessionRoom({ sessionId, role, backHref }: Props) {
         error?: string
       }
       if (!sessData.ok) {
-        setLoadError(sessData.error ?? "Session not found.")
+        setLoadError(toUserFacingError(sessData.error, "Session not found."))
         setLoading(false)
         return
       }

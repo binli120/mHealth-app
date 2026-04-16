@@ -16,6 +16,7 @@ import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton"
 import { ErrorCard } from "@/components/shared/ErrorCard"
 import { getAppealAssistantCopy } from "@/lib/appeals/copy"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import { APPEAL_DENIAL_REASONS } from "@/lib/appeals/constants"
 import type { AppealAnalysis, AppealRequest } from "@/lib/appeals/types"
 import { useAppSelector } from "@/lib/redux/hooks"
@@ -45,15 +46,15 @@ export default function AppealAssistantPage() {
       const payload = (await response.json()) as AppealApiResponse | AppealApiErrorResponse
 
       if (!payload.ok) {
-        setErrorMessage(payload.error)
+        setErrorMessage(toUserFacingError(payload.error, { fallback: copy.serverError, context: "ai" }))
         setPageState("error")
         return
       }
 
       setAnalysis(payload.analysis)
       setPageState("result")
-    } catch {
-      setErrorMessage(copy.serverError)
+    } catch (error) {
+      setErrorMessage(toUserFacingError(error, { fallback: copy.serverError, context: "ai" }))
       setPageState("error")
     }
   }

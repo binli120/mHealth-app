@@ -6,6 +6,7 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit"
 import type { AppDispatch, RootState } from "@/lib/redux/store"
 import { getSafeSupabaseUser } from "@/lib/supabase/client"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import {
   extractMasshealthWorkflow,
   type ExtractWorkflowResponse,
@@ -76,7 +77,7 @@ export function requestExtractWorkflow(payload: { file: File; userId?: string })
     } catch (error) {
       dispatch(
         requestFailed(
-          error instanceof Error ? error.message : "Failed to extract workflow from uploaded PDF.",
+          toUserFacingError(error, "Failed to extract workflow from uploaded PDF."),
         ),
       )
       return null

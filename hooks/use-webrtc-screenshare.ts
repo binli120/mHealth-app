@@ -17,6 +17,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 
 import { getSupabaseClient } from "@/lib/supabase/client"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 
 // ── ICE / STUN ────────────────────────────────────────────────────────────────
 
@@ -220,9 +221,7 @@ export function useWebRTCScreenShare({
     } catch (err: unknown) {
       const name = err instanceof DOMException ? err.name : ""
       if (name !== "NotAllowedError" && name !== "AbortError") {
-        setShareError(
-          err instanceof Error ? err.message : "Screen share unavailable.",
-        )
+        setShareError(toUserFacingError(err, "Screen share unavailable."))
       }
       return
     }
@@ -238,7 +237,7 @@ export function useWebRTCScreenShare({
     try {
       await sendOffer()
     } catch (err) {
-      setShareError(err instanceof Error ? err.message : "Failed to create offer.")
+      setShareError(toUserFacingError(err, "Screen share could not start."))
       teardown()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

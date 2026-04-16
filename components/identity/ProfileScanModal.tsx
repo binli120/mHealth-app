@@ -48,6 +48,7 @@ import {
 import { cn } from "@/lib/utils"
 import { parseAamvaBarcode } from "@/lib/identity/aamva-parser"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -225,7 +226,7 @@ export function ProfileScanModal({ open, onClose, onApply }: ProfileScanModalPro
       const res = await authenticatedFetch("/api/identity/mobile-session", { method: "POST" })
       const data = (await res.json().catch(() => ({}))) as MobileSessionResp
       if (!data.ok || !data.token || !data.mobileUrl) {
-        setPhoneError(data.error ?? "Could not create session.")
+        setPhoneError(toUserFacingError(data.error, "Could not create session."))
         setPhoneState("error")
         return
       }
@@ -266,7 +267,7 @@ export function ProfileScanModal({ open, onClose, onApply }: ProfileScanModalPro
         } catch { /* non-fatal */ }
       }, 2000)
     } catch (err) {
-      setPhoneError(err instanceof Error ? err.message : "Network error")
+      setPhoneError(toUserFacingError(err, "Could not create session."))
       setPhoneState("error")
     }
   }, [stopPolling])

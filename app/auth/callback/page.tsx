@@ -13,6 +13,7 @@ import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { getSafeAuthNextPath, resolvePostAuthRedirect } from "@/lib/auth/navigation"
 import { getSupabaseClient } from "@/lib/supabase/client"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import { ShieldHeartIcon } from "@/lib/icons"
 import { Loader2 } from "lucide-react"
 import Link from "next/link"
@@ -43,7 +44,7 @@ function CallbackContent() {
       supabase.auth.exchangeCodeForSession(code)
         .then(({ data, error: exchangeError }) => {
           if (exchangeError) {
-            setError(exchangeError.message)
+            setError(toUserFacingError(exchangeError, { fallback: "Unable to complete sign-in.", context: "auth" }))
             return
           }
           if (data.session) {
