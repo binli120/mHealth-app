@@ -66,10 +66,19 @@ test.describe("Authentication", () => {
   })
 
   test("invalid credentials shows error", async ({ page }) => {
+    // Block the dev-register helper so tryDevRepairAndSignIn cannot silently
+    // create the user in local-Supabase mode.  Without this, the helper would
+    // register the brand-new unique email and sign in successfully, meaning no
+    // error message would ever be rendered and the assertion below would time out.
+    await page.route("**/api/auth/dev-register", (route) =>
+      route.fulfill({
+        status: 403,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: false, error: "blocked_by_e2e" }),
+      }),
+    )
+
     await page.goto("/auth/login")
-    // Use a timestamp-unique email so no previous test run could have registered
-    // this address via local-auth helpers (avoids the pre-existing-user false-pass
-    // where the "wrong" email was silently created by tryDevRepairAndSignIn).
     const uniqueEmail = `e2e-bad-creds-${Date.now()}@not-a-real-domain.example`
     await page.fill("#email", uniqueEmail)
     await page.fill("#password", "BadPasswordXYZ999!")
