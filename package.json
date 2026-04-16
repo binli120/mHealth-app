@@ -90,7 +90,7 @@
     "embla-carousel-react": "8.6.0",
     "input-otp": "1.4.2",
     "lucide-react": "^0.564.0",
-    "next": "16.1.6",
+    "next": "16.2.4",
     "next-themes": "^0.4.6",
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^2.4.5",
@@ -128,7 +128,7 @@
     "bwip-js": "^4.8.0",
     "docx": "^9.6.1",
     "eslint": "^9.22.0",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "16.2.4",
     "jsdom": "^25.0.0",
     "postcss": "^8.5",
     "pptxgenjs": "^4.0.1",
@@ -145,7 +145,8 @@
   },
   "pnpm": {
     "overrides": {
-      "vite": "^6.0.0"
+      "vite": "^6.0.0",
+      "lodash": "4.18.1"
     }
   }
 }
