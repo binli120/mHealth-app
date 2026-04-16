@@ -6,6 +6,7 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit"
 import type { AppDispatch, RootState } from "@/lib/redux/store"
 import { getSafeSupabaseUser } from "@/lib/supabase/client"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import {
   extractMasshealthAuto,
   type ExtractAutoResponse,
@@ -110,9 +111,7 @@ export function requestExtractAuto(payload: {
     } catch (error) {
       dispatch(
         requestFailed(
-          error instanceof Error
-            ? error.message
-            : "Failed to extract data from uploaded PDF.",
+          toUserFacingError(error, "Failed to extract data from uploaded PDF."),
         ),
       )
       return null

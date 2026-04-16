@@ -49,6 +49,7 @@ import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton"
 import { ErrorCard } from "@/components/shared/ErrorCard"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { getSafeSupabaseSession, getSafeSupabaseUser } from "@/lib/supabase/client"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import { useDocumentUpload } from "@/hooks/use-document-upload"
 import {
   ACCEPTED_DOCUMENT_MIME_TYPES,
@@ -224,7 +225,10 @@ export default function MassHealthAppealsPage() {
       setPageState("research_results")
     } catch (e) {
       if (e instanceof AuthNeededError) { goToLogin(); return }
-      setErrorMessage(e instanceof Error ? e.message : "Failed to analyze denial notice")
+      setErrorMessage(toUserFacingError(e, {
+        fallback: "Failed to analyze denial notice.",
+        context: "ai",
+      }))
       setPageState("error")
     }
   }
@@ -282,7 +286,10 @@ export default function MassHealthAppealsPage() {
       setPageState("draft_result")
     } catch (e) {
       if (e instanceof AuthNeededError) { goToLogin(); return }
-      setErrorMessage(e instanceof Error ? e.message : "Failed to generate appeal letter")
+      setErrorMessage(toUserFacingError(e, {
+        fallback: "Failed to generate appeal letter.",
+        context: "ai",
+      }))
       setPageState("error")
     }
   }

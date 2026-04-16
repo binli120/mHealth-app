@@ -10,6 +10,7 @@ import { Video } from "lucide-react"
 
 import { SessionCard } from "./SessionCard"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import {
   setSessions,
@@ -38,10 +39,10 @@ export function SessionListPanel({ role }: Props) {
       if (data.ok) {
         dispatch(setSessions(data.sessions ?? []))
       } else {
-        dispatch(setError(data.error ?? "Failed to load sessions."))
+        dispatch(setError(toUserFacingError(data.error, "Failed to load sessions.")))
       }
-    } catch {
-      dispatch(setError("Network error loading sessions."))
+    } catch (error) {
+      dispatch(setError(toUserFacingError(error, "Failed to load sessions.")))
     } finally {
       dispatch(setLoading(false))
     }

@@ -23,6 +23,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { Send, Mic, MicOff, Loader2 } from "lucide-react"
 
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import type { SessionMessage } from "@/lib/collaborative-sessions/types"
 
 interface Props {
@@ -68,13 +69,13 @@ export function ChatInput({ sessionId, disabled = false, onMessageSent }: Props)
       })
       const data = (await res.json()) as { ok: boolean; message?: SessionMessage; error?: string }
       if (!data.ok) {
-        setError(data.error ?? "Failed to send message.")
+        setError(toUserFacingError(data.error, "Failed to send message."))
         return
       }
       setText("")
       onMessageSent(data.message!)
-    } catch {
-      setError("Network error. Please try again.")
+    } catch (error) {
+      setError(toUserFacingError(error, "Failed to send message."))
     } finally {
       setSending(false)
       // Re-focus so the user can keep typing
@@ -154,12 +155,12 @@ export function ChatInput({ sessionId, disabled = false, onMessageSent }: Props)
       })
       const data = (await res.json()) as { ok: boolean; message?: SessionMessage; error?: string }
       if (!data.ok) {
-        setError(data.error ?? "Failed to upload voice message.")
+        setError(toUserFacingError(data.error, "Failed to upload voice message."))
         return
       }
       onMessageSent(data.message!)
-    } catch {
-      setError("Failed to upload voice message.")
+    } catch (error) {
+      setError(toUserFacingError(error, "Failed to upload voice message."))
     } finally {
       setRecState("idle")
     }

@@ -7,6 +7,7 @@
 
 import { useCallback, useRef, useState } from "react"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import type { DocumentUploadState } from "@/lib/types/common"
 
 interface UseDocumentUploadOptions {
@@ -77,7 +78,11 @@ export function useDocumentUpload({
           | { ok: false; error: string }
 
         if (!payload.ok) {
-          setState({ status: "error", fileName: file.name, message: payload.error })
+          setState({
+            status: "error",
+            fileName: file.name,
+            message: toUserFacingError(payload.error, { fallback: "Upload failed. Please try again.", context: "upload" }),
+          })
           return
         }
 
@@ -86,7 +91,8 @@ export function useDocumentUpload({
           fileName: file.name,
           extractedText: payload.extractedText,
         })
-      } catch {
+      } catch (error) {
+        void error
         setState({
           status: "error",
           fileName: file.name,

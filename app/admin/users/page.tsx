@@ -25,6 +25,7 @@ import {
   Trash2,
 } from "lucide-react"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import type { AdminUser, CompanyOption } from "./page.types"
 import { ROLE_OPTIONS, ROLE_COLORS } from "./page.constants"
 import { fullName } from "./page.utils"
@@ -196,10 +197,10 @@ function AdminUsersInner() {
         setSelectedIds(new Set())
         void fetchUsers()
       } else {
-        setBulkMsg(data.error ?? "Action failed")
+        setBulkMsg(toUserFacingError(data.error, "Action failed."))
       }
     } catch (err) {
-      setBulkMsg(String(err))
+      setBulkMsg(toUserFacingError(err, "Action failed."))
     } finally {
       setBulkLoading(false)
     }
@@ -227,10 +228,10 @@ function AdminUsersInner() {
         setInviteResult({ url: data.inviteUrl })
         void fetchUsers()
       } else {
-        setInviteError(data.error ?? `Error ${res.status}`)
+        setInviteError(toUserFacingError(data.error ?? `Error ${res.status}`, "Failed to send invitation."))
       }
     } catch (err) {
-      setInviteError(String(err))
+      setInviteError(toUserFacingError(err, "Failed to send invitation."))
     } finally {
       setInviting(false)
     }
@@ -281,10 +282,10 @@ function AdminUsersInner() {
         setImportResult({ updated: data.updated, errors: data.errors ?? [] })
         void fetchUsers()
       } else {
-        setImportResult({ updated: 0, errors: [data.error ?? "Import failed"] })
+        setImportResult({ updated: 0, errors: [toUserFacingError(data.error, "Import failed.")] })
       }
     } catch (err) {
-      setImportResult({ updated: 0, errors: [String(err)] })
+      setImportResult({ updated: 0, errors: [toUserFacingError(err, "Import failed.")] })
     } finally {
       setImporting(false)
     }

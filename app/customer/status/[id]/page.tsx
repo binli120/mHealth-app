@@ -13,6 +13,7 @@ import { getMessage } from "@/lib/i18n/messages"
 import { type SupportedLanguage } from "@/lib/i18n/languages"
 import { type ApplicationStatus } from "@/lib/application-status"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import { useAppSelector } from "@/lib/redux/hooks"
 import { ShieldHeartIcon, UserBadgeIcon } from "@/lib/icons"
 import type { PageProps, ApplicationDraftRecord, DraftApiResponse, TimelineEvent } from "./page.types"
@@ -70,7 +71,7 @@ export default function StatusDetailPage({ params }: PageProps) {
 
       setRecord(payload.record)
     } catch (error) {
-      setLoadError(error instanceof Error ? error.message : getMessage(language, "statusDetailNotFound"))
+      setLoadError(toUserFacingError(error, getMessage(language, "statusDetailNotFound")))
       setRecord(null)
     } finally {
       setIsLoading(false)

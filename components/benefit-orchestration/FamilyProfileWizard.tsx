@@ -43,6 +43,7 @@ import { type SupportedLanguage } from "@/lib/i18n/languages"
 import { getMessage } from "@/lib/i18n/messages"
 import { useAppSelector } from "@/lib/redux/hooks"
 import { getSafeSupabaseSession } from "@/lib/supabase/client"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import { createUuid } from "@/lib/utils/random-id"
 
 const STEP_LABELS = [
@@ -176,7 +177,7 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
       if (!data.ok) throw new Error(data.error || "Failed to evaluate benefits.")
       onComplete(data.stack)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.")
+      setError(toUserFacingError(err, "Unable to evaluate benefits. Please try again."))
     } finally {
       setSubmitting(false)
     }

@@ -6,6 +6,7 @@
 
 import { getDbPool } from "@/lib/db/server"
 import type { Permission } from "@/lib/constants/permissions"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -300,7 +301,7 @@ export async function bulkImportUsers(rows: CsvImportRow[]): Promise<BulkResult>
       )
       updated++
     } catch (err) {
-      errors.push(`${row.email}: ${String(err)}`)
+      errors.push(`${row.email}: ${toUserFacingError(err, "Could not import this user.")}`)
     }
   }
 

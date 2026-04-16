@@ -23,6 +23,7 @@ import {
 import { MASSHEALTH_PHONE, MASSHEALTH_TTY_DIRECT } from "@/lib/masshealth/constants"
 import { type ApplicationStatus } from "@/lib/application-status"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import { useAppSelector, useAppDispatch } from "@/lib/redux/hooks"
 import { setProfile } from "@/lib/redux/features/user-profile-slice"
 import type { UserProfile } from "@/lib/user-profile/types"
@@ -131,14 +132,17 @@ export default function CustomerDashboardPage() {
       })
       const data = await res.json().catch(() => ({}))
       if (!data.ok) {
-        setSwSearchError(data.error ?? "Not found. Make sure the email belongs to an approved social worker.")
+        setSwSearchError(toUserFacingError(data.error, {
+          fallback: "Not found. Make sure the email belongs to an approved social worker.",
+          context: "profile",
+        }))
       } else {
         setSwModalOpen(false)
         setSwSearchEmail("")
         void loadSocialWorkers()
       }
-    } catch {
-      setSwSearchError("Failed to grant access.")
+    } catch (error) {
+      setSwSearchError(toUserFacingError(error, "Failed to grant access."))
     } finally {
       setSwSearchLoading(false)
       setSwGranting(false)

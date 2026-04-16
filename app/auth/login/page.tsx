@@ -16,6 +16,7 @@ import { getSafeAuthNextPath, resolvePostAuthRedirect } from "@/lib/auth/navigat
 import type { DevAutoConfirmResponse, DevRegisterResponse } from "@/lib/auth/types"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { isLocalAuthHelperEnabled, normalizeAuthEmail } from "@/lib/auth/local-auth"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import { Eye, EyeOff, ArrowLeft } from "lucide-react"
 import { ShieldHeartIcon } from "@/lib/icons"
 
@@ -48,9 +49,9 @@ function LoginPageContent() {
           redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
         },
       })
-      if (error) setErrorMessage(error.message)
+      if (error) setErrorMessage(toUserFacingError(error, { fallback: "Unable to sign in with Google.", context: "auth" }))
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unable to sign in with Google.")
+      setErrorMessage(toUserFacingError(error, { fallback: "Unable to sign in with Google.", context: "auth" }))
     } finally {
       setIsLoading(false)
     }
@@ -148,11 +149,11 @@ function LoginPageContent() {
               return
             }
 
-            setErrorMessage(retry.error.message)
+            setErrorMessage(toUserFacingError(retry.error, { fallback: "Unable to sign in.", context: "auth" }))
             return
           }
 
-          setErrorMessage(confirmPayload.error || signIn.error.message)
+          setErrorMessage(toUserFacingError(confirmPayload.error || signIn.error, { fallback: "Unable to sign in.", context: "auth" }))
           return
         }
 
@@ -168,18 +169,18 @@ function LoginPageContent() {
             return
           }
 
-          setErrorMessage(repaired.error || signIn.error.message)
+          setErrorMessage(toUserFacingError(repaired.error || signIn.error, { fallback: "Unable to sign in.", context: "auth" }))
           return
         }
 
-        setErrorMessage(signIn.error.message)
+        setErrorMessage(toUserFacingError(signIn.error, { fallback: "Unable to sign in.", context: "auth" }))
         return
       }
 
       router.push(await resolvePostAuthRedirect(nextPath, signIn.data.session?.access_token ?? ""))
       router.refresh()
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unable to sign in.")
+      setErrorMessage(toUserFacingError(error, { fallback: "Unable to sign in.", context: "auth" }))
     } finally {
       setIsLoading(false)
     }

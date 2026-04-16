@@ -13,6 +13,7 @@ import {
   deleteRole,
 } from "@/lib/db/admin-access"
 import type { Permission } from "@/lib/constants/permissions"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 
 export const runtime = "nodejs"
 
@@ -51,7 +52,7 @@ export async function GET(request: Request) {
     const roles = await listRoles()
     return NextResponse.json({ ok: true, roles })
   } catch (err) {
-    return NextResponse.json({ ok: false, error: String(err) }, { status: 500 })
+    return NextResponse.json({ ok: false, error: toUserFacingError(err, "Failed to load roles.") }, { status: 500 })
   }
 }
 
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
     if (msg.includes("duplicate") || msg.includes("unique")) {
       return NextResponse.json({ ok: false, error: "A role with that name already exists" }, { status: 409 })
     }
-    return NextResponse.json({ ok: false, error: msg }, { status: 500 })
+    return NextResponse.json({ ok: false, error: toUserFacingError(msg, "Create failed.") }, { status: 500 })
   }
 }
 
@@ -109,6 +110,6 @@ export async function PATCH(request: Request) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ ok: false, error: "Invalid request" }, { status: 400 })
     }
-    return NextResponse.json({ ok: false, error: String(err) }, { status: 500 })
+    return NextResponse.json({ ok: false, error: toUserFacingError(err, "Save failed.") }, { status: 500 })
   }
 }

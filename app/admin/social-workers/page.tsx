@@ -9,6 +9,7 @@ import { Suspense, useEffect, useState, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
 import { Search, CheckCircle, XCircle, UserCheck, UserPlus, X, Loader2, Copy } from "lucide-react"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import type { SocialWorker, CompanyOption } from "./page.types"
 import { STATUS_FILTER_OPTIONS, STATUS_STYLE, VALID_STATUS_FILTERS } from "./page.constants"
 import { initialStatusFromSearchParams, fullName } from "./page.utils"
@@ -111,10 +112,10 @@ function AdminSocialWorkersPageInner() {
       if (data.ok) {
         setInviteResult({ url: data.inviteUrl })
       } else {
-        setInviteError(data.error ?? `Error ${res.status}`)
+        setInviteError(toUserFacingError(data.error ?? `Error ${res.status}`, "Failed to send invitation."))
       }
     } catch (err) {
-      setInviteError(String(err))
+      setInviteError(toUserFacingError(err, "Failed to send invitation."))
     } finally {
       setInviting(false)
     }
