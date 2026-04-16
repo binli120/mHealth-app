@@ -36,8 +36,6 @@ jobs:
 
       - name: Run unit tests with coverage
         id: unit_tests
-        # continue-on-error so later steps (artifact upload, issue creation) still run
-        continue-on-error: true
         run: pnpm test:ci
         env:
           # Unit tests are fully mocked — these stubs satisfy any env-guard code.
@@ -67,7 +65,7 @@ jobs:
 
       # ── Create GitHub Issues on failure (main branch only) ──────────────────
       - name: Create GitHub Issues for failures
-        if: steps.unit_tests.outcome == 'failure' && github.ref == 'refs/heads/main'
+        if: failure() && github.ref == 'refs/heads/main'
         env:
           GITHUB_TOKEN:      ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPO:       ${{ github.repository }}
@@ -77,13 +75,6 @@ jobs:
           GITHUB_SERVER_URL: ${{ github.server_url }}
           RESULTS_FILE:      test-results.json
         run: node scripts/create-ci-issues.mjs
-
-      # ── Hard-fail the job if tests failed ───────────────────────────────────
-      - name: Fail job on test failures
-        if: steps.unit_tests.outcome == 'failure'
-        run: |
-          echo "::error::Unit tests or coverage threshold failed. Check artifacts and any auto-created GitHub Issues."
-          exit 1
 
   # ── Lint ────────────────────────────────────────────────────────────────────
   lint:

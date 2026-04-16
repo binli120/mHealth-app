@@ -23,14 +23,6 @@ export async function requireAdmin(
 
   const pool = getDbPool()
 
-  // Debug: check what roles this user actually has
-  const rolesDebug = await pool.query(
-    `SELECT r.name, ur.user_id FROM public.user_roles ur JOIN public.roles r ON r.id = ur.role_id WHERE ur.user_id = $1::uuid`,
-    [authResult.userId],
-  )
-  console.log("[requireAdmin] userId:", authResult.userId)
-  console.log("[requireAdmin] roles found:", rolesDebug.rows)
-
   const result = await pool.query<{ is_admin: boolean }>(
     `
       SELECT EXISTS (
@@ -43,8 +35,6 @@ export async function requireAdmin(
     `,
     [authResult.userId],
   )
-
-  console.log("[requireAdmin] is_admin result:", result.rows[0])
 
   if (!result.rows[0]?.is_admin) {
     return {

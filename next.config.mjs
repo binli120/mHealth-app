@@ -34,6 +34,43 @@ function normalizeResolveModules(modules) {
   return [...new Set(normalized)]
 }
 
+const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
+  ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).host
+  : "*.supabase.co"
+
+const securityHeaders = [
+  // Prevent the page from being embedded in a frame (clickjacking)
+  { key: "X-Frame-Options", value: "DENY" },
+  // Prevent browsers from MIME-sniffing the content type
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  // Force HTTPS for 2 years, include subdomains, allow preload
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+  // Limit referrer information sent to third parties
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  // Restrict browser feature access — camera allowed for identity scan
+  { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=(), payment=()" },
+  // Content Security Policy
+  // Note: unsafe-inline in script-src is required by Next.js App Router hydration.
+  // To tighten further, add a nonce via middleware and remove unsafe-inline.
+  {
+    key: "Content-Security-Policy",
+    value: [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline'",
+      `connect-src 'self' https://${supabaseHost} wss://${supabaseHost}`,
+      "img-src 'self' data: blob: https://img.youtube.com https://image.thum.io",
+      "font-src 'self' data:",
+      "media-src 'self' blob:",
+      "worker-src blob:",
+      "frame-src 'none'",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join("; "),
+  },
+]
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   env: {
@@ -47,6 +84,9 @@ const nextConfig = {
   allowedDevOrigins: ["192.168.86.25", "192.168.1.92", "192.168.1.47"],
   turbopack: {
     root: projectRoot,
+  },
+  async headers() {
+    return [{ source: "/(.*)", headers: securityHeaders }]
   },
   images: {
     unoptimized: true,
