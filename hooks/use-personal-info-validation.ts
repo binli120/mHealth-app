@@ -6,6 +6,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import { getDobInputBounds, getDobValidation } from "@/lib/utils/date-of-birth"
 import { useField } from "@/hooks/use-field"
 
@@ -283,8 +284,7 @@ export function usePersonalInfoValidation({
         }
 
         setAddressLookupErrors({
-          address:
-            error instanceof Error ? error.message : "Unable to validate address.",
+          address: toUserFacingError(error, "Unable to validate address."),
         })
       } finally {
         setIsValidatingAddress(false)

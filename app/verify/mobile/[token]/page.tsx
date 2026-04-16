@@ -25,6 +25,7 @@ import { ShieldCheck, ScanLine, XCircle, CheckCircle2, Clock, Loader2, AlertTria
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { cn } from "@/lib/utils"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import type { ApiResponse, PageState } from "./page.types"
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -107,8 +108,11 @@ export default function MobileVerifyPage() {
         } else {
           setPageState("success")
         }
-      } catch {
-        setApiResult({ ok: false, error: "Network error. Please try again." })
+      } catch (error) {
+        setApiResult({
+          ok: false,
+          error: toUserFacingError(error, { fallback: "Verification failed. Please try again.", context: "verification" }),
+        })
         setPageState("failed")
       }
     },
@@ -432,7 +436,11 @@ export default function MobileVerifyPage() {
             <div>
               <h1 className="text-xl font-semibold text-foreground">Verification Failed</h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                {apiResult?.message ?? apiResult?.error ?? "Please try again."}
+                {apiResult?.message ??
+                  toUserFacingError(apiResult?.error, {
+                    fallback: "Verification failed. Please try again.",
+                    context: "verification",
+                  })}
               </p>
             </div>
             <Button className="w-full" onClick={() => { setApiResult(null); setPageState("ready") }}>

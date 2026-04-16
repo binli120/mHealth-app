@@ -30,6 +30,7 @@ import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { useAppDispatch } from "@/lib/redux/hooks"
 import { setProfile } from "@/lib/redux/features/user-profile-slice"
 import { setLanguage } from "@/lib/redux/features/app-slice"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import { ShieldHeartIcon } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 import type { UserProfile } from "@/lib/user-profile/types"
@@ -59,7 +60,7 @@ export default function CustomerProfilePage() {
       dispatch(setProfile(payload.profile))
       dispatch(setLanguage(payload.profile.profileData.preferredLanguage))
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load profile.")
+      setError(toUserFacingError(err, { fallback: "Failed to load profile.", context: "profile" }))
     } finally {
       setLoading(false)
     }

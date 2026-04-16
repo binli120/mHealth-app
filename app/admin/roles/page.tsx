@@ -18,6 +18,7 @@ import {
   X,
 } from "lucide-react"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import { PERMISSION_GROUPS } from "@/lib/constants/permissions"
 import type { Permission } from "@/lib/constants/permissions"
 
@@ -226,9 +227,9 @@ export default function AdminRolesPage() {
       })
       const data = await res.json()
       if (data.ok) dispatch({ type: "save_ok" })
-      else dispatch({ type: "save_err", msg: data.error ?? "Save failed" })
+      else dispatch({ type: "save_err", msg: toUserFacingError(data.error, "Save failed.") })
     } catch (err) {
-      dispatch({ type: "save_err", msg: String(err) })
+      dispatch({ type: "save_err", msg: toUserFacingError(err, "Save failed.") })
     }
   }
 
@@ -243,9 +244,9 @@ export default function AdminRolesPage() {
       })
       const data = await res.json()
       if (data.ok) dispatch({ type: "delete_ok", roleName: state.selectedRole! })
-      else dispatch({ type: "delete_err", msg: data.error ?? "Delete failed" })
+      else dispatch({ type: "delete_err", msg: toUserFacingError(data.error, "Delete failed.") })
     } catch (err) {
-      dispatch({ type: "delete_err", msg: String(err) })
+      dispatch({ type: "delete_err", msg: toUserFacingError(err, "Delete failed.") })
     }
   }
 
@@ -278,10 +279,10 @@ export default function AdminRolesPage() {
           },
         })
       } else {
-        dispatch({ type: "create_err", msg: data.error ?? "Create failed" })
+        dispatch({ type: "create_err", msg: toUserFacingError(data.error, "Create failed.") })
       }
     } catch (err) {
-      dispatch({ type: "create_err", msg: String(err) })
+      dispatch({ type: "create_err", msg: toUserFacingError(err, "Create failed.") })
     }
   }
 

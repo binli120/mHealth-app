@@ -20,6 +20,7 @@ import {
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import type { Company, NppesResult } from "./page.types"
 import { STATUS_FILTER_OPTIONS, STATUS_STYLE } from "./page.constants"
 
@@ -78,10 +79,10 @@ export default function AdminCompaniesPage() {
       const data = await res.json()
       setNppesResults(data.results ?? [])
       if (data.nppesError) {
-        setNppesError(`NPPES API error: ${data.nppesError}`)
+        setNppesError(toUserFacingError(`NPPES API error: ${data.nppesError}`, "Provider search failed."))
       }
     } catch (err) {
-      setNppesError(String(err))
+      setNppesError(toUserFacingError(err, "Provider search failed."))
     } finally {
       setNppesLoading(false)
       setNppesSearched(true)
@@ -112,10 +113,10 @@ export default function AdminCompaniesPage() {
         setNppesQuery("")
         fetchCompanies()
       } else {
-        setAddError(data.error ?? `Error ${res.status}`)
+        setAddError(toUserFacingError(data.error ?? `Error ${res.status}`, "Failed to add company."))
       }
     } catch (err) {
-      setAddError(String(err))
+      setAddError(toUserFacingError(err, "Failed to add company."))
     } finally {
       setAddingId(null)
     }

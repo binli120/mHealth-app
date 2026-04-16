@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Upload, Camera, X, FileText, CheckCircle2, Loader2, ZoomIn, AlertCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -134,7 +135,7 @@ export function DocumentUploader({
 
         if (!payload.ok) {
           setUploadStatus("error")
-          setErrorMessage(payload.error)
+          setErrorMessage(toUserFacingError(payload.error, { fallback: "Upload failed. Please try again.", context: "upload" }))
           return
         }
 
@@ -164,7 +165,7 @@ export function DocumentUploader({
       const payload = (await res.json()) as { ok: boolean; error?: string }
 
       if (!payload.ok) {
-        setErrorMessage(payload.error ?? "Failed to remove document.")
+        setErrorMessage(toUserFacingError(payload.error, "Failed to remove document."))
         setIsRemoving(false)
         return
       }

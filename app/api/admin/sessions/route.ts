@@ -14,6 +14,7 @@ import {
 } from "@/lib/db/admin-access"
 import { getSupabaseAdminClient } from "@/lib/supabase/server"
 import { logServerError } from "@/lib/server/logger"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 
 export const runtime = "nodejs"
 
@@ -55,7 +56,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true, sessions, settings })
   } catch (err) {
     logServerError(ERROR_LOG_PREFIX, err, { route: "/api/admin/sessions", method: "GET" })
-    return NextResponse.json({ ok: false, error: String(err) }, { status: 500 })
+    return NextResponse.json({ ok: false, error: toUserFacingError(err, "Failed to load sessions.") }, { status: 500 })
   }
 }
 
@@ -72,7 +73,7 @@ export async function PATCH(request: Request) {
       const supabase = getSupabaseAdminClient()
       const { error } = await supabase.auth.admin.signOut(payload.userId)
       if (error) {
-        return NextResponse.json({ ok: false, error: error.message }, { status: 502 })
+        return NextResponse.json({ ok: false, error: toUserFacingError(error, "Force logout failed.") }, { status: 502 })
       }
       void logLoginEvent(payload.userId, "force_logout")
       return NextResponse.json({ ok: true })
@@ -106,6 +107,6 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ ok: false, error: "Invalid request" }, { status: 400 })
     }
     logServerError(ERROR_LOG_PREFIX, err, { route: "/api/admin/sessions", method: "PATCH" })
-    return NextResponse.json({ ok: false, error: String(err) }, { status: 500 })
+    return NextResponse.json({ ok: false, error: toUserFacingError(err, "Session settings update failed.") }, { status: 500 })
   }
 }

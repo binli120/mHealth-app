@@ -8,6 +8,7 @@ import { z } from "zod"
 import { requireAdmin } from "@/lib/auth/require-admin"
 import { bulkSetActive, bulkSetRole, bulkImportUsers } from "@/lib/db/admin-access"
 import { logServerError } from "@/lib/server/logger"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 
 export const runtime = "nodejs"
 
@@ -89,6 +90,6 @@ export async function POST(request: Request) {
       )
     }
     logServerError(ERROR_LOG_PREFIX, err, { route: "/api/admin/bulk", method: "POST" })
-    return NextResponse.json({ ok: false, error: String(err) }, { status: 500 })
+    return NextResponse.json({ ok: false, error: toUserFacingError(err, "Bulk action failed.") }, { status: 500 })
   }
 }

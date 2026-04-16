@@ -18,6 +18,7 @@ import {
   RefreshCw,
 } from "lucide-react"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -210,9 +211,9 @@ export default function AdminSessionsPage() {
       })
       const data = await res.json()
       if (data.ok) dispatch({ type: "save_settings_ok", settings: state.settingsForm })
-      else dispatch({ type: "save_settings_err", msg: data.error ?? "Save failed" })
+      else dispatch({ type: "save_settings_err", msg: toUserFacingError(data.error, "Save failed.") })
     } catch (err) {
-      dispatch({ type: "save_settings_err", msg: String(err) })
+      dispatch({ type: "save_settings_err", msg: toUserFacingError(err, "Save failed.") })
     }
   }
 
@@ -226,9 +227,9 @@ export default function AdminSessionsPage() {
       })
       const data = await res.json()
       if (data.ok) dispatch({ type: "force_logout_ok", target: userId })
-      else dispatch({ type: "force_logout_err", msg: data.error ?? "Force logout failed" })
+      else dispatch({ type: "force_logout_err", msg: toUserFacingError(data.error, "Force logout failed.") })
     } catch (err) {
-      dispatch({ type: "force_logout_err", msg: String(err) })
+      dispatch({ type: "force_logout_err", msg: toUserFacingError(err, "Force logout failed.") })
     }
   }
 
@@ -242,9 +243,9 @@ export default function AdminSessionsPage() {
       })
       const data = await res.json()
       if (data.ok) dispatch({ type: "force_logout_ok", target: "all" })
-      else dispatch({ type: "force_logout_err", msg: data.error ?? "Force logout failed" })
+      else dispatch({ type: "force_logout_err", msg: toUserFacingError(data.error, "Force logout failed.") })
     } catch (err) {
-      dispatch({ type: "force_logout_err", msg: String(err) })
+      dispatch({ type: "force_logout_err", msg: toUserFacingError(err, "Force logout failed.") })
     }
   }
 

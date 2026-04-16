@@ -38,6 +38,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import type {
   IncomeEvidenceRequirement,
   IncomeVerificationCase,
@@ -186,7 +187,7 @@ function RequirementRow({ requirement, applicationId, onUploaded }: RequirementR
 
         onUploaded()
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Upload failed. Please try again.")
+        setError(toUserFacingError(err, { fallback: "Upload failed. Please try again.", context: "upload" }))
         setFileName(null)
       } finally {
         setUploading(false)

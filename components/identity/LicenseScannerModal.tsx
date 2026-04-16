@@ -44,6 +44,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import {
   closeScanner,
@@ -159,7 +160,7 @@ export function LicenseScannerModal() {
       const score = "verifyScore" in data ? data.verifyScore : (data as VerifyApiResponse).score
 
       if (!data.ok || !status) {
-        const msg = data.error ?? "Verification failed."
+        const msg = toUserFacingError(data.error, "Verification failed.")
         dispatch(setError(msg))
         return
       }
@@ -199,7 +200,7 @@ export function LicenseScannerModal() {
         handleVerifyResult(data)
         setScanState("done")
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Network error"
+        const msg = toUserFacingError(err, "Verification failed.")
         dispatch(setError(msg))
         setScanState("done")
       }
@@ -292,7 +293,7 @@ export function LicenseScannerModal() {
       const res = await authenticatedFetch("/api/identity/mobile-session", { method: "POST" })
       const data = (await res.json().catch(() => ({}))) as MobileSessionResponse
       if (!data.ok || !data.token || !data.mobileUrl) {
-        dispatch(setError(data.error ?? "Could not create phone session."))
+        dispatch(setError(toUserFacingError(data.error, "Could not create phone session.")))
         setPhoneState("idle")
         return
       }
@@ -333,7 +334,7 @@ export function LicenseScannerModal() {
       }, 2000)
 
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Network error"
+      const msg = toUserFacingError(err, "Could not create phone session.")
       dispatch(setError(msg))
       setPhoneState("idle")
     }

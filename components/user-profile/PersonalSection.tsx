@@ -21,6 +21,7 @@ import { EditableSectionCard, SectionActions } from "@/components/user-profile/s
 import { UserAvatar } from "@/components/shared/UserAvatar"
 import { ProfileScanModal, type ProfileScanResult } from "@/components/identity/ProfileScanModal"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { toUserFacingError } from "@/lib/errors/user-facing"
 import { CITIZENSHIP_OPTIONS } from "@/lib/constants/form-options"
 import { GENDER_OPTIONS } from "@/lib/user-profile/constants"
 import { useAppSelector } from "@/lib/redux/hooks"
@@ -118,7 +119,7 @@ export function PersonalSection({ profile, onSaved }: Props) {
       onSaved({ avatarUrl: payload.avatarUrl ?? null })
       toast.success("Profile photo updated.")
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not upload photo. Please try again.")
+      toast.error(toUserFacingError(err, { fallback: "Could not upload photo. Please try again.", context: "upload" }))
     } finally {
       setAvatarUploading(false)
     }
