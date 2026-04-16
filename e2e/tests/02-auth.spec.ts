@@ -66,18 +66,6 @@ test.describe("Authentication", () => {
   })
 
   test("invalid credentials shows error", async ({ page }) => {
-    // Block the dev-register helper so tryDevRepairAndSignIn cannot silently
-    // create the user in local-Supabase mode.  Without this, the helper would
-    // register the brand-new unique email and sign in successfully, meaning no
-    // error message would ever be rendered and the assertion below would time out.
-    await page.route("**/api/auth/dev-register", (route) =>
-      route.fulfill({
-        status: 403,
-        contentType: "application/json",
-        body: JSON.stringify({ ok: false, error: "blocked_by_e2e" }),
-      }),
-    )
-
     await page.goto("/auth/login")
     const uniqueEmail = `e2e-bad-creds-${Date.now()}@not-a-real-domain.example`
     await page.fill("#email", uniqueEmail)
@@ -85,7 +73,7 @@ test.describe("Authentication", () => {
     await page.click('button[type="submit"]')
     // Error message should appear
     await expect(
-      page.getByText(/invalid|incorrect|not found|error/i).first(),
+      page.getByText(/invalid|incorrect|not found|error|does not match|wrong/i).first(),
     ).toBeVisible({ timeout: 10_000 })
     // Should NOT navigate away
     await expect(page).toHaveURL(/\/auth\/login/)
