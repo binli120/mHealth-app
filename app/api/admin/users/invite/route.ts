@@ -1,7 +1,7 @@
 /**
  * POST /api/admin/users/invite
  * Admin creates an invitation for a user email, optionally linked to a company.
- * Sends the invitation link via Resend; falls back to console.log in dev.
+ * Sends the invitation link via Resend; logs the link via logServerInfo in dev if no API key is set.
  * @author Bin Lee
  * @email blee@healthcompass.cloud
  */
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
 
   const inviteUrl = `${APP_URL}/auth/invite/${token}`
 
-  // Send invitation email via Resend; log to console in dev if no API key
+  // Send invitation email via Resend; fall back gracefully if key is absent
   const hasResend = Boolean(process.env.RESEND_API_KEY)
   if (hasResend) {
     try {
@@ -63,9 +63,14 @@ export async function POST(request: Request) {
       logServerError("[invite] Resend failed", err, { email: body.email.trim() })
       // Don't fail the request — invitation was created, link can be shared manually
     }
+  } else if (process.env.NODE_ENV !== "production") {
+    // Dev/test only: log the invite URL so developers can test the flow without Resend
+    logServerInfo("invite.no_resend_key", { email: body.email.trim(), inviteUrl })
   } else {
-    console.log(`[invite] No RESEND_API_KEY — invitation link for ${body.email.trim()}:`)
-    console.log(`[invite] ${inviteUrl}`)
+    // Production misconfiguration: warn without logging the token
+    logServerError("[invite] RESEND_API_KEY is not set — invitation email was not sent", null, {
+      email: body.email.trim(),
+    })
   }
 
   logServerInfo("invite.done", { ms: Date.now() - start, role: body.role ?? "applicant" })

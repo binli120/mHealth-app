@@ -13,15 +13,10 @@ vi.mock("@/lib/auth/require-auth", () => ({
   requireAuthenticatedUser: vi.fn(),
 }))
 
-// requireAdmin runs TWO queries: a debug role-list query, then the is_admin EXISTS query.
-// mockDbQuery is called in that order each test.
 const mockDbQuery = vi.fn()
 vi.mock("@/lib/db/server", () => ({
   getDbPool: vi.fn(() => ({ query: mockDbQuery })),
 }))
-
-// Silence console output from the debug console.log calls in requireAdmin
-vi.spyOn(console, "log").mockImplementation(() => undefined)
 
 import { requireAdmin } from "@/lib/auth/require-admin"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
@@ -38,15 +33,8 @@ function makeRequest(): Request {
   })
 }
 
-/**
- * requireAdmin calls pool.query() twice:
- *   1st call: debug query (SELECT roles for user) — return any rows array
- *   2nd call: EXISTS is_admin query — return { rows: [{ is_admin }] }
- */
 function mockAdminDb(isAdmin: boolean): void {
-  mockDbQuery
-    .mockResolvedValueOnce({ rows: [] })                      // debug query
-    .mockResolvedValueOnce({ rows: [{ is_admin: isAdmin }] }) // is_admin EXISTS query
+  mockDbQuery.mockResolvedValueOnce({ rows: [{ is_admin: isAdmin }] })
 }
 
 // ── beforeEach ────────────────────────────────────────────────────────────────
@@ -88,19 +76,18 @@ describe("requireAdmin — admin user", () => {
     if (result.ok) expect(result.userId).toBe(USER_ID)
   })
 
-  it("runs exactly two DB queries (debug + is_admin)", async () => {
+  it("runs exactly one DB query (is_admin EXISTS)", async () => {
     mockAdminDb(true)
 
     await requireAdmin(makeRequest())
-    expect(mockDbQuery).toHaveBeenCalledTimes(2)
+    expect(mockDbQuery).toHaveBeenCalledTimes(1)
   })
 
   it("passes the correct userId to the is_admin query", async () => {
     mockAdminDb(true)
 
     await requireAdmin(makeRequest())
-    // 2nd call is the EXISTS query; first arg is SQL, second is params array
-    const [, params] = mockDbQuery.mock.calls[1] as [string, string[]]
+    const [, params] = mockDbQuery.mock.calls[0] as [string, string[]]
     expect(params).toEqual([USER_ID])
   })
 })
@@ -126,7 +113,6 @@ describe("requireAdmin — non-admin user", () => {
 
   it("returns 403 when the DB returns no rows", async () => {
     mockDbQuery
-      .mockResolvedValueOnce({ rows: [] }) // debug
       .mockResolvedValueOnce({ rows: [] }) // is_admin — missing row
 
     const result = await requireAdmin(makeRequest())
@@ -136,7 +122,6 @@ describe("requireAdmin — non-admin user", () => {
 
   it("returns 403 when is_admin is null/undefined", async () => {
     mockDbQuery
-      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [{ is_admin: null }] })
 
     const result = await requireAdmin(makeRequest())

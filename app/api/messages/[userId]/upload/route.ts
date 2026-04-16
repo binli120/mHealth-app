@@ -222,8 +222,19 @@ export async function POST(request: Request, { params }: Params) {
         ? (typeof formData?.get("transcriptionLang") === "string" ? (formData.get("transcriptionLang") as string).trim() || null : null)
         : null
 
-    // For file/image messages: preserve the original filename as message content
-    const originalName = (fileBlob as File).name ?? null
+    // For file/image messages: preserve the original filename as message content.
+    // Sanitize before DB storage: strip path separators, control characters, and
+    // null bytes that could cause display or query issues.
+    const rawName = (fileBlob as File).name ?? null
+    const originalName = rawName
+      ? rawName
+          .replace(/[/\\]/g, "")           // no path separators
+          .replace(/\.\./g, "")            // no parent-dir traversal fragments
+          // eslint-disable-next-line no-control-regex
+          .replace(/[\x00-\x1f\x7f]/g, "") // no control/null chars
+          .trim()
+          .slice(0, 255) || null           // enforce reasonable max length
+      : null
     const displayName = messageType === "file" ? (originalName || `document.${ext}`) : null
 
     // Create DB row first to get the ID for the storage path

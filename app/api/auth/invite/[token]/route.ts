@@ -9,6 +9,12 @@ import { NextResponse } from "next/server"
 import { getDbPool } from "@/lib/db/server"
 import { claimInvitationByToken, getInvitationByToken } from "@/lib/db/invitations"
 import { toUserFacingError } from "@/lib/errors/user-facing"
+import {
+  checkRateLimit,
+  getClientIp,
+  inviteTokenAcceptLimiter,
+  inviteTokenReadLimiter,
+} from "@/lib/server/rate-limit"
 
 export const runtime = "nodejs"
 
@@ -17,9 +23,12 @@ const DEFAULT_INSTANCE_ID = "00000000-0000-0000-0000-000000000000"
 // ── GET: verify token ─────────────────────────────────────────────────────────
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ token: string }> },
 ) {
+  const limited = checkRateLimit(inviteTokenReadLimiter, getClientIp(request))
+  if (limited) return limited
+
   const { token } = await params
   const invitation = await getInvitationByToken(token)
 
@@ -51,6 +60,9 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ token: string }> },
 ) {
+  const limited = checkRateLimit(inviteTokenAcceptLimiter, getClientIp(request))
+  if (limited) return limited
+
   const { token } = await params
   const body = (await request.json().catch(() => ({}))) as {
     firstName?: string
