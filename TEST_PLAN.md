@@ -212,6 +212,7 @@ deploy job: SSH → VPS → docker compose up → curl health check
 ```bash
 pnpm test             # fast: run all unit tests once (no coverage)
 pnpm test:watch       # TDD: re-run on file save
+pnpm test:eligibility-cases  # ACA-3 synthetic eligibility regression sweep
 pnpm test:coverage    # full coverage report → open coverage/index.html
 pnpm test:ci          # exactly what CI runs (JSON output + coverage)
 pnpm test:e2e         # Playwright against http://localhost:3000

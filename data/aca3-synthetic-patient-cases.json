@@ -1,0 +1,1513 @@
+[
+  {
+    "caseId": "adult-single-000-fpl",
+    "label": "Single adult at 0% FPL",
+    "persona": {
+      "age": 35,
+      "sexAtBirth": "male",
+      "pregnant": false,
+      "conditions": ["asthma"],
+      "married": false,
+      "taxDependents": 0,
+      "unbornChildren": 0,
+      "annualIncome": 0,
+      "computedHouseholdSize": 1,
+      "notes": ["Adult boundary sweep for CarePlus vs Connector"]
+    },
+    "input": {
+      "applicantId": "adult-single-000-fpl",
+      "age": 35,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 0,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 0 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "MassHealth CarePlus",
+      "householdSize": 1,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "adult-single-100-fpl",
+    "label": "Single adult at 100% FPL",
+    "persona": {
+      "age": 35,
+      "sexAtBirth": "male",
+      "pregnant": false,
+      "conditions": ["asthma"],
+      "married": false,
+      "taxDependents": 0,
+      "unbornChildren": 0,
+      "annualIncome": 15060,
+      "computedHouseholdSize": 1,
+      "notes": ["Adult boundary sweep for CarePlus vs Connector"]
+    },
+    "input": {
+      "applicantId": "adult-single-100-fpl",
+      "age": 35,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 0,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 15060 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "MassHealth CarePlus",
+      "householdSize": 1,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "adult-single-138-fpl",
+    "label": "Single adult at 138% FPL",
+    "persona": {
+      "age": 35,
+      "sexAtBirth": "male",
+      "pregnant": false,
+      "conditions": ["asthma"],
+      "married": false,
+      "taxDependents": 0,
+      "unbornChildren": 0,
+      "annualIncome": 20783,
+      "computedHouseholdSize": 1,
+      "notes": ["Adult boundary sweep for CarePlus vs Connector"]
+    },
+    "input": {
+      "applicantId": "adult-single-138-fpl",
+      "age": 35,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 0,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 20783 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "MassHealth CarePlus",
+      "householdSize": 1,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "adult-single-139-fpl",
+    "label": "Single adult at 139% FPL",
+    "persona": {
+      "age": 35,
+      "sexAtBirth": "male",
+      "pregnant": false,
+      "conditions": ["hypertension"],
+      "married": false,
+      "taxDependents": 0,
+      "unbornChildren": 0,
+      "annualIncome": 20933,
+      "computedHouseholdSize": 1,
+      "notes": ["Adult boundary sweep for CarePlus vs Connector"]
+    },
+    "input": {
+      "applicantId": "adult-single-139-fpl",
+      "age": 35,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 0,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 20933 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "Health Connector",
+      "householdSize": 1,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "adult-single-200-fpl",
+    "label": "Single adult at 200% FPL",
+    "persona": {
+      "age": 35,
+      "sexAtBirth": "male",
+      "pregnant": false,
+      "conditions": ["hypertension"],
+      "married": false,
+      "taxDependents": 0,
+      "unbornChildren": 0,
+      "annualIncome": 30120,
+      "computedHouseholdSize": 1,
+      "notes": ["Adult boundary sweep for CarePlus vs Connector"]
+    },
+    "input": {
+      "applicantId": "adult-single-200-fpl",
+      "age": 35,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 0,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 30120 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "Health Connector",
+      "householdSize": 1,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "adult-single-300-fpl",
+    "label": "Single adult at 300% FPL",
+    "persona": {
+      "age": 35,
+      "sexAtBirth": "male",
+      "pregnant": false,
+      "conditions": ["hypertension"],
+      "married": false,
+      "taxDependents": 0,
+      "unbornChildren": 0,
+      "annualIncome": 45180,
+      "computedHouseholdSize": 1,
+      "notes": ["Adult boundary sweep for CarePlus vs Connector"]
+    },
+    "input": {
+      "applicantId": "adult-single-300-fpl",
+      "age": 35,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 0,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 45180 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "Health Connector",
+      "householdSize": 1,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "adult-single-450-fpl",
+    "label": "Single adult at 450% FPL",
+    "persona": {
+      "age": 35,
+      "sexAtBirth": "male",
+      "pregnant": false,
+      "conditions": ["hypertension"],
+      "married": false,
+      "taxDependents": 0,
+      "unbornChildren": 0,
+      "annualIncome": 67770,
+      "computedHouseholdSize": 1,
+      "notes": ["Adult boundary sweep for CarePlus vs Connector"]
+    },
+    "input": {
+      "applicantId": "adult-single-450-fpl",
+      "age": 35,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 0,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 67770 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "Health Connector",
+      "householdSize": 1,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "adult-parent-two-dependents-100-fpl",
+    "label": "Adult with two dependents at 100% FPL",
+    "persona": {
+      "age": 29,
+      "sexAtBirth": "female",
+      "pregnant": false,
+      "conditions": ["type_2_diabetes"],
+      "married": false,
+      "taxDependents": 2,
+      "unbornChildren": 0,
+      "annualIncome": 25820,
+      "computedHouseholdSize": 3,
+      "notes": ["Household-size-sensitive adult case"]
+    },
+    "input": {
+      "applicantId": "adult-parent-two-dependents-100-fpl",
+      "age": 29,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 2,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 25820 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "MassHealth CarePlus",
+      "householdSize": 3,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "adult-parent-two-dependents-138-fpl",
+    "label": "Adult with two dependents at 138% FPL",
+    "persona": {
+      "age": 29,
+      "sexAtBirth": "female",
+      "pregnant": false,
+      "conditions": ["type_2_diabetes"],
+      "married": false,
+      "taxDependents": 2,
+      "unbornChildren": 0,
+      "annualIncome": 35632,
+      "computedHouseholdSize": 3,
+      "notes": ["Household-size-sensitive adult case"]
+    },
+    "input": {
+      "applicantId": "adult-parent-two-dependents-138-fpl",
+      "age": 29,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 2,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 35632 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "MassHealth CarePlus",
+      "householdSize": 3,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "adult-parent-two-dependents-139-fpl",
+    "label": "Adult with two dependents at 139% FPL",
+    "persona": {
+      "age": 29,
+      "sexAtBirth": "female",
+      "pregnant": false,
+      "conditions": ["type_2_diabetes"],
+      "married": false,
+      "taxDependents": 2,
+      "unbornChildren": 0,
+      "annualIncome": 35890,
+      "computedHouseholdSize": 3,
+      "notes": ["Household-size-sensitive adult case"]
+    },
+    "input": {
+      "applicantId": "adult-parent-two-dependents-139-fpl",
+      "age": 29,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 2,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 35890 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "Health Connector",
+      "householdSize": 3,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "adult-parent-two-dependents-200-fpl",
+    "label": "Adult with two dependents at 200% FPL",
+    "persona": {
+      "age": 29,
+      "sexAtBirth": "female",
+      "pregnant": false,
+      "conditions": ["type_2_diabetes"],
+      "married": false,
+      "taxDependents": 2,
+      "unbornChildren": 0,
+      "annualIncome": 51640,
+      "computedHouseholdSize": 3,
+      "notes": ["Household-size-sensitive adult case"]
+    },
+    "input": {
+      "applicantId": "adult-parent-two-dependents-200-fpl",
+      "age": 29,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 2,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 51640 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "Health Connector",
+      "householdSize": 3,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "adult-parent-two-dependents-300-fpl",
+    "label": "Adult with two dependents at 300% FPL",
+    "persona": {
+      "age": 29,
+      "sexAtBirth": "female",
+      "pregnant": false,
+      "conditions": ["type_2_diabetes"],
+      "married": false,
+      "taxDependents": 2,
+      "unbornChildren": 0,
+      "annualIncome": 77460,
+      "computedHouseholdSize": 3,
+      "notes": ["Household-size-sensitive adult case"]
+    },
+    "input": {
+      "applicantId": "adult-parent-two-dependents-300-fpl",
+      "age": 29,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 2,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 77460 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "Health Connector",
+      "householdSize": 3,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "adult-married-100-fpl",
+    "label": "Married adult household at 100% FPL",
+    "persona": {
+      "age": 42,
+      "sexAtBirth": "male",
+      "pregnant": false,
+      "conditions": ["none"],
+      "married": true,
+      "taxDependents": 0,
+      "unbornChildren": 0,
+      "annualIncome": 20440,
+      "computedHouseholdSize": 2,
+      "notes": ["Married household boundary sweep"]
+    },
+    "input": {
+      "applicantId": "adult-married-100-fpl",
+      "age": 42,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": true,
+      "taxDependents": 0,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 20440 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "MassHealth CarePlus",
+      "householdSize": 2,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "adult-married-138-fpl",
+    "label": "Married adult household at 138% FPL",
+    "persona": {
+      "age": 42,
+      "sexAtBirth": "male",
+      "pregnant": false,
+      "conditions": ["none"],
+      "married": true,
+      "taxDependents": 0,
+      "unbornChildren": 0,
+      "annualIncome": 28207,
+      "computedHouseholdSize": 2,
+      "notes": ["Married household boundary sweep"]
+    },
+    "input": {
+      "applicantId": "adult-married-138-fpl",
+      "age": 42,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": true,
+      "taxDependents": 0,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 28207 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "MassHealth CarePlus",
+      "householdSize": 2,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "adult-married-139-fpl",
+    "label": "Married adult household at 139% FPL",
+    "persona": {
+      "age": 42,
+      "sexAtBirth": "male",
+      "pregnant": false,
+      "conditions": ["none"],
+      "married": true,
+      "taxDependents": 0,
+      "unbornChildren": 0,
+      "annualIncome": 28412,
+      "computedHouseholdSize": 2,
+      "notes": ["Married household boundary sweep"]
+    },
+    "input": {
+      "applicantId": "adult-married-139-fpl",
+      "age": 42,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": true,
+      "taxDependents": 0,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 28412 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "Health Connector",
+      "householdSize": 2,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "adult-married-250-fpl",
+    "label": "Married adult household at 250% FPL",
+    "persona": {
+      "age": 42,
+      "sexAtBirth": "male",
+      "pregnant": false,
+      "conditions": ["none"],
+      "married": true,
+      "taxDependents": 0,
+      "unbornChildren": 0,
+      "annualIncome": 51100,
+      "computedHouseholdSize": 2,
+      "notes": ["Married household boundary sweep"]
+    },
+    "input": {
+      "applicantId": "adult-married-250-fpl",
+      "age": 42,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": true,
+      "taxDependents": 0,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 51100 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "Health Connector",
+      "householdSize": 2,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "child-dependent-150-fpl",
+    "label": "Child dependent at 150% FPL",
+    "persona": {
+      "age": 10,
+      "sexAtBirth": "female",
+      "pregnant": false,
+      "conditions": ["asthma"],
+      "married": false,
+      "taxDependents": 2,
+      "unbornChildren": 0,
+      "annualIncome": 38730,
+      "computedHouseholdSize": 3,
+      "notes": ["Child threshold sweep for Standard vs Family Assistance vs Connector"]
+    },
+    "input": {
+      "applicantId": "child-dependent-150-fpl",
+      "age": 10,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 2,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 38730 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "MassHealth Standard",
+      "householdSize": 3,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "child-dependent-151-fpl",
+    "label": "Child dependent at 151% FPL",
+    "persona": {
+      "age": 10,
+      "sexAtBirth": "male",
+      "pregnant": false,
+      "conditions": ["adhd"],
+      "married": false,
+      "taxDependents": 2,
+      "unbornChildren": 0,
+      "annualIncome": 38988,
+      "computedHouseholdSize": 3,
+      "notes": ["Child threshold sweep for Standard vs Family Assistance vs Connector"]
+    },
+    "input": {
+      "applicantId": "child-dependent-151-fpl",
+      "age": 10,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 2,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 38988 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "MassHealth Family Assistance",
+      "householdSize": 3,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "child-dependent-300-fpl",
+    "label": "Child dependent at 300% FPL",
+    "persona": {
+      "age": 10,
+      "sexAtBirth": "female",
+      "pregnant": false,
+      "conditions": ["adhd"],
+      "married": false,
+      "taxDependents": 2,
+      "unbornChildren": 0,
+      "annualIncome": 77460,
+      "computedHouseholdSize": 3,
+      "notes": ["Child threshold sweep for Standard vs Family Assistance vs Connector"]
+    },
+    "input": {
+      "applicantId": "child-dependent-300-fpl",
+      "age": 10,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 2,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 77460 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "MassHealth Family Assistance",
+      "householdSize": 3,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "child-dependent-301-fpl",
+    "label": "Child dependent at 301% FPL",
+    "persona": {
+      "age": 10,
+      "sexAtBirth": "male",
+      "pregnant": false,
+      "conditions": ["adhd"],
+      "married": false,
+      "taxDependents": 2,
+      "unbornChildren": 0,
+      "annualIncome": 77718,
+      "computedHouseholdSize": 3,
+      "notes": ["Child threshold sweep for Standard vs Family Assistance vs Connector"]
+    },
+    "input": {
+      "applicantId": "child-dependent-301-fpl",
+      "age": 10,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 2,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 77718 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "Health Connector",
+      "householdSize": 3,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "pregnant-adult-050-fpl",
+    "label": "Pregnant adult at 50% FPL",
+    "persona": {
+      "age": 28,
+      "sexAtBirth": "female",
+      "pregnant": true,
+      "conditions": ["pregnancy"],
+      "married": false,
+      "taxDependents": 0,
+      "unbornChildren": 1,
+      "annualIncome": 10220,
+      "computedHouseholdSize": 2,
+      "notes": ["Pregnancy threshold sweep"]
+    },
+    "input": {
+      "applicantId": "pregnant-adult-050-fpl",
+      "age": 28,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 0,
+      "taxFiler": true,
+      "pregnant": true,
+      "unbornChildren": 1,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 10220 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "MassHealth Standard",
+      "householdSize": 2,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "pregnant-adult-100-fpl",
+    "label": "Pregnant adult at 100% FPL",
+    "persona": {
+      "age": 28,
+      "sexAtBirth": "female",
+      "pregnant": true,
+      "conditions": ["pregnancy"],
+      "married": false,
+      "taxDependents": 0,
+      "unbornChildren": 1,
+      "annualIncome": 20440,
+      "computedHouseholdSize": 2,
+      "notes": ["Pregnancy threshold sweep"]
+    },
+    "input": {
+      "applicantId": "pregnant-adult-100-fpl",
+      "age": 28,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 0,
+      "taxFiler": true,
+      "pregnant": true,
+      "unbornChildren": 1,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 20440 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "MassHealth Standard",
+      "householdSize": 2,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "pregnant-adult-200-fpl",
+    "label": "Pregnant adult at 200% FPL",
+    "persona": {
+      "age": 28,
+      "sexAtBirth": "female",
+      "pregnant": true,
+      "conditions": ["pregnancy"],
+      "married": false,
+      "taxDependents": 0,
+      "unbornChildren": 1,
+      "annualIncome": 40880,
+      "computedHouseholdSize": 2,
+      "notes": ["Pregnancy threshold sweep"]
+    },
+    "input": {
+      "applicantId": "pregnant-adult-200-fpl",
+      "age": 28,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 0,
+      "taxFiler": true,
+      "pregnant": true,
+      "unbornChildren": 1,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 40880 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "MassHealth Standard",
+      "householdSize": 2,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "pregnant-adult-201-fpl",
+    "label": "Pregnant adult at 201% FPL",
+    "persona": {
+      "age": 28,
+      "sexAtBirth": "female",
+      "pregnant": true,
+      "conditions": ["pregnancy"],
+      "married": false,
+      "taxDependents": 0,
+      "unbornChildren": 1,
+      "annualIncome": 41084,
+      "computedHouseholdSize": 2,
+      "notes": ["Pregnancy threshold sweep"]
+    },
+    "input": {
+      "applicantId": "pregnant-adult-201-fpl",
+      "age": 28,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 0,
+      "taxFiler": true,
+      "pregnant": true,
+      "unbornChildren": 1,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 41084 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "Health Connector",
+      "householdSize": 2,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "disabled-medically-verified",
+    "label": "Disabled adult with medical verification",
+    "persona": {
+      "age": 40,
+      "sexAtBirth": "female",
+      "pregnant": false,
+      "conditions": ["mobility_impairment"],
+      "married": false,
+      "taxDependents": 0,
+      "unbornChildren": 0,
+      "annualIncome": 18825,
+      "computedHouseholdSize": 1,
+      "notes": ["Disability program routing"]
+    },
+    "input": {
+      "applicantId": "disabled-medically-verified",
+      "age": 40,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 0,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": true,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 18825 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "MassHealth CommonHealth",
+      "householdSize": 1,
+      "findingCodes": ["RULES_PASS"],
+      "requiredDocuments": ["Disability Supplement form"]
+    }
+  },
+  {
+    "caseId": "disabled-missing-medical-verification",
+    "label": "Disabled adult missing medical verification",
+    "persona": {
+      "age": 40,
+      "sexAtBirth": "male",
+      "pregnant": false,
+      "conditions": ["mobility_impairment"],
+      "married": false,
+      "taxDependents": 0,
+      "unbornChildren": 0,
+      "annualIncome": 18825,
+      "computedHouseholdSize": 1,
+      "notes": ["Pending documents for disability"]
+    },
+    "input": {
+      "applicantId": "disabled-missing-medical-verification",
+      "age": 40,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 0,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": true,
+      "medicalVerification": false,
+      "hasOtherInsurance": false,
+      "income": { "wages": 18825 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "PENDING_DOCUMENTS",
+      "eligibleProgram": "MassHealth CommonHealth",
+      "householdSize": 1,
+      "findingCodes": ["DISABILITY_MEDICAL_VERIFICATION_REQUIRED"],
+      "requiredDocuments": ["Disability Supplement form", "Medical verification"]
+    }
+  },
+  {
+    "caseId": "identity-not-verified",
+    "label": "Adult pending identity verification",
+    "persona": {
+      "age": 35,
+      "sexAtBirth": "female",
+      "pregnant": false,
+      "conditions": ["none"],
+      "married": false,
+      "taxDependents": 0,
+      "unbornChildren": 0,
+      "annualIncome": 15060,
+      "computedHouseholdSize": 1,
+      "notes": ["Identity gating before final approval"]
+    },
+    "input": {
+      "applicantId": "identity-not-verified",
+      "age": 35,
+      "stateResident": "MA",
+      "identityVerified": false,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 0,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 15060 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "PENDING_VERIFICATION",
+      "eligibleProgram": "MassHealth CarePlus",
+      "householdSize": 1,
+      "findingCodes": ["IDENTITY_PENDING"],
+      "requiredDocuments": ["SSN verification", "Passport or Birth Certificate"]
+    }
+  },
+  {
+    "caseId": "other-insurance-tpl",
+    "label": "Adult with third-party liability requirement",
+    "persona": {
+      "age": 35,
+      "sexAtBirth": "male",
+      "pregnant": false,
+      "conditions": ["none"],
+      "married": false,
+      "taxDependents": 0,
+      "unbornChildren": 0,
+      "annualIncome": 15060,
+      "computedHouseholdSize": 1,
+      "notes": ["Other insurance should require TPL workflow"]
+    },
+    "input": {
+      "applicantId": "other-insurance-tpl",
+      "age": 35,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 0,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": true,
+      "income": { "wages": 15060 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "TPL_REQUIRED",
+      "eligibleProgram": "MassHealth CarePlus",
+      "householdSize": 1,
+      "findingCodes": ["TPL_REQUIRED"],
+      "requiredDocuments": ["TPL form"]
+    }
+  },
+  {
+    "caseId": "verification-mismatch-income",
+    "label": "Adult with failed income verification",
+    "persona": {
+      "age": 35,
+      "sexAtBirth": "female",
+      "pregnant": false,
+      "conditions": ["none"],
+      "married": false,
+      "taxDependents": 0,
+      "unbornChildren": 0,
+      "annualIncome": 15060,
+      "computedHouseholdSize": 1,
+      "notes": ["Auto-verification mismatch should request docs"]
+    },
+    "input": {
+      "applicantId": "verification-mismatch-income",
+      "age": 35,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 0,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 15060 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": false,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "PENDING_DOCUMENTS",
+      "eligibleProgram": "MassHealth CarePlus",
+      "householdSize": 1,
+      "findingCodes": ["VERIFICATION_MISMATCH"],
+      "requiredDocuments": ["Verification documents"]
+    }
+  },
+  {
+    "caseId": "non-ma-resident",
+    "label": "Applicant outside Massachusetts",
+    "persona": {
+      "age": 35,
+      "sexAtBirth": "male",
+      "pregnant": false,
+      "conditions": ["none"],
+      "married": false,
+      "taxDependents": 0,
+      "unbornChildren": 0,
+      "annualIncome": 15060,
+      "computedHouseholdSize": 1,
+      "notes": ["Residency denial"]
+    },
+    "input": {
+      "applicantId": "non-ma-resident",
+      "age": 35,
+      "stateResident": "RI",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 0,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 15060 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "DENIED",
+      "eligibleProgram": "Ineligible",
+      "householdSize": 1,
+      "findingCodes": ["RESIDENCY_DENIED"],
+      "requiredDocuments": ["MA ID / Driver License", "Lease / Utility Bill / Government Mail"]
+    }
+  },
+  {
+    "caseId": "age-65-redirect",
+    "label": "Senior applicant redirects to ACA-2",
+    "persona": {
+      "age": 65,
+      "sexAtBirth": "female",
+      "pregnant": false,
+      "conditions": ["none"],
+      "married": false,
+      "taxDependents": 0,
+      "unbornChildren": 0,
+      "annualIncome": 15060,
+      "computedHouseholdSize": 1,
+      "notes": ["65+ redirect"]
+    },
+    "input": {
+      "applicantId": "age-65-redirect",
+      "age": 65,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 0,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 15060 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "REDIRECT_ACA2",
+      "eligibleProgram": "Redirect to ACA-2",
+      "householdSize": 1,
+      "findingCodes": ["AGE_REDIRECT"]
+    }
+  },
+  {
+    "caseId": "undocumented-adult-low-income",
+    "label": "Undocumented adult low income",
+    "persona": {
+      "age": 35,
+      "sexAtBirth": "male",
+      "pregnant": false,
+      "conditions": ["none"],
+      "married": false,
+      "taxDependents": 0,
+      "unbornChildren": 0,
+      "annualIncome": 15060,
+      "computedHouseholdSize": 1,
+      "notes": ["Current engine keeps limited coverage status but still assigns income-based program"]
+    },
+    "input": {
+      "applicantId": "undocumented-adult-low-income",
+      "age": 35,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "UNDOCUMENTED",
+      "married": false,
+      "taxDependents": 0,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 15060 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "LIMITED_COVERAGE",
+      "eligibleProgram": "MassHealth CarePlus",
+      "householdSize": 1,
+      "findingCodes": ["LIMITED_COVERAGE"]
+    }
+  },
+  {
+    "caseId": "qualified-noncitizen-adult",
+    "label": "Qualified noncitizen adult",
+    "persona": {
+      "age": 35,
+      "sexAtBirth": "female",
+      "pregnant": false,
+      "conditions": ["none"],
+      "married": false,
+      "taxDependents": 0,
+      "unbornChildren": 0,
+      "annualIncome": 15060,
+      "computedHouseholdSize": 1,
+      "notes": ["Qualified immigration status should permit full evaluation"]
+    },
+    "input": {
+      "applicantId": "qualified-noncitizen-adult",
+      "age": 35,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "QUALIFIED_NONCITIZEN",
+      "married": false,
+      "taxDependents": 0,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 15060 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "MassHealth CarePlus",
+      "householdSize": 1,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "child-zero-income-family",
+    "label": "Child in zero income household",
+    "persona": {
+      "age": 4,
+      "sexAtBirth": "female",
+      "pregnant": false,
+      "conditions": ["asthma"],
+      "married": false,
+      "taxDependents": 1,
+      "unbornChildren": 0,
+      "annualIncome": 0,
+      "computedHouseholdSize": 2,
+      "notes": ["Zero-income child floor case"]
+    },
+    "input": {
+      "applicantId": "child-zero-income-family",
+      "age": 4,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 1,
+      "taxFiler": true,
+      "pregnant": false,
+      "unbornChildren": 0,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 0 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "MassHealth Standard",
+      "householdSize": 2,
+      "findingCodes": ["RULES_PASS"]
+    }
+  },
+  {
+    "caseId": "pregnant-twins-180-fpl",
+    "label": "Pregnant adult with twins at 180% FPL",
+    "persona": {
+      "age": 31,
+      "sexAtBirth": "female",
+      "pregnant": true,
+      "conditions": ["pregnancy"],
+      "married": false,
+      "taxDependents": 0,
+      "unbornChildren": 2,
+      "annualIncome": 46476,
+      "computedHouseholdSize": 3,
+      "notes": ["Multiple unborn children should increase household size"]
+    },
+    "input": {
+      "applicantId": "pregnant-twins-180-fpl",
+      "age": 31,
+      "stateResident": "MA",
+      "identityVerified": true,
+      "citizenshipStatus": "US_CITIZEN",
+      "married": false,
+      "taxDependents": 0,
+      "taxFiler": true,
+      "pregnant": true,
+      "unbornChildren": 2,
+      "disabled": false,
+      "medicalVerification": true,
+      "hasOtherInsurance": false,
+      "income": { "wages": 46476 },
+      "verification": {
+        "ssnVerified": true,
+        "incomeVerified": true,
+        "immigrationVerified": true
+      }
+    },
+    "expected": {
+      "status": "APPROVED",
+      "eligibleProgram": "MassHealth Standard",
+      "householdSize": 3,
+      "findingCodes": ["RULES_PASS"]
+    }
+  }
+]

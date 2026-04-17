@@ -17,6 +17,7 @@
     "db:sync:prod": "node scripts/sync-data-to-cloud.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:eligibility-cases": "vitest run lib/masshealth/__tests__/aca3-synthetic-patient-cases.test.ts",
     "test:coverage": "vitest run --coverage",
     "test:ci": "vitest run --coverage --reporter=verbose --reporter=json --outputFile=test-results.json",
     "test:e2e": "playwright test --project=chromium",

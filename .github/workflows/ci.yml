@@ -34,6 +34,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Run eligibility regression sweep
+        run: pnpm test:eligibility-cases
+        env:
+          DATABASE_URL:                   "postgresql://mock:mock@localhost/mock"
+          NEXT_PUBLIC_SUPABASE_URL:       "https://mock.supabase.co"
+          NEXT_PUBLIC_SUPABASE_ANON_KEY:  "mock-anon-key"
+          SUPABASE_SERVICE_ROLE_KEY:      "mock-service-key"
+          RESEND_API_KEY:                 "mock-resend-key"
+          FROM_EMAIL:                     "noreply@mock.com"
+          NEXT_PUBLIC_APP_URL:            "http://localhost:3000"
+
       - name: Run unit tests with coverage
         id: unit_tests
         run: pnpm test:ci

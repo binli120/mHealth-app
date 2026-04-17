@@ -238,6 +238,7 @@ The implementation-facing requirements package lives in [`docs/requirements/READ
 | `pnpm lint` | Run ESLint |
 | `pnpm test` | Run unit tests (Vitest) |
 | `pnpm test:watch` | Unit tests in watch mode |
+| `pnpm test:eligibility-cases` | Run the ACA-3 eligibility regression case sweep |
 | `pnpm test:e2e` | Run Playwright end-to-end tests |
 | `pnpm test:e2e:ui` | Playwright interactive UI mode |
 | `pnpm test:e2e:report` | Open last Playwright HTML report |
