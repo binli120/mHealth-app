@@ -62,6 +62,11 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://${DOMAIN}}
       FROM_EMAIL: ${FROM_EMAIL:-}
+      OPENOBSERVE_URL: ${OPENOBSERVE_URL:-}
+      OPENOBSERVE_USER: ${OPENOBSERVE_USER:-}
+      OPENOBSERVE_PASSWORD: ${OPENOBSERVE_PASSWORD:-}
+      OPENOBSERVE_ORG: ${OPENOBSERVE_ORG:-default}
+      OPENOBSERVE_STREAM: ${OPENOBSERVE_STREAM:-mhealth-app}
     env_file:
       - .env.production.local
     labels:

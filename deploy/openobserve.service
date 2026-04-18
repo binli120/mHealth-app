@@ -9,6 +9,9 @@
 #   sudo systemctl enable --now openobserve
 #
 # The OpenObserve compose file lives at /root/openobserver/docker-compose.yml.
+# Optional runtime env can be stored in:
+#   /etc/openobserve.env
+#   /root/openobserver/.env
 
 [Unit]
 Description=OpenObserve — Observability (logs + metrics + traces)
@@ -21,6 +24,8 @@ Wants=network-online.target
 Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=/root/openobserver
+EnvironmentFile=-/etc/openobserve.env
+EnvironmentFile=-/root/openobserver/.env
 
 ExecStart=/usr/bin/docker compose up -d --remove-orphans
 ExecStop=/usr/bin/docker compose down

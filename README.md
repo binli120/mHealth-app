@@ -335,13 +335,37 @@ OPENOBSERVE_STREAM_CONTAINERS=containers-prod    # Vector: all container logs (O
 
 The instance runs via Docker Compose at `/root/openobserver/docker-compose.yml` on the Hostinger VPS.
 
+To enable email alert destinations, load SMTP env for the stack before restarting it. This repo ships a Hostinger-ready example at [`deploy/openobserve.env.example`](/Users/blee/dev/masshealth-repo/mHealth-app/deploy/openobserve.env.example).
+
+The OpenObserve service definition in `/root/openobserver/docker-compose.yml` must also pass the SMTP vars into the container:
+
+```yaml
+services:
+  openobserve:
+    environment:
+      ZO_SMTP_ENABLED: ${ZO_SMTP_ENABLED}
+      ZO_SMTP_HOST: ${ZO_SMTP_HOST}
+      ZO_SMTP_PORT: ${ZO_SMTP_PORT}
+      ZO_SMTP_USER_NAME: ${ZO_SMTP_USER_NAME}
+      ZO_SMTP_PASSWORD: ${ZO_SMTP_PASSWORD}
+      ZO_SMTP_FROM_EMAIL: ${ZO_SMTP_FROM_EMAIL}
+      ZO_SMTP_REPLY_TO: ${ZO_SMTP_REPLY_TO}
+      ZO_SMTP_ENCRYPTION: ${ZO_SMTP_ENCRYPTION}
+```
+
 ```bash
+# Install/update SMTP env (on VPS)
+sudo cp ~/masshealth_app/deploy/openobserve.env.example /etc/openobserve.env
+# Edit the mailbox/password values before restart
+sudo editor /etc/openobserve.env
+
 # Check status (on VPS)
 docker ps | grep openobserve
 curl http://localhost:5080/healthz
 
 # Restart
-cd /root/openobserver && docker compose restart
+sudo systemctl daemon-reload
+sudo systemctl restart openobserve
 
 # View logs
 docker logs openobserve --tail 50 -f
@@ -778,6 +802,7 @@ sudo systemctl enable --now healthcompass      # start now + auto-start on boot
 
 # ── OpenObserve monitoring stack ─────────────────────────────────────────────
 sudo cp ~/masshealth_app/deploy/openobserve.service /etc/systemd/system/
+sudo cp ~/masshealth_app/deploy/openobserve.env.example /etc/openobserve.env
 sudo systemctl daemon-reload
 sudo systemctl enable --now openobserve
 

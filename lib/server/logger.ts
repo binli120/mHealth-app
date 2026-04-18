@@ -5,7 +5,24 @@
 
 import "server-only"
 
-type LogLevel = "info" | "warn" | "error"
+type LogLevel = "error" | "warn" | "info" | "debug"
+
+const LOG_LEVEL_RANK: Record<LogLevel, number> = {
+  error: 0,
+  warn:  1,
+  info:  2,
+  debug: 3,
+}
+
+function getConfiguredLevel(): LogLevel {
+  const raw = process.env.LOG_LEVEL?.toLowerCase()
+  if (raw && raw in LOG_LEVEL_RANK) return raw as LogLevel
+  return "info"
+}
+
+function isLevelEnabled(level: LogLevel): boolean {
+  return LOG_LEVEL_RANK[level] <= LOG_LEVEL_RANK[getConfiguredLevel()]
+}
 
 const REDACTED_KEYS = new Set([
   "authorization",
@@ -128,6 +145,8 @@ function shipToOpenObserve(payload: Record<string, unknown>): void {
 // ─── Core write ───────────────────────────────────────────────────────────────
 
 function writeLog(level: LogLevel, event: string, context?: Record<string, unknown>): void {
+  if (!isLevelEnabled(level)) return
+
   const payload = {
     _timestamp: Date.now() * 1000, // OpenObserve expects microseconds
     ts:         new Date().toISOString(),
@@ -139,7 +158,9 @@ function writeLog(level: LogLevel, event: string, context?: Record<string, unkno
   }
 
   const line = JSON.stringify(payload)
-  if (level === "info") {
+  if (level === "debug") {
+    console.debug(line)
+  } else if (level === "info") {
     console.info(line)
   } else if (level === "warn") {
     console.warn(line)
@@ -157,7 +178,15 @@ export function logServerError(event: string, error: unknown, context?: Record<s
   })
 }
 
+export function logServerWarn(event: string, context?: Record<string, unknown>): void {
+  writeLog("warn", event, context)
+}
+
 export function logServerInfo(event: string, context?: Record<string, unknown>): void {
   writeLog("info", event, context)
+}
+
+export function logServerDebug(event: string, context?: Record<string, unknown>): void {
+  writeLog("debug", event, context)
 }
 
