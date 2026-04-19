@@ -4,7 +4,12 @@
  */
 
 import { test, expect } from "@playwright/test"
+import * as path from "path"
 import { PrescreenerPage } from "../pages/prescreener.page"
+import { ApplicationPage } from "../pages/application.page"
+import { hasSupabaseAuthState } from "../auth-state"
+
+const AUTH_FILE = path.join(__dirname, "../.auth/user.json")
 
 // Prescreener is public — no auth needed
 test.describe("Eligibility Prescreener", () => {
@@ -55,6 +60,16 @@ test.describe("Eligibility Prescreener", () => {
     await screener.assertStartApplicationButtonVisible()
   })
 
+  test("results hand off to application type selection", async ({ page }) => {
+    await screener.runHappyPath()
+    await screener.assertStartApplicationButtonVisible()
+    await screener.clickStartApplication()
+    await expect(page).toHaveURL(/\/application\/type/, { timeout: 10_000 })
+    await expect(
+      page.getByText(/choose your masshealth application|select the exact form/i).first(),
+    ).toBeVisible({ timeout: 10_000 })
+  })
+
   test("progress bar advances through steps", async ({ page }) => {
     await screener.goto()
     // Step 1: progress should be near 0
@@ -71,5 +86,26 @@ test.describe("Eligibility Prescreener", () => {
     page.on("pageerror", (err) => errors.push(err.message))
     await screener.runHappyPath()
     expect(errors).toHaveLength(0)
+  })
+})
+
+test.describe("Eligibility Prescreener Handoff", () => {
+  test.use({ storageState: path.join(__dirname, "../.auth/user.json") })
+
+  test("eligible result can hand off into a real application draft", async ({ page }) => {
+    test.skip(!hasSupabaseAuthState(AUTH_FILE), "No auth session — create a test user in the Supabase dashboard to run these tests")
+
+    const screener = new PrescreenerPage(page)
+    const applicationPage = new ApplicationPage(page)
+
+    await screener.runHappyPath()
+    await screener.assertStartApplicationButtonVisible()
+    await screener.clickStartApplication()
+
+    await expect(page).toHaveURL(/\/application\/type/, { timeout: 10_000 })
+
+    const applicationId = await applicationPage.selectAca3Draft()
+    await applicationPage.assertChatModeVisible()
+    await applicationPage.assertDraftVisibleOnStatusPage(applicationId)
   })
 })

@@ -192,7 +192,7 @@ export function ResultsPanel({
       <div className="rounded-xl border border-border bg-card p-4 space-y-3">
         <p className="text-sm font-medium text-foreground">{copy.nextSteps}</p>
         <div className="grid gap-2 sm:grid-cols-2">
-          <Link href="/application/new">
+          <Link href="/application/type">
             <Button className="w-full gap-2">
               {copy.startFullApplication}
               <ChevronRight className="h-4 w-4" />

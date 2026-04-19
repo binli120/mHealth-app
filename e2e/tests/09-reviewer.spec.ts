@@ -6,20 +6,9 @@
 import { test, expect } from "@playwright/test"
 import { ReviewerPage } from "../pages/reviewer.page"
 import * as path from "path"
-import * as fs from "fs"
+import { hasSupabaseAuthState } from "../auth-state"
 
-const _hasAuth = (() => {
-  try {
-    const s = JSON.parse(fs.readFileSync(path.join(__dirname, "../.auth/user.json"), "utf8"))
-    // Supabase uses localStorage (not cookies) for JWT storage
-    return s.origins?.some((o: { localStorage?: { name: string }[] }) =>
-      o.localStorage?.some((item: { name: string }) =>
-        item.name.startsWith("sb-") && item.name.endsWith("-auth-token")
-      )
-    ) ?? false
-  } catch { return false }
-})()
-test.skip(!_hasAuth, "No auth session — create a test user in the Supabase dashboard to run these tests")
+const AUTH_FILE = path.join(__dirname, "../.auth/user.json")
 
 test.describe("Reviewer / Staff Portal", () => {
   // Reviewer portal — uses same user for now (reviewer auth is role-based server-side)
@@ -27,6 +16,7 @@ test.describe("Reviewer / Staff Portal", () => {
   let reviewer: ReviewerPage
 
   test.beforeEach(({ page }) => {
+    test.skip(!hasSupabaseAuthState(AUTH_FILE), "No auth session — create a test user in the Supabase dashboard to run these tests")
     reviewer = new ReviewerPage(page)
   })
 

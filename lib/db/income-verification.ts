@@ -25,6 +25,13 @@ import {
   buildEvidenceRequirements,
 } from "@/lib/masshealth/income-verification-engine"
 
+function isUndefinedTableError(error: unknown): boolean {
+  return typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "42P01"
+}
+
 // ── Row mappers ───────────────────────────────────────────────────────────────
 
 function toRequirement(row: Record<string, unknown>): IncomeEvidenceRequirement {
@@ -101,25 +108,41 @@ export async function getIncomeVerificationCase(
   applicationId: string,
 ): Promise<IncomeVerificationCase | null> {
   const pool = getDbPool()
-
-  const { rows: caseRows } = await pool.query(
-    `SELECT * FROM public.income_verification_cases WHERE application_id = $1::uuid LIMIT 1`,
-    [applicationId],
-  )
+  let caseRows
+  try {
+    ({ rows: caseRows } = await pool.query(
+      `SELECT * FROM public.income_verification_cases WHERE application_id = $1::uuid LIMIT 1`,
+      [applicationId],
+    ));
+  } catch (error) {
+    if (isUndefinedTableError(error)) {
+      return null
+    }
+    throw error
+  }
   if (caseRows.length === 0) return null
 
-  const { rows: reqRows } = await pool.query(
-    `SELECT * FROM public.income_evidence_requirements
-     WHERE application_id = $1::uuid
-     ORDER BY member_name, income_source_type`,
-    [applicationId],
-  )
+  let reqRows
+  let decRows
+  try {
+    ({ rows: reqRows } = await pool.query(
+      `SELECT * FROM public.income_evidence_requirements
+       WHERE application_id = $1::uuid
+       ORDER BY member_name, income_source_type`,
+      [applicationId],
+    ));
 
-  const { rows: decRows } = await pool.query(
-    `SELECT * FROM public.income_verification_decisions
-     WHERE application_id = $1::uuid`,
-    [applicationId],
-  )
+    ({ rows: decRows } = await pool.query(
+      `SELECT * FROM public.income_verification_decisions
+       WHERE application_id = $1::uuid`,
+      [applicationId],
+    ));
+  } catch (error) {
+    if (isUndefinedTableError(error)) {
+      return null
+    }
+    throw error
+  }
 
   const requirements = reqRows.map((r) => toRequirement(r as Record<string, unknown>))
   const decisions    = decRows.map((r) => toDecision(r as Record<string, unknown>))

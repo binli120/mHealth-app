@@ -221,6 +221,20 @@ ALTER TABLE public.income_document_extractions   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.income_verification_decisions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.income_rfi_events             ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "applicant_read_ivc" ON public.income_verification_cases;
+DROP POLICY IF EXISTS "applicant_read_ier" ON public.income_evidence_requirements;
+DROP POLICY IF EXISTS "applicant_read_idoc" ON public.income_documents;
+DROP POLICY IF EXISTS "applicant_insert_idoc" ON public.income_documents;
+DROP POLICY IF EXISTS "staff_all_ivc" ON public.income_verification_cases;
+DROP POLICY IF EXISTS "staff_all_ier" ON public.income_evidence_requirements;
+DROP POLICY IF EXISTS "staff_all_idoc" ON public.income_documents;
+DROP POLICY IF EXISTS "staff_all_ide" ON public.income_document_extractions;
+DROP POLICY IF EXISTS "staff_all_ivd" ON public.income_verification_decisions;
+DROP POLICY IF EXISTS "staff_all_irfi" ON public.income_rfi_events;
+DROP POLICY IF EXISTS "applicant_read_irfi" ON public.income_rfi_events;
+DROP POLICY IF EXISTS "applicant_read_ivd" ON public.income_verification_decisions;
+DROP POLICY IF EXISTS "applicant_read_ide" ON public.income_document_extractions;
+
 -- Applicant read access (via application ownership)
 CREATE POLICY "applicant_read_ivc" ON public.income_verification_cases
   FOR SELECT USING (

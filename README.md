@@ -226,6 +226,8 @@ App runs at **http://localhost:3000**
 
 The implementation-facing requirements package lives in [`docs/requirements/README.md`](docs/requirements/README.md). It covers product, functional, AI agent, API, data/security, non-functional, roadmap, and traceability requirements generated from the current codebase.
 
+For day-to-day release readiness, solo-engineer QA workflow, and UAT guidance, use [`docs/QA.md`](docs/QA.md). The detailed coverage backlog and test inventory live in [`TEST_PLAN.md`](TEST_PLAN.md).
+
 ---
 
 ## Commands

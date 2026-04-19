@@ -66,6 +66,12 @@ CREATE TRIGGER trg_session_updated_at
 ALTER TABLE public.collaborative_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.session_messages       ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS sessions_select ON public.collaborative_sessions;
+DROP POLICY IF EXISTS sessions_insert ON public.collaborative_sessions;
+DROP POLICY IF EXISTS sessions_update ON public.collaborative_sessions;
+DROP POLICY IF EXISTS session_msgs_select ON public.session_messages;
+DROP POLICY IF EXISTS session_msgs_insert ON public.session_messages;
+
 -- Sessions: SW or patient who is a participant can select
 CREATE POLICY sessions_select
   ON public.collaborative_sessions FOR SELECT TO authenticated

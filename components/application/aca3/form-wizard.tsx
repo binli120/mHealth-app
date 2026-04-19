@@ -122,6 +122,18 @@ function getFormCacheKey(applicationId: string): string {
   return `${FORM_CACHE_KEY_PREFIX}:${applicationId}`
 }
 
+function getIncomeChecklistMemberId(applicationId: string, personIndex: number): string {
+  const normalizedApplicationId = applicationId.replace(/-/g, "").toLowerCase()
+
+  if (!/^[0-9a-f]{32}$/.test(normalizedApplicationId)) {
+    return `00000000-0000-4000-8000-${String(personIndex + 1).padStart(12, "0")}`
+  }
+
+  const suffix = (personIndex + 1).toString(16).padStart(2, "0")
+  const memberHex = `${normalizedApplicationId.slice(0, 30)}${suffix}`
+  return `${memberHex.slice(0, 8)}-${memberHex.slice(8, 12)}-${memberHex.slice(12, 16)}-${memberHex.slice(16, 20)}-${memberHex.slice(20)}`
+}
+
 function normalizeScalarFieldValue(field: SchemaField): FieldValue {
   if (field.value !== null && field.value !== undefined) {
     return field.value as FieldValue
@@ -812,6 +824,53 @@ function normalizeHydratedState(raw: unknown): WizardState | null {
   }
 }
 
+function buildPersistedStateSnapshot(sourceState: WizardState): Record<string, unknown> {
+  return {
+    ...sourceState,
+    errors: {},
+    persistedAt: new Date().toISOString(),
+  }
+}
+
+function getPersistedAt(raw: unknown): number {
+  if (!raw || typeof raw !== "object" || !("persistedAt" in raw)) {
+    return 0
+  }
+
+  const value = (raw as { persistedAt?: unknown }).persistedAt
+  if (typeof value === "string" || typeof value === "number") {
+    const timestamp = new Date(value).getTime()
+    return Number.isFinite(timestamp) ? timestamp : 0
+  }
+
+  return 0
+}
+
+function choosePreferredHydratedRaw(
+  candidates: Array<{ source: "local" | "server" | "redux"; raw: unknown }>,
+): unknown | null {
+  const priority: Record<"local" | "server" | "redux", number> = {
+    local: 3,
+    server: 2,
+    redux: 1,
+  }
+
+  const valid = candidates.filter((candidate) => normalizeHydratedState(candidate.raw))
+  if (valid.length === 0) {
+    return null
+  }
+
+  valid.sort((left, right) => {
+    const timestampDiff = getPersistedAt(right.raw) - getPersistedAt(left.raw)
+    if (timestampDiff !== 0) {
+      return timestampDiff
+    }
+    return priority[right.source] - priority[left.source]
+  })
+
+  return valid[0]?.raw ?? null
+}
+
 function FormProvider({
   children,
   applicationId,
@@ -823,6 +882,8 @@ function FormProvider({
   actingForPatientId?: string
 }) {
   const [state, dispatch] = useReducer(formReducer, undefined, createInitialState)
+  const [isHydratedReady, setIsHydratedReady] = useState(false)
+  const [hydratedApplicationIdState, setHydratedApplicationIdState] = useState<string | null>(null)
   const reduxDispatch = useAppDispatch()
   const activeApplicationId = useAppSelector((rootState) => rootState.application.activeApplicationId)
   const resolvedApplicationId = applicationId ?? activeApplicationId ?? DEFAULT_APPLICATION_ID
@@ -882,10 +943,7 @@ function FormProvider({
       }
 
       const sourceState = overrideState ?? state
-      const persistedState = {
-        ...sourceState,
-        errors: {},
-      }
+      const persistedState = buildPersistedStateSnapshot(sourceState)
 
       try {
         const putHeaders: Record<string, string> = { "Content-Type": "application/json" }
@@ -923,7 +981,7 @@ function FormProvider({
   )
 
   useEffect(() => {
-    if (hydratedApplicationRef.current === resolvedApplicationId) {
+    if (hydratedApplicationRef.current === resolvedApplicationId && hydratedRef.current) {
       return
     }
 
@@ -937,15 +995,38 @@ function FormProvider({
 
       dispatch({ type: "hydrate", payload: nextState })
       hydratedRef.current = true
-    }
-
-    const fromRedux = normalizeHydratedState(applicationRecord?.aca3Wizard ?? null)
-    if (fromRedux) {
-      applyHydratedState(fromRedux)
-      return
+      setIsHydratedReady(true)
+      setHydratedApplicationIdState(resolvedApplicationId)
     }
 
     const hydrateFromServerThenCache = async () => {
+      const cacheKey = getFormCacheKey(resolvedApplicationId)
+      let localRaw: unknown = null
+
+      try {
+        const raw = window.localStorage.getItem(cacheKey)
+        localRaw = raw ? JSON.parse(raw) as unknown : null
+      } catch {
+        localRaw = null
+      }
+
+      const fromReduxRaw = applicationRecord?.aca3Wizard ?? null
+      const preferredReduxOrLocal = choosePreferredHydratedRaw(
+        [
+          { source: "redux", raw: fromReduxRaw },
+          { source: "local", raw: localRaw },
+        ],
+      )
+
+      if (preferredReduxOrLocal) {
+        const normalized = normalizeHydratedState(preferredReduxOrLocal)
+        if (normalized) {
+          applyHydratedState(normalized)
+          return
+        }
+      }
+
+      let serverRaw: unknown = null
       try {
         const getHeaders: Record<string, string> = {}
         if (actingForPatientId) getHeaders["X-Acting-For-Patient"] = actingForPatientId
@@ -962,36 +1043,21 @@ function FormProvider({
           const payload = (await response.json()) as {
             draftState?: unknown
           }
-          const normalizedServer = normalizeHydratedState(payload.draftState ?? null)
-          if (normalizedServer) {
-            applyHydratedState(normalizedServer)
-            return
-          }
+          serverRaw = payload.draftState ?? null
         }
       } catch {
-        // Fall through to local cache.
+        serverRaw = null
       }
 
-      const cacheKey = getFormCacheKey(resolvedApplicationId)
+      const preferredRaw = choosePreferredHydratedRaw(
+        [
+          { source: "server", raw: serverRaw },
+          { source: "local", raw: localRaw },
+        ],
+      )
 
-      try {
-        const raw = window.localStorage.getItem(cacheKey)
-        if (!raw) {
-          applyHydratedState(createInitialState())
-          return
-        }
-
-        const parsed = JSON.parse(raw) as unknown
-        const normalized = normalizeHydratedState(parsed)
-        if (normalized) {
-          applyHydratedState(normalized)
-        } else {
-          applyHydratedState(createInitialState())
-        }
-      } catch {
-        // Ignore corrupt local cache and start fresh.
-        applyHydratedState(createInitialState())
-      }
+      const normalized = normalizeHydratedState(preferredRaw)
+      applyHydratedState(normalized ?? createInitialState())
     }
 
     void hydrateFromServerThenCache()
@@ -1006,10 +1072,7 @@ function FormProvider({
       return
     }
 
-    const persistedState = {
-      ...state,
-      errors: {},
-    }
+    const persistedState = buildPersistedStateSnapshot(state)
     const cacheKey = getFormCacheKey(resolvedApplicationId)
 
     window.localStorage.setItem(
@@ -1066,7 +1129,17 @@ function FormProvider({
     [resolvedApplicationId, saveDraftNow, state, apiIncomeVerified],
   )
 
-  return <FormContext.Provider value={value}>{children}</FormContext.Provider>
+  return (
+    <FormContext.Provider value={value}>
+      {isHydratedReady && hydratedApplicationIdState === resolvedApplicationId ? (
+        children
+      ) : (
+        <div className="rounded-md border border-border bg-card p-6 text-sm text-muted-foreground">
+          Loading saved application...
+        </div>
+      )}
+    </FormContext.Provider>
+  )
 }
 
 function digitsOnly(value: string): string {
@@ -3677,7 +3750,7 @@ function ValidateAndSubmitStep({ onBackToReview, onGoToStep }: ValidateAndSubmit
                 const hasIncome = sources.length > 0
                 if (!hasIncome) sources.push("zero_income")
                 return {
-                  memberId: `person-${i}`,
+                  memberId: getIncomeChecklistMemberId(applicationId, i),
                   memberName: String(p.identity?.name ?? "") || (i === 0 ? String(state.data.contact.p1_name ?? "") : `Member ${i + 1}`),
                   incomeSources: sources as import("@/lib/masshealth/types").IncomeSourceType[],
                   hasIncome,

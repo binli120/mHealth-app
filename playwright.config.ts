@@ -60,8 +60,16 @@ const LOCAL_DEMO_ENV = IS_DEMO && !IS_REMOTE
       }),
     )
   : {}
+const LOCAL_E2E_AUTH_ENV = !IS_REMOTE
+  ? {
+      NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS:
+        process.env.NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS ?? "true",
+      ENABLE_LOCAL_AUTH_HELPERS:
+        process.env.ENABLE_LOCAL_AUTH_HELPERS ?? "true",
+    }
+  : {}
 
-Object.assign(process.env, LOCAL_DEMO_ENV)
+Object.assign(process.env, LOCAL_DEMO_ENV, LOCAL_E2E_AUTH_ENV)
 
 export default defineConfig({
   testDir: "./e2e/tests",
@@ -122,6 +130,7 @@ export default defineConfig({
           timeout: 120_000,
           env: {
             ...LOCAL_DEMO_ENV,
+            ...LOCAL_E2E_AUTH_ENV,
             PATH: `/Users/blee/.nvm/versions/node/v20.12.2/bin:${process.env.PATH}`,
           },
         },
