@@ -73,6 +73,8 @@ Object.assign(process.env, LOCAL_DEMO_ENV, LOCAL_E2E_AUTH_ENV)
 
 export default defineConfig({
   testDir: "./e2e/tests",
+  // Exclude demo recording scripts from the regular suite; they run via pnpm demo:* with DEMO_MODE=true
+  testIgnore: IS_DEMO ? [] : ["**/demo-*.spec.ts"],
   // Demo needs more time for AI responses (Ollama); CI uses default 30s
   timeout: IS_DEMO ? 90_000 : 30_000,
   fullyParallel: !IS_DEMO,
