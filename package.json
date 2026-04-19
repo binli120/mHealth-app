@@ -26,7 +26,7 @@
     "test:e2e:reviewer": "playwright test e2e/tests/09-reviewer.spec.ts --project=chromium",
     "test:e2e:appeal": "playwright test e2e/tests/07-appeal-assistant.spec.ts --project=chromium",
     "test:e2e:profile": "playwright test e2e/tests/08-profile.spec.ts --project=chromium",
-    "test:e2e:journeys": "playwright test e2e/tests/03-prescreener.spec.ts e2e/tests/05-benefit-stack.spec.ts e2e/tests/06-application.spec.ts --project=chromium",
+    "test:e2e:journeys": "playwright test e2e/tests/03-prescreener.spec.ts e2e/tests/05-benefit-stack.spec.ts e2e/tests/06-application.spec.ts e2e/tests/07-appeal-assistant.spec.ts e2e/tests/08-profile.spec.ts e2e/tests/09-reviewer.spec.ts --project=chromium",
     "test:e2e:all": "playwright test --project=chromium; playwright show-report e2e/report",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report e2e/report",
