@@ -2,10 +2,10 @@
 
 This project does not need a separate QA repo. Keep quality gates in the main application repo, close to the feature code, test data, and deploy workflow.
 
-Use this document as the operator playbook for release readiness, UAT, and regression coverage. Keep [`TEST_PLAN.md`](/Users/blee/dev/masshealth-repo/mHealth-app/TEST_PLAN.md) as the deeper inventory of test targets and coverage gaps.
+Use this document as the operator playbook for release readiness, UAT, and regression coverage. Keep [`TEST_PLAN.md`](../TEST_PLAN.md) as the deeper inventory of test targets and coverage gaps.
 
-For the current journey-based browser suite and how to treat failures as bugs, use [`docs/qa/E2E_JOURNEYS.md`](/Users/blee/dev/masshealth-repo/mHealth-app/docs/qa/E2E_JOURNEYS.md).
-For the current by-role browser coverage map, use [`docs/qa/COVERAGE_MATRIX.md`](/Users/blee/dev/masshealth-repo/mHealth-app/docs/qa/COVERAGE_MATRIX.md).
+For the current journey-based browser suite and how to treat failures as bugs, use [`docs/qa/E2E_JOURNEYS.md`](./qa/E2E_JOURNEYS.md).
+For the current by-role browser coverage map, use [`docs/qa/COVERAGE_MATRIX.md`](./qa/COVERAGE_MATRIX.md).
 
 ## Principles
 
@@ -102,7 +102,7 @@ For every feature, define at least:
 - one role or permission boundary
 - one recovery path after refresh, retry, or interruption
 
-Use [`docs/qa/UAT_TEMPLATE.md`](/Users/blee/dev/masshealth-repo/mHealth-app/docs/qa/UAT_TEMPLATE.md) for new scenarios.
+Use [`docs/qa/UAT_TEMPLATE.md`](./qa/UAT_TEMPLATE.md) for new scenarios.
 
 ## Feature Definition Of Done
 
@@ -148,7 +148,7 @@ Run this before production deployment:
 
 ## Test Data And Environments
 
-Use seeded, stable accounts for UAT and smoke testing. Keep account setup, role notes, and local URLs in [`README.md`](/Users/blee/dev/masshealth-repo/mHealth-app/README.md). Do not depend on ad hoc local data for acceptance checks.
+Use seeded, stable accounts for UAT and smoke testing. Keep account setup, role notes, and local URLs in [`README.md`](../README.md). Do not depend on ad hoc local data for acceptance checks.
 
 Environment expectations:
 

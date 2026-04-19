@@ -4,7 +4,7 @@ This project should run end-to-end QA by journey, not by page.
 
 The goal is to verify a user can complete a real job across routing, auth, persistence, and backend calls. When a journey breaks, treat it as a product bug, not just a flaky test, until proven otherwise.
 
-Use [`docs/qa/COVERAGE_MATRIX.md`](/Users/blee/dev/masshealth-repo/mHealth-app/docs/qa/COVERAGE_MATRIX.md) for the current by-role status of `covered / partial / missing`.
+Use [`docs/qa/COVERAGE_MATRIX.md`](COVERAGE_MATRIX.md) for the current by-role status of `covered / partial / missing`.
 
 ## Current Journey Pack
 

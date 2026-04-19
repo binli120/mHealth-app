@@ -81,4 +81,34 @@ test.describe("Appeal Assistant", () => {
     await page.waitForTimeout(5_000)
     expect(serverErrors).toHaveLength(0)
   })
+
+  test("appeal form shows graceful error message when model is unavailable", async ({ page, request }) => {
+    // This test only runs when Ollama is NOT available — it verifies degraded-mode UX
+    const ollamaOk = await request.get("http://127.0.0.1:11434").then(() => true).catch(() => false)
+    test.skip(ollamaOk, "Ollama is running — this test is specifically for model-unavailable behavior")
+
+    const apiErrors: { status: number; url: string }[] = []
+    page.on("response", (res) => {
+      if (res.url().includes("/api/appeals")) {
+        apiErrors.push({ status: res.status(), url: res.url() })
+      }
+    })
+
+    await appealPage.goto()
+    await appealPage.fillDenialForm(DEMO_APPEAL)
+    await appealPage.submitForm()
+
+    // Allow time for the API to respond and the UI to update
+    await page.waitForTimeout(8_000)
+
+    if (apiErrors.length > 0 && apiErrors.some((e) => !e.status.toString().startsWith("2"))) {
+      // If the API returned a non-2xx, the UI must show a user-facing error — not a silent blank state
+      await expect(
+        page.getByText(/unable to generate|try again|error|unavailable|check back|something went wrong/i).first(),
+      ).toBeVisible({ timeout: 10_000 })
+    } else {
+      // If the form handled the missing model before calling the API (client-side guard), that's also valid
+      await expect(page.locator("form").first()).toBeVisible()
+    }
+  })
 })

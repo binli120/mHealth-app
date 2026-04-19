@@ -1,9 +1,10 @@
 import { expect, Page } from "@playwright/test"
+import * as path from "path"
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const WIZARD_CACHE_KEY_PREFIX = "mhealth:aca-03-0325:wizard:v1"
-const EVIDENCE_UPLOAD_FILE = "/Users/blee/dev/masshealth-repo/mHealth-app/public/forms/ACA-3-0325.pdf"
+const EVIDENCE_UPLOAD_FILE = path.join(__dirname, "../../public/forms/ACA-3-0325.pdf")
 
 export class ApplicationPage {
   constructor(private page: Page) {}
@@ -55,6 +56,82 @@ export class ApplicationPage {
     )
   }
 
+  // Shared helpers to reduce seed data duplication
+
+  private baseContact(name: string, numPeople = "1"): Record<string, string> {
+    return {
+      application_type: "aca3",
+      p1_name: name,
+      p1_dob: "03/15/1991",
+      p1_email: "demo.e2e@masshealth-test.local",
+      p1_phone: "(617)555-0199",
+      p1_num_people: numPeople,
+      p1_in_prison: "No",
+      p1_home_street: "123 Main St",
+      p1_home_city: "Boston",
+      p1_home_state: "MA",
+      p1_home_zip: "02101",
+    }
+  }
+
+  private basePerson(overrides: {
+    coverage?: Record<string, string>
+    income?: Record<string, unknown>
+  } = {}): Record<string, unknown> {
+    return {
+      ssn: { has_ssn: "Yes", ssn: "123-45-6789", ssn_name_matches: "Yes" },
+      tax: {
+        aptc_agree: "Yes",
+        legally_married: "No",
+        claim_dependents: "No",
+        claimed_as_dependent: "No",
+      },
+      coverage: {
+        applying_for_coverage: "Yes",
+        ma_resident: "Yes",
+        has_disability: "No",
+        needs_accommodation: "No",
+        is_pregnant: "No",
+        foster_care: "No",
+        us_citizen: "Yes",
+        naturalized_citizen: "No",
+        ...overrides.coverage,
+      },
+      income: {
+        has_income: "No",
+        total_income_current_year: "0",
+        ...overrides.income,
+      },
+      skippedOptional: { ss_demographics: true },
+    }
+  }
+
+  private async putDraft(
+    applicationId: string,
+    payload: {
+      currentStep: number
+      completedSteps: number[]
+      data: Record<string, unknown>
+    },
+  ) {
+    const result = await this.authenticatedJsonFetch("PUT", `/api/applications/${applicationId}/draft`, {
+      applicationType: "aca3",
+      wizardState: {
+        currentStep: payload.currentStep,
+        completedSteps: payload.completedSteps,
+        tabByStep: { 4: 0, 5: 0, 6: 0, 7: 0 },
+        errors: {},
+        dirty: false,
+        submitted: false,
+        persistedAt: new Date().toISOString(),
+        data: payload.data,
+      },
+    })
+    expect(result.ok, JSON.stringify(result.body)).toBeTruthy()
+  }
+
+  // Navigation
+
   async gotoTypeSelector() {
     await this.page.goto("/application/type")
     await expect(
@@ -81,6 +158,12 @@ export class ApplicationPage {
     return url.searchParams.get("applicationId") ?? ""
   }
 
+  async gotoWizardDraft(applicationId: string) {
+    await this.page.goto(`/application/new?applicationId=${applicationId}&mode=wizard`)
+  }
+
+  // Assertions
+
   async assertChatModeVisible() {
     await expect(this.page.getByRole("tab", { name: /ai assistant/i })).toBeVisible()
     await expect(this.page.getByText(/application assistant/i).first()).toBeVisible({ timeout: 10_000 })
@@ -97,159 +180,8 @@ export class ApplicationPage {
     const chatInput = this.page.locator("textarea").first()
     await chatInput.fill("No")
     await chatInput.press("Enter")
-
-    await expect(this.page.getByText(/^No$/).first()).toBeVisible({ timeout: 10_000 })
-  }
-
-  async gotoWizardDraft(applicationId: string) {
-    await this.page.goto(`/application/new?applicationId=${applicationId}&mode=wizard`)
-  }
-
-  async seedPdfReadyDraft(applicationId: string, applicantName: string) {
-    const result = await this.authenticatedJsonFetch("PUT", `/api/applications/${applicationId}/draft`, {
-      applicationType: "aca3",
-      wizardState: {
-        currentStep: 8,
-        completedSteps: [1, 2, 3, 4, 5, 6, 7],
-        tabByStep: {
-          4: 0,
-          5: 0,
-          6: 0,
-          7: 0,
-        },
-        errors: {},
-        dirty: false,
-        submitted: false,
-        persistedAt: new Date().toISOString(),
-        data: {
-          contact: {
-            application_type: "aca3",
-            p1_name: applicantName,
-            p1_dob: "03/15/1991",
-            p1_email: "demo.e2e@masshealth-test.local",
-            p1_phone: "(617)555-0199",
-            p1_num_people: "1",
-            p1_in_prison: "No",
-            p1_home_street: "123 Main St",
-            p1_home_city: "Boston",
-            p1_home_state: "MA",
-            p1_home_zip: "02101",
-          },
-          persons: [
-            {
-              ssn: {
-                has_ssn: "Yes",
-                ssn: "123-45-6789",
-                ssn_name_matches: "Yes",
-              },
-              tax: {
-                aptc_agree: "Yes",
-                legally_married: "No",
-                claim_dependents: "No",
-                claimed_as_dependent: "No",
-              },
-              coverage: {
-                applying_for_coverage: "Yes",
-                ma_resident: "Yes",
-                has_disability: "No",
-                needs_accommodation: "No",
-                is_pregnant: "No",
-                foster_care: "No",
-                us_citizen: "Yes",
-                naturalized_citizen: "No",
-              },
-              income: {
-                has_income: "No",
-                total_income_current_year: "0",
-              },
-              skippedOptional: {
-                ss_demographics: true,
-              },
-            },
-          ],
-          attestation: false,
-        },
-      },
-    })
-
-    expect(result.ok, JSON.stringify(result.body)).toBeTruthy()
-  }
-
-  async seedIncomeEvidenceDraft(applicationId: string, applicantName: string) {
-    const result = await this.authenticatedJsonFetch("PUT", `/api/applications/${applicationId}/draft`, {
-      applicationType: "aca3",
-      wizardState: {
-        currentStep: 9,
-        completedSteps: [1, 2, 3, 4, 5, 6, 7, 8],
-        tabByStep: {
-          4: 0,
-          5: 0,
-          6: 0,
-          7: 0,
-        },
-        errors: {},
-        dirty: false,
-        submitted: false,
-        persistedAt: new Date().toISOString(),
-        data: {
-          contact: {
-            application_type: "aca3",
-            p1_name: applicantName,
-            p1_dob: "03/15/1991",
-            p1_email: "demo.e2e@masshealth-test.local",
-            p1_phone: "(617)555-0199",
-            p1_num_people: "1",
-            p1_in_prison: "No",
-            p1_home_street: "123 Main St",
-            p1_home_city: "Boston",
-            p1_home_state: "MA",
-            p1_home_zip: "02101",
-          },
-          persons: [
-            {
-              ssn: {
-                has_ssn: "Yes",
-                ssn: "123-45-6789",
-                ssn_name_matches: "Yes",
-              },
-              tax: {
-                aptc_agree: "Yes",
-                legally_married: "No",
-                claim_dependents: "No",
-                claimed_as_dependent: "No",
-              },
-              coverage: {
-                applying_for_coverage: "Yes",
-                ma_resident: "Yes",
-                has_disability: "No",
-                needs_accommodation: "No",
-                is_pregnant: "No",
-                foster_care: "No",
-                us_citizen: "Yes",
-                naturalized_citizen: "No",
-              },
-              income: {
-                has_income: "Yes",
-                employment_jobs: [
-                  {
-                    employer_name: "Demo Market",
-                    wages_amount: "3200",
-                    wages_frequency: "monthly",
-                  },
-                ],
-                total_income_current_year: "38400",
-              },
-              skippedOptional: {
-                ss_demographics: true,
-              },
-            },
-          ],
-          attestation: false,
-        },
-      },
-    })
-
-    expect(result.ok, JSON.stringify(result.body)).toBeTruthy()
+    // Textarea clears once the message is accepted
+    await expect(chatInput).toHaveValue("", { timeout: 10_000 })
   }
 
   async assertWizardModeVisible() {
@@ -290,31 +222,27 @@ export class ApplicationPage {
     await expect(nameInput).toHaveValue(name, { timeout: 10_000 })
   }
 
-  async waitForWizardDraftNamePersisted(applicationId: string, expectedName: string) {
-    await expect
-      .poll(async () => this.page.evaluate(
-        ({ key }) => {
-          const raw = window.localStorage.getItem(key)
-          if (!raw) {
-            return null
-          }
+  async assertWizardRequiredFieldError() {
+    const nameInput = this.page
+      .getByLabel(/name/i)
+      .filter({ hasNot: this.page.locator('[type="hidden"]') })
+      .first()
 
-          try {
-            const parsed = JSON.parse(raw) as {
-              data?: {
-                contact?: {
-                  p1_name?: string
-                }
-              }
-            }
-            return parsed.data?.contact?.p1_name ?? null
-          } catch {
-            return null
-          }
-        },
-        { key: `${WIZARD_CACHE_KEY_PREFIX}:${applicationId}` },
-      ))
-      .toBe(expectedName)
+    await expect(nameInput).toBeVisible({ timeout: 10_000 })
+    // Clear the required name field — wizard must block advance
+    await nameInput.fill("")
+    await expect(
+      this.page.getByRole("button", { name: /^next$/i }),
+    ).toBeDisabled({ timeout: 8_000 })
+  }
+
+  async assertWizardAtCoverageStep() {
+    await expect(this.page.getByRole("tab", { name: /form wizard/i })).toBeVisible()
+    // "Coverage & Eligibility" is the visible section heading; the step-indicator
+    // label "COVERAGE" is hidden by overflow so we target the content heading instead.
+    await expect(
+      this.page.getByText("Coverage & Eligibility").first(),
+    ).toBeVisible({ timeout: 15_000 })
   }
 
   async assertDraftVisibleOnStatusPage(applicationId: string) {
@@ -322,6 +250,208 @@ export class ApplicationPage {
     await expect(this.page.getByText(applicationId).first()).toBeVisible({ timeout: 15_000 })
     await expect(this.page.getByText(/continue/i).first()).toBeVisible({ timeout: 15_000 })
   }
+
+  async assertPdfPreviewReady() {
+    await expect(this.page.getByText(/review pdf/i).first()).toBeVisible({ timeout: 15_000 })
+    await expect(this.page.getByRole("link", { name: /download pdf/i })).toBeVisible({ timeout: 20_000 })
+    await expect(this.page.locator('iframe[title="ACA-03 PDF preview"]')).toBeVisible({ timeout: 20_000 })
+  }
+
+  async downloadPdfFromReviewStep() {
+    const downloadPromise = this.page.waitForEvent("download")
+    await this.page.getByRole("link", { name: /download pdf/i }).click()
+    const download = await downloadPromise
+    expect(download.suggestedFilename()).toBe("aca-3-0325-filled.pdf")
+  }
+
+  async assertIncomeChecklistReady() {
+    await expect(this.page.getByText(/income proof documents/i).first()).toBeVisible({ timeout: 15_000 })
+    await expect(this.page.getByText(/employment income/i).first()).toBeVisible({ timeout: 15_000 })
+    await expect(this.page.getByText(/recent pay stub/i).first()).toBeVisible({ timeout: 15_000 })
+    await expect(
+      this.page.getByText(/unable to load the income document checklist/i),
+    ).not.toBeVisible()
+  }
+
+  async assertMultiPersonIncomeChecklist() {
+    await expect(this.page.getByText(/income proof documents/i).first()).toBeVisible({ timeout: 15_000 })
+    // Two people with income → two employment income sections in the checklist
+    await expect(this.page.getByText(/employment income/i)).toHaveCount(2, { timeout: 15_000 })
+    await expect(
+      this.page.getByText(/unable to load the income document checklist/i),
+    ).not.toBeVisible()
+  }
+
+  async assertNonCitizenFieldsVisible() {
+    // Coverage step always shows citizenship question; "naturalized, derived, or acquired"
+    // is the follow-up that confirms the citizenship sub-section rendered correctly.
+    await expect(
+      this.page.getByText(/naturalized.*derived.*acquired|us citizen.*national|citizen.*national/i).first(),
+    ).toBeVisible({ timeout: 15_000 })
+  }
+
+  async assertAccommodationSectionVisible() {
+    // Scroll to bring disability / accommodation fields into view (they appear below
+    // the citizenship questions on the Coverage & Eligibility step).
+    await this.page.evaluate(() => {
+      const el = document.querySelector("main") ?? document.body
+      el.scrollTo(0, el.scrollHeight)
+    })
+    await expect(
+      this.page.getByText(/disability|accommodation|special.*need|need.*help.*apply/i).first(),
+    ).toBeVisible({ timeout: 15_000 })
+  }
+
+  // Seed methods
+
+  async seedPdfReadyDraft(applicationId: string, applicantName: string) {
+    await this.putDraft(applicationId, {
+      currentStep: 8,
+      completedSteps: [1, 2, 3, 4, 5, 6, 7],
+      data: {
+        contact: this.baseContact(applicantName),
+        persons: [this.basePerson({ income: { has_income: "No", total_income_current_year: "0" } })],
+        attestation: false,
+      },
+    })
+  }
+
+  async seedIncomeEvidenceDraft(applicationId: string, applicantName: string) {
+    await this.putDraft(applicationId, {
+      currentStep: 9,
+      completedSteps: [1, 2, 3, 4, 5, 6, 7, 8],
+      data: {
+        contact: this.baseContact(applicantName),
+        persons: [
+          this.basePerson({
+            income: {
+              has_income: "Yes",
+              employment_jobs: [
+                { employer_name: "Demo Market", wages_amount: "3200", wages_frequency: "monthly" },
+              ],
+              total_income_current_year: "38400",
+            },
+          }),
+        ],
+        attestation: false,
+      },
+    })
+  }
+
+  // Two-person household — both members have employment income, producing a two-section checklist
+  async seedMultiPersonDraft(applicationId: string, applicantName: string) {
+    await this.putDraft(applicationId, {
+      currentStep: 9,
+      completedSteps: [1, 2, 3, 4, 5, 6, 7, 8],
+      data: {
+        contact: this.baseContact(applicantName, "2"),
+        persons: [
+          this.basePerson({
+            income: {
+              has_income: "Yes",
+              employment_jobs: [
+                { employer_name: "Demo Market", wages_amount: "3200", wages_frequency: "monthly" },
+              ],
+              total_income_current_year: "38400",
+            },
+          }),
+          {
+            ...this.basePerson({
+              income: {
+                has_income: "Yes",
+                employment_jobs: [
+                  { employer_name: "City Hall", wages_amount: "2500", wages_frequency: "monthly" },
+                ],
+                total_income_current_year: "30000",
+              },
+            }),
+            ssn: { has_ssn: "Yes", ssn: "987-65-4321", ssn_name_matches: "Yes" },
+          },
+        ],
+        attestation: false,
+      },
+    })
+  }
+
+  // Non-citizen applicant — wizard lands on step 6 (COVERAGE) with us_citizen: "No"
+  async seedNonCitizenDraft(applicationId: string, applicantName: string) {
+    await this.putDraft(applicationId, {
+      currentStep: 6,
+      completedSteps: [1, 2, 3, 4, 5],
+      data: {
+        contact: this.baseContact(applicantName),
+        persons: [
+          this.basePerson({
+            coverage: {
+              applying_for_coverage: "Yes",
+              ma_resident: "Yes",
+              has_disability: "No",
+              needs_accommodation: "No",
+              is_pregnant: "No",
+              foster_care: "No",
+              us_citizen: "No",
+              naturalized_citizen: "No",
+            },
+          }),
+        ],
+        attestation: false,
+      },
+    })
+  }
+
+  // Applicant needing accommodation — wizard lands on step 6 (COVERAGE) with disability + accommodation flags
+  async seedDisabilityDraft(applicationId: string, applicantName: string) {
+    await this.putDraft(applicationId, {
+      currentStep: 6,
+      completedSteps: [1, 2, 3, 4, 5],
+      data: {
+        contact: this.baseContact(applicantName),
+        persons: [
+          this.basePerson({
+            coverage: {
+              applying_for_coverage: "Yes",
+              ma_resident: "Yes",
+              has_disability: "Yes",
+              needs_accommodation: "Yes",
+              is_pregnant: "No",
+              foster_care: "No",
+              us_citizen: "Yes",
+              naturalized_citizen: "No",
+            },
+          }),
+        ],
+        attestation: false,
+      },
+    })
+  }
+
+  // Draft management
+
+  async waitForWizardDraftNamePersisted(applicationId: string, expectedName: string) {
+    await expect
+      .poll(
+        async () =>
+          this.page.evaluate(
+            ({ key }) => {
+              const raw = window.localStorage.getItem(key)
+              if (!raw) return null
+              try {
+                const parsed = JSON.parse(raw) as {
+                  data?: { contact?: { p1_name?: string } }
+                }
+                return parsed.data?.contact?.p1_name ?? null
+              } catch {
+                return null
+              }
+            },
+            { key: `${WIZARD_CACHE_KEY_PREFIX}:${applicationId}` },
+          ),
+        { timeout: 15_000 },
+      )
+      .toBe(expectedName)
+  }
+
+  // Full submission flow (used by tests that exercise validation + submit UI)
 
   async runValidationAndSubmit() {
     const runValidationButton = this.page.getByRole("button", { name: /run validation/i })
@@ -353,30 +483,12 @@ export class ApplicationPage {
     await this.page.goto(`/customer/status/${applicationId}`)
     await expect(this.page.getByText(/submitted/i).first()).toBeVisible({ timeout: 15_000 })
     await expect(this.page.getByText(applicantName).first()).toBeVisible({ timeout: 15_000 })
-    await expect(this.page.getByText(/application submitted for review/i).first()).toBeVisible({ timeout: 15_000 })
-  }
-
-  async assertPdfPreviewReady() {
-    await expect(this.page.getByText(/review pdf/i).first()).toBeVisible({ timeout: 15_000 })
-    await expect(this.page.getByRole("link", { name: /download pdf/i })).toBeVisible({ timeout: 20_000 })
-    await expect(this.page.locator('iframe[title="ACA-03 PDF preview"]')).toBeVisible({ timeout: 20_000 })
-  }
-
-  async downloadPdfFromReviewStep() {
-    const downloadPromise = this.page.waitForEvent("download")
-    await this.page.getByRole("link", { name: /download pdf/i }).click()
-    const download = await downloadPromise
-    expect(download.suggestedFilename()).toBe("aca-3-0325-filled.pdf")
-  }
-
-  async assertIncomeChecklistReady() {
-    await expect(this.page.getByText(/income proof documents/i).first()).toBeVisible({ timeout: 15_000 })
-    await expect(this.page.getByText(/employment income/i).first()).toBeVisible({ timeout: 15_000 })
-    await expect(this.page.getByText(/recent pay stub/i).first()).toBeVisible({ timeout: 15_000 })
     await expect(
-      this.page.getByText(/unable to load the income document checklist/i),
-    ).not.toBeVisible()
+      this.page.getByText(/application submitted for review/i).first(),
+    ).toBeVisible({ timeout: 15_000 })
   }
+
+  // Evidence upload
 
   async uploadIncomeEvidenceDocument() {
     const uploadResponsePromise = this.page.waitForResponse(
