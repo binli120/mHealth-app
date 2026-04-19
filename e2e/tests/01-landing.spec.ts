@@ -71,7 +71,12 @@ test.describe("Landing Page", () => {
     await page.waitForLoadState("networkidle")
 
     const allErrors = [
-      ...consoleErrors.filter((e) => !e.includes("Warning:")),
+      ...consoleErrors.filter(
+        (e) =>
+          !e.includes("Warning:") &&
+          // React emits this in dev mode when a CSP header blocks eval(); not an app error
+          !e.includes("eval() is not supported in this environment"),
+      ),
       ...failedRequests,
     ]
     expect(allErrors).toHaveLength(0)

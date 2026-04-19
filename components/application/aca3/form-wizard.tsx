@@ -1092,7 +1092,7 @@ function FormProvider({
     }
 
     saveTimeoutRef.current = window.setTimeout(() => {
-      void saveDraftNow(persistedState as WizardState)
+      void saveDraftNow(persistedState as unknown as WizardState)
     }, 700)
 
     return () => {

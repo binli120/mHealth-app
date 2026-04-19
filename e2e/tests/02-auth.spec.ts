@@ -65,15 +65,34 @@ test.describe("Authentication", () => {
     await auth.assertOnDashboard()
   })
 
-  test("invalid credentials shows error", async ({ page }) => {
+  test("invalid credentials shows error", async ({ page, request }) => {
+    // When local auth helpers are active, /api/auth/dev-register auto-creates any
+    // account on first sign-in attempt, so "invalid credentials" can never occur.
+    // Probe the endpoint and skip rather than chasing a redirect that won't fail.
+    const probe = await request
+      .post("/api/auth/dev-register", {
+        data: {
+          email: `probe-skip-${Date.now()}@not-a-real-domain.example`,
+          password: "ProbeOnly999!",
+          firstName: "Probe",
+          lastName: "Skip",
+          phone: "",
+        },
+        timeout: 3_000,
+      })
+      .catch(() => null)
+    if (probe?.ok()) {
+      test.skip(true, "Local auth helpers enabled — any credentials auto-create an account; invalid-credential flow only testable in cloud Supabase mode")
+      return
+    }
+
     await page.goto("/auth/login")
     const uniqueEmail = `e2e-bad-creds-${Date.now()}@not-a-real-domain.example`
     await page.fill("#email", uniqueEmail)
     await page.fill("#password", "BadPasswordXYZ999!")
     await page.click('button[type="submit"]')
-    // Error message should appear
     await expect(
-      page.getByText(/invalid|incorrect|not found|error|does not match|wrong/i).first(),
+      page.locator("main").getByText(/does not match our records|invalid|incorrect|unable to sign in/i).first(),
     ).toBeVisible({ timeout: 10_000 })
     // Should NOT navigate away
     await expect(page).toHaveURL(/\/auth\/login/)

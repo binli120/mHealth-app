@@ -60,7 +60,7 @@ const LOCAL_DEMO_ENV = IS_DEMO && !IS_REMOTE
       }),
     )
   : {}
-const LOCAL_E2E_AUTH_ENV = !IS_REMOTE
+const LOCAL_E2E_AUTH_ENV: Record<string, string> = !IS_REMOTE
   ? {
       NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS:
         process.env.NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS ?? "true",

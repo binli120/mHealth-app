@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import { Provider } from "react-redux"
 import { configureStore } from "@reduxjs/toolkit"
 
@@ -15,7 +15,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }))
 vi.mock("@/lib/supabase/authenticated-fetch", () => ({
-  authenticatedFetch: vi.fn(),
+  authenticatedFetch: vi.fn().mockResolvedValue({ ok: false, status: 404 }),
 }))
 vi.mock("@/lib/supabase/client", () => ({
   getSafeSupabaseSession: vi.fn().mockResolvedValue({ session: null }),
@@ -48,21 +48,21 @@ describe("FormWizard", () => {
     expect(container.firstChild).toBeTruthy()
   })
 
-  it("renders a Next or navigation button", () => {
+  it("renders a Next or navigation button", async () => {
     renderWizard()
-    // The wizard should have navigation controls
-    const buttons = screen.getAllByRole("button")
-    expect(buttons.length).toBeGreaterThan(0)
+    // Wait for hydration to complete before buttons appear
+    await waitFor(() => expect(screen.getAllByRole("button").length).toBeGreaterThan(0))
   })
 
-  it("renders step progress indicator", () => {
+  it("renders step progress indicator", async () => {
     renderWizard()
-    // WizardLayout renders a step counter
-    expect(screen.getByText(/step/i)).toBeInTheDocument()
+    // WizardLayout renders a step counter after hydration
+    await waitFor(() => expect(screen.getByText(/step/i)).toBeInTheDocument())
   })
 
-  it("renders the MassHealth branding", () => {
+  it("renders the MassHealth branding", async () => {
     renderWizard()
-    expect(screen.getByText("MassHealth")).toBeInTheDocument()
+    // Component is async: shows "Loading saved application..." until hydration resolves
+    await waitFor(() => expect(screen.getByText("MassHealth")).toBeInTheDocument())
   })
 })
