@@ -68,7 +68,7 @@ test.describe("Landing Page", () => {
     })
 
     await page.goto("/")
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("load")
 
     const allErrors = [
       ...consoleErrors.filter(

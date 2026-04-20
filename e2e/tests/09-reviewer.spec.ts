@@ -152,7 +152,7 @@ test.describe("Reviewer Case Management", () => {
     })
 
     await reviewer.gotoDashboard()
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("load")
 
     // Stats section: some combination of counts, labels, or status indicators
     await expect(

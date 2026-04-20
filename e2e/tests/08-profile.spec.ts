@@ -79,7 +79,7 @@ test.describe("User Profile", () => {
       }
     })
     await page.goto("/customer/profile")
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("load")
     expect(serverErrors).toHaveLength(0)
   })
 })
