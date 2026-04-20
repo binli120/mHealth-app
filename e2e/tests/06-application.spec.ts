@@ -91,9 +91,9 @@ test.describe("Application Flow", () => {
 
     await applicationPage.gotoTypeSelector()
     const applicationId = await applicationPage.selectAca3Draft()
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("load")
     await applicationPage.gotoWizardDraft(applicationId)
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("load")
     await applicationPage.assertDraftVisibleOnStatusPage(applicationId)
 
     expect(serverErrors).toHaveLength(0)

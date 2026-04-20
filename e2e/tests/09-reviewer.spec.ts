@@ -62,7 +62,7 @@ test.describe("Reviewer / Staff Portal", () => {
     })
     for (const url of ["/reviewer/dashboard", "/reviewer/cases", "/reviewer/audit"]) {
       await page.goto(url)
-      await page.waitForLoadState("networkidle")
+      await page.waitForLoadState("load")
     }
     expect(serverErrors).toHaveLength(0)
   })
@@ -152,7 +152,7 @@ test.describe("Reviewer Case Management", () => {
     })
 
     await reviewer.gotoDashboard()
-    await page.waitForLoadState("networkidle")
+    await page.waitForLoadState("load")
 
     // Stats section: some combination of counts, labels, or status indicators
     await expect(
@@ -171,7 +171,7 @@ test.describe("Reviewer Case Management", () => {
     })
     for (const url of ["/reviewer/dashboard", "/reviewer/cases", "/reviewer/audit"]) {
       await page.goto(url)
-      await page.waitForLoadState("networkidle")
+      await page.waitForLoadState("load")
     }
     expect(serverErrors, `API 500s: ${serverErrors.join(", ")}`).toHaveLength(0)
   })
