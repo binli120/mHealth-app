@@ -1,6 +1,8 @@
 name: E2E — Cloud Smoke Tests
 
 on:
+  push:
+    branches: [main]
   # Run automatically after every successful deploy to production
   workflow_run:
     workflows: ["Deploy to Hostinger VPS"]
@@ -14,10 +16,48 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Classify Changed Files
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.push_filter.outputs.app || steps.defaults.outputs.app }}
+      e2e: ${{ steps.push_filter.outputs.e2e || steps.defaults.outputs.e2e }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect app vs e2e changes
+        if: ${{ github.event_name == 'push' }}
+        id: push_filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            app:
+              - '**'
+              - '!e2e/**'
+              - '!playwright.config.ts'
+              - '!.github/**'
+              - '!README.md'
+              - '!TEST_PLAN.md'
+              - '!demo/**'
+              - '!coverage/**'
+            e2e:
+              - 'e2e/**'
+              - 'playwright.config.ts'
+              - '.github/workflows/e2e-cloud.yml'
+
+      - name: Default change set for non-push runs
+        if: ${{ github.event_name != 'push' }}
+        id: defaults
+        run: |
+          echo "app=false" >> "$GITHUB_OUTPUT"
+          echo "e2e=false" >> "$GITHUB_OUTPUT"
+
   e2e:
     name: Playwright E2E → Hostinger
-    # Only run if the deploy succeeded (workflow_run trigger) or manually triggered
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    needs: [changes]
+    # Run manually, after a successful deploy, or on pushes that only changed e2e files.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' || (github.event_name == 'push' && needs.changes.outputs.e2e == 'true' && needs.changes.outputs.app != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: dev

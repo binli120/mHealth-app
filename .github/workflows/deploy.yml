@@ -11,6 +11,36 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  changes:
+    name: Classify Changed Files
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.push_filter.outputs.app || steps.defaults.outputs.app }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect deploy-relevant changes
+        if: ${{ github.event_name == 'push' }}
+        id: push_filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            app:
+              - '**'
+              - '!e2e/**'
+              - '!playwright.config.ts'
+              - '!.github/**'
+              - '!README.md'
+              - '!TEST_PLAN.md'
+              - '!demo/**'
+              - '!coverage/**'
+
+      - name: Default change set for manual runs
+        if: ${{ github.event_name != 'push' }}
+        id: defaults
+        run: echo "app=false" >> "$GITHUB_OUTPUT"
+
   # ── CI gate: all three CI jobs must pass before we deploy ──────────────────
   ci:
     name: CI Gate
@@ -19,7 +49,8 @@ jobs:
 
   deploy:
     name: SSH → VPS → docker compose up
-    needs: ci          # deploy only runs if CI passes
+    needs: [changes, ci]          # deploy only runs if CI passes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.app == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: dev
