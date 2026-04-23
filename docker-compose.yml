@@ -164,6 +164,7 @@ services:
       NODE_ENV: production
       PORT: 3001
       BASE_URL: https://${DOMAIN}
+      DATABASE_URL: ${DATABASE_URL}
       MCP_CLIENT_ID: ${MCP_CLIENT_ID:-}
       MCP_CLIENT_SECRET: ${MCP_CLIENT_SECRET:-}
     labels:
