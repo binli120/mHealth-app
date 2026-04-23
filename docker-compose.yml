@@ -173,7 +173,7 @@ services:
       - "traefik.http.routers.mcp.entrypoints=websecure"
       - "traefik.http.routers.mcp.tls=true"
       - "traefik.http.routers.mcp.tls.certresolver=le"
-      - "traefik.http.routers.mcp.priority=10"
+      - "traefik.http.routers.mcp.priority=100"
       - "traefik.http.services.mcp.loadbalancer.server.port=3001"
     networks:
       - proxy
