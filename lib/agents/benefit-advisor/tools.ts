@@ -30,6 +30,9 @@ import {
   summarizeExtractedFacts,
 } from "@/lib/masshealth/fact-extraction"
 import { runEligibilityCheck } from "@/lib/eligibility-engine"
+import { evaluateBenefitStack } from "@/lib/benefit-orchestration/orchestrator"
+import { screenerToFamilyProfile } from "@/lib/benefit-orchestration/from-screener"
+import { runBenefitOrchestrator } from "@/lib/agents/benefit-orchestrator"
 import { retrieveRelevantChunks, formatChunksForPrompt } from "@/lib/rag/retrieve"
 import { buildRagQualityMetadata } from "@/lib/rag/metadata"
 import { mergeAndSaveAgentMemory } from "@/lib/agents/memory"
@@ -128,26 +131,35 @@ export function buildBenefitAdvisorTools(
       },
     }),
 
-    // ── Tool 2: Run eligibility rule engine ───────────────────────────────────
+    // ── Tool 2: Run full benefit stack evaluation ─────────────────────────────
     check_eligibility: tool({
       description:
-        "Run the MassHealth deterministic eligibility rule engine and get program recommendations. " +
+        "Run the full MA safety-net benefit evaluation across all programs " +
+        "(MassHealth, SNAP, WIC, EITC, Section 8, LIHEAP, childcare, cash assistance) " +
+        "and get a ranked benefit stack. " +
         "Only call this AFTER extract_eligibility_facts returns sufficient=true. " +
         "Pass the facts object returned by extract_eligibility_facts.",
       inputSchema: partialScreenerSchema,
       execute: async (facts) => {
         const screenerData = applyFactDefaults(facts)
+
+        // Run the full cross-program orchestrator (superset of the quick screener).
+        const familyProfile = screenerToFamilyProfile(screenerData)
+        const stack = evaluateBenefitStack(familyProfile)
+
+        // Also run the quick screener so the frontend can render legacy badges.
         const report = runEligibilityCheck(screenerData)
         latestEligibilityContext = formatEligibilityContext(facts, report)
 
-        // Write the structured eligibility result as a data annotation so the
-        // frontend can render eligibility badges while the text is still streaming.
+        // Emit both the legacy screener results and the new full benefit stack
+        // so the frontend can progressively upgrade its UI without a breaking change.
         writer.write({
           type: "data-masshealth" as `data-${string}`,
           data: {
             ok: true,
             outOfScope: false,
             factsExtracted: facts,
+            // Legacy screener view — for existing badge components.
             eligibilityResults: {
               fplPercent: report.fplPercent,
               annualFPL: report.annualFPL,
@@ -161,19 +173,68 @@ export function buildBenefitAdvisorTools(
                 color: r.color,
               })),
             },
+            // Full benefit stack — richer data for the new benefit stack UI.
+            benefitStack: {
+              fplPercent: stack.fplPercent,
+              annualFPL: stack.annualFPL,
+              totalMonthlyIncome: stack.totalMonthlyIncome,
+              householdSize: stack.householdSize,
+              summary: stack.summary,
+              totalEstimatedMonthlyValue: stack.totalEstimatedMonthlyValue,
+              totalEstimatedAnnualValue: stack.totalEstimatedAnnualValue,
+              quickWins: stack.quickWins.map((r) => ({
+                programId: r.programId,
+                programName: r.programName,
+                category: r.category,
+                eligibilityStatus: r.eligibilityStatus,
+                confidence: r.confidence,
+                estimatedMonthlyValue: r.estimatedMonthlyValue,
+                valueNote: r.valueNote,
+                nextSteps: r.nextSteps,
+              })),
+              results: stack.results.map((r) => ({
+                programId: r.programId,
+                programName: r.programName,
+                programShortName: r.programShortName,
+                category: r.category,
+                eligibilityStatus: r.eligibilityStatus,
+                confidence: r.confidence,
+                estimatedMonthlyValue: r.estimatedMonthlyValue,
+                estimatedAnnualValue: r.estimatedAnnualValue,
+                valueNote: r.valueNote,
+                priority: r.priority,
+                keyRequirements: r.keyRequirements,
+                nextSteps: r.nextSteps,
+                applicationUrl: r.applicationUrl,
+                applicationPhone: r.applicationPhone,
+                bundleWith: r.bundleWith,
+              })),
+              bundles: stack.bundles,
+            },
           },
         })
 
+        const topResults = stack.results.slice(0, 5)
         return {
-          fplPercent: report.fplPercent,
-          summary: report.summary,
-          topPrograms: report.results.slice(0, 3).map((r) => r.program),
-          allResults: report.results.map((r) => ({
-            program: r.program,
-            status: r.status,
-            tagline: r.tagline,
+          fplPercent: stack.fplPercent,
+          summary: stack.summary,
+          totalEstimatedMonthlyValue: stack.totalEstimatedMonthlyValue,
+          likelyCount: stack.likelyPrograms.length,
+          possibleCount: stack.possiblePrograms.length,
+          topPrograms: topResults.map((r) => ({
+            programName: r.programName,
+            category: r.category,
+            status: r.eligibilityStatus,
+            estimatedMonthlyValue: r.estimatedMonthlyValue,
+            valueNote: r.valueNote,
           })),
-          nextStep: `Call retrieve_policy with a query about the top programs: ${report.results.slice(0, 2).map((r) => r.program).join(", ")}`,
+          bundles: stack.bundles.map((b) => b.bundleName),
+          nextStep:
+            `Call retrieve_policy with a query about the top programs: ` +
+            topResults
+              .slice(0, 2)
+              .map((r) => r.programName)
+              .join(", "),
         }
       },
     }),
@@ -226,7 +287,92 @@ export function buildBenefitAdvisorTools(
       },
     }),
 
-    // ── Tool 4: Review and commit final explanation ──────────────────────────
+    // ── Tool 4: Full multi-agent benefit stack ────────────────────────────────
+    run_benefit_orchestrator: tool({
+      description:
+        "Run the full multi-agent benefit stack evaluation using all 7 specialist agents in parallel. " +
+        "Each specialist (MassHealth, Food & Nutrition, Cash Assistance, Tax Credits, Housing, " +
+        "Utility, Childcare) evaluates its programs and returns reasoning about edge cases. " +
+        "Use this INSTEAD OF check_eligibility when the conversation has revealed richer household " +
+        "details (children's ages, income breakdown, asset details, housing situation, utility types). " +
+        "It produces specialist reasoning you can quote when explaining results to the user.",
+      inputSchema: partialScreenerSchema,
+      execute: async (facts) => {
+        const screenerData = applyFactDefaults(facts)
+        const familyProfile = screenerToFamilyProfile(screenerData)
+
+        const agentStack = await runBenefitOrchestrator(familyProfile)
+
+        writer.write({
+          type: "data-masshealth" as `data-${string}`,
+          data: {
+            ok: true,
+            outOfScope: false,
+            factsExtracted: facts,
+            benefitStack: {
+              fplPercent: agentStack.fplPercent,
+              annualFPL: agentStack.annualFPL,
+              totalMonthlyIncome: agentStack.totalMonthlyIncome,
+              householdSize: agentStack.householdSize,
+              summary: agentStack.summary,
+              totalEstimatedMonthlyValue: agentStack.totalEstimatedMonthlyValue,
+              totalEstimatedAnnualValue: agentStack.totalEstimatedAnnualValue,
+              quickWins: agentStack.quickWins.map((r) => ({
+                programId: r.programId,
+                programName: r.programName,
+                category: r.category,
+                eligibilityStatus: r.eligibilityStatus,
+                confidence: r.confidence,
+                estimatedMonthlyValue: r.estimatedMonthlyValue,
+                valueNote: r.valueNote,
+                nextSteps: r.nextSteps,
+              })),
+              results: agentStack.results.map((r) => ({
+                programId: r.programId,
+                programName: r.programName,
+                programShortName: r.programShortName,
+                category: r.category,
+                eligibilityStatus: r.eligibilityStatus,
+                confidence: r.confidence,
+                estimatedMonthlyValue: r.estimatedMonthlyValue,
+                estimatedAnnualValue: r.estimatedAnnualValue,
+                valueNote: r.valueNote,
+                priority: r.priority,
+                keyRequirements: r.keyRequirements,
+                nextSteps: r.nextSteps,
+                applicationUrl: r.applicationUrl,
+                applicationPhone: r.applicationPhone,
+                bundleWith: r.bundleWith,
+              })),
+              bundles: agentStack.bundles,
+              specialistReasoning: agentStack.specialistReasoning,
+            },
+          },
+        })
+
+        return {
+          fplPercent: agentStack.fplPercent,
+          summary: agentStack.summary,
+          totalEstimatedMonthlyValue: agentStack.totalEstimatedMonthlyValue,
+          likelyCount: agentStack.likelyPrograms.length,
+          possibleCount: agentStack.possiblePrograms.length,
+          topPrograms: agentStack.results.slice(0, 5).map((r) => ({
+            programName: r.programName,
+            category: r.category,
+            status: r.eligibilityStatus,
+            estimatedMonthlyValue: r.estimatedMonthlyValue,
+            valueNote: r.valueNote,
+          })),
+          specialistReasoning: agentStack.specialistReasoning,
+          bundles: agentStack.bundles.map((b) => b.bundleName),
+          nextStep:
+            "Call retrieve_policy for the top programs, then finish_eligibility_explanation. " +
+            "You may quote specialistReasoning fields verbatim when explaining edge cases.",
+        }
+      },
+    }),
+
+    // ── Tool 5: Review and commit final explanation ──────────────────────────
     finish_eligibility_explanation: tool({
       description:
         "Submit the final MassHealth eligibility explanation for a reflection quality review before it reaches the user. " +
