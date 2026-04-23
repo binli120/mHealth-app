@@ -163,11 +163,13 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
-      MCP_SECRET: ${MCP_SECRET:-}
+      BASE_URL: https://${DOMAIN}
+      MCP_CLIENT_ID: ${MCP_CLIENT_ID:-}
+      MCP_CLIENT_SECRET: ${MCP_CLIENT_SECRET:-}
     labels:
       - "traefik.enable=true"
-      # Higher priority than the catch-all app router so /mcp is matched first
-      - "traefik.http.routers.mcp.rule=Host(`${DOMAIN}`) && PathPrefix(`/mcp`)"
+      # Route /mcp, /oauth, and /.well-known to this container (priority > app catch-all)
+      - "traefik.http.routers.mcp.rule=Host(`${DOMAIN}`) && (PathPrefix(`/mcp`) || PathPrefix(`/oauth`) || PathPrefix(`/.well-known/oauth-authorization-server`))"
       - "traefik.http.routers.mcp.entrypoints=websecure"
       - "traefik.http.routers.mcp.tls=true"
       - "traefik.http.routers.mcp.tls.certresolver=le"
