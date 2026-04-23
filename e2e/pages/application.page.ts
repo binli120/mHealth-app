@@ -184,6 +184,13 @@ export class ApplicationPage {
     await expect(chatInput).toHaveValue("", { timeout: 10_000 })
   }
 
+  async switchChatToWizard() {
+    const reviewButton = this.page.getByRole("button", { name: /review in form wizard/i })
+    await expect(reviewButton).toBeVisible({ timeout: 10_000 })
+    await reviewButton.click()
+    await this.assertWizardModeVisible()
+  }
+
   async assertWizardModeVisible() {
     await expect(this.page.getByRole("tab", { name: /form wizard/i })).toBeVisible()
     await expect(

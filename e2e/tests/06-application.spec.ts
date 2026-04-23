@@ -34,6 +34,15 @@ test.describe("Application Flow", () => {
     await applicationPage.assertDraftVisibleOnStatusPage(applicationId)
   })
 
+  test("chat intake can switch into form wizard for review", async () => {
+    await applicationPage.gotoTypeSelector()
+    const applicationId = await applicationPage.selectAca3Draft()
+    await applicationPage.assertChatModeVisible()
+    await applicationPage.startFreshInChat()
+    await applicationPage.switchChatToWizard()
+    await applicationPage.assertDraftVisibleOnStatusPage(applicationId)
+  })
+
   test("form wizard mode opens for an existing application draft", async () => {
     await applicationPage.gotoTypeSelector()
     const applicationId = await applicationPage.selectAca3Draft()

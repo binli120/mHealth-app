@@ -143,6 +143,38 @@ test.describe("Reviewer Case Management", () => {
     ).toBeTruthy()
   })
 
+  test("reviewer case detail exposes decision dialogs", async ({ page }) => {
+    await reviewer.gotoCaseDetail()
+    await expect(page).toHaveURL(/\/reviewer\/case\//)
+    await expect(page.getByText(/MH-2024-ABC12/i)).toBeVisible({ timeout: 8_000 })
+    await expect(page.getByRole("button", { name: /^approve$/i })).toBeVisible({ timeout: 8_000 })
+
+    // Approve dialog
+    await page.getByRole("button", { name: /^approve$/i }).click()
+    const approveDialog = page.locator('[data-slot="dialog-content"]').last()
+    await expect(approveDialog).toBeVisible({ timeout: 8_000 })
+    await expect(approveDialog.getByText(/approve application/i)).toBeVisible()
+    await expect(approveDialog.getByText(/program assignment/i)).toBeVisible()
+    // The Cancel buttons are plain <Button>, not <DialogClose> — press Escape to close the Radix modal
+    await page.keyboard.press("Escape")
+    await expect(approveDialog).not.toBeVisible({ timeout: 5_000 })
+
+    // Deny dialog
+    await page.getByRole("button", { name: /^deny$/i }).click()
+    const denyDialog = page.locator('[data-slot="dialog-content"]').last()
+    await expect(denyDialog.getByText(/deny application/i)).toBeVisible({ timeout: 8_000 })
+    await expect(denyDialog.getByText(/denial reason/i)).toBeVisible()
+    await page.keyboard.press("Escape")
+    await expect(denyDialog).not.toBeVisible({ timeout: 5_000 })
+
+    // Request Info dialog
+    await page.getByRole("button", { name: /request info/i }).click()
+    const requestInfoDialog = page.locator('[data-slot="dialog-content"]').last()
+    await expect(requestInfoDialog.getByText(/request additional information/i)).toBeVisible({ timeout: 8_000 })
+    await expect(requestInfoDialog.getByText(/required documents/i)).toBeVisible()
+    await expect(requestInfoDialog.getByRole("button", { name: /send request/i })).toBeVisible()
+  })
+
   test("reviewer dashboard stats section renders without errors", async ({ page }) => {
     const serverErrors: string[] = []
     page.on("response", (res) => {

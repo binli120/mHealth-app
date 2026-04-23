@@ -129,6 +129,7 @@ jobs:
               "DOMAIN=${{ secrets.DOMAIN }}" \
               "ACME_EMAIL=${{ secrets.ACME_EMAIL }}" \
               "NEXT_PUBLIC_APP_URL=https://${{ secrets.DOMAIN }}" \
+              "MCP_SECRET=${{ secrets.MCP_SECRET }}" \
               > "$ENV_FILE"
             chmod 600 "$ENV_FILE"
             echo "✅ .env.production.local written ($(wc -l < "$ENV_FILE") lines)"

@@ -3,12 +3,24 @@
  * @email blee@healthcompass.cloud
  */
 
-import { test, expect } from "@playwright/test"
+import { test, expect, type Page } from "@playwright/test"
 import * as path from "path"
 import { hasSupabaseAuthState } from "../auth-state"
 
 test.use({ storageState: path.join(__dirname, "../.auth/user.json") })
 const AUTH_FILE = path.join(__dirname, "../.auth/user.json")
+
+async function gotoProfile(page: Page) {
+  await page.goto("/customer/profile")
+  await expect(page).toHaveURL(/\/customer\/profile/)
+  await expect(page.getByRole("navigation", { name: /profile sections/i })).toBeVisible({ timeout: 15_000 })
+}
+
+function sectionCard(page: Page, title: RegExp) {
+  return page.locator('[data-slot="card"]').filter({
+    has: page.locator('[data-slot="card-title"]').filter({ hasText: title }),
+  }).first()
+}
 
 test.describe("User Profile", () => {
   test.beforeEach(() => {
@@ -16,59 +28,81 @@ test.describe("User Profile", () => {
   })
 
   test("profile page loads", async ({ page }) => {
-    await page.goto("/customer/profile")
-    await expect(page).toHaveURL(/\/customer\/profile/)
+    await gotoProfile(page)
     await expect(
       page.getByText(/profile|personal|settings/i).first(),
     ).toBeVisible({ timeout: 15_000 })
   })
 
   test("personal section is visible", async ({ page }) => {
-    await page.goto("/customer/profile")
+    await gotoProfile(page)
     await expect(
       page.getByText(/personal|first name|last name|email/i).first(),
     ).toBeVisible({ timeout: 10_000 })
   })
 
   test("sidebar tabs are present", async ({ page }) => {
-    await page.goto("/customer/profile")
-    const tabs = ["personal", "family", "education", "bank", "settings", "notification"]
+    await gotoProfile(page)
+    const nav = page.getByRole("navigation", { name: /profile sections/i })
+    const tabs = ["personal", "family & income", "education", "bank", "settings", "notifications"]
     for (const tab of tabs) {
-      const tabEl = page.getByRole("button", { name: new RegExp(tab, "i") })
-        .or(page.getByRole("link", { name: new RegExp(tab, "i") }))
-        .or(page.getByText(new RegExp(tab, "i")))
-        .first()
-      if (await tabEl.isVisible()) {
-        // at least one tab was found
-        break
+      const tabEl = nav.getByRole("button", { name: new RegExp(tab, "i") }).first()
+      await expect(tabEl).toBeVisible({ timeout: 8_000 })
+    }
+  })
+
+  test("all profile sections are reachable", async ({ page }) => {
+    await gotoProfile(page)
+    const nav = page.getByRole("navigation", { name: /profile sections/i })
+    const sections = [
+      { tab: /personal/i, title: /personal information/i },
+      { tab: /family & income/i, title: /family & income/i },
+      { tab: /education/i, title: /^education$/i },
+      { tab: /bank/i, title: /bank account/i },
+      { tab: /settings/i, title: /app settings/i },
+      { tab: /notifications/i, title: /notifications/i },
+    ]
+
+    for (const section of sections) {
+      await nav.getByRole("button", { name: section.tab }).click()
+      await expect(sectionCard(page, section.title)).toBeVisible({ timeout: 8_000 })
+    }
+  })
+
+  test("notification preferences can be edited and saved", async ({ page }) => {
+    // Mock the profile PUT so the save always succeeds in all environments
+    await page.route("**/api/user-profile", async (route) => {
+      if (route.request().method() === "PUT") {
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) })
+      } else {
+        await route.continue()
       }
-    }
-  })
+    })
 
-  test("can switch to settings tab", async ({ page }) => {
-    await page.goto("/customer/profile")
-    const settingsTab = page.getByRole("button", { name: /settings|app settings/i })
-      .or(page.getByRole("link", { name: /settings/i }))
-      .first()
-    if (await settingsTab.isVisible()) {
-      await settingsTab.click()
-      await expect(
-        page.getByText(/language|accessibility|theme|preference/i).first(),
-      ).toBeVisible({ timeout: 8_000 })
-    }
-  })
+    await gotoProfile(page)
+    const nav = page.getByRole("navigation", { name: /profile sections/i })
+    await nav.getByRole("button", { name: /notifications/i }).click()
+    const notificationsCard = sectionCard(page, /notifications/i)
+    await expect(notificationsCard).toBeVisible({ timeout: 8_000 })
 
-  test("can switch to notifications tab", async ({ page }) => {
-    await page.goto("/customer/profile")
-    const notifTab = page.getByRole("button", { name: /notification/i })
-      .or(page.getByRole("link", { name: /notification/i }))
-      .first()
-    if (await notifTab.isVisible()) {
-      await notifTab.click()
-      await expect(
-        page.getByText(/push|email|alert|notify/i).first(),
-      ).toBeVisible({ timeout: 8_000 })
-    }
+    // Enter edit mode, then read the switch state (more reliable than parsing view-mode text)
+    await notificationsCard.getByRole("button", { name: /^edit$/i }).click()
+    const deadlineSwitch = notificationsCard.getByRole("switch", { name: /enable deadline reminders/i })
+    await expect(deadlineSwitch).toBeVisible({ timeout: 5_000 })
+    const wasChecked = await deadlineSwitch.isChecked()
+
+    // Toggle it and verify the switch state flipped in edit mode
+    await deadlineSwitch.click()
+    await expect(deadlineSwitch).toBeChecked({ checked: !wasChecked })
+
+    // Save (mocked to succeed) — card returns to view mode
+    await notificationsCard.getByRole("button", { name: /save changes/i }).click()
+
+    // Verify view mode now shows the toggled state for deadline reminders
+    const expectedLabel = wasChecked ? "Disabled" : "Enabled"
+    await expect(
+      notificationsCard.getByText(new RegExp(expectedLabel, "i")).first(),
+    ).toBeVisible({ timeout: 10_000 })
   })
 
   test("no 500 errors on profile page", async ({ page }) => {
@@ -78,7 +112,7 @@ test.describe("User Profile", () => {
         serverErrors.push(`${res.status()} ${res.url()}`)
       }
     })
-    await page.goto("/customer/profile")
+    await gotoProfile(page)
     await page.waitForLoadState("load")
     expect(serverErrors).toHaveLength(0)
   })
@@ -91,18 +125,11 @@ test.describe("Notifications", () => {
   })
 
   test("notifications tab on profile page is reachable and shows preference options", async ({ page }) => {
-    await page.goto("/customer/profile")
-    const notifTab = page
-      .getByRole("button", { name: /notification/i })
-      .or(page.getByRole("link", { name: /notification/i }))
-      .first()
-
-    if (await notifTab.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await notifTab.click()
-      await expect(
-        page.getByText(/push|email|alert|notify|preference/i).first(),
-      ).toBeVisible({ timeout: 8_000 })
-    }
+    await gotoProfile(page)
+    await page.getByRole("navigation", { name: /profile sections/i }).getByRole("button", { name: /notifications/i }).click()
+    await expect(
+      page.getByText(/push|email|alert|notify|preference|notification channel/i).first(),
+    ).toBeVisible({ timeout: 8_000 })
   })
 
   test("profile page notification bell or indicator is visible when authenticated", async ({ page }) => {
@@ -113,12 +140,10 @@ test.describe("Notifications", () => {
       .or(page.locator('[aria-label*="notification"], [data-testid*="notification"]'))
       .first()
 
-    if (await bellOrBadge.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await bellOrBadge.click()
-      await expect(
-        page.getByText(/notification|no new|all caught up|inbox/i).first(),
-      ).toBeVisible({ timeout: 8_000 })
-    }
-    // If neither pattern is visible the feature is not yet fully surfaced — test passes gracefully
+    await expect(bellOrBadge).toBeVisible({ timeout: 5_000 })
+    await bellOrBadge.click()
+    await expect(
+      page.getByText(/notification|no new|all caught up|inbox/i).first(),
+    ).toBeVisible({ timeout: 8_000 })
   })
 })

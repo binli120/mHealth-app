@@ -3,9 +3,37 @@
  * @email blee@healthcompass.cloud
  */
 
-import { test, expect } from "@playwright/test"
+import { test, expect, type Page } from "@playwright/test"
 import { AuthPage } from "../pages/auth.page"
-import { DEMO_USER } from "../fixtures/demo-data"
+import { DEMO_USER, SOCIAL_WORKER_USER } from "../fixtures/demo-data"
+
+const MOCK_SOCIAL_WORKER_COMPANY = {
+  id: "company-e2e-demo",
+  name: SOCIAL_WORKER_USER.companyName,
+  npi: SOCIAL_WORKER_USER.companyNpi,
+  address: SOCIAL_WORKER_USER.companyAddress,
+  city: SOCIAL_WORKER_USER.companyCity,
+  state: SOCIAL_WORKER_USER.companyState,
+  zip: SOCIAL_WORKER_USER.companyZip,
+  email_domain: SOCIAL_WORKER_USER.companyEmailDomain,
+  source: "local",
+}
+
+async function mockCompanySearch(page: Page) {
+  await page.route("**/api/companies/search?**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ results: [MOCK_SOCIAL_WORKER_COMPANY] }),
+    })
+  })
+}
+
+function companySearchButton(page: Page) {
+  return page
+    .getByPlaceholder(/agency name/i)
+    .locator("xpath=ancestor::div[contains(@class,'flex')][1]/button")
+}
 
 test.describe("Authentication", () => {
   let auth: AuthPage
@@ -33,6 +61,27 @@ test.describe("Authentication", () => {
     await expect(page.locator("#email")).toBeVisible()
     await expect(page.locator("#phone")).toBeVisible()
     await expect(page.locator("#password")).toBeVisible()
+  })
+
+  test("social worker registration flow shows company search and role-specific fields", async ({ page }) => {
+    await mockCompanySearch(page)
+    await page.goto("/auth/register")
+
+    await page.getByRole("button", { name: /social worker|case manager/i }).click()
+    await expect(page.getByText(/find your agency/i)).toBeVisible({ timeout: 5_000 })
+
+    const companySearchInput = page.getByPlaceholder(/agency name/i)
+    await companySearchInput.fill("Demo Community")
+    // Trigger search via Enter key — more reliable than the icon-only button XPath
+    await companySearchInput.press("Enter")
+
+    const companyOption = page.locator("button").filter({ hasText: SOCIAL_WORKER_USER.companyName }).first()
+    await expect(companyOption).toBeVisible({ timeout: 8_000 })
+    await companyOption.click()
+    await expect(page.getByText(/social worker account/i)).toBeVisible({ timeout: 5_000 })
+    await expect(page.locator("#jobTitle")).toBeVisible()
+    await expect(page.locator("#license")).toBeVisible()
+    await expect(page.getByText(new RegExp(`@${SOCIAL_WORKER_USER.companyEmailDomain}`, "i")).first()).toBeVisible()
   })
 
   test("login with demo user reaches dashboard", async ({ page, request }) => {
@@ -112,6 +161,34 @@ test.describe("Authentication", () => {
     await expect(
       page.getByText(/at least 8|too short|password.*character/i).first(),
     ).toBeVisible({ timeout: 8_000 })
+  })
+
+  test("social worker registration validates company email domain", async ({ page }) => {
+    await mockCompanySearch(page)
+    await page.goto("/auth/register")
+
+    await page.getByRole("button", { name: /social worker|case manager/i }).click()
+    const companySearchInput = page.getByPlaceholder(/agency name/i)
+    await companySearchInput.fill("Demo Community")
+    await expect(companySearchButton(page)).toBeEnabled({ timeout: 5_000 })
+    await companySearchButton(page).click()
+    const companyOption = page.locator("button").filter({ hasText: SOCIAL_WORKER_USER.companyName }).first()
+    await expect(companyOption).toBeVisible({ timeout: 8_000 })
+    await companyOption.click()
+
+    await page.fill("#firstName", SOCIAL_WORKER_USER.firstName)
+    await page.fill("#lastName", SOCIAL_WORKER_USER.lastName)
+    await page.fill("#email", "wrong-domain@example.com")
+    await page.fill("#phone", SOCIAL_WORKER_USER.phone)
+    await page.fill("#jobTitle", SOCIAL_WORKER_USER.jobTitle)
+    await page.fill("#license", SOCIAL_WORKER_USER.licenseNumber)
+    await page.fill("#password", SOCIAL_WORKER_USER.password)
+    await page.click('button[type="submit"]')
+
+    await expect(
+      page.getByText(new RegExp(`must use your company domain \\(@${SOCIAL_WORKER_USER.companyEmailDomain}\\)`, "i")),
+    ).toBeVisible({ timeout: 8_000 })
+    await expect(page).toHaveURL(/\/auth\/register/)
   })
 
   test("register→login link works", async ({ page }) => {
