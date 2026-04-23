@@ -17,8 +17,8 @@ const tokens = new Map();     // token → { clientId, expiresAt }
 app.get('/.well-known/oauth-authorization-server', (_req, res) => {
   res.json({
     issuer: BASE_URL,
-    authorization_endpoint: `${BASE_URL}/oauth/authorize`,
-    token_endpoint: `${BASE_URL}/oauth/token`,
+    authorization_endpoint: `${BASE_URL}/authorize`,
+    token_endpoint: `${BASE_URL}/token`,
     response_types_supported: ['code'],
     grant_types_supported: ['authorization_code'],
     code_challenge_methods_supported: ['S256'],
@@ -27,7 +27,7 @@ app.get('/.well-known/oauth-authorization-server', (_req, res) => {
 
 // ── OAuth 2.0: Authorization endpoint ────────────────────────────────────────
 // Claude.ai redirects the user here; we auto-approve and send back the code.
-app.get('/oauth/authorize', (req, res) => {
+app.get('/authorize', (req, res) => {
   const { client_id, redirect_uri, state, response_type } = req.query;
 
   if (client_id !== process.env.MCP_CLIENT_ID) {
@@ -51,7 +51,7 @@ app.get('/oauth/authorize', (req, res) => {
 });
 
 // ── OAuth 2.0: Token endpoint ─────────────────────────────────────────────────
-app.post('/oauth/token', (req, res) => {
+app.post('/token', (req, res) => {
   const { grant_type, code, client_id, client_secret, redirect_uri } = req.body;
 
   if (client_id !== process.env.MCP_CLIENT_ID || client_secret !== process.env.MCP_CLIENT_SECRET) {
