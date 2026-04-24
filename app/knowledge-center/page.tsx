@@ -17,9 +17,12 @@ import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher"
 import { ShieldHeartIcon } from "@/lib/icons"
 import {
   getArticlePreviewImageUrl,
+  getArticleUrlForLanguage,
+  getDocumentUrlForLanguage,
   getKnowledgeCenterCopy,
   getVideosForLanguage,
   getYouTubeThumbnailUrl,
+  getYouTubeUrlForLanguage,
   KNOWLEDGE_ARTICLES,
   KNOWLEDGE_DOCUMENTS,
 } from "@/lib/masshealth/knowledge-center"
@@ -37,6 +40,8 @@ export default function KnowledgeCenterPage() {
 
   const videos = videosExpanded ? allVideos : allVideos.slice(0, VIDEO_PREVIEW_COUNT)
   const articles = articlesExpanded ? allArticles : allArticles.slice(0, ARTICLE_PREVIEW_COUNT)
+
+  const isNonEnglish = selectedLanguage !== "en"
 
   return (
     <div className="min-h-screen bg-background">
@@ -69,6 +74,7 @@ export default function KnowledgeCenterPage() {
           <p className="mt-2 max-w-3xl text-muted-foreground">{copy.pageDescription}</p>
         </div>
 
+        {/* ── Videos ── */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-xl font-semibold text-foreground">
@@ -83,39 +89,42 @@ export default function KnowledgeCenterPage() {
             </Link>
           </div>
 
-          {selectedLanguage !== "en" ? (
+          {isNonEnglish ? (
             <p className="text-xs text-muted-foreground">{copy.showingEnglish}</p>
           ) : null}
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {videos.map((video) => (
-              <Card key={video.id} className="overflow-hidden border-border bg-card">
-                <Image
-                  src={getYouTubeThumbnailUrl(video.youtubeId)}
-                  alt={video.title}
-                  width={480}
-                  height={270}
-                  className="h-44 w-full object-cover"
-                />
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">{video.title}</CardTitle>
-                  <CardDescription>{video.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex items-center justify-between gap-2 pt-0">
-                  <Button asChild size="sm">
-                    <a href={video.youtubeUrl} target="_blank" rel="noreferrer">
-                      {copy.openOnYoutube}
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                  </Button>
-                  <Button asChild size="sm" variant="ghost">
-                    <a href={video.sourceUrl} target="_blank" rel="noreferrer">
-                      {copy.sourcePage}
-                    </a>
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+            {videos.map((video) => {
+              const videoUrl = getYouTubeUrlForLanguage(video, selectedLanguage)
+              return (
+                <Card key={video.id} className="overflow-hidden border-border bg-card">
+                  <Image
+                    src={getYouTubeThumbnailUrl(video.youtubeId)}
+                    alt={video.title}
+                    width={480}
+                    height={270}
+                    className="h-44 w-full object-cover"
+                  />
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">{video.title}</CardTitle>
+                    <CardDescription>{video.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex items-center justify-between gap-2 pt-0">
+                    <Button asChild size="sm">
+                      <a href={videoUrl} target="_blank" rel="noreferrer">
+                        {copy.openOnYoutube}
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
+                    <Button asChild size="sm" variant="ghost">
+                      <a href={video.sourceUrl} target="_blank" rel="noreferrer">
+                        {copy.sourcePage}
+                      </a>
+                    </Button>
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
 
           {allVideos.length > VIDEO_PREVIEW_COUNT && (
@@ -136,6 +145,7 @@ export default function KnowledgeCenterPage() {
           )}
         </section>
 
+        {/* ── Articles ── */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-xl font-semibold text-foreground">
@@ -150,30 +160,37 @@ export default function KnowledgeCenterPage() {
             </Link>
           </div>
 
+          {isNonEnglish ? (
+            <p className="text-xs text-muted-foreground">{copy.translatedViaGoogle}</p>
+          ) : null}
+
           <div className="grid gap-4 md:grid-cols-2">
-            {articles.map((article) => (
-              <Card key={article.id} className="overflow-hidden border-border bg-card">
-                <Image
-                  src={getArticlePreviewImageUrl(article.url)}
-                  alt={article.title}
-                  width={900}
-                  height={320}
-                  className="h-44 w-full object-cover"
-                />
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">{article.title}</CardTitle>
-                  <CardDescription>{article.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <Button asChild size="sm" variant="outline">
-                    <a href={article.url} target="_blank" rel="noreferrer">
-                      {copy.openArticle}
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+            {articles.map((article) => {
+              const articleUrl = getArticleUrlForLanguage(article, selectedLanguage)
+              return (
+                <Card key={article.id} className="overflow-hidden border-border bg-card">
+                  <Image
+                    src={getArticlePreviewImageUrl(article.url)}
+                    alt={article.title}
+                    width={900}
+                    height={320}
+                    className="h-44 w-full object-cover"
+                  />
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">{article.title}</CardTitle>
+                    <CardDescription>{article.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <Button asChild size="sm" variant="outline">
+                      <a href={articleUrl} target="_blank" rel="noreferrer">
+                        {copy.openArticle}
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
 
           {allArticles.length > ARTICLE_PREVIEW_COUNT && (
@@ -194,6 +211,7 @@ export default function KnowledgeCenterPage() {
           )}
         </section>
 
+        {/* ── Documents ── */}
         <section className="space-y-4">
           <h2 className="flex items-center gap-2 text-xl font-semibold text-foreground">
             <FileText className="h-5 w-5 text-primary" />
@@ -201,21 +219,27 @@ export default function KnowledgeCenterPage() {
           </h2>
 
           <div className="grid gap-3">
-            {KNOWLEDGE_DOCUMENTS.map((document) => (
-              <Card key={document.id} className="border-border bg-card">
-                <CardContent className="flex items-center justify-between gap-4 p-4">
-                  <div>
-                    <p className="font-medium text-card-foreground">{document.title}</p>
-                    <p className="text-sm text-muted-foreground">{document.description}</p>
-                  </div>
-                  <Button asChild size="icon" variant="outline" aria-label={`Download ${document.title}`}>
-                    <a href={document.url} target="_blank" rel="noreferrer">
-                      <Download className="h-4 w-4" />
-                    </a>
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+            {KNOWLEDGE_DOCUMENTS.map((document) => {
+              const docTranslation = copy.documents[document.id]
+              const title = docTranslation?.title ?? document.title
+              const description = docTranslation?.description ?? document.description
+              const documentUrl = getDocumentUrlForLanguage(document, selectedLanguage)
+              return (
+                <Card key={document.id} className="border-border bg-card">
+                  <CardContent className="flex items-center justify-between gap-4 p-4">
+                    <div>
+                      <p className="font-medium text-card-foreground">{title}</p>
+                      <p className="text-sm text-muted-foreground">{description}</p>
+                    </div>
+                    <Button asChild size="icon" variant="outline" aria-label={`Download ${title}`}>
+                      <a href={documentUrl} target="_blank" rel="noreferrer">
+                        <Download className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
         </section>
       </main>

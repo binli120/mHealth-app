@@ -56,7 +56,7 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
       "style-src 'self' 'unsafe-inline'",
       `connect-src 'self' https://${supabaseHost} wss://${supabaseHost}`,
       "img-src 'self' data: blob: https://img.youtube.com https://image.thum.io",

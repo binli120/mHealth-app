@@ -293,6 +293,8 @@ export const KNOWLEDGE_DOCUMENTS: KnowledgeDocument[] = [
   },
 ]
 
+type DocumentTranslation = { title: string; description: string }
+
 const KNOWLEDGE_COPY: Record<
   SupportedLanguage,
   {
@@ -309,6 +311,8 @@ const KNOWLEDGE_COPY: Record<
     officialMassGov: string
     sourcePage: string
     showingEnglish: string
+    translatedViaGoogle: string
+    documents: Record<string, DocumentTranslation>
   }
 > = {
   en: {
@@ -326,6 +330,8 @@ const KNOWLEDGE_COPY: Record<
     officialMassGov: "Official Mass.gov",
     sourcePage: "Source page",
     showingEnglish: "Showing official English videos for this topic.",
+    translatedViaGoogle: "",
+    documents: {},
   },
   "zh-CN": {
     pageTitle: "MassHealth 知识中心",
@@ -342,6 +348,25 @@ const KNOWLEDGE_COPY: Record<
     officialMassGov: "Mass.gov 官方",
     sourcePage: "来源页面",
     showingEnglish: "当前主题仅显示英文官方视频。",
+    translatedViaGoogle: "由 Google 翻译提供",
+    documents: {
+      "doc-acceptable-verifications": {
+        title: "可接受验证列表 (PDF)",
+        description: "身份、居住地、收入及其他资格项目的官方验证清单。",
+      },
+      "doc-member-forms": {
+        title: "MassHealth 会员表格",
+        description: "申请、授权、更新和会员请求的官方表格。",
+      },
+      "doc-member-guides": {
+        title: "MassHealth 会员指南和手册",
+        description: "MassHealth 的项目手册和会员指导文件。",
+      },
+      "doc-hipaa-forms": {
+        title: "MassHealth 会员的 HIPAA 表格",
+        description: "会员和授权代表的隐私和授权表格。",
+      },
+    },
   },
   ht: {
     pageTitle: "Sant Konesans MassHealth",
@@ -358,6 +383,25 @@ const KNOWLEDGE_COPY: Record<
     officialMassGov: "Ofisyel Mass.gov",
     sourcePage: "Paj sous",
     showingEnglish: "Videyo ofisyel yo disponib an Angle pou sij e sa a.",
+    translatedViaGoogle: "Tradui pa Google",
+    documents: {
+      "doc-acceptable-verifications": {
+        title: "Lis Verifikasyon Akseptab (PDF)",
+        description: "Lis verifikasyon ofisyel pou idantite, rezidans, revni, ak lòt eleman elijibilite.",
+      },
+      "doc-member-forms": {
+        title: "Fòmilè Manm MassHealth",
+        description: "Fòmilè ofisyel pou aplikasyon, otorizasyon, mizajou, ak demann manm.",
+      },
+      "doc-member-guides": {
+        title: "Gid ak Manyèl Manm MassHealth",
+        description: "Manyèl pwogram ak dokiman gid manm MassHealth.",
+      },
+      "doc-hipaa-forms": {
+        title: "Fòmilè HIPAA pou Manm MassHealth",
+        description: "Fòmilè pou konfidansyalite ak otorizasyon pou manm ak reprezantan otorize.",
+      },
+    },
   },
   "pt-BR": {
     pageTitle: "Centro de Conhecimento MassHealth",
@@ -374,6 +418,25 @@ const KNOWLEDGE_COPY: Record<
     officialMassGov: "Mass.gov Oficial",
     sourcePage: "Pagina de origem",
     showingEnglish: "Mostrando videos oficiais em ingles para este tema.",
+    translatedViaGoogle: "Traduzido pelo Google",
+    documents: {
+      "doc-acceptable-verifications": {
+        title: "Lista de Verificações Aceitas (PDF)",
+        description: "Lista oficial de verificação para identidade, residência, renda e outros itens de elegibilidade.",
+      },
+      "doc-member-forms": {
+        title: "Formulários de Membros MassHealth",
+        description: "Formulários oficiais para inscrições, autorizações, atualizações e solicitações de membros.",
+      },
+      "doc-member-guides": {
+        title: "Guias e Manuais para Membros MassHealth",
+        description: "Manuais do programa e documentos de orientação para membros do MassHealth.",
+      },
+      "doc-hipaa-forms": {
+        title: "Formulários HIPAA para Membros MassHealth",
+        description: "Formulários de privacidade e autorização para membros e representantes autorizados.",
+      },
+    },
   },
   es: {
     pageTitle: "Centro de Conocimiento MassHealth",
@@ -390,6 +453,25 @@ const KNOWLEDGE_COPY: Record<
     officialMassGov: "Mass.gov Oficial",
     sourcePage: "Pagina fuente",
     showingEnglish: "Mostrando videos oficiales en ingles para este tema.",
+    translatedViaGoogle: "Traducido por Google",
+    documents: {
+      "doc-acceptable-verifications": {
+        title: "Lista de Verificaciones Aceptables (PDF)",
+        description: "Lista oficial de verificación para identidad, residencia, ingresos y otros elementos de elegibilidad.",
+      },
+      "doc-member-forms": {
+        title: "Formularios para Miembros de MassHealth",
+        description: "Formularios oficiales para solicitudes, autorizaciones, actualizaciones y solicitudes de miembros.",
+      },
+      "doc-member-guides": {
+        title: "Guías y Manuales para Miembros de MassHealth",
+        description: "Manuales del programa y documentos de orientación para miembros de MassHealth.",
+      },
+      "doc-hipaa-forms": {
+        title: "Formularios HIPAA para Miembros de MassHealth",
+        description: "Formularios de privacidad y autorización para miembros y representantes autorizados.",
+      },
+    },
   },
   vi: {
     pageTitle: "Trung tam kien thuc MassHealth",
@@ -406,6 +488,25 @@ const KNOWLEDGE_COPY: Record<
     officialMassGov: "Mass.gov Chinh thuc",
     sourcePage: "Trang nguon",
     showingEnglish: "Dang hien video chinh thuc bang tieng Anh cho chu de nay.",
+    translatedViaGoogle: "Dịch bởi Google",
+    documents: {
+      "doc-acceptable-verifications": {
+        title: "Danh sách Xác minh Chấp nhận được (PDF)",
+        description: "Danh sách xác minh chính thức về danh tính, nơi cư trú, thu nhập và các mục đủ điều kiện khác.",
+      },
+      "doc-member-forms": {
+        title: "Biểu mẫu Thành viên MassHealth",
+        description: "Biểu mẫu chính thức cho đơn đăng ký, ủy quyền, cập nhật và yêu cầu thành viên.",
+      },
+      "doc-member-guides": {
+        title: "Hướng dẫn và Sổ tay Thành viên MassHealth",
+        description: "Sổ tay chương trình và tài liệu hướng dẫn thành viên từ MassHealth.",
+      },
+      "doc-hipaa-forms": {
+        title: "Biểu mẫu HIPAA cho Thành viên MassHealth",
+        description: "Biểu mẫu quyền riêng tư và ủy quyền cho thành viên và đại diện được ủy quyền.",
+      },
+    },
   },
 }
 
@@ -429,4 +530,51 @@ export function getVideosForLanguage(language: SupportedLanguage): KnowledgeVide
   }
 
   return KNOWLEDGE_VIDEOS
+}
+
+/** Maps our SupportedLanguage codes to YouTube caption language codes. */
+const YOUTUBE_LANG_MAP: Record<SupportedLanguage, string> = {
+  en: "en",
+  "zh-CN": "zh-Hans",
+  ht: "ht",
+  "pt-BR": "pt",
+  es: "es",
+  vi: "vi",
+}
+
+/** Maps our SupportedLanguage codes to Google Translate target language codes. */
+const GOOGLE_TRANSLATE_LANG_MAP: Record<SupportedLanguage, string> = {
+  en: "en",
+  "zh-CN": "zh-CN",
+  ht: "ht",
+  "pt-BR": "pt",
+  es: "es",
+  vi: "vi",
+}
+
+/**
+ * Returns a YouTube watch URL with auto-captions enabled in the target language.
+ * Falls back to the plain URL for English.
+ */
+export function getYouTubeUrlForLanguage(video: KnowledgeVideo, language: SupportedLanguage): string {
+  if (language === "en") return video.youtubeUrl
+  const ytLang = YOUTUBE_LANG_MAP[language]
+  return `${video.youtubeUrl}&cc_load_policy=1&cc_lang_pref=${ytLang}`
+}
+
+/**
+ * Returns a Google Translate–wrapped URL for the article when language is not English.
+ * Falls back to the original URL for English.
+ */
+export function getArticleUrlForLanguage(article: KnowledgeArticle, language: SupportedLanguage): string {
+  if (language === "en") return article.url
+  const tl = GOOGLE_TRANSLATE_LANG_MAP[language]
+  return `https://translate.google.com/translate?sl=en&tl=${tl}&u=${encodeURIComponent(article.url)}`
+}
+
+/**
+ * Returns the language-specific document URL when available, otherwise the default English URL.
+ */
+export function getDocumentUrlForLanguage(document: KnowledgeDocument, language: SupportedLanguage): string {
+  return document.urlByLanguage?.[language] ?? document.url
 }

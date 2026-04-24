@@ -16,6 +16,7 @@ import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher"
 import { ShieldHeartIcon } from "@/lib/icons"
 import {
   getArticlePreviewImageUrl,
+  getArticleUrlForLanguage,
   getKnowledgeCenterCopy,
   KNOWLEDGE_ARTICLES,
 } from "@/lib/masshealth/knowledge-center"
@@ -51,30 +52,37 @@ export default function KnowledgeCenterArticlesPage() {
           {copy.sectionArticles}
         </h1>
 
+        {selectedLanguage !== "en" ? (
+          <p className="text-sm text-muted-foreground">{copy.translatedViaGoogle}</p>
+        ) : null}
+
         <div className="grid gap-4 md:grid-cols-2">
-          {KNOWLEDGE_ARTICLES.map((article) => (
-            <Card key={article.id} className="overflow-hidden border-border bg-card">
-              <Image
-                src={getArticlePreviewImageUrl(article.url)}
-                alt={article.title}
-                width={900}
-                height={320}
-                className="h-44 w-full object-cover"
-              />
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">{article.title}</CardTitle>
-                <CardDescription>{article.description}</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <Button asChild size="sm" variant="outline">
-                  <a href={article.url} target="_blank" rel="noreferrer">
-                    {copy.openArticle}
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+          {KNOWLEDGE_ARTICLES.map((article) => {
+            const articleUrl = getArticleUrlForLanguage(article, selectedLanguage)
+            return (
+              <Card key={article.id} className="overflow-hidden border-border bg-card">
+                <Image
+                  src={getArticlePreviewImageUrl(article.url)}
+                  alt={article.title}
+                  width={900}
+                  height={320}
+                  className="h-44 w-full object-cover"
+                />
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">{article.title}</CardTitle>
+                  <CardDescription>{article.description}</CardDescription>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <Button asChild size="sm" variant="outline">
+                    <a href={articleUrl} target="_blank" rel="noreferrer">
+                      {copy.openArticle}
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </Button>
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       </main>
     </div>

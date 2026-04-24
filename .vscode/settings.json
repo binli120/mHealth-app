@@ -4,9 +4,11 @@
     "fontkit",
     "LIHEAP",
     "masshealth",
+    "modelcontextprotocol",
     "Ollama",
     "Prefs",
     "prescreener",
+    "Streamable",
     "supabase",
     "XVCJ"
   ],

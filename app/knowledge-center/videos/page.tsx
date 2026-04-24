@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAppSelector } from "@/lib/redux/hooks"
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher"
-import { getKnowledgeCenterCopy, getVideosForLanguage, getYouTubeThumbnailUrl } from "@/lib/masshealth/knowledge-center"
+import { getKnowledgeCenterCopy, getVideosForLanguage, getYouTubeThumbnailUrl, getYouTubeUrlForLanguage } from "@/lib/masshealth/knowledge-center"
 import { ShieldHeartIcon } from "@/lib/icons"
 
 export default function KnowledgeCenterVideosPage() {
@@ -53,34 +53,37 @@ export default function KnowledgeCenterVideosPage() {
         ) : null}
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {videos.map((video) => (
-            <Card key={video.id} className="overflow-hidden border-border bg-card">
-              <Image
-                src={getYouTubeThumbnailUrl(video.youtubeId)}
-                alt={video.title}
-                width={480}
-                height={270}
-                className="h-44 w-full object-cover"
-              />
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">{video.title}</CardTitle>
-                <CardDescription>{video.description}</CardDescription>
-              </CardHeader>
-              <CardContent className="flex items-center justify-between gap-2 pt-0">
-                <Button asChild size="sm">
-                  <a href={video.youtubeUrl} target="_blank" rel="noreferrer">
-                    {copy.openOnYoutube}
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                </Button>
-                <Button asChild size="sm" variant="ghost">
-                  <a href={video.sourceUrl} target="_blank" rel="noreferrer">
-                    {copy.sourcePage}
-                  </a>
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+          {videos.map((video) => {
+            const videoUrl = getYouTubeUrlForLanguage(video, selectedLanguage)
+            return (
+              <Card key={video.id} className="overflow-hidden border-border bg-card">
+                <Image
+                  src={getYouTubeThumbnailUrl(video.youtubeId)}
+                  alt={video.title}
+                  width={480}
+                  height={270}
+                  className="h-44 w-full object-cover"
+                />
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">{video.title}</CardTitle>
+                  <CardDescription>{video.description}</CardDescription>
+                </CardHeader>
+                <CardContent className="flex items-center justify-between gap-2 pt-0">
+                  <Button asChild size="sm">
+                    <a href={videoUrl} target="_blank" rel="noreferrer">
+                      {copy.openOnYoutube}
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </Button>
+                  <Button asChild size="sm" variant="ghost">
+                    <a href={video.sourceUrl} target="_blank" rel="noreferrer">
+                      {copy.sourcePage}
+                    </a>
+                  </Button>
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       </main>
     </div>

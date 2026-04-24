@@ -522,4 +522,6 @@ export interface KnowledgeDocument {
   title: string
   description: string
   url: string
+  /** Translated document URLs keyed by language — falls back to `url` when absent. */
+  urlByLanguage?: Partial<Record<SupportedLanguage, string>>
 }
