@@ -25,10 +25,10 @@ export default function KnowledgeCenterVideosPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
+        <div className="mx-auto flex h-16 max-w-7xl items-center px-4">
           <Link
             href="/knowledge-center"
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+            className="flex flex-1 items-center gap-2 text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
             <span className="text-sm">Back</span>
@@ -39,7 +39,9 @@ export default function KnowledgeCenterVideosPage() {
             </div>
             <span className="font-semibold text-foreground">HealthCompass MA</span>
           </div>
-          <LanguageSwitcher className="w-[190px] border-border bg-card text-foreground" />
+          <div className="flex flex-1 justify-end">
+            <LanguageSwitcher className="w-[190px] border-border bg-card text-foreground" />
+          </div>
         </div>
       </header>
 

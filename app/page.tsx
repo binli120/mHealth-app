@@ -191,15 +191,15 @@ export default function LandingPage() {
               </div>
               <span className="text-xl font-semibold text-foreground">HealthCompass MA</span>
             </div>
-            <nav className="hidden items-center gap-6 md:flex">
+            <nav className="hidden items-center gap-4 md:flex">
               <a href="#problems"     className="text-sm text-muted-foreground transition-colors hover:text-foreground">The Problem</a>
               <a href="#how-it-works" className="text-sm text-muted-foreground transition-colors hover:text-foreground">How It Works</a>
               <a href="#why-us"       className="text-sm text-muted-foreground transition-colors hover:text-foreground">Why Us</a>
-              <a href="#live-assistance" className="flex items-center gap-1 text-sm font-medium text-accent transition-colors hover:text-accent/80">
+              <a href="#live-assistance" className="flex items-center gap-0.5 text-sm font-medium text-accent transition-colors hover:text-accent/80">
                 Live Assistance
                 <span className="rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-bold text-accent-foreground">NEW</span>
               </a>
-              <a href="#appeal" className="flex items-center gap-1 text-sm font-medium text-primary transition-colors hover:text-primary/80">
+              <a href="#appeal" className="flex items-center gap-0.5 text-sm font-medium text-primary transition-colors hover:text-primary/80">
                 Appeal Help
                 <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">AI</span>
               </a>
