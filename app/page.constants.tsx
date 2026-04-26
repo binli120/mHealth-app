@@ -159,11 +159,11 @@ export const FOOTER_PROGRAMS: FooterLink[] = [
 ]
 
 export const FOOTER_PLATFORM: FooterLink[] = [
-  { label: "Eligibility Checker",  href: "/prescreener"       },
-  { label: "Benefit Stack Tool",   href: "/benefit-stack"     },
-  { label: "Live Assistance",      href: "/auth/register"     },
-  { label: "Appeal Assistance",    href: "/auth/register"     },
-  { label: "Appeal Letter (AI)",   href: "/masshealth-appeals" },
-  { label: "Knowledge Center",     href: "/knowledge-center"  },
-  { label: "Create Account",       href: "/auth/register"     },
+  { label: "Eligibility Checker",  href: "/prescreener"        },
+  { label: "Benefit Stack Tool",   href: "/benefit-stack"      },
+  { label: "Live Assistance",      href: "/auth/register",     isNew: true },
+  { label: "Appeal Assistance",    href: "/auth/register",     isNew: true },
+  { label: "Appeal Letter (AI)",   href: "/masshealth-appeals", isAI: true },
+  { label: "Knowledge Center",     href: "/knowledge-center"   },
+  { label: "Create Account",       href: "/auth/register"      },
 ]

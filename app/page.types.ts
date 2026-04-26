@@ -65,6 +65,8 @@ export interface StatConfig {
 export interface FooterLink {
   label: string
   href:  string
+  isNew?: boolean
+  isAI?:  boolean
 }
 
 export interface FadeUpProps {
