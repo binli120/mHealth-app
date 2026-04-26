@@ -234,6 +234,14 @@ export function MassHealthChatWidget() {
     const message = input.trim()
     if (!message || isLoading) return
 
+    // Hard auth gate — should never be reached from the UI (full panel is
+    // only rendered for authenticated users), but guards against any future
+    // code paths that could accidentally call sendMessage without a session.
+    if (authStatus !== "authenticated") {
+      setOpen(false)
+      return
+    }
+
     if (!isAdvisorView) setView("chat")
     setDraft("")
     setIsLoading(true)
@@ -384,14 +392,6 @@ export function MassHealthChatWidget() {
             Create Account
           </a>
         </div>
-
-        <button
-          type="button"
-          onClick={() => { setOpen(false); setView("faq") }}
-          className="text-[11px] text-muted-foreground underline-offset-2 hover:underline"
-        >
-          Browse FAQs without signing in →
-        </button>
       </div>
     </div>
   ) : null
