@@ -18,6 +18,11 @@ vi.mock("@/lib/server/logger", () => ({
   logServerError: vi.fn(),
 }))
 
+const mockIsSessionRevoked = vi.hoisted(() => vi.fn())
+vi.mock("@/lib/auth/session-revocation", () => ({
+  isSessionRevoked: mockIsSessionRevoked,
+}))
+
 const mockGetUser = vi.fn()
 vi.mock("@/lib/supabase/server", () => ({
   getSupabaseServerClient: vi.fn(() => ({
@@ -77,6 +82,7 @@ function cookieRequest(token: string): Request {
 beforeEach(() => {
   vi.clearAllMocks()
   mockLocalAuth.mockReturnValue(false)
+  mockIsSessionRevoked.mockResolvedValue(false)
   // Default: Supabase returns a valid user
   mockGetUser.mockResolvedValue({ data: { user: { id: VALID_UUID } }, error: null })
 })
@@ -139,6 +145,43 @@ describe("requireAuthenticatedUser — Supabase returns a valid user", () => {
     const result = await requireAuthenticatedUser(req)
     expect(result.ok).toBe(true)
     if (result.ok) expect(result.userId).toBe(bearerUid)
+  })
+
+  it("returns 401 when the token session has been revoked", async () => {
+    mockIsSessionRevoked.mockResolvedValue(true)
+
+    const result = await requireAuthenticatedUser(bearerRequest(validJwt({ session_id: "session-1" })))
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.response.status).toBe(401)
+      const body = await result.response.json() as { error: string }
+      expect(body.error).toMatch(/revoked/i)
+    }
+    expect(mockIsSessionRevoked).toHaveBeenCalledWith({
+      token: expect.any(String),
+      userId: VALID_UUID,
+      sessionId: "session-1",
+      issuedAt: null,
+    })
+  })
+
+  it("returns 500 when session revocation status cannot be verified", async () => {
+    mockIsSessionRevoked.mockRejectedValue(new Error("database unavailable"))
+
+    const result = await requireAuthenticatedUser(bearerRequest(validJwt()))
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.response.status).toBe(500)
+      const body = await result.response.json() as { error: string }
+      expect(body.error).toMatch(/unable to verify session revocation/i)
+    }
+    expect(mockLogError).toHaveBeenCalledWith(
+      "Failed to verify session revocation",
+      expect.any(Error),
+      { module: "require-auth" },
+    )
   })
 })
 

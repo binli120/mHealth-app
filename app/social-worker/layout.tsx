@@ -11,6 +11,7 @@ import Link from "next/link"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { SWSessionProvider }  from "@/components/collaborative-sessions/FloatingSessionBar"
+import { IdleTimeoutGuard } from "@/components/shared/IdleTimeoutGuard"
 import {
   LayoutDashboard,
   Users,
@@ -115,6 +116,7 @@ export default function SocialWorkerLayout({ children }: { children: React.React
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      <IdleTimeoutGuard />
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/40 z-20 lg:hidden"

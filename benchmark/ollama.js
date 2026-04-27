@@ -34,7 +34,7 @@ export const options = {
   },
 }
 
-export default function () {
+export default function ollamaBenchmark() {
   // Check models are loaded
   const tags = http.get(`${OLLAMA_URL}/api/tags`)
   check(tags, { 'ollama reachable': (r) => r.status === 200 })

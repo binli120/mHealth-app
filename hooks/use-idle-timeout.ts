@@ -32,6 +32,13 @@ const ACTIVITY_EVENTS = [
 
 type ActivityEvent = (typeof ACTIVITY_EVENTS)[number]
 
+declare global {
+  interface Window {
+    __HEALTHCOMPASS_IDLE_TIMEOUT_MS__?: number
+    __HEALTHCOMPASS_IDLE_WARNING_MS__?: number
+  }
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface UseIdleTimeoutOptions {
@@ -50,6 +57,26 @@ export interface UseIdleTimeoutResult {
   resetTimer: () => void
 }
 
+function getPositiveFiniteNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null
+}
+
+function resolveIdleTiming(overrides: UseIdleTimeoutOptions): Required<UseIdleTimeoutOptions> {
+  const browserIdleMs =
+    process.env.NODE_ENV !== "production" && typeof window !== "undefined"
+      ? getPositiveFiniteNumber(window.__HEALTHCOMPASS_IDLE_TIMEOUT_MS__)
+      : null
+  const browserWarningMs =
+    process.env.NODE_ENV !== "production" && typeof window !== "undefined"
+      ? getPositiveFiniteNumber(window.__HEALTHCOMPASS_IDLE_WARNING_MS__)
+      : null
+
+  const idleMs = overrides.idleMs ?? browserIdleMs ?? DEFAULT_IDLE_MS
+  const warningMs = Math.min(overrides.warningMs ?? browserWarningMs ?? DEFAULT_WARNING_MS, idleMs)
+
+  return { idleMs, warningMs }
+}
+
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 /**
@@ -60,10 +87,14 @@ export interface UseIdleTimeoutResult {
  * activate; the guard renders the countdown dialog and wires up this hook.
  */
 export function useIdleTimeout({
-  idleMs = DEFAULT_IDLE_MS,
-  warningMs = DEFAULT_WARNING_MS,
+  idleMs: idleMsOverride,
+  warningMs: warningMsOverride,
 }: UseIdleTimeoutOptions = {}): UseIdleTimeoutResult {
   const router = useRouter()
+  const { idleMs, warningMs } = resolveIdleTiming({
+    idleMs: idleMsOverride,
+    warningMs: warningMsOverride,
+  })
 
   const [isWarning, setIsWarning] = useState(false)
   const [secondsRemaining, setSecondsRemaining] = useState(
@@ -139,6 +170,14 @@ export function useIdleTimeout({
     }, idleMs)
   }, [clearAllTimers, idleMs, warningMs, startCountdown, performLogout])
 
+  // Ref so that the activity-event closure (registered once on mount) can always
+  // read the current warning state without going stale.  Declared before the
+  // mount effect so it is initialised before the effect callback runs.
+  const isWarningRef = useRef(isWarning)
+  useEffect(() => {
+    isWarningRef.current = isWarning
+  }, [isWarning])
+
   // ── Mount: bind activity listeners and kick off initial timers ─────────────
 
   useEffect(() => {
@@ -164,12 +203,6 @@ export function useIdleTimeout({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Intentionally empty — resetTimer/clearAllTimers are stable after mount
-
-  // Keep a ref that the event listener closure can read without going stale
-  const isWarningRef = useRef(isWarning)
-  useEffect(() => {
-    isWarningRef.current = isWarning
-  }, [isWarning])
 
   return { isWarning, secondsRemaining, resetTimer }
 }

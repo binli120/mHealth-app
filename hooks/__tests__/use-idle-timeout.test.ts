@@ -45,9 +45,13 @@ describe("hooks/use-idle-timeout", () => {
     vi.useFakeTimers()
     mockReplace.mockClear()
     mockSignOut.mockClear()
+    delete window.__HEALTHCOMPASS_IDLE_TIMEOUT_MS__
+    delete window.__HEALTHCOMPASS_IDLE_WARNING_MS__
   })
 
   afterEach(() => {
+    delete window.__HEALTHCOMPASS_IDLE_TIMEOUT_MS__
+    delete window.__HEALTHCOMPASS_IDLE_WARNING_MS__
     vi.useRealTimers()
     vi.restoreAllMocks()
   })
@@ -185,5 +189,23 @@ describe("hooks/use-idle-timeout", () => {
     act(() => vi.advanceTimersByTime(IDLE_MS - 1))
 
     expect(mockSignOut).not.toHaveBeenCalled()
+  })
+
+  it("uses development browser timing overrides when explicit options are not provided", async () => {
+    window.__HEALTHCOMPASS_IDLE_TIMEOUT_MS__ = 1_000
+    window.__HEALTHCOMPASS_IDLE_WARNING_MS__ = 400
+
+    const { result } = renderHook(() => useIdleTimeout())
+
+    act(() => vi.advanceTimersByTime(600))
+    expect(result.current.isWarning).toBe(true)
+
+    await act(async () => {
+      vi.advanceTimersByTime(400)
+      await Promise.resolve()
+    })
+
+    expect(mockSignOut).toHaveBeenCalledOnce()
+    expect(mockReplace).toHaveBeenCalledWith("/")
   })
 })
