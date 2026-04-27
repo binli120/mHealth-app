@@ -21,6 +21,12 @@
 
 import { test, expect } from "@playwright/test"
 
+function skipIfDevRegisterUnavailable(status: number): void {
+  if (status === 404) {
+    test.skip(true, "dev-register not available — local auth helpers disabled on this server")
+  }
+}
+
 // ── /api/auth/dev-register ─────────────────────────────────────────────────────
 
 test.describe("POST /api/auth/dev-register — input validation", () => {
@@ -28,6 +34,7 @@ test.describe("POST /api/auth/dev-register — input validation", () => {
     const res = await request.post("/api/auth/dev-register", {
       data: { password: "ValidPass1!" },
     })
+    skipIfDevRegisterUnavailable(res.status())
     expect(res.status()).toBe(400)
     const body = await res.json()
     expect(body.ok).toBe(false)
@@ -38,6 +45,7 @@ test.describe("POST /api/auth/dev-register — input validation", () => {
     const res = await request.post("/api/auth/dev-register", {
       data: { email: "not-an-email", password: "ValidPass1!" },
     })
+    skipIfDevRegisterUnavailable(res.status())
     expect(res.status()).toBe(400)
     const body = await res.json()
     expect(body.ok).toBe(false)
@@ -47,6 +55,7 @@ test.describe("POST /api/auth/dev-register — input validation", () => {
     const res = await request.post("/api/auth/dev-register", {
       data: { email: "test@example.com", password: "short" },
     })
+    skipIfDevRegisterUnavailable(res.status())
     expect(res.status()).toBe(400)
     const body = await res.json()
     expect(body.ok).toBe(false)
@@ -56,6 +65,7 @@ test.describe("POST /api/auth/dev-register — input validation", () => {
     const res = await request.post("/api/auth/dev-register", {
       data: {},
     })
+    skipIfDevRegisterUnavailable(res.status())
     expect(res.status()).toBe(400)
     const body = await res.json()
     expect(body.ok).toBe(false)
