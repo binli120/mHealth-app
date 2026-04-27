@@ -62,6 +62,14 @@ function resolveLocalRuntime(): boolean {
 }
 
 export function isLocalAuthHelperEnabled(): boolean {
+  // Hard block in production — no flag can override this. Dev auth routes
+  // (register, grant-admin, auto-confirm) must never be reachable in production
+  // because they bypass normal Supabase Auth flows and could allow arbitrary
+  // account creation or privilege escalation.
+  if (process.env.NODE_ENV === "production") {
+    return false
+  }
+
   const explicit =
     parseBoolean(process.env.NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS) ??
     parseBoolean(process.env.ENABLE_LOCAL_AUTH_HELPERS)

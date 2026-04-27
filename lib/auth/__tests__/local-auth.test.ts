@@ -241,6 +241,91 @@ describe("isLocalAuthHelperEnabled — window.location.hostname branch (jsdom)",
   })
 })
 
+// ── isLocalAuthHelperEnabled — production hard block ─────────────────────────
+//
+// When NODE_ENV === "production" the function must always return false,
+// regardless of any flag or URL heuristic.  This is the primary security
+// guarantee introduced to prevent dev auth routes from ever being reachable
+// in a production deployment.
+
+describe("isLocalAuthHelperEnabled — production hard block", () => {
+  it("returns false in production even when NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS is 'true'", () => {
+    vi.stubGlobal("window", undefined)
+    try {
+      withEnv({ NODE_ENV: "production", NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS: "true" }, () => {
+        expect(isLocalAuthHelperEnabled()).toBe(false)
+      })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it("returns false in production even when ENABLE_LOCAL_AUTH_HELPERS is 'true'", () => {
+    vi.stubGlobal("window", undefined)
+    try {
+      withEnv({ NODE_ENV: "production", ENABLE_LOCAL_AUTH_HELPERS: "true" }, () => {
+        expect(isLocalAuthHelperEnabled()).toBe(false)
+      })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it("returns false in production even when both flags are 'true'", () => {
+    vi.stubGlobal("window", undefined)
+    try {
+      withEnv({
+        NODE_ENV: "production",
+        NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS: "true",
+        ENABLE_LOCAL_AUTH_HELPERS: "true",
+      }, () => {
+        expect(isLocalAuthHelperEnabled()).toBe(false)
+      })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it("returns false in production even when Supabase URL points to localhost", () => {
+    vi.stubGlobal("window", undefined)
+    try {
+      withEnv({
+        NODE_ENV: "production",
+        NEXT_PUBLIC_SUPABASE_URL: "http://localhost:54321",
+      }, () => {
+        expect(isLocalAuthHelperEnabled()).toBe(false)
+      })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it("returns false in production even when DATABASE_URL points to localhost", () => {
+    vi.stubGlobal("window", undefined)
+    try {
+      withEnv({
+        NODE_ENV: "production",
+        DATABASE_URL: "postgres://user:pass@localhost:5432/db",
+      }, () => {
+        expect(isLocalAuthHelperEnabled()).toBe(false)
+      })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it("still returns true in development when flag is 'true' (guard only applies to production)", () => {
+    vi.stubGlobal("window", undefined)
+    try {
+      withEnv({ NODE_ENV: "development", NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS: "true" }, () => {
+        expect(isLocalAuthHelperEnabled()).toBe(true)
+      })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+})
+
 // ── isLocalAuthHelperEnabled — NODE_ENV fallback ──────────────────────────────
 //
 // The NODE_ENV path is only reached when `window` is undefined (i.e. a pure

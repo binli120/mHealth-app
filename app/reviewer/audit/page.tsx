@@ -176,6 +176,9 @@ export default function AuditLogPage() {
             <p className="mt-1 text-muted-foreground">
               Complete activity history for HIPAA compliance
             </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Last event: {auditLogs[0]?.timestamp ?? "No activity logged yet"}
+            </p>
           </div>
           <Button variant="outline" className="gap-2">
             <Download className="h-4 w-4" />
@@ -267,7 +270,7 @@ export default function AuditLogPage() {
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          {log.timestamp}
+                          Timestamp: {log.timestamp}
                         </span>
                       </div>
                     </div>

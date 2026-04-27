@@ -15,6 +15,28 @@ export async function register() {
   // Only run in the Node.js server runtime, not in the Edge runtime
   if (process.env.NEXT_RUNTIME !== "nodejs") return
 
+  // Fail loudly at startup if dev auth helpers are accidentally enabled in
+  // production. These routes bypass Supabase Auth and must never be reachable
+  // in a production environment.
+  if (process.env.NODE_ENV === "production") {
+    const flagValue =
+      process.env.NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS ??
+      process.env.ENABLE_LOCAL_AUTH_HELPERS
+    const isEnabled =
+      flagValue?.trim().toLowerCase() === "true" ||
+      flagValue?.trim() === "1" ||
+      flagValue?.trim().toLowerCase() === "yes"
+
+    if (isEnabled) {
+      throw new Error(
+        "[SECURITY] NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS or ENABLE_LOCAL_AUTH_HELPERS " +
+          "is set to a truthy value in a production environment. " +
+          "This enables dev-only auth routes that bypass Supabase Auth and must never " +
+          "be active in production. Remove or set this variable to 'false' before deploying.",
+      )
+    }
+  }
+
   const url  = process.env.OPENOBSERVE_URL
   const user = process.env.OPENOBSERVE_USER
   const pass = process.env.OPENOBSERVE_PASSWORD

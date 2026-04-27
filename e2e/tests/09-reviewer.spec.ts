@@ -124,18 +124,14 @@ test.describe("Reviewer Case Management", () => {
     await reviewer.gotoAudit()
     await expect(page).toHaveURL(/\/reviewer\/audit/)
 
-    // Audit entries show timestamps like "Feb 18, 2024 - 3:45 PM" — match month names or AM/PM
-    const hasTimestampedEvents = await page
-      .getByText(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b|\d{1,2}:\d{2}\s*(am|pm)/i)
-      .first()
-      .isVisible({ timeout: 5_000 })
-      .catch(() => false)
+    const auditContent = page.getByRole("main")
+    const auditText = await auditContent.innerText({ timeout: 5_000 })
 
-    const hasEmptyState = await page
-      .getByText(/no.*event|no.*activity|audit.*empty|nothing.*logged/i)
-      .first()
-      .isVisible({ timeout: 5_000 })
-      .catch(() => false)
+    // Audit entries show timestamps like "Feb 18, 2024 - 3:45 PM" — match month names or AM/PM
+    const hasTimestampedEvents =
+      /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b|\d{1,2}:\d{2}\s*(am|pm)/i.test(auditText)
+
+    const hasEmptyState = /no.*event|no.*activity|audit.*empty|nothing.*logged/i.test(auditText)
 
     expect(
       hasTimestampedEvents || hasEmptyState,

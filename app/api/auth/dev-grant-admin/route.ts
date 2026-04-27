@@ -34,10 +34,6 @@ export async function POST(request: Request) {
     [authResult.userId],
   )
 
-  // Debug: show all existing roles
-  const allRoles = await pool.query(`SELECT id, name FROM public.roles`)
-  console.log("[dev-grant-admin] all roles in DB:", allRoles.rows)
-
   // Ensure the 'admin' role row exists
   await pool.query(
     `INSERT INTO public.roles (name) VALUES ('admin') ON CONFLICT (name) DO NOTHING`,
@@ -58,16 +54,10 @@ export async function POST(request: Request) {
     `,
     [authResult.userId],
   )
-  console.log("[dev-grant-admin] userId:", authResult.userId)
-  console.log("[dev-grant-admin] insert result:", insertResult.rows)
-  console.log("[dev-grant-admin] rowCount:", insertResult.rowCount)
-
   // Verify the role was actually inserted
   const verify = await pool.query(
     `SELECT ur.user_id, r.name FROM public.user_roles ur JOIN public.roles r ON r.id = ur.role_id WHERE ur.user_id = $1::uuid`,
     [authResult.userId],
   )
-  console.log("[dev-grant-admin] verified roles:", verify.rows)
-
   return NextResponse.json({ ok: true, message: "Admin role granted.", roles: verify.rows })
 }

@@ -37,10 +37,7 @@ test.describe("Appeal Assistant", () => {
 
   test("denial reason selector is present", async ({ page }) => {
     await appealPage.goto()
-    const select = page.getByLabel(/denial reason|reason/i)
-    const textarea = page.locator("textarea, select, [role='combobox']").first()
-    const isVisible = (await select.isVisible()) || (await textarea.isVisible())
-    expect(isVisible).toBeTruthy()
+    await expect(page.locator("#denial-reason")).toBeVisible({ timeout: 10_000 })
   })
 
   test("submit button is present", async ({ page }) => {

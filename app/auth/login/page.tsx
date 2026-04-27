@@ -36,6 +36,7 @@ function LoginPageContent() {
     () => `/auth/register?next=${encodeURIComponent(nextPath)}`,
     [nextPath],
   )
+  const isContinuationSignIn = searchParams.has("next")
 
   const handleGoogleSignIn = async () => {
     setErrorMessage("")
@@ -207,7 +208,11 @@ function LoginPageContent() {
               <ShieldHeartIcon color="currentColor" className="h-6 w-6 text-primary-foreground" />
             </div>
             <h1 className="text-2xl font-bold text-foreground">Welcome Back</h1>
-            <p className="mt-1 text-muted-foreground">Sign in to your HealthCompass MA account</p>
+            <p className="mt-1 text-muted-foreground">
+              {isContinuationSignIn
+                ? "Please sign in to continue."
+                : "Sign in to your HealthCompass MA account"}
+            </p>
           </div>
 
           {/* Login Card */}
