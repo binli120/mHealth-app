@@ -39,7 +39,7 @@ export const options = {
   },
 }
 
-export default function () {
+export default function loadBenchmark() {
   // Liveness check
   const h = http.get(`${BASE_URL}/api/health`)
   healthLatency.add(h.timings.duration)

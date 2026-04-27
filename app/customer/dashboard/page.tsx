@@ -55,7 +55,6 @@ import { getSafeSupabaseUser } from "@/lib/supabase/client"
 import { ShieldHeartIcon } from "@/lib/icons"
 import { UserAvatar } from "@/components/shared/UserAvatar"
 import { ThemeToggle } from "@/components/shared/ThemeToggle"
-import { IdleTimeoutGuard } from "@/components/shared/IdleTimeoutGuard"
 import { formatDate } from "@/lib/utils/format"
 import type { ApplicationListApiResponse } from "./page.types"
 import { STATUS_META } from "./page.constants"
@@ -224,7 +223,6 @@ export default function CustomerDashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <IdleTimeoutGuard />
       <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4">
           <div className="flex shrink-0 items-center gap-2">

@@ -230,7 +230,6 @@ export async function POST(request: Request, { params }: Params) {
       ? rawName
           .replace(/[/\\]/g, "")           // no path separators
           .replace(/\.\./g, "")            // no parent-dir traversal fragments
-          // eslint-disable-next-line no-control-regex
           .replace(/[\x00-\x1f\x7f]/g, "") // no control/null chars
           .trim()
           .slice(0, 255) || null           // enforce reasonable max length

@@ -10,6 +10,7 @@ import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { IdleTimeoutGuard } from "@/components/shared/IdleTimeoutGuard"
 import {
   LayoutDashboard,
   Users,
@@ -161,6 +162,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      <IdleTimeoutGuard />
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div

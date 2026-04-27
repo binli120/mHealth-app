@@ -20,7 +20,7 @@ export const options = {
   },
 }
 
-export default function () {
+export default function smokeBenchmark() {
   // Liveness
   const health = http.get(`${BASE_URL}/api/health`)
   check(health, { 'health ok': (r) => r.status === 200 })
