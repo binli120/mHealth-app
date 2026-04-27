@@ -170,6 +170,14 @@ export function useIdleTimeout({
     }, idleMs)
   }, [clearAllTimers, idleMs, warningMs, startCountdown, performLogout])
 
+  // Ref so that the activity-event closure (registered once on mount) can always
+  // read the current warning state without going stale.  Declared before the
+  // mount effect so it is initialised before the effect callback runs.
+  const isWarningRef = useRef(isWarning)
+  useEffect(() => {
+    isWarningRef.current = isWarning
+  }, [isWarning])
+
   // ── Mount: bind activity listeners and kick off initial timers ─────────────
 
   useEffect(() => {
@@ -195,12 +203,6 @@ export function useIdleTimeout({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Intentionally empty — resetTimer/clearAllTimers are stable after mount
-
-  // Keep a ref that the event listener closure can read without going stale
-  const isWarningRef = useRef(isWarning)
-  useEffect(() => {
-    isWarningRef.current = isWarning
-  }, [isWarning])
 
   return { isWarning, secondsRemaining, resetTimer }
 }

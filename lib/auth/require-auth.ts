@@ -9,6 +9,7 @@ import { createHmac, timingSafeEqual } from "crypto"
 import { NextResponse } from "next/server"
 
 import { isLocalAuthHelperEnabled } from "@/lib/auth/local-auth"
+import { isSessionRevoked } from "@/lib/auth/session-revocation"
 import { logServerError } from "@/lib/server/logger"
 import { getSupabaseServerClient } from "@/lib/supabase/server"
 
@@ -185,6 +186,70 @@ function extractLocalFallbackUserId(request: Request, token: string): string | n
   return subject
 }
 
+function getStringClaim(payload: Record<string, unknown> | null, keys: string[]): string | null {
+  if (!payload) {
+    return null
+  }
+
+  for (const key of keys) {
+    const value = payload[key]
+    if (typeof value === "string" && value.trim()) {
+      return value.trim()
+    }
+  }
+
+  return null
+}
+
+function getIssuedAt(payload: Record<string, unknown> | null): Date | null {
+  const issuedAt = payload?.iat
+  if (typeof issuedAt !== "number" || !Number.isFinite(issuedAt)) {
+    return null
+  }
+
+  return new Date(issuedAt * 1000)
+}
+
+async function rejectIfSessionRevoked(
+  token: string,
+  userId: string,
+  payload: Record<string, unknown> | null,
+): Promise<NextResponse | null> {
+  let revoked: boolean
+  try {
+    revoked = await isSessionRevoked({
+      token,
+      userId,
+      sessionId: getStringClaim(payload, ["session_id", "sid", "jti"]),
+      issuedAt: getIssuedAt(payload),
+    })
+  } catch (error) {
+    logServerError("Failed to verify session revocation", error, {
+      module: "require-auth",
+    })
+
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "Unable to verify session revocation.",
+      },
+      { status: 500 },
+    )
+  }
+
+  if (!revoked) {
+    return null
+  }
+
+  return NextResponse.json(
+    {
+      ok: false,
+      error: "Session has been revoked. Please sign in again.",
+    },
+    { status: 401 },
+  )
+}
+
 export async function requireAuthenticatedUser(
   request: Request,
 ): Promise<
@@ -212,11 +277,17 @@ export async function requireAuthenticatedUser(
   }
 
   const localFallbackUserId = extractLocalFallbackUserId(request, token)
+  const tokenPayload = parseJwtParts(token)?.payload ?? null
 
   try {
     const { data, error } = await getSupabaseServerClient().auth.getUser(token)
 
     if (!error && data.user?.id) {
+      const revokedResponse = await rejectIfSessionRevoked(token, data.user.id, tokenPayload)
+      if (revokedResponse) {
+        return { ok: false, response: revokedResponse }
+      }
+
       return {
         ok: true,
         userId: data.user.id,
@@ -224,6 +295,11 @@ export async function requireAuthenticatedUser(
     }
 
     if (localFallbackUserId) {
+      const revokedResponse = await rejectIfSessionRevoked(token, localFallbackUserId, tokenPayload)
+      if (revokedResponse) {
+        return { ok: false, response: revokedResponse }
+      }
+
       return {
         ok: true,
         userId: localFallbackUserId,
@@ -242,6 +318,11 @@ export async function requireAuthenticatedUser(
     }
   } catch (error) {
     if (localFallbackUserId) {
+      const revokedResponse = await rejectIfSessionRevoked(token, localFallbackUserId, tokenPayload)
+      if (revokedResponse) {
+        return { ok: false, response: revokedResponse }
+      }
+
       return {
         ok: true,
         userId: localFallbackUserId,

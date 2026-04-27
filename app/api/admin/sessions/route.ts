@@ -12,6 +12,7 @@ import {
   getAdminSettings,
   upsertAdminSetting,
 } from "@/lib/db/admin-access"
+import { revokeUserSessions } from "@/lib/auth/session-revocation"
 import { getSupabaseAdminClient } from "@/lib/supabase/server"
 import { logServerError } from "@/lib/server/logger"
 import { toUserFacingError } from "@/lib/errors/user-facing"
@@ -75,6 +76,10 @@ export async function PATCH(request: Request) {
       if (error) {
         return NextResponse.json({ ok: false, error: toUserFacingError(error, "Force logout failed.") }, { status: 502 })
       }
+      await revokeUserSessions(payload.userId, {
+        reason: "admin_force_logout",
+        revokedBy: authResult.userId,
+      })
       void logLoginEvent(payload.userId, "force_logout")
       return NextResponse.json({ ok: true })
     }
@@ -89,7 +94,13 @@ export async function PATCH(request: Request) {
       )
       const failures = results.filter((r) => r.status === "rejected").length
       await Promise.allSettled(
-        uniqueUserIds.map((uid) => logLoginEvent(uid, "force_logout")),
+        uniqueUserIds.map(async (uid) => {
+          await revokeUserSessions(uid, {
+            reason: "admin_force_logout_all",
+            revokedBy: authResult.userId,
+          })
+          await logLoginEvent(uid, "force_logout")
+        }),
       )
       return NextResponse.json({ ok: true, loggedOut: uniqueUserIds.length - failures, failures })
     }
