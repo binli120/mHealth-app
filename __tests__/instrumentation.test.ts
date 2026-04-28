@@ -103,6 +103,7 @@ describe("instrumentation register() — production security assertion", () => {
   it("does not throw when NODE_ENV=production and flag is 'false'", async () => {
     process.env.NODE_ENV = "production"
     process.env.NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS = "false"
+    process.env.PROFILE_ENCRYPTION_KEY = "0".repeat(64) // satisfy key assertion
 
     const { register } = await import("../instrumentation.ts")
     await expect(register()).resolves.toBeUndefined()
@@ -112,6 +113,7 @@ describe("instrumentation register() — production security assertion", () => {
     process.env.NODE_ENV = "production"
     delete process.env.NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS
     delete process.env.ENABLE_LOCAL_AUTH_HELPERS
+    process.env.PROFILE_ENCRYPTION_KEY = "0".repeat(64) // satisfy key assertion
 
     const { register } = await import("../instrumentation.ts")
     await expect(register()).resolves.toBeUndefined()
@@ -120,6 +122,26 @@ describe("instrumentation register() — production security assertion", () => {
   it("does not throw when NODE_ENV=production and flag is '0'", async () => {
     process.env.NODE_ENV = "production"
     process.env.NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS = "0"
+    process.env.PROFILE_ENCRYPTION_KEY = "0".repeat(64) // satisfy key assertion
+
+    const { register } = await import("../instrumentation.ts")
+    await expect(register()).resolves.toBeUndefined()
+  })
+
+  it("throws in production when PROFILE_ENCRYPTION_KEY is missing", async () => {
+    process.env.NODE_ENV = "production"
+    delete process.env.NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS
+    delete process.env.ENABLE_LOCAL_AUTH_HELPERS
+    delete process.env.PROFILE_ENCRYPTION_KEY
+
+    const { register } = await import("../instrumentation.ts")
+    await expect(register()).rejects.toThrow("PROFILE_ENCRYPTION_KEY")
+  })
+
+  it("does not throw in production when PROFILE_ENCRYPTION_KEY is set", async () => {
+    process.env.NODE_ENV = "production"
+    delete process.env.NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS
+    process.env.PROFILE_ENCRYPTION_KEY = "a".repeat(64)
 
     const { register } = await import("../instrumentation.ts")
     await expect(register()).resolves.toBeUndefined()
