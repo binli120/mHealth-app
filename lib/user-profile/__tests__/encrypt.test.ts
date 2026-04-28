@@ -22,25 +22,26 @@ describe("lib/user-profile/encrypt", () => {
   // ── encryptField ────────────────────────────────────────────────────────────
 
   describe("encryptField", () => {
-    it("returns a colon-delimited string with three segments (iv:tag:ciphertext)", () => {
+    it("returns a colon-delimited string with four segments (v1:iv:tag:ciphertext)", () => {
       const result = encryptField("hello")
       const parts = result.split(":")
-      expect(parts).toHaveLength(3)
-      expect(parts[0]).toBeTruthy() // iv
-      expect(parts[1]).toBeTruthy() // auth tag
-      expect(parts[2]).toBeTruthy() // ciphertext
+      expect(parts).toHaveLength(4)
+      expect(parts[0]).toBe("v1")   // version token
+      expect(parts[1]).toBeTruthy() // iv
+      expect(parts[2]).toBeTruthy() // auth tag
+      expect(parts[3]).toBeTruthy() // ciphertext
     })
 
     it("iv segment is 24 hex characters (12 bytes)", () => {
-      const [ivHex] = encryptField("hello").split(":")
+      const [, ivHex] = encryptField("hello").split(":")
       expect(ivHex).toHaveLength(24)
-      expect(/^[0-9a-f]+$/i.test(ivHex)).toBe(true)
+      expect(/^[0-9a-f]+$/i.test(ivHex!)).toBe(true)
     })
 
     it("auth tag segment is 32 hex characters (16 bytes)", () => {
-      const [, tagHex] = encryptField("hello").split(":")
+      const [,, tagHex] = encryptField("hello").split(":")
       expect(tagHex).toHaveLength(32)
-      expect(/^[0-9a-f]+$/i.test(tagHex)).toBe(true)
+      expect(/^[0-9a-f]+$/i.test(tagHex!)).toBe(true)
     })
 
     it("produces different ciphertexts for the same plaintext (random IV)", () => {
@@ -116,17 +117,32 @@ describe("lib/user-profile/encrypt", () => {
     it("throws when the ciphertext has been tampered with (auth tag mismatch)", () => {
       const encrypted = encryptField("original")
       const parts = encrypted.split(":")
-      // Flip the last byte of the ciphertext
-      parts[2] = parts[2].slice(0, -2) + (parts[2].endsWith("ff") ? "00" : "ff")
+      // parts: ["v1", ivHex, tagHex, cipherHex] — ciphertext is index 3
+      parts[3] = parts[3]!.slice(0, -2) + (parts[3]!.endsWith("ff") ? "00" : "ff")
       expect(() => decryptField(parts.join(":"))).toThrow()
     })
 
     it("throws when the auth tag has been tampered with", () => {
       const encrypted = encryptField("original")
       const parts = encrypted.split(":")
-      // Flip the last byte of the auth tag
-      parts[1] = parts[1].slice(0, -2) + (parts[1].endsWith("ff") ? "00" : "ff")
+      // parts: ["v1", ivHex, tagHex, cipherHex] — auth tag is index 2
+      parts[2] = parts[2]!.slice(0, -2) + (parts[2]!.endsWith("ff") ? "00" : "ff")
       expect(() => decryptField(parts.join(":"))).toThrow()
+    })
+
+    it("decrypts a legacy unversioned value (iv:tag:cipher) for backward compatibility", () => {
+      // Simulate a row written before versioning was added: build a raw 3-segment
+      // blob using the same key and algorithm, then confirm decryptField handles it.
+      const { createCipheriv, randomBytes: rb } = require("node:crypto")
+      const TEST_KEY_HEX = "0".repeat(64)
+      const key = Buffer.from(TEST_KEY_HEX, "hex")
+      const iv  = rb(12)
+      const cipher = createCipheriv("aes-256-gcm", key, iv)
+      const encrypted = Buffer.concat([cipher.update("legacy-value", "utf8"), cipher.final()])
+      const tag = cipher.getAuthTag()
+      const legacyStored = [iv.toString("hex"), tag.toString("hex"), encrypted.toString("hex")].join(":")
+
+      expect(decryptField(legacyStored)).toBe("legacy-value")
     })
 
     it("throws when PROFILE_ENCRYPTION_KEY is not set", () => {

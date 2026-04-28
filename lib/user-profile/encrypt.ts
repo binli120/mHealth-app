@@ -29,7 +29,14 @@ function getKey(): Buffer {
 
 /**
  * Encrypts a plaintext string using AES-256-GCM.
- * Returns a colon-delimited string: iv:authTag:ciphertext (all hex-encoded).
+ *
+ * Stored format (colon-delimited, all segments hex-encoded):
+ *   v1:iv:authTag:ciphertext
+ *
+ * The leading version token lets us detect the key generation used to
+ * encrypt a value, enabling zero-downtime key rotation in the future:
+ *   • v1 → current PROFILE_ENCRYPTION_KEY
+ *   • v2 → (future) rotated key, re-encrypted during a migration job
  */
 export function encryptField(plain: string): string {
   const key = getKey()
@@ -37,18 +44,36 @@ export function encryptField(plain: string): string {
   const cipher = createCipheriv(ALGORITHM, key, iv)
   const encrypted = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()])
   const tag = cipher.getAuthTag()
-  return [iv.toString("hex"), tag.toString("hex"), encrypted.toString("hex")].join(":")
+  return ["v1", iv.toString("hex"), tag.toString("hex"), encrypted.toString("hex")].join(":")
 }
 
 /**
  * Decrypts a value previously encrypted with encryptField.
  * Returns the plaintext string.
+ *
+ * Supports both the current versioned format (v1:iv:tag:cipher) and the
+ * legacy unversioned format (iv:tag:cipher) so existing rows keep working
+ * after a rolling deploy.
  */
 export function decryptField(stored: string): string {
-  const [ivHex, tagHex, cipherHex] = stored.split(":")
+  const parts = stored.split(":")
+
+  let ivHex: string, tagHex: string, cipherHex: string
+
+  if (parts.length === 4 && parts[0] === "v1") {
+    // Current format: v1:iv:tag:cipher
+    ;[, ivHex, tagHex, cipherHex] = parts as [string, string, string, string]
+  } else if (parts.length === 3) {
+    // Legacy format written before versioning was added: iv:tag:cipher
+    ;[ivHex, tagHex, cipherHex] = parts as [string, string, string]
+  } else {
+    throw new Error("Invalid encrypted field format")
+  }
+
   if (!ivHex || !tagHex || !cipherHex) {
     throw new Error("Invalid encrypted field format")
   }
+
   const key = getKey()
   const iv = Buffer.from(ivHex, "hex")
   const tag = Buffer.from(tagHex, "hex")

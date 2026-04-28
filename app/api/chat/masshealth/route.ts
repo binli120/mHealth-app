@@ -220,13 +220,20 @@ async function handleFormAssistant(
   const collectedSummary = payload.currentFields ?? ""
   const currentSection: FormSection = (payload.currentSection as FormSection) ?? "personal"
 
+  // Scrub SSN before any field reaches the LLM — PHI must never flow through
+  // the AI context.  The `ssn` field is accepted by the Zod schema only so
+  // existing Redux state serialises without an error; it is zeroed out here.
+  const safeMembers = (payload.existingMembers ?? [])
+    .filter((m): m is typeof m & { id: string } => typeof m.id === "string")
+    .map((m) => ({ ...m, ssn: "" }))
+
   // Field extraction and RAG retrieval run in parallel (pre-processing)
   const [extractionResult, ragChunks] = await Promise.all([
     extractFormFields(
       payload.messages,
       collectedSummary,
       currentSection,
-      (payload.existingMembers ?? []).filter((m): m is typeof m & { id: string } => typeof m.id === "string"),
+      safeMembers,
       (payload.existingSources ?? []).filter((s): s is typeof s & { id: string } => typeof s.id === "string"),
       language,
     ),

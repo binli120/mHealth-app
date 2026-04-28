@@ -7,6 +7,7 @@ import "server-only"
 
 import { getDbPool } from "./server"
 import { encryptField, decryptField } from "@/lib/user-profile/encrypt"
+import { logServerError } from "@/lib/server/logger"
 import { DEFAULT_PROFILE_DATA } from "@/lib/user-profile/types"
 import type {
   UserProfile,
@@ -248,6 +249,112 @@ export async function updateApplicantInfo(
     `UPDATE applicants SET ${setClauses.join(", ")} WHERE user_id = $${paramIndex}`,
     values,
   )
+}
+
+// ── Write: SSN (encrypted) ────────────────────────────────────────────────────
+
+/** Accepted SSN formats: "123-45-6789" or "123456789" */
+const SSN_DASHED_RE = /^\d{3}-\d{2}-\d{4}$/
+const SSN_PLAIN_RE = /^\d{9}$/
+
+/**
+ * Normalise an SSN value to the dashed format "###-##-####".
+ * Throws if the value is not a recognised format.
+ */
+export function normalizeSsn(raw: string): string {
+  const trimmed = raw.trim()
+  if (SSN_DASHED_RE.test(trimmed)) return trimmed
+  if (SSN_PLAIN_RE.test(trimmed)) {
+    return `${trimmed.slice(0, 3)}-${trimmed.slice(3, 5)}-${trimmed.slice(5)}`
+  }
+  throw new Error("Invalid SSN format. Expected ###-##-#### or 9 consecutive digits.")
+}
+
+/**
+ * Encrypt and persist an applicant's SSN.
+ *
+ * Normalises to "###-##-####" before encryption so that the decrypted output
+ * is always in a predictable format.  Callers should pass the raw validated
+ * value — normalisation is handled here and must not be duplicated upstream.
+ *
+ * Requires PROFILE_ENCRYPTION_KEY to be set in the environment.
+ */
+export async function upsertApplicantSsn(
+  userId: string,
+  ssn: string,
+): Promise<void> {
+  const normalized = normalizeSsn(ssn)
+  const pool = getDbPool()
+  await pool.query(
+    `UPDATE applicants SET ssn_encrypted = $1 WHERE user_id = $2`,
+    [encryptField(normalized), userId],
+  )
+}
+
+/**
+ * Returns true when the applicant already has an SSN on file.
+ * Never exposes the plaintext value over the wire.
+ */
+export async function hasApplicantSsn(userId: string): Promise<boolean> {
+  const pool = getDbPool()
+  const result = await pool.query<{ ssn_encrypted: string | null }>(
+    `SELECT ssn_encrypted FROM applicants WHERE user_id = $1 LIMIT 1`,
+    [userId],
+  )
+  return Boolean(result.rows[0]?.ssn_encrypted)
+}
+
+// ── PHI access audit log ──────────────────────────────────────────────────────
+
+/**
+ * Write a fire-and-forget PHI access record to audit_logs.
+ *
+ * Failures are logged via logServerError but never propagate — a broken audit
+ * log must not block legitimate clinical workflows like PDF generation.
+ * However, every failure IS recorded server-side so ops can detect a systemic
+ * audit-log outage and investigate.
+ */
+function logPhiAccess(
+  userId: string,
+  action: string,
+  meta: Record<string, unknown> = {},
+): void {
+  const pool = getDbPool()
+  pool
+    .query(
+      `INSERT INTO audit_logs (user_id, action, new_data) VALUES ($1, $2, $3)`,
+      [userId, action, JSON.stringify(meta)],
+    )
+    .catch((err) =>
+      logServerError("phi.audit.write_failed", err, { userId, action }),
+    )
+}
+
+/**
+ * Decrypt and return the stored SSN — for server-side use only (e.g. PDF
+ * generation).  Returns null when no SSN has been stored yet.
+ *
+ * Every successful decryption is recorded in audit_logs with action
+ * "phi.ssn.decrypted" as required by HIPAA §164.312(b) (audit controls).
+ */
+export async function getDecryptedSsn(
+  userId: string,
+  purpose = "server-side",
+): Promise<string | null> {
+  const pool = getDbPool()
+  const result = await pool.query<{ ssn_encrypted: string | null }>(
+    `SELECT ssn_encrypted FROM applicants WHERE user_id = $1 LIMIT 1`,
+    [userId],
+  )
+  const encrypted = result.rows[0]?.ssn_encrypted
+  if (!encrypted) return null
+
+  const plaintext = decryptField(encrypted)
+
+  // Audit every PHI decryption — fire-and-forget so it never blocks the caller
+  logPhiAccess(userId, "phi.ssn.decrypted", { purpose })
+
+  return plaintext
 }
 
 // ── Write: avatar_url ──────────────────────────────────────────────────────────

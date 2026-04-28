@@ -84,7 +84,13 @@ export async function POST(request: Request) {
     const messages = payload.messages as ChatMessage[]
     const currentSection: FormSection = (payload.currentSection as FormSection) ?? "personal"
     const collectedSummary = payload.currentFields ?? ""
-    const existingMembers = (payload.existingMembers ?? []) as (HouseholdMember & { id: string })[]
+    // Scrub SSN before any field reaches the LLM — PHI must never flow through
+    // the AI context.  The `ssn` field is accepted by the Zod schema only so
+    // existing Redux state serialises without an error; it is zeroed out here
+    // and never forwarded to the model or logged.
+    const existingMembers = (payload.existingMembers ?? []).map(
+      (m) => ({ ...m, ssn: "" }),
+    ) as (HouseholdMember & { id: string })[]
     const existingSources = (payload.existingSources ?? []) as (IncomeSource & { id: string })[]
 
     const requestStart = Date.now()

@@ -265,6 +265,80 @@ describe("POST /api/chat/masshealth — benefit_advisor eligibility", () => {
   })
 })
 
+// ── SSN scrubbing — PHI must never reach the LLM ─────────────────────────────
+
+describe("POST /api/chat/masshealth — SSN scrubbing (form_assistant mode)", () => {
+  it("strips ssn from existingMembers before passing them to extractFormFields", async () => {
+    const { extractFormFields } = await import("@/lib/masshealth/form-field-extraction")
+
+    await POST(
+      makeRequest({
+        messages: ONE_USER_MESSAGE,
+        mode: "form_assistant",
+        currentSection: "household",
+        existingMembers: [
+          {
+            id: "m1",
+            firstName: "Alice",
+            lastName: "Smith",
+            relationship: "spouse",
+            dob: "1985-05-15",
+            ssn: "123-45-6789",
+            pregnant: false,
+            disabled: false,
+            over65: false,
+          },
+        ],
+      }),
+    )
+
+    expect(extractFormFields).toHaveBeenCalledOnce()
+    // The 4th positional argument is existingMembers
+    const membersArg = vi.mocked(extractFormFields).mock.calls[0]?.[3] as { ssn: string }[]
+    expect(membersArg).toHaveLength(1)
+    expect(membersArg[0]?.ssn).toBe("")
+  })
+
+  it("zeros SSN across multiple household members", async () => {
+    const { extractFormFields } = await import("@/lib/masshealth/form-field-extraction")
+
+    await POST(
+      makeRequest({
+        messages: ONE_USER_MESSAGE,
+        mode: "form_assistant",
+        existingMembers: [
+          { id: "m1", firstName: "Alice", ssn: "111-22-3333" },
+          { id: "m2", firstName: "Bob", ssn: "444556666" },
+        ],
+      }),
+    )
+
+    const membersArg = vi.mocked(extractFormFields).mock.calls[0]?.[3] as { ssn: string }[]
+    expect(membersArg.every((m) => m.ssn === "")).toBe(true)
+  })
+
+  it("excludes members without a string id from the extraction call", async () => {
+    const { extractFormFields } = await import("@/lib/masshealth/form-field-extraction")
+
+    await POST(
+      makeRequest({
+        messages: ONE_USER_MESSAGE,
+        mode: "form_assistant",
+        existingMembers: [
+          { id: "m1", firstName: "Alice", ssn: "111-22-3333" },
+          // no id — should be filtered out
+          { firstName: "Bob", ssn: "444556666" },
+        ],
+      }),
+    )
+
+    const membersArg = vi.mocked(extractFormFields).mock.calls[0]?.[3] as { id: string; ssn: string }[]
+    expect(membersArg).toHaveLength(1)
+    expect(membersArg[0]?.id).toBe("m1")
+    expect(membersArg[0]?.ssn).toBe("")
+  })
+})
+
 // ── Language handling ─────────────────────────────────────────────────────────
 
 describe("POST /api/chat/masshealth — language", () => {

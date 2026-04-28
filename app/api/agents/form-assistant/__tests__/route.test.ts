@@ -136,6 +136,71 @@ describe("POST /api/agents/form-assistant — validation", () => {
   })
 })
 
+// ── SSN scrubbing — PHI must never reach the LLM ─────────────────────────────
+
+describe("POST /api/agents/form-assistant — SSN scrubbing", () => {
+  it("strips ssn from existingMembers before passing them to buildFormAssistantTools", async () => {
+    const { buildFormAssistantTools } = await import("@/lib/agents/form-assistant/tools")
+
+    await POST(
+      makeRequest({
+        messages: ONE_USER_MESSAGE,
+        existingMembers: [
+          {
+            id: "m1",
+            firstName: "Alice",
+            lastName: "Smith",
+            relationship: "spouse",
+            dob: "1985-05-15",
+            ssn: "123-45-6789",
+            pregnant: false,
+            disabled: false,
+            over65: false,
+          },
+        ],
+      }),
+    )
+
+    expect(buildFormAssistantTools).toHaveBeenCalledOnce()
+    const callArgs = vi.mocked(buildFormAssistantTools).mock.calls[0]?.[0]
+    const members = callArgs?.existingMembers ?? []
+    expect(members).toHaveLength(1)
+    // SSN must be zeroed out — never forwarded to the model
+    expect(members[0]).toMatchObject({ id: "m1", firstName: "Alice", ssn: "" })
+    expect(members[0]?.ssn).toBe("")
+  })
+
+  it("handles multiple members and zeros all SSNs", async () => {
+    const { buildFormAssistantTools } = await import("@/lib/agents/form-assistant/tools")
+
+    await POST(
+      makeRequest({
+        messages: ONE_USER_MESSAGE,
+        existingMembers: [
+          { id: "m1", firstName: "Alice", ssn: "111-22-3333" },
+          { id: "m2", firstName: "Bob", ssn: "444556666" },
+        ],
+      }),
+    )
+
+    const callArgs = vi.mocked(buildFormAssistantTools).mock.calls[0]?.[0]
+    const members = callArgs?.existingMembers ?? []
+    expect(members.every((m: { ssn: string }) => m.ssn === "")).toBe(true)
+  })
+
+  it("works correctly when existingMembers is empty", async () => {
+    const response = await POST(
+      makeRequest({ messages: ONE_USER_MESSAGE, existingMembers: [] }),
+    )
+    expect(response.status).toBe(200)
+  })
+
+  it("works correctly when existingMembers is omitted", async () => {
+    const response = await POST(makeRequest({ messages: ONE_USER_MESSAGE }))
+    expect(response.status).toBe(200)
+  })
+})
+
 // ── Happy path ────────────────────────────────────────────────────────────────
 
 describe("POST /api/agents/form-assistant — happy path", () => {

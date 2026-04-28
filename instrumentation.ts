@@ -37,6 +37,20 @@ export async function register() {
     }
   }
 
+  // Fail loudly at startup if the PHI encryption key is missing in production.
+  // SSN and bank account data cannot be safely stored or retrieved without it.
+  if (process.env.NODE_ENV === "production") {
+    if (!process.env.PROFILE_ENCRYPTION_KEY) {
+      throw new Error(
+        "[SECURITY] PROFILE_ENCRYPTION_KEY is not set in this production environment. " +
+          "This key is required to encrypt and decrypt PHI fields (SSN, bank accounts). " +
+          "Generate a 32-byte key with: " +
+          "node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\" " +
+          "and add it to your environment secrets before deploying.",
+      )
+    }
+  }
+
   const url  = process.env.OPENOBSERVE_URL
   const user = process.env.OPENOBSERVE_USER
   const pass = process.env.OPENOBSERVE_PASSWORD
