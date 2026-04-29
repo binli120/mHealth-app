@@ -34,10 +34,14 @@ function normalizeResolveModules(modules) {
   return [...new Set(normalized)]
 }
 
-const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
-  ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).host
-  : "*.supabase.co"
-
+// ── Static security headers ───────────────────────────────────────────────────
+//
+// These headers are set by next.config.mjs for every route.
+//
+// Content-Security-Policy is intentionally absent here.
+// It is generated per-request by middleware.ts with a fresh nonce so that
+// script-src can use 'nonce-{value}' instead of the weaker 'unsafe-inline'.
+// See: middleware.ts, lib/csp/nonce.ts
 const securityHeaders = [
   // Prevent the page from being embedded in a frame (clickjacking)
   { key: "X-Frame-Options", value: "DENY" },
@@ -49,26 +53,6 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   // Restrict browser feature access — camera allowed for identity scan
   { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=(), payment=()" },
-  // Content Security Policy
-  // Note: unsafe-inline in script-src is required by Next.js App Router hydration.
-  // To tighten further, add a nonce via middleware and remove unsafe-inline.
-  {
-    key: "Content-Security-Policy",
-    value: [
-      "default-src 'self'",
-      `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
-      "style-src 'self' 'unsafe-inline'",
-      `connect-src 'self' https://${supabaseHost} wss://${supabaseHost}`,
-      "img-src 'self' data: blob: https://img.youtube.com https://image.thum.io",
-      "font-src 'self' data:",
-      "media-src 'self' blob:",
-      "worker-src blob:",
-      "frame-src 'none'",
-      "object-src 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-    ].join("; "),
-  },
 ]
 
 /** @type {import('next').NextConfig} */
