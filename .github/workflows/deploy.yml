@@ -49,8 +49,8 @@ jobs:
 
   deploy:
     name: SSH → VPS → docker compose up
-    needs: [changes, ci]          # deploy only runs if CI passes
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.app == 'true' }}
+    needs: [ci]          # deploy only runs if CI passes; no paths-filter (merge commits report 0 changed files)
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: dev
