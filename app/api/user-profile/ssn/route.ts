@@ -16,6 +16,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 import { logServerError } from "@/lib/server/logger"
+import { getClientIp } from "@/lib/server/rate-limit"
 import {
   hasApplicantSsn,
   upsertApplicantSsn,
@@ -73,7 +74,10 @@ export async function POST(request: Request) {
 
   try {
     // upsertApplicantSsn owns normalisation (plain → dashed) and encryption.
-    await upsertApplicantSsn(authResult.userId, body.ssn)
+    await upsertApplicantSsn(authResult.userId, body.ssn, {
+      ipAddress: getClientIp(request),
+      purpose: "user-submitted",
+    })
     return NextResponse.json({ ok: true })
   } catch (error) {
     logServerError("user-profile/ssn.POST", error, { userId: authResult.userId })

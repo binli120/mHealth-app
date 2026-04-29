@@ -20,6 +20,7 @@ const PoolMock = vi.fn(() => ({ query: queryMock }))
 
 vi.mock("server-only", () => ({}))
 vi.mock("pg", () => ({ Pool: PoolMock }))
+vi.mock("@/lib/server/logger", () => ({ logServerError: vi.fn() }))
 
 const encryptFieldMock = vi.fn((v: string) => `enc:${v}`)
 const decryptFieldMock = vi.fn((v: string) => v.replace(/^enc:/, ""))
@@ -94,6 +95,9 @@ describe("upsertApplicantSsn", () => {
     vi.resetModules()
     PoolMock.mockClear()
     queryMock.mockReset()
+    // Restore default after reset so the fire-and-forget audit INSERT (from
+    // logPhiAccess inside upsertApplicantSsn) always resolves without crashing.
+    queryMock.mockResolvedValue({ rows: [] })
     encryptFieldMock.mockClear()
     setupDbEnv()
   })
@@ -131,6 +135,28 @@ describe("upsertApplicantSsn", () => {
     await expect(upsertApplicantSsn("user-3", "not-an-ssn")).rejects.toThrow(/Invalid SSN format/)
     // DB must not be touched
     expect(queryMock).not.toHaveBeenCalled()
+  })
+
+  it("fires an audit log INSERT after a successful write", async () => {
+    queryMock.mockResolvedValue({ rows: [] })
+
+    const { upsertApplicantSsn } = await import("@/lib/db/user-profile")
+    await upsertApplicantSsn("user-4", "123-45-6789", {
+      ipAddress: "10.0.0.1",
+      purpose: "user-submitted",
+    })
+
+    // Two calls: UPDATE applicants + INSERT INTO audit_logs
+    await vi.waitFor(() => expect(queryMock).toHaveBeenCalledTimes(2))
+
+    const auditCall = queryMock.mock.calls[1]
+    expect(auditCall?.[0]).toContain("INSERT INTO audit_logs")
+    // params: [userId, action, ipAddress, newData]
+    expect(auditCall?.[1]?.[0]).toBe("user-4")
+    expect(auditCall?.[1]?.[1]).toBe("phi.ssn.written")
+    expect(auditCall?.[1]?.[2]).toBe("10.0.0.1")
+    const parsed = JSON.parse(auditCall?.[1]?.[3] as string) as Record<string, unknown>
+    expect(parsed.purpose).toBe("user-submitted")
   })
 })
 
@@ -243,16 +269,18 @@ describe("getDecryptedSsn", () => {
     queryMock.mockResolvedValueOnce({ rows: [{ ssn_encrypted: "enc:123-45-6789" }] })
 
     const { getDecryptedSsn } = await import("@/lib/db/user-profile")
-    await getDecryptedSsn("user-audit", "pdf-generation")
+    await getDecryptedSsn("user-audit", { purpose: "pdf-generation", ipAddress: "1.2.3.4" })
 
     // queryMock is called twice: once for SELECT, once for the audit INSERT
     expect(queryMock).toHaveBeenCalledTimes(2)
     const auditCall = queryMock.mock.calls[1]
     expect(auditCall?.[0]).toContain("INSERT INTO audit_logs")
+    // params: [userId, action, ipAddress, newData]
     expect(auditCall?.[1]).toContain("user-audit")
     expect(auditCall?.[1]).toContain("phi.ssn.decrypted")
-    // The metadata JSON should include the purpose
-    const metaJson = auditCall?.[1]?.[2] as string
+    expect(auditCall?.[1]?.[2]).toBe("1.2.3.4")
+    // The metadata JSON (4th param) should include the purpose
+    const metaJson = auditCall?.[1]?.[3] as string
     expect(JSON.parse(metaJson)).toMatchObject({ purpose: "pdf-generation" })
   })
 

@@ -26,6 +26,7 @@ import {
   Download,
   KeyRound,
   Monitor,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react"
 
@@ -67,7 +68,8 @@ const NAV_GROUPS: NavGroup[] = [
   {
     title: "System",
     items: [
-      { href: "/admin/sessions", label: "Sessions", icon: Monitor },
+      { href: "/admin/sessions",  label: "Sessions",     icon: Monitor },
+      { href: "/admin/phi-audit", label: "PHI Audit Log", icon: ShieldCheck },
     ],
   },
 ]
