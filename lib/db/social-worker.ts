@@ -6,6 +6,12 @@
 import "server-only"
 
 import { getDbPool } from "@/lib/db/server"
+import {
+  decryptOrPlain,
+  decryptDisplayName,
+  APPLICANT_PHI_SELECT,
+  APPLICANT_PHI_GROUP_BY,
+} from "@/lib/db/applicant-fields"
 
 export interface SwPatient {
   access_id: string
@@ -72,19 +78,41 @@ export async function getSwProfile(userId: string): Promise<SwProfile | null> {
 
 export async function getSwPatients(swUserId: string): Promise<SwPatient[]> {
   const pool = getDbPool()
-  const result = await pool.query<SwPatient>(
+
+  // PHI columns are selected in dual form (encrypted + legacy plaintext) via
+  // APPLICANT_PHI_SELECT so that pre-backfill rows still resolve correctly.
+  const result = await pool.query<{
+    access_id: string
+    patient_user_id: string
+    email: string
+    // Encrypted columns
+    first_name_encrypted: string | null
+    last_name_encrypted: string | null
+    dob_encrypted: string | null
+    phone_encrypted: string | null
+    city_encrypted: string | null
+    state_encrypted: string | null
+    zip_encrypted: string | null
+    // Legacy plaintext fallback
+    first_name: string | null
+    last_name: string | null
+    dob: string | null
+    phone: string | null
+    city: string | null
+    state: string | null
+    zip: string | null
+    // Non-PHI
+    citizenship_status: string | null
+    granted_at: string
+    application_count: number
+    latest_application_status: string | null
+  }>(
     `
       SELECT
         psa.id AS access_id,
         psa.patient_user_id,
         u.email,
-        ap.first_name,
-        ap.last_name,
-        ap.dob,
-        ap.phone,
-        ap.city,
-        ap.state,
-        ap.zip,
+        ${APPLICANT_PHI_SELECT("ap")},
         ap.citizenship_status,
         psa.granted_at,
         COUNT(a.id)::int AS application_count,
@@ -103,13 +131,29 @@ export async function getSwPatients(swUserId: string): Promise<SwPatient[]> {
       WHERE psa.social_worker_user_id = $1::uuid
         AND psa.is_active = true
       GROUP BY psa.id, psa.patient_user_id, u.email,
-               ap.first_name, ap.last_name, ap.dob, ap.phone,
-               ap.city, ap.state, ap.zip, ap.citizenship_status, psa.granted_at
+               ${APPLICANT_PHI_GROUP_BY("ap")},
+               ap.citizenship_status, psa.granted_at
       ORDER BY psa.granted_at DESC
     `,
     [swUserId],
   )
-  return result.rows
+
+  return result.rows.map((row) => ({
+    access_id: row.access_id,
+    patient_user_id: row.patient_user_id,
+    email: row.email,
+    first_name:        decryptOrPlain(row.first_name_encrypted,  row.first_name),
+    last_name:         decryptOrPlain(row.last_name_encrypted,   row.last_name),
+    dob:               decryptOrPlain(row.dob_encrypted,         row.dob),
+    phone:             decryptOrPlain(row.phone_encrypted,       row.phone),
+    city:              decryptOrPlain(row.city_encrypted,        row.city),
+    state:             decryptOrPlain(row.state_encrypted,       row.state),
+    zip:               decryptOrPlain(row.zip_encrypted,         row.zip),
+    citizenship_status:    row.citizenship_status,
+    granted_at:            row.granted_at,
+    application_count:     row.application_count,
+    latest_application_status: row.latest_application_status,
+  }))
 }
 
 export async function getPatientApplications(
@@ -136,12 +180,30 @@ export async function getPatientApplications(
     return []
   }
 
-  const result = await pool.query<SwApplicationSummary>(
+  // applicant_name is built in app code after decryption — SQL CONCAT on
+  // ciphertext would produce garbage.  We select dual columns (encrypted +
+  // plaintext fallback) and assemble the display name here.
+  const result = await pool.query<{
+    id: string
+    status: string
+    application_type: string | null
+    draft_step: number | null
+    household_size: number | null
+    total_monthly_income: number | null
+    first_name_encrypted: string | null
+    first_name: string | null
+    last_name_encrypted: string | null
+    last_name: string | null
+    created_at: string
+    updated_at: string
+    submitted_at: string | null
+  }>(
     `
       SELECT
         a.id, a.status, a.application_type, a.draft_step,
         a.household_size, a.total_monthly_income,
-        CONCAT(ap.first_name, ' ', ap.last_name) AS applicant_name,
+        ap.first_name_encrypted, ap.first_name,
+        ap.last_name_encrypted,  ap.last_name,
         a.created_at, a.updated_at, a.submitted_at
       FROM public.applications a
       JOIN public.applicants ap ON ap.id = a.applicant_id
@@ -150,7 +212,22 @@ export async function getPatientApplications(
     `,
     [patientUserId],
   )
-  return result.rows
+
+  return result.rows.map((row) => ({
+    id:                   row.id,
+    status:               row.status,
+    application_type:     row.application_type,
+    draft_step:           row.draft_step,
+    household_size:       row.household_size,
+    total_monthly_income: row.total_monthly_income,
+    applicant_name:       decryptDisplayName(
+      row.first_name_encrypted, row.first_name,
+      row.last_name_encrypted,  row.last_name,
+    ),
+    created_at:   row.created_at,
+    updated_at:   row.updated_at,
+    submitted_at: row.submitted_at,
+  }))
 }
 
 export type SwSearchResult = {

@@ -9,6 +9,7 @@ import { render } from "@react-email/components"
 
 import { createNotification, markEmailSent } from "@/lib/db/notifications"
 import { getDbPool } from "@/lib/db/server"
+import { decryptOrPlain } from "@/lib/db/applicant-fields"
 import {
   DeadlineEmail,
   DocumentRequestEmail,
@@ -33,13 +34,17 @@ async function getUserEmailAndPrefs(
   const pool = getDbPool()
   const { rows } = await pool.query<{
     email: string
-    first_name: string
-    last_name: string
+    first_name_encrypted: string | null
+    first_name: string | null
+    last_name_encrypted: string | null
+    last_name: string | null
     profile_data: { notifications?: NotificationPrefs } | null
   }>(
     `SELECT
        u.email,
+       a.first_name_encrypted,
        a.first_name,
+       a.last_name_encrypted,
        a.last_name,
        up.profile_data
      FROM auth.users u
@@ -61,9 +66,12 @@ async function getUserEmailAndPrefs(
     reminderLeadDays: 14,
   }
 
+  const firstName = decryptOrPlain(row.first_name_encrypted, row.first_name)
+  const lastName  = decryptOrPlain(row.last_name_encrypted,  row.last_name)
+
   return {
     email: row.email,
-    name: `${row.first_name ?? ""} ${row.last_name ?? ""}`.trim() || "Applicant",
+    name: `${firstName ?? ""} ${lastName ?? ""}`.trim() || "Applicant",
     prefs: row.profile_data?.notifications ?? defaultPrefs,
   }
 }
