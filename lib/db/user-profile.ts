@@ -7,7 +7,8 @@ import "server-only"
 
 import { getDbPool } from "./server"
 import { encryptField, decryptField } from "@/lib/user-profile/encrypt"
-import { logServerError } from "@/lib/server/logger"
+import { logPhiAccess } from "./phi-audit"
+import type { PhiAuditContext } from "./phi-audit"
 import { DEFAULT_PROFILE_DATA } from "@/lib/user-profile/types"
 import type {
   UserProfile,
@@ -170,9 +171,16 @@ export async function upsertUserProfile(
 
 // ── Write: bank_data (encrypted) ──────────────────────────────────────────────
 
+/**
+ * Encrypt and persist bank account details for the applicant.
+ *
+ * Every write is recorded in audit_logs with action "phi.bank_account.written"
+ * as required by HIPAA §164.312(b) (audit controls).
+ */
 export async function upsertBankAccount(
   userId: string,
   input: BankAccountInput,
+  context: PhiAuditContext = {},
 ): Promise<void> {
   const pool = getDbPool()
 
@@ -197,6 +205,13 @@ export async function upsertBankAccount(
      DO UPDATE SET bank_data = EXCLUDED.bank_data, updated_at = now()`,
     [applicantId, JSON.stringify(bankData)],
   )
+
+  // Audit the PHI write — fire-and-forget
+  logPhiAccess(userId, "phi.bank_account.written", context, {
+    bankName: input.bankName,
+    accountType: input.accountType,
+    lastFourDigits,
+  })
 }
 
 // ── Write: core applicant fields ──────────────────────────────────────────────
@@ -277,11 +292,15 @@ export function normalizeSsn(raw: string): string {
  * is always in a predictable format.  Callers should pass the raw validated
  * value — normalisation is handled here and must not be duplicated upstream.
  *
+ * Every write is recorded in audit_logs with action "phi.ssn.written"
+ * as required by HIPAA §164.312(b) (audit controls).
+ *
  * Requires PROFILE_ENCRYPTION_KEY to be set in the environment.
  */
 export async function upsertApplicantSsn(
   userId: string,
   ssn: string,
+  context: PhiAuditContext = {},
 ): Promise<void> {
   const normalized = normalizeSsn(ssn)
   const pool = getDbPool()
@@ -289,6 +308,9 @@ export async function upsertApplicantSsn(
     `UPDATE applicants SET ssn_encrypted = $1 WHERE user_id = $2`,
     [encryptField(normalized), userId],
   )
+
+  // Audit the PHI write — fire-and-forget
+  logPhiAccess(userId, "phi.ssn.written", context)
 }
 
 /**
@@ -304,32 +326,6 @@ export async function hasApplicantSsn(userId: string): Promise<boolean> {
   return Boolean(result.rows[0]?.ssn_encrypted)
 }
 
-// ── PHI access audit log ──────────────────────────────────────────────────────
-
-/**
- * Write a fire-and-forget PHI access record to audit_logs.
- *
- * Failures are logged via logServerError but never propagate — a broken audit
- * log must not block legitimate clinical workflows like PDF generation.
- * However, every failure IS recorded server-side so ops can detect a systemic
- * audit-log outage and investigate.
- */
-function logPhiAccess(
-  userId: string,
-  action: string,
-  meta: Record<string, unknown> = {},
-): void {
-  const pool = getDbPool()
-  pool
-    .query(
-      `INSERT INTO audit_logs (user_id, action, new_data) VALUES ($1, $2, $3)`,
-      [userId, action, JSON.stringify(meta)],
-    )
-    .catch((err) =>
-      logServerError("phi.audit.write_failed", err, { userId, action }),
-    )
-}
-
 /**
  * Decrypt and return the stored SSN — for server-side use only (e.g. PDF
  * generation).  Returns null when no SSN has been stored yet.
@@ -339,7 +335,7 @@ function logPhiAccess(
  */
 export async function getDecryptedSsn(
   userId: string,
-  purpose = "server-side",
+  context: PhiAuditContext = {},
 ): Promise<string | null> {
   const pool = getDbPool()
   const result = await pool.query<{ ssn_encrypted: string | null }>(
@@ -352,7 +348,7 @@ export async function getDecryptedSsn(
   const plaintext = decryptField(encrypted)
 
   // Audit every PHI decryption — fire-and-forget so it never blocks the caller
-  logPhiAccess(userId, "phi.ssn.decrypted", { purpose })
+  logPhiAccess(userId, "phi.ssn.decrypted", context)
 
   return plaintext
 }
@@ -381,8 +377,16 @@ export async function updateAvatarUrl(
 
 // ── Read for internal use (decrypt bank data) ──────────────────────────────────
 
+/**
+ * Decrypt and return the stored bank account numbers — for server-side use only.
+ * Returns null when no bank account has been saved yet.
+ *
+ * Every successful decryption is recorded in audit_logs with action
+ * "phi.bank_account.decrypted" as required by HIPAA §164.312(b) (audit controls).
+ */
 export async function getDecryptedBankAccount(
   userId: string,
+  context: PhiAuditContext = {},
 ): Promise<{ routingNumber: string; accountNumber: string } | null> {
   const pool = getDbPool()
   const result = await pool.query<{ bank_data: StoredBankData | null }>(
@@ -395,8 +399,14 @@ export async function getDecryptedBankAccount(
   )
   const bank = result.rows[0]?.bank_data
   if (!bank?.routingNumberEncrypted) return null
-  return {
+
+  const decrypted = {
     routingNumber: decryptField(bank.routingNumberEncrypted),
     accountNumber: decryptField(bank.accountNumberEncrypted),
   }
+
+  // Audit the PHI read — fire-and-forget
+  logPhiAccess(userId, "phi.bank_account.decrypted", context)
+
+  return decrypted
 }

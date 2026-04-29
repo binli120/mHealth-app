@@ -8,6 +8,7 @@ import { z } from "zod"
 
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 import { logServerError } from "@/lib/server/logger"
+import { getClientIp } from "@/lib/server/rate-limit"
 import { getUserProfile, upsertUserProfile, upsertBankAccount } from "@/lib/db/user-profile"
 import {
   ERROR_USER_PROFILE_NOT_FOUND,
@@ -109,7 +110,10 @@ export async function PUT(request: Request) {
     if (parsed.data.section === "profile") {
       await upsertUserProfile(authResult.userId, parsed.data.data)
     } else {
-      await upsertBankAccount(authResult.userId, parsed.data.data)
+      await upsertBankAccount(authResult.userId, parsed.data.data, {
+        ipAddress: getClientIp(request),
+        purpose: "user-submitted",
+      })
     }
 
     return NextResponse.json({ ok: true }, { status: 200 })
