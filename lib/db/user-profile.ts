@@ -9,6 +9,11 @@ import { getDbPool } from "./server"
 import { encryptField, decryptField } from "@/lib/user-profile/encrypt"
 import { logPhiAccess } from "./phi-audit"
 import type { PhiAuditContext } from "./phi-audit"
+import {
+  encryptApplicantField,
+  decryptOrPlain,
+  APPLICANT_PHI_SELECT,
+} from "./applicant-fields"
 import { DEFAULT_PROFILE_DATA } from "@/lib/user-profile/types"
 import type {
   UserProfile,
@@ -56,10 +61,23 @@ async function getApplicantIdByUserId(userId: string): Promise<string | null> {
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
   const pool = getDbPool()
 
-  // Fetch applicant core fields + user_profiles row (if exists) in one query
+  // Fetch applicant core fields + user_profiles row (if exists) in one query.
+  // PHI columns are selected in dual form (encrypted + legacy plaintext) via
+  // APPLICANT_PHI_SELECT so that pre-backfill rows still resolve correctly.
   const result = await pool.query<{
-    first_name: string
-    last_name: string
+    // Encrypted columns (new rows / post-backfill)
+    first_name_encrypted: string | null
+    last_name_encrypted: string | null
+    dob_encrypted: string | null
+    phone_encrypted: string | null
+    address_line1_encrypted: string | null
+    address_line2_encrypted: string | null
+    city_encrypted: string | null
+    state_encrypted: string | null
+    zip_encrypted: string | null
+    // Legacy plaintext fallback (pre-backfill rows)
+    first_name: string | null
+    last_name: string | null
     dob: string | null
     phone: string | null
     address_line1: string | null
@@ -67,21 +85,14 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     city: string | null
     state: string | null
     zip: string | null
+    // Non-PHI columns
     citizenship_status: CitizenshipStatus | null
     profile_data: UserProfileData | null
     bank_data: StoredBankData | null
     avatar_url: string | null
   }>(
     `SELECT
-       a.first_name,
-       a.last_name,
-       a.dob,
-       a.phone,
-       a.address_line1,
-       a.address_line2,
-       a.city,
-       a.state,
-       a.zip,
+       ${APPLICANT_PHI_SELECT("a")},
        a.citizenship_status,
        up.profile_data,
        up.bank_data,
@@ -120,15 +131,15 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
   const avatarUrl = await resolveAvatarUrl(row.avatar_url)
 
   return {
-    firstName: row.first_name,
-    lastName: row.last_name,
-    dateOfBirth: row.dob,
-    phone: row.phone,
-    addressLine1: row.address_line1,
-    addressLine2: row.address_line2,
-    city: row.city,
-    state: row.state,
-    zip: row.zip,
+    firstName:    decryptOrPlain(row.first_name_encrypted,    row.first_name)  ?? "",
+    lastName:     decryptOrPlain(row.last_name_encrypted,     row.last_name)   ?? "",
+    dateOfBirth:  decryptOrPlain(row.dob_encrypted,           row.dob),
+    phone:        decryptOrPlain(row.phone_encrypted,         row.phone),
+    addressLine1: decryptOrPlain(row.address_line1_encrypted, row.address_line1),
+    addressLine2: decryptOrPlain(row.address_line2_encrypted, row.address_line2),
+    city:         decryptOrPlain(row.city_encrypted,          row.city),
+    state:        decryptOrPlain(row.state_encrypted,         row.state),
+    zip:          decryptOrPlain(row.zip_encrypted,           row.zip),
     citizenshipStatus: row.citizenship_status,
     profileData,
     avatarUrl,
@@ -238,21 +249,24 @@ export async function updateApplicantInfo(
   const values: unknown[] = []
   let paramIndex = 1
 
+  // All PHI fields are written to the *_encrypted columns only.
+  // The legacy plaintext columns remain for backward-read fallback until the
+  // backfill script has run and the cleanup migration drops them.
   const fieldMap: Record<keyof ApplicantInfoInput, string> = {
-    firstName: "first_name",
-    lastName: "last_name",
-    phone: "phone",
-    addressLine1: "address_line1",
-    addressLine2: "address_line2",
-    city: "city",
-    state: "state",
-    zip: "zip",
+    firstName:    "first_name_encrypted",
+    lastName:     "last_name_encrypted",
+    phone:        "phone_encrypted",
+    addressLine1: "address_line1_encrypted",
+    addressLine2: "address_line2_encrypted",
+    city:         "city_encrypted",
+    state:        "state_encrypted",
+    zip:          "zip_encrypted",
   }
 
   for (const [key, col] of Object.entries(fieldMap) as [keyof ApplicantInfoInput, string][]) {
     if (fields[key] !== undefined) {
       setClauses.push(`${col} = $${paramIndex}`)
-      values.push(fields[key])
+      values.push(encryptApplicantField(fields[key] as string | null | undefined))
       paramIndex++
     }
   }

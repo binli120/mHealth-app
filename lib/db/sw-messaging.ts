@@ -8,6 +8,7 @@
 import "server-only"
 
 import { getDbPool } from "@/lib/db/server"
+import { decryptOrPlain, decryptDisplayName } from "@/lib/db/applicant-fields"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -73,9 +74,13 @@ interface EngagementRequestRow {
   rejection_note: string | null
   created_at: Date
   updated_at: Date
+  // Patient name — dual-column (encrypted takes priority over legacy plaintext)
+  patient_first_encrypted: string | null
   patient_first: string | null
+  patient_last_encrypted: string | null
   patient_last: string | null
   patient_email: string
+  // SW name — social_worker_profiles is not encrypted
   sw_first: string | null
   sw_last: string | null
   sw_email: string
@@ -92,7 +97,10 @@ function rowToRequest(row: EngagementRequestRow): EngagementRequest {
     rejectionNote: row.rejection_note,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
-    patientName: [row.patient_first, row.patient_last].filter(Boolean).join(" ") || null,
+    patientName: decryptDisplayName(
+      row.patient_first_encrypted, row.patient_first,
+      row.patient_last_encrypted,  row.patient_last,
+    ),
     patientEmail: row.patient_email,
     swName: [row.sw_first, row.sw_last].filter(Boolean).join(" ") || null,
     swEmail: row.sw_email,
@@ -111,6 +119,9 @@ const REQUEST_JOIN = `
   LEFT JOIN public.applicants pa ON pa.user_id = er.patient_user_id
 `
 
+// Patient name columns are selected in dual form so pre-backfill rows still
+// resolve via decryptOrPlain in rowToRequest. SW name columns come from
+// social_worker_profiles which is not encrypted.
 const REQUEST_SELECT = `
   SELECT
     er.id,
@@ -121,13 +132,15 @@ const REQUEST_SELECT = `
     er.rejection_note,
     er.created_at,
     er.updated_at,
-    pa.first_name  AS patient_first,
-    pa.last_name   AS patient_last,
-    pu.email       AS patient_email,
-    swp.first_name AS sw_first,
-    swp.last_name  AS sw_last,
-    su.email       AS sw_email,
-    c.name         AS company_name
+    pa.first_name_encrypted AS patient_first_encrypted,
+    pa.first_name           AS patient_first,
+    pa.last_name_encrypted  AS patient_last_encrypted,
+    pa.last_name            AS patient_last,
+    pu.email                AS patient_email,
+    swp.first_name          AS sw_first,
+    swp.last_name           AS sw_last,
+    su.email                AS sw_email,
+    c.name                  AS company_name
 `
 
 /** Patient sends an engagement request to a SW. */
@@ -310,8 +323,14 @@ interface DirectMessageRow {
   sw_user_id: string
   patient_user_id: string
   sender_id: string
-  sender_first: string | null
-  sender_last: string | null
+  // SW sender name (social_worker_profiles — not encrypted)
+  sw_sender_first: string | null
+  sw_sender_last: string | null
+  // Patient sender name — dual-column (encrypted + legacy plaintext)
+  ap_sender_first_enc: string | null
+  ap_sender_first: string | null
+  ap_sender_last_enc: string | null
+  ap_sender_last: string | null
   message_type: DirectMessageType
   content: string | null
   storage_path: string | null
@@ -323,12 +342,21 @@ interface DirectMessageRow {
 }
 
 function rowToMessage(row: DirectMessageRow): DirectMessage {
+  // Prefer SW profile name (not encrypted); fall back to decrypted applicant name.
+  const senderName =
+    row.sw_sender_first != null || row.sw_sender_last != null
+      ? [row.sw_sender_first, row.sw_sender_last].filter(Boolean).join(" ") || null
+      : decryptDisplayName(
+          row.ap_sender_first_enc, row.ap_sender_first,
+          row.ap_sender_last_enc,  row.ap_sender_last,
+        )
+
   return {
     id: row.id,
     swUserId: row.sw_user_id,
     patientUserId: row.patient_user_id,
     senderId: row.sender_id,
-    senderName: [row.sender_first, row.sender_last].filter(Boolean).join(" ") || null,
+    senderName,
     messageType: row.message_type,
     content: row.content,
     storagePath: row.storage_path,
@@ -433,13 +461,18 @@ export async function getDirectMessages(input: {
   const pool = getDbPool()
   const limit = Math.min(input.limit ?? 50, 100)
 
-  // Sender may be a patient (applicants) or a social worker (social_worker_profiles).
-  // COALESCE resolves the name from whichever table has a matching row.
+  // Sender may be a patient (applicants, PHI encrypted) or a social worker
+  // (social_worker_profiles, not encrypted). We select both source tables'
+  // name columns separately and coalesce in rowToMessage after decryption.
   const { rows } = await pool.query<DirectMessageRow>(
     `SELECT
        dm.id, dm.sw_user_id, dm.patient_user_id, dm.sender_id,
-       COALESCE(swp_s.first_name, ap_s.first_name) AS sender_first,
-       COALESCE(swp_s.last_name,  ap_s.last_name)  AS sender_last,
+       swp_s.first_name              AS sw_sender_first,
+       swp_s.last_name               AS sw_sender_last,
+       ap_s.first_name_encrypted     AS ap_sender_first_enc,
+       ap_s.first_name               AS ap_sender_first,
+       ap_s.last_name_encrypted      AS ap_sender_last_enc,
+       ap_s.last_name                AS ap_sender_last,
        dm.message_type, dm.content, dm.storage_path,
        dm.duration_sec, dm.transcription, dm.transcription_lang, dm.read_at, dm.created_at
      FROM public.sw_direct_messages dm
@@ -485,7 +518,10 @@ export async function getSwMessageThreads(swUserId: string): Promise<DirectMessa
     sw_email: string
     company_name: string
     patient_user_id: string
+    // Dual patient name columns (encrypted + legacy plaintext)
+    patient_first_encrypted: string | null
     patient_first: string | null
+    patient_last_encrypted: string | null
     patient_last: string | null
     patient_email: string
     last_message_at: Date | null
@@ -494,15 +530,17 @@ export async function getSwMessageThreads(swUserId: string): Promise<DirectMessa
   }>(
     `SELECT
        dm.sw_user_id,
-       swp.first_name    AS sw_first,
-       swp.last_name     AS sw_last,
-       su.email          AS sw_email,
-       c.name            AS company_name,
+       swp.first_name              AS sw_first,
+       swp.last_name               AS sw_last,
+       su.email                    AS sw_email,
+       c.name                      AS company_name,
        dm.patient_user_id,
-       pa.first_name     AS patient_first,
-       pa.last_name      AS patient_last,
-       pu.email          AS patient_email,
-       MAX(dm.created_at) AS last_message_at,
+       pa.first_name_encrypted     AS patient_first_encrypted,
+       pa.first_name               AS patient_first,
+       pa.last_name_encrypted      AS patient_last_encrypted,
+       pa.last_name                AS patient_last,
+       pu.email                    AS patient_email,
+       MAX(dm.created_at)          AS last_message_at,
        (
          SELECT content FROM public.sw_direct_messages sub
          WHERE sub.sw_user_id = dm.sw_user_id
@@ -519,7 +557,9 @@ export async function getSwMessageThreads(swUserId: string): Promise<DirectMessa
      WHERE dm.sw_user_id = $1::uuid
      GROUP BY dm.sw_user_id, dm.patient_user_id,
               swp.first_name, swp.last_name, su.email, c.name,
-              pa.first_name, pa.last_name, pu.email
+              pa.first_name_encrypted, pa.first_name,
+              pa.last_name_encrypted,  pa.last_name,
+              pu.email
      ORDER BY last_message_at DESC NULLS LAST`,
     [swUserId],
   )
@@ -529,7 +569,10 @@ export async function getSwMessageThreads(swUserId: string): Promise<DirectMessa
     swEmail: r.sw_email,
     companyName: r.company_name,
     patientUserId: r.patient_user_id,
-    patientName: [r.patient_first, r.patient_last].filter(Boolean).join(" ") || null,
+    patientName: decryptDisplayName(
+      r.patient_first_encrypted, r.patient_first,
+      r.patient_last_encrypted,  r.patient_last,
+    ),
     patientEmail: r.patient_email,
     lastMessageAt: r.last_message_at ? r.last_message_at.toISOString() : null,
     lastMessageContent: r.last_message_content,
@@ -549,7 +592,10 @@ export async function getPatientMessageThreads(
     sw_email: string
     company_name: string
     patient_user_id: string
+    // Dual patient name columns (encrypted + legacy plaintext)
+    patient_first_encrypted: string | null
     patient_first: string | null
+    patient_last_encrypted: string | null
     patient_last: string | null
     patient_email: string
     last_message_at: Date | null
@@ -557,16 +603,18 @@ export async function getPatientMessageThreads(
     unread_count: string
   }>(
     `SELECT
-       psa.social_worker_user_id AS sw_user_id,
-       swp.first_name    AS sw_first,
-       swp.last_name     AS sw_last,
-       su.email          AS sw_email,
-       c.name            AS company_name,
+       psa.social_worker_user_id   AS sw_user_id,
+       swp.first_name              AS sw_first,
+       swp.last_name               AS sw_last,
+       su.email                    AS sw_email,
+       c.name                      AS company_name,
        psa.patient_user_id,
-       pa.first_name     AS patient_first,
-       pa.last_name      AS patient_last,
-       pu.email          AS patient_email,
-       MAX(dm.created_at) AS last_message_at,
+       pa.first_name_encrypted     AS patient_first_encrypted,
+       pa.first_name               AS patient_first,
+       pa.last_name_encrypted      AS patient_last_encrypted,
+       pa.last_name                AS patient_last,
+       pu.email                    AS patient_email,
+       MAX(dm.created_at)          AS last_message_at,
        (
          SELECT content FROM public.sw_direct_messages sub
          WHERE sub.sw_user_id = psa.social_worker_user_id
@@ -586,7 +634,9 @@ export async function getPatientMessageThreads(
      WHERE psa.patient_user_id = $1::uuid AND psa.is_active = true
      GROUP BY psa.social_worker_user_id, psa.patient_user_id,
               swp.first_name, swp.last_name, su.email, c.name,
-              pa.first_name, pa.last_name, pu.email
+              pa.first_name_encrypted, pa.first_name,
+              pa.last_name_encrypted,  pa.last_name,
+              pu.email
      ORDER BY last_message_at DESC NULLS LAST`,
     [patientUserId],
   )
@@ -596,7 +646,10 @@ export async function getPatientMessageThreads(
     swEmail: r.sw_email,
     companyName: r.company_name,
     patientUserId: r.patient_user_id,
-    patientName: [r.patient_first, r.patient_last].filter(Boolean).join(" ") || null,
+    patientName: decryptDisplayName(
+      r.patient_first_encrypted, r.patient_first,
+      r.patient_last_encrypted,  r.patient_last,
+    ),
     patientEmail: r.patient_email,
     lastMessageAt: r.last_message_at ? r.last_message_at.toISOString() : null,
     lastMessageContent: r.last_message_content,

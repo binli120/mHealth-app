@@ -6,6 +6,7 @@
 import "server-only"
 
 import { getDbPool } from "@/lib/db/server"
+import { decryptOrPlain } from "@/lib/db/applicant-fields"
 
 export interface AdminUser {
   id: string
@@ -72,7 +73,8 @@ export async function listUsers(opts: {
   let paramIdx = 1
 
   if (search) {
-    conditions.push(`(u.email ILIKE $${paramIdx} OR ap.first_name ILIKE $${paramIdx} OR ap.last_name ILIKE $${paramIdx})`)
+    // Applicant name columns are encrypted — can only search by email.
+    conditions.push(`u.email ILIKE $${paramIdx}`)
     params.push(`%${search}%`)
     paramIdx++
   }
@@ -111,7 +113,10 @@ export async function listUsers(opts: {
     is_active: boolean
     created_at: string
     roles: string
+    // Dual name columns (encrypted + legacy plaintext)
+    first_name_encrypted: string | null
     first_name: string | null
+    last_name_encrypted: string | null
     last_name: string | null
     company_id: string | null
     company_name: string | null
@@ -122,7 +127,9 @@ export async function listUsers(opts: {
         u.email,
         u.is_active,
         u.created_at,
+        ap.first_name_encrypted,
         ap.first_name,
+        ap.last_name_encrypted,
         ap.last_name,
         u.company_id,
         c.name AS company_name,
@@ -136,7 +143,10 @@ export async function listUsers(opts: {
       LEFT JOIN public.user_roles ur ON ur.user_id = u.id
       LEFT JOIN public.roles r ON r.id = ur.role_id
       WHERE ${whereClause}
-      GROUP BY u.id, u.email, u.is_active, u.created_at, ap.first_name, ap.last_name, u.company_id, c.name
+      GROUP BY u.id, u.email, u.is_active, u.created_at,
+               ap.first_name_encrypted, ap.first_name,
+               ap.last_name_encrypted,  ap.last_name,
+               u.company_id, c.name
       ORDER BY u.created_at DESC
       LIMIT $${paramIdx} OFFSET $${paramIdx + 1}
     `,
@@ -145,8 +155,15 @@ export async function listUsers(opts: {
 
   return {
     users: usersResult.rows.map((row) => ({
-      ...row,
-      roles: row.roles ? row.roles.split(",") : [],
+      id:           row.id,
+      email:        row.email,
+      is_active:    row.is_active,
+      created_at:   row.created_at,
+      roles:        row.roles ? row.roles.split(",") : [],
+      first_name:   decryptOrPlain(row.first_name_encrypted, row.first_name),
+      last_name:    decryptOrPlain(row.last_name_encrypted,  row.last_name),
+      company_id:   row.company_id,
+      company_name: row.company_name,
     })),
     total: parseInt(countResult.rows[0]?.count ?? "0", 10),
   }
@@ -321,7 +338,8 @@ export async function listSocialWorkers(opts: {
   let paramIdx = 1
 
   if (search) {
-    conditions.push(`(u.email ILIKE $${paramIdx} OR ap.first_name ILIKE $${paramIdx} OR ap.last_name ILIKE $${paramIdx})`)
+    // Applicant name columns are encrypted — can only search by email.
+    conditions.push(`u.email ILIKE $${paramIdx}`)
     params.push(`%${search}%`)
     paramIdx++
   }
@@ -352,11 +370,27 @@ export async function listSocialWorkers(opts: {
     params,
   )
 
-  const result = await pool.query<AdminSocialWorker>(
+  const result = await pool.query<{
+    id: string
+    user_id: string
+    email: string
+    first_name_encrypted: string | null
+    first_name: string | null
+    last_name_encrypted: string | null
+    last_name: string | null
+    company_id: string
+    company_name: string
+    license_number: string | null
+    job_title: string | null
+    status: "pending" | "approved" | "rejected"
+    rejection_note: string | null
+    created_at: string
+  }>(
     `
       SELECT
         swp.id, swp.user_id, u.email,
-        ap.first_name, ap.last_name,
+        ap.first_name_encrypted, ap.first_name,
+        ap.last_name_encrypted,  ap.last_name,
         swp.company_id, c.name AS company_name,
         swp.license_number, swp.job_title,
         swp.status, swp.rejection_note, swp.created_at
@@ -372,7 +406,20 @@ export async function listSocialWorkers(opts: {
   )
 
   return {
-    socialWorkers: result.rows,
+    socialWorkers: result.rows.map((row) => ({
+      id:             row.id,
+      user_id:        row.user_id,
+      email:          row.email,
+      first_name:     decryptOrPlain(row.first_name_encrypted, row.first_name),
+      last_name:      decryptOrPlain(row.last_name_encrypted,  row.last_name),
+      company_id:     row.company_id,
+      company_name:   row.company_name,
+      license_number: row.license_number,
+      job_title:      row.job_title,
+      status:         row.status,
+      rejection_note: row.rejection_note,
+      created_at:     row.created_at,
+    })),
     total: parseInt(countResult.rows[0]?.count ?? "0", 10),
   }
 }

@@ -15,6 +15,7 @@ import "server-only"
 import { createHash } from "crypto"
 import { getDbPool } from "@/lib/db/server"
 import type { VerificationBreakdown } from "@/lib/identity/verify-license"
+import { decryptOrPlain } from "@/lib/db/applicant-fields"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -61,22 +62,50 @@ export async function getApplicantProfileForVerification(
 ): Promise<ApplicantProfileRow | null> {
   const pool = getDbPool()
 
-  const result = await pool.query<ApplicantProfileRow>(
+  // Select both encrypted and legacy plaintext columns so pre-backfill rows
+  // still resolve correctly via decryptOrPlain.
+  const result = await pool.query<{
+    first_name_encrypted: string | null
+    first_name: string | null
+    last_name_encrypted: string | null
+    last_name: string | null
+    dob_encrypted: string | null
+    dob: string | null
+    address_line1_encrypted: string | null
+    address_line1: string | null
+    city_encrypted: string | null
+    city: string | null
+    state_encrypted: string | null
+    state: string | null
+    zip_encrypted: string | null
+    zip: string | null
+  }>(
     `SELECT
-       first_name,
-       last_name,
-       dob,
-       address_line1,
-       city,
-       state,
-       zip
+       first_name_encrypted, first_name,
+       last_name_encrypted,  last_name,
+       dob_encrypted,        dob::text AS dob,
+       address_line1_encrypted, address_line1,
+       city_encrypted,       city,
+       state_encrypted,      state,
+       zip_encrypted,        zip
      FROM applicants
      WHERE user_id = $1
      LIMIT 1`,
     [userId],
   )
 
-  return result.rows[0] ?? null
+  const row = result.rows[0]
+  if (!row) return null
+
+  return {
+    first_name:    decryptOrPlain(row.first_name_encrypted,    row.first_name)    ?? "",
+    last_name:     decryptOrPlain(row.last_name_encrypted,     row.last_name)     ?? "",
+    dob:           decryptOrPlain(row.dob_encrypted,           row.dob)           ?? "",
+    address_line1: decryptOrPlain(row.address_line1_encrypted, row.address_line1) ?? "",
+    city:          decryptOrPlain(row.city_encrypted,          row.city)          ?? "",
+    state:         decryptOrPlain(row.state_encrypted,         row.state)         ?? "",
+    zip:           decryptOrPlain(row.zip_encrypted,           row.zip)           ?? "",
+  }
 }
 
 /**
