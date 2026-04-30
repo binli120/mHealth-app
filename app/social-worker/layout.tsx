@@ -8,7 +8,7 @@
 import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
-import { getSupabaseClient } from "@/lib/supabase/client"
+import { getSafeSupabaseSession, getSupabaseClient } from "@/lib/supabase/client"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { SWSessionProvider }  from "@/components/collaborative-sessions/FloatingSessionBar"
 import { IdleTimeoutGuard } from "@/components/shared/IdleTimeoutGuard"
@@ -39,23 +39,26 @@ export default function SocialWorkerLayout({ children }: { children: React.React
   // messageBadge removed — SwChatDialog manages its own badge polling
 
   useEffect(() => {
-    const supabase = getSupabaseClient()
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!data.session) {
-        router.replace("/auth/login?next=/social-worker/dashboard")
-        return
-      }
-      setUserEmail(data.session.user.email ?? null)
+    getSafeSupabaseSession()
+      .then(async ({ session }) => {
+        if (!session) {
+          router.replace("/auth/login?next=/social-worker/dashboard")
+          return
+        }
+        setUserEmail(session.user.email ?? null)
 
-      // Check SW profile status
-      const res = await authenticatedFetch("/api/social-worker/profile")
-      if (res.ok) {
-        const json = await res.json()
-        setSwStatus(json.profile?.status ?? "none")
-      } else {
-        setSwStatus("none")
-      }
-    })
+        // Check SW profile status
+        const res = await authenticatedFetch("/api/social-worker/profile")
+        if (res.ok) {
+          const json = await res.json()
+          setSwStatus(json.profile?.status ?? "none")
+        } else {
+          setSwStatus("none")
+        }
+      })
+      .catch(() => {
+        router.replace("/auth/login?next=/social-worker/dashboard")
+      })
   }, [router])
 
   // Badge polling removed — SwChatDialog handles its own unread/request counts

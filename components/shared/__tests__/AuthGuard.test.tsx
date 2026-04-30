@@ -12,13 +12,11 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: mockReplace }),
 }))
 
-const mockGetSession = vi.fn()
+const { mockGetSafeSupabaseSession } = vi.hoisted(() => ({
+  mockGetSafeSupabaseSession: vi.fn(),
+}))
 vi.mock("@/lib/supabase/client", () => ({
-  getSupabaseClient: () => ({
-    auth: {
-      getSession: mockGetSession,
-    },
-  }),
+  getSafeSupabaseSession: mockGetSafeSupabaseSession,
 }))
 
 vi.mock("@/components/shared/IdleTimeoutGuard", () => ({
@@ -28,11 +26,11 @@ vi.mock("@/components/shared/IdleTimeoutGuard", () => ({
 describe("AuthGuard", () => {
   beforeEach(() => {
     mockReplace.mockClear()
-    mockGetSession.mockReset()
+    mockGetSafeSupabaseSession.mockReset()
   })
 
   it("renders children and idle timeout guard after a valid session is confirmed", async () => {
-    mockGetSession.mockResolvedValue({ data: { session: { user: { id: "user-1" } } } })
+    mockGetSafeSupabaseSession.mockResolvedValue({ session: { user: { id: "user-1" } }, error: null })
 
     render(
       <AuthGuard>
@@ -46,7 +44,7 @@ describe("AuthGuard", () => {
   })
 
   it("does not render idle timeout guard when disabled for an authenticated surface", async () => {
-    mockGetSession.mockResolvedValue({ data: { session: { user: { id: "user-1" } } } })
+    mockGetSafeSupabaseSession.mockResolvedValue({ session: { user: { id: "user-1" } }, error: null })
 
     render(
       <AuthGuard idleTimeout={false}>
@@ -59,7 +57,7 @@ describe("AuthGuard", () => {
   })
 
   it("redirects unauthenticated users to login with the requested next path", async () => {
-    mockGetSession.mockResolvedValue({ data: { session: null } })
+    mockGetSafeSupabaseSession.mockResolvedValue({ session: null, error: null })
 
     render(
       <AuthGuard next="/customer/status">

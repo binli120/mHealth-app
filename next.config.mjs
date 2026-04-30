@@ -39,9 +39,9 @@ function normalizeResolveModules(modules) {
 // These headers are set by next.config.mjs for every route.
 //
 // Content-Security-Policy is intentionally absent here.
-// It is generated per-request by middleware.ts with a fresh nonce so that
+// It is generated per-request by proxy.ts with a fresh nonce so that
 // script-src can use 'nonce-{value}' instead of the weaker 'unsafe-inline'.
-// See: middleware.ts, lib/csp/nonce.ts
+// See: proxy.ts, lib/csp/nonce.ts
 const securityHeaders = [
   // Prevent the page from being embedded in a frame (clickjacking)
   { key: "X-Frame-Options", value: "DENY" },

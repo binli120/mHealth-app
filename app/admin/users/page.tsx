@@ -26,6 +26,14 @@ import {
 } from "lucide-react"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { toUserFacingError } from "@/lib/errors/user-facing"
+import {
+  AdminPageHeader,
+  AdminPageShell,
+  AdminPagination,
+  AdminTablePanel,
+  AdminToolbar,
+} from "@/components/admin/admin-ui"
+import { Button } from "@/components/ui/button"
 import type { AdminUser, CompanyOption } from "./page.types"
 import { ROLE_OPTIONS, ROLE_COLORS } from "./page.constants"
 import { fullName } from "./page.utils"
@@ -304,54 +312,55 @@ function AdminUsersInner() {
   const errorCsvRows = csvRows.filter((r) => r._error)
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <AdminPageShell>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Users</h1>
-          <p className="text-gray-500 text-sm mt-1">
+      <AdminPageHeader
+        title="Users"
+        description={
+          <>
             {total} total users
             {companyFilterLabel && (
               <span className="ml-1">
-                · filtered by <span className="font-medium text-blue-700">{companyFilterLabel}</span>
+                · filtered by <span className="font-medium text-primary">{companyFilterLabel}</span>
               </span>
             )}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
+          </>
+        }
+        action={
+          <>
+          <Button
+            variant="outline"
             onClick={() => setShowImport(true)}
-            className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
           >
-            <Upload className="w-4 h-4" />
+            <Upload className="size-4" />
             Import CSV
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setShowInvite(true)}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
           >
-            <UserPlus className="w-4 h-4" />
+            <UserPlus className="size-4" />
             Invite User
-          </button>
-        </div>
-      </div>
+          </Button>
+          </>
+        }
+      />
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-4">
-        <div className="relative flex-1 min-w-52">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+      <AdminToolbar>
+        <div className="relative min-w-0 flex-1 sm:min-w-64">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search by email or name…"
+            placeholder="Search by email or name..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(0) }}
-            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="h-9 w-full rounded-md border bg-background pl-9 pr-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
         <select
           value={roleFilter}
           onChange={(e) => { setRoleFilter(e.target.value); setPage(0) }}
-          className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="h-9 rounded-md border bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {ROLE_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
@@ -360,7 +369,7 @@ function AdminUsersInner() {
         <select
           value={companyFilter}
           onChange={(e) => { setCompanyFilter(e.target.value); setPage(0) }}
-          className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-40"
+          className="h-9 min-w-40 rounded-md border bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <option value="">All Companies</option>
           {companies.map((c) => (
@@ -368,93 +377,94 @@ function AdminUsersInner() {
           ))}
         </select>
         {companyFilter && (
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setCompanyFilter("")}
-            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg px-2 py-1"
           >
-            <X className="w-3 h-3" /> Clear company
-          </button>
+            <X className="size-3" /> Clear company
+          </Button>
         )}
-      </div>
+      </AdminToolbar>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <AdminTablePanel>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
+              <tr className="border-b bg-muted/50">
                 <th className="px-4 py-3 w-10">
                   <input
                     type="checkbox"
                     checked={allPageSelected}
                     ref={(el) => { if (el) el.indeterminate = somePageSelected && !allPageSelected }}
                     onChange={toggleSelectAll}
-                    className="w-4 h-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500"
+                    className="size-4 rounded border-input text-primary focus:ring-ring"
                   />
                 </th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">User</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Company</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Roles</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Joined</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">Actions</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">User</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Company</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Roles</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Joined</th>
+                <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-gray-400">Loading…</td>
+                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">Loading...</td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-gray-400">No users found</td>
+                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No users found</td>
                 </tr>
               ) : (
                 users.map((u) => (
                   <tr
                     key={u.id}
-                    className={`hover:bg-gray-50 ${selectedIds.has(u.id) ? "bg-blue-50/40" : ""}`}
+                    className={`hover:bg-muted/40 ${selectedIds.has(u.id) ? "bg-primary/5" : ""}`}
                   >
                     <td className="px-4 py-3">
                       <input
                         type="checkbox"
                         checked={selectedIds.has(u.id)}
                         onChange={() => toggleSelect(u.id)}
-                        className="w-4 h-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500"
+                        className="size-4 rounded border-input text-primary focus:ring-ring"
                       />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                          <User className="w-4 h-4 text-blue-600" />
+                        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                          <User className="size-4" />
                         </div>
                         <div>
-                          <div className="font-medium text-gray-900">{fullName(u)}</div>
-                          <div className="text-xs text-gray-500">{u.email}</div>
+                          <div className="font-medium text-foreground">{fullName(u)}</div>
+                          <div className="text-xs text-muted-foreground">{u.email}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-4 py-3">
                       {u.company_name ? (
                         <div className="flex items-center gap-1.5">
-                          <Building2 className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                          <span className="text-xs text-gray-600 truncate max-w-36">{u.company_name}</span>
+                          <Building2 className="size-3.5 shrink-0 text-muted-foreground" />
+                          <span className="max-w-36 truncate text-xs text-muted-foreground">{u.company_name}</span>
                         </div>
                       ) : (
-                        <span className="text-xs text-gray-400">—</span>
+                        <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
                         {u.roles.length === 0 ? (
-                          <span className="text-gray-400 text-xs">No role</span>
+                          <span className="text-xs text-muted-foreground">No role</span>
                         ) : (
                           u.roles.map((r) => (
                             <span
                               key={r}
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${ROLE_COLORS[r] ?? "bg-gray-100 text-gray-600"}`}
+                              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${ROLE_COLORS[r] ?? "bg-muted text-muted-foreground"}`}
                             >
-                              {r === "admin" && <Shield className="w-3 h-3" />}
+                              {r === "admin" && <Shield className="size-3" />}
                               {r.replace(/_/g, " ")}
                             </span>
                           ))
@@ -462,20 +472,20 @@ function AdminUsersInner() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${u.is_active ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${u.is_active ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
                         {u.is_active ? "Active" : "Inactive"}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
                       {new Date(u.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button
                         onClick={() => handleSetActive(u.id, !u.is_active)}
                         title={u.is_active ? "Deactivate" : "Activate"}
-                        className={`p-1.5 rounded hover:bg-gray-100 ${u.is_active ? "text-red-500" : "text-emerald-600"}`}
+                        className={`rounded p-1.5 hover:bg-muted ${u.is_active ? "text-destructive" : "text-success"}`}
                       >
-                        {u.is_active ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                        {u.is_active ? <UserX className="size-4" /> : <UserCheck className="size-4" />}
                       </button>
                     </td>
                   </tr>
@@ -487,47 +497,35 @@ function AdminUsersInner() {
 
         {/* Pagination */}
         {total > PAGE_SIZE && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-sm text-gray-500">
-            <span>Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} of {total}</span>
-            <div className="flex gap-2">
-              <button
-                disabled={page === 0}
-                onClick={() => setPage(p => p - 1)}
-                className="px-3 py-1 rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
-              >
-                Previous
-              </button>
-              <button
-                disabled={(page + 1) * PAGE_SIZE >= total}
-                onClick={() => setPage(p => p + 1)}
-                className="px-3 py-1 rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
-              >
-                Next
-              </button>
-            </div>
-          </div>
+          <AdminPagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={total}
+            onPrevious={() => setPage(p => p - 1)}
+            onNext={() => setPage(p => p + 1)}
+          />
         )}
-      </div>
+      </AdminTablePanel>
 
       {/* ── Bulk Action Bar ─────────────────────────────────────────────────── */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl">
-          <span className="text-sm font-medium text-slate-300">
+        <div className="fixed inset-x-4 bottom-4 z-40 flex flex-wrap items-center justify-center gap-3 rounded-lg border bg-popover px-4 py-3 text-popover-foreground shadow-2xl sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:px-5">
+          <span className="text-sm font-medium text-muted-foreground">
             {selectedIds.size} selected
           </span>
-          <div className="w-px h-5 bg-slate-700" />
+          <div className="hidden h-5 w-px bg-border sm:block" />
 
           {bulkMsg && (
-            <span className="text-xs text-emerald-400 font-medium">{bulkMsg}</span>
+            <span className="text-xs font-medium text-success">{bulkMsg}</span>
           )}
 
           {/* Activate */}
           <button
             onClick={() => handleBulkAction("activate")}
             disabled={bulkLoading}
-            className="flex items-center gap-1.5 text-sm text-emerald-400 hover:text-emerald-300 disabled:opacity-40"
+            className="flex items-center gap-1.5 text-sm text-success hover:opacity-80 disabled:opacity-40"
           >
-            {bulkLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />}
+            {bulkLoading ? <Loader2 className="size-3.5 animate-spin" /> : <UserCheck className="size-3.5" />}
             Activate
           </button>
 
@@ -535,9 +533,9 @@ function AdminUsersInner() {
           <button
             onClick={() => handleBulkAction("deactivate")}
             disabled={bulkLoading}
-            className="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 disabled:opacity-40"
+            className="flex items-center gap-1.5 text-sm text-destructive hover:opacity-80 disabled:opacity-40"
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="size-3.5" />
             Deactivate
           </button>
 
@@ -546,14 +544,14 @@ function AdminUsersInner() {
             <button
               onClick={() => setShowBulkRolePicker((v) => !v)}
               disabled={bulkLoading}
-              className="flex items-center gap-1 text-sm text-blue-300 hover:text-blue-200 disabled:opacity-40"
+              className="flex items-center gap-1 text-sm text-primary hover:opacity-80 disabled:opacity-40"
             >
-              <Shield className="w-3.5 h-3.5" />
+              <Shield className="size-3.5" />
               Assign Role
-              <ChevronDown className="w-3 h-3" />
+              <ChevronDown className="size-3" />
             </button>
             {showBulkRolePicker && (
-              <div className="absolute bottom-full mb-2 left-0 bg-white rounded-xl border border-gray-200 shadow-xl py-1 min-w-44 z-50">
+              <div className="absolute bottom-full left-0 z-50 mb-2 min-w-44 rounded-lg border bg-popover py-1 text-popover-foreground shadow-xl">
                 {ROLE_OPTIONS.filter((o) => o.value).map((o) => (
                   <button
                     key={o.value}
@@ -562,7 +560,7 @@ function AdminUsersInner() {
                       setShowBulkRolePicker(false)
                       void handleBulkAction("set_role", o.value)
                     }}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-muted"
                   >
                     {o.label}
                   </button>
@@ -571,15 +569,15 @@ function AdminUsersInner() {
             )}
           </div>
 
-          <div className="w-px h-5 bg-slate-700" />
+          <div className="hidden h-5 w-px bg-border sm:block" />
 
           {/* Clear selection */}
           <button
             onClick={() => setSelectedIds(new Set())}
-            className="text-slate-400 hover:text-white"
+            className="text-muted-foreground hover:text-foreground"
             title="Clear selection"
           >
-            <X className="w-4 h-4" />
+            <X className="size-4" />
           </button>
         </div>
       )}
@@ -859,7 +857,7 @@ function AdminUsersInner() {
           </div>
         </div>
       )}
-    </div>
+    </AdminPageShell>
   )
 }
 

@@ -21,6 +21,7 @@
     "test:coverage": "vitest run --coverage",
     "test:ci": "vitest run --coverage --reporter=verbose --reporter=json --outputFile=test-results.json",
     "test:e2e": "playwright test --project=chromium",
+    "test:e2e:admin-sidebar": "playwright test e2e/tests/admin-sidebar.spec.ts --project=chromium --no-deps --reporter=line",
     "test:e2e:application": "playwright test e2e/tests/06-application.spec.ts --project=chromium",
     "test:e2e:edge-cases": "playwright test e2e/tests/06-application.spec.ts --grep 'Edge Cases' --project=chromium",
     "test:e2e:reviewer": "playwright test e2e/tests/09-reviewer.spec.ts --project=chromium",

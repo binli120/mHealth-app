@@ -1,0 +1,11 @@
+{
+    "mcpServers": {
+        "healthcompass": {
+            "type": "remote",
+            "url": "https://healthcompass.cloud/mcp",
+            "headers": {
+                "Authorization": "ec6e294e1fc26fc8a882ac10f2e80b43d2104eb09bf9c7383f454ecbe5398dbc"
+            }
+        }
+    }
+}

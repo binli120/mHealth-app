@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getSupabaseClient } from "@/lib/supabase/client"
+import { getSafeSupabaseSession } from "@/lib/supabase/client"
 import { IdleTimeoutGuard } from "@/components/shared/IdleTimeoutGuard"
 
 interface AuthGuardProps {
@@ -27,14 +27,16 @@ export function AuthGuard({ children, next = "/customer/dashboard", idleTimeout 
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    getSupabaseClient()
-      .auth.getSession()
-      .then(({ data }) => {
-        if (!data.session) {
+    getSafeSupabaseSession()
+      .then(({ session }) => {
+        if (!session) {
           router.replace(`/auth/login?next=${encodeURIComponent(next)}`)
         } else {
           setReady(true)
         }
+      })
+      .catch(() => {
+        router.replace(`/auth/login?next=${encodeURIComponent(next)}`)
       })
   }, [router, next])
 

@@ -8,6 +8,15 @@
 import { useState } from "react"
 import { Download, FileText, Users, Loader2, CheckCircle } from "lucide-react"
 import { APPLICATION_STATUS_FILTER_OPTIONS } from "@/lib/application-status"
+import {
+  AdminPageHeader,
+  AdminPageShell,
+  AdminPanel,
+  AdminPanelContent,
+  AdminPanelHeader,
+  AdminPanelTitle,
+} from "@/components/admin/admin-ui"
+import { Button } from "@/components/ui/button"
 import { downloadCsv } from "./page.utils"
 
 export default function AdminReportsPage() {
@@ -61,36 +70,37 @@ export default function AdminReportsPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Reports &amp; Exports</h1>
-        <p className="text-gray-500 text-sm mt-1">
-          Download CSV exports for state reporting and grant documentation
-        </p>
-      </div>
+    <AdminPageShell size="narrow">
+      <AdminPageHeader
+        title="Reports & Exports"
+        description="Download CSV exports for state reporting and grant documentation"
+      />
 
       <div className="space-y-6">
         {/* Applications export */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-start gap-4 mb-5">
-            <div className="bg-blue-50 p-2.5 rounded-lg flex-shrink-0">
-              <FileText className="w-5 h-5 text-blue-500" />
+        <AdminPanel>
+          <AdminPanelHeader>
+            <div className="flex items-start gap-4">
+            <div className="shrink-0 rounded-md bg-primary/10 p-2.5 text-primary">
+              <FileText className="size-5" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-gray-900">Applications Export</h2>
-              <p className="text-sm text-gray-500 mt-0.5">
+              <AdminPanelTitle>Applications Export</AdminPanelTitle>
+              <p className="mt-0.5 text-sm text-muted-foreground">
                 Applicant details, status, household size, income, FPL%, and program eligibility
               </p>
             </div>
           </div>
+          </AdminPanelHeader>
 
+          <AdminPanelContent>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Status</label>
               <select
                 value={appStatus}
                 onChange={(e) => setAppStatus(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                className="h-9 w-full rounded-md border bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {APPLICATION_STATUS_FILTER_OPTIONS.map((s) => (
                   <option key={s.value} value={s.value}>{s.label}</option>
@@ -98,96 +108,99 @@ export default function AdminReportsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">From date</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">From date</label>
               <input
                 type="date"
                 value={appFrom}
                 onChange={(e) => setAppFrom(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="h-9 w-full rounded-md border bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">To date</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">To date</label>
               <input
                 type="date"
                 value={appTo}
                 onChange={(e) => setAppTo(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="h-9 w-full rounded-md border bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             </div>
           </div>
 
           {appError && (
-            <p className="text-sm text-red-600 mb-3">{appError}</p>
+            <p className="mb-3 text-sm text-destructive">{appError}</p>
           )}
 
-          <button
+          <Button
             onClick={handleExportApplications}
             disabled={appLoading}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
             {appLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="size-4 animate-spin" />
             ) : appDone ? (
-              <CheckCircle className="w-4 h-4" />
+              <CheckCircle className="size-4" />
             ) : (
-              <Download className="w-4 h-4" />
+              <Download className="size-4" />
             )}
-            {appLoading ? "Generating…" : appDone ? "Downloaded!" : "Download CSV"}
-          </button>
-        </div>
+            {appLoading ? "Generating..." : appDone ? "Downloaded!" : "Download CSV"}
+          </Button>
+          </AdminPanelContent>
+        </AdminPanel>
 
         {/* Users export */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-start gap-4 mb-5">
-            <div className="bg-purple-50 p-2.5 rounded-lg flex-shrink-0">
-              <Users className="w-5 h-5 text-purple-500" />
+        <AdminPanel>
+          <AdminPanelHeader>
+          <div className="flex items-start gap-4">
+            <div className="shrink-0 rounded-md bg-accent/10 p-2.5 text-accent">
+              <Users className="size-5" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-gray-900">Users Export</h2>
-              <p className="text-sm text-gray-500 mt-0.5">
+              <AdminPanelTitle>Users Export</AdminPanelTitle>
+              <p className="mt-0.5 text-sm text-muted-foreground">
                 All registered users with name, email, roles, company, and account status
               </p>
             </div>
           </div>
+          </AdminPanelHeader>
 
+          <AdminPanelContent>
           {usersError && (
-            <p className="text-sm text-red-600 mb-3">{usersError}</p>
+            <p className="mb-3 text-sm text-destructive">{usersError}</p>
           )}
 
-          <button
+          <Button
             onClick={handleExportUsers}
             disabled={usersLoading}
-            className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors"
           >
             {usersLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="size-4 animate-spin" />
             ) : usersDone ? (
-              <CheckCircle className="w-4 h-4" />
+              <CheckCircle className="size-4" />
             ) : (
-              <Download className="w-4 h-4" />
+              <Download className="size-4" />
             )}
-            {usersLoading ? "Generating…" : usersDone ? "Downloaded!" : "Download CSV"}
-          </button>
-        </div>
+            {usersLoading ? "Generating..." : usersDone ? "Downloaded!" : "Download CSV"}
+          </Button>
+          </AdminPanelContent>
+        </AdminPanel>
 
         {/* Columns reference */}
-        <div className="bg-gray-50 rounded-xl border border-gray-200 p-5">
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <div className="rounded-lg border bg-muted/30 p-5">
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Column Reference
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-gray-600">
+          <div className="grid grid-cols-1 gap-4 text-xs text-muted-foreground sm:grid-cols-2">
             <div>
-              <p className="font-medium text-gray-700 mb-1">Applications CSV</p>
-              <p className="text-gray-500 leading-relaxed">
+              <p className="mb-1 font-medium text-foreground">Applications CSV</p>
+              <p className="leading-relaxed">
                 id, status, first_name, last_name, email, household_size,
                 total_monthly_income, fpl_percentage, estimated_program,
                 confidence_score, created_at, submitted_at, decided_at
               </p>
             </div>
             <div>
-              <p className="font-medium text-gray-700 mb-1">Users CSV</p>
-              <p className="text-gray-500 leading-relaxed">
+              <p className="mb-1 font-medium text-foreground">Users CSV</p>
+              <p className="leading-relaxed">
                 id, email, first_name, last_name, roles, company_name,
                 is_active, created_at
               </p>
@@ -195,6 +208,6 @@ export default function AdminReportsPage() {
           </div>
         </div>
       </div>
-    </div>
+    </AdminPageShell>
   )
 }

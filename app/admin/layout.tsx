@@ -8,9 +8,11 @@
 import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
-import { getSupabaseClient } from "@/lib/supabase/client"
+import { getSafeSupabaseSession, getSupabaseClient } from "@/lib/supabase/client"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { IdleTimeoutGuard } from "@/components/shared/IdleTimeoutGuard"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import {
   LayoutDashboard,
   Users,
@@ -80,27 +82,31 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter()
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true)
   const [adminEmail, setAdminEmail] = useState<string | null>(null)
   const [authState, setAuthState] = useState<AuthState>("loading")
   const [granting, setGranting] = useState(false)
 
   useEffect(() => {
-    const supabase = getSupabaseClient()
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!data.session) {
-        router.replace("/auth/login?next=/admin")
-        return
-      }
-      setAdminEmail(data.session.user.email ?? null)
+    getSafeSupabaseSession()
+      .then(async ({ session }) => {
+        if (!session) {
+          router.replace("/auth/login?next=/admin")
+          return
+        }
+        setAdminEmail(session.user.email ?? null)
 
-      // Verify admin role by probing the stats endpoint
-      const res = await authenticatedFetch("/api/admin/stats")
-      if (res.status === 403) {
-        setAuthState("not-admin")
-      } else {
-        setAuthState("ready")
-      }
-    })
+        // Verify admin role by probing the stats endpoint
+        const res = await authenticatedFetch("/api/admin/stats")
+        if (res.status === 403) {
+          setAuthState("not-admin")
+        } else {
+          setAuthState("ready")
+        }
+      })
+      .catch(() => {
+        router.replace("/auth/login?next=/admin")
+      })
   }, [router])
 
   const handleGrantAdmin = async () => {
@@ -128,79 +134,90 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (authState === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center text-gray-400 text-sm">
-        <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading…
+      <div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">
+        <Loader2 className="mr-2 size-5 animate-spin" /> Loading...
       </div>
     )
   }
 
   if (authState === "not-admin") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <div className="max-w-sm w-full bg-white rounded-xl border border-amber-200 p-8 text-center">
-          <AlertCircle className="w-10 h-10 text-amber-500 mx-auto mb-4" />
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">Admin Role Required</h2>
-          <p className="text-sm text-gray-500 mb-1">
-            Logged in as: <span className="font-medium text-gray-700">{adminEmail}</span>
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <div className="w-full max-w-sm rounded-lg border bg-card p-8 text-center shadow-sm">
+          <AlertCircle className="mx-auto mb-4 size-10 text-warning" />
+          <h2 className="mb-2 text-lg font-semibold text-foreground">Admin Role Required</h2>
+          <p className="mb-1 text-sm text-muted-foreground">
+            Logged in as: <span className="font-medium text-foreground">{adminEmail}</span>
           </p>
-          <p className="text-sm text-gray-500 mb-6">
+          <p className="mb-6 text-sm text-muted-foreground">
             This account does not have the admin role.
           </p>
-          <button
+          <Button
             onClick={handleGrantAdmin}
             disabled={granting}
-            className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 mb-3"
+            className="mb-3 w-full"
           >
-            {granting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
+            {granting ? <Loader2 className="size-4 animate-spin" /> : <Shield className="size-4" />}
             Grant Admin Role (Dev Only)
-          </button>
-          <button onClick={handleLogout} className="text-sm text-gray-400 hover:text-gray-600">
+          </Button>
+          <Button onClick={handleLogout} variant="ghost" size="sm">
             Sign out
-          </button>
+          </Button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="flex min-h-svh bg-background">
       <IdleTimeoutGuard />
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/40 z-20 lg:hidden"
+          className="fixed inset-0 z-20 bg-black/45 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`
-          fixed top-0 left-0 h-full w-64 bg-slate-900 text-white z-30
-          transform transition-transform duration-200
-          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
-          lg:translate-x-0 lg:static lg:z-auto
-        `}
+        aria-label="Admin sidebar"
+        className={cn(
+          "fixed left-0 top-0 z-30 flex h-svh w-72 transform flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-xl transition-transform duration-200 lg:sticky lg:z-auto lg:shadow-none",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full",
+          desktopSidebarOpen ? "lg:translate-x-0" : "lg:hidden",
+        )}
       >
-        <div className="flex items-center gap-2 px-6 py-5 border-b border-slate-700">
-          <Shield className="w-5 h-5 text-blue-400" />
+        <div className="flex items-center gap-3 border-b border-sidebar-border px-5 py-4">
+          <div className="flex size-9 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
+            <Shield className="size-5" />
+          </div>
           <div>
             <div className="text-sm font-semibold leading-tight">HealthCompass MA</div>
-            <div className="text-xs text-slate-400">Admin Portal</div>
+            <div className="text-xs text-sidebar-foreground/65">Admin Portal</div>
           </div>
           <button
-            className="ml-auto lg:hidden text-slate-400 hover:text-white"
+            className="ml-auto rounded-md p-1 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground lg:hidden"
             onClick={() => setSidebarOpen(false)}
+            aria-label="Close admin menu"
           >
-            <X className="w-5 h-5" />
+            <X className="size-5" />
+          </button>
+          <button
+            className="ml-auto hidden rounded-md p-1 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground lg:inline-flex"
+            onClick={() => setDesktopSidebarOpen(false)}
+            aria-label="Hide admin sidebar"
+            title="Hide sidebar"
+          >
+            <X className="size-5" />
           </button>
         </div>
 
-        <nav className="px-3 py-4 flex-1 overflow-y-auto">
+        <nav className="flex-1 overflow-y-auto px-3 py-4">
           {NAV_GROUPS.map((group, gi) => (
             <div key={gi} className={gi > 0 ? "mt-5" : ""}>
               {group.title && (
-                <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500 select-none">
+                <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/45 select-none">
                   {group.title}
                 </p>
               )}
@@ -209,15 +226,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   key={href}
                   href={href}
                   onClick={() => setSidebarOpen(false)}
-                  className={`
-                    flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 text-sm font-medium transition-colors
-                    ${isActive(href, exact)
-                      ? "bg-blue-600 text-white"
-                      : "text-slate-300 hover:bg-slate-800 hover:text-white"
-                    }
-                  `}
+                  className={cn(
+                    "mb-0.5 flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+                    isActive(href, exact)
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  )}
                 >
-                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  <Icon className="size-4 shrink-0" />
                   {label}
                 </Link>
               ))}
@@ -225,37 +241,46 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           ))}
         </nav>
 
-        <div className="px-3 pb-4 border-t border-slate-700 pt-4">
+        <div className="border-t border-sidebar-border px-3 pb-4 pt-4">
           {adminEmail && (
-            <p className="text-xs text-slate-400 px-3 mb-2 truncate">{adminEmail}</p>
+            <p className="mb-2 truncate px-3 text-xs text-sidebar-foreground/55">{adminEmail}</p>
           )}
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="size-4" />
             Sign Out
           </button>
         </div>
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar (mobile) */}
-        <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-200 sticky top-0 z-10">
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Top bar */}
+        <header
+          className={cn(
+            "sticky top-0 z-10 flex items-center gap-3 border-b bg-card/95 px-4 py-3 backdrop-blur",
+            desktopSidebarOpen ? "lg:hidden" : "lg:flex",
+          )}
+        >
           <button
-            onClick={() => setSidebarOpen(true)}
-            className="text-gray-500 hover:text-gray-700"
+            onClick={() => {
+              setSidebarOpen(true)
+              setDesktopSidebarOpen(true)
+            }}
+            className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+            aria-label="Open admin menu"
           >
-            <Menu className="w-5 h-5" />
+            <Menu className="size-5" />
           </button>
           <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-blue-600" />
-            <span className="text-sm font-semibold text-gray-900">Admin Portal</span>
+            <Shield className="size-4 text-primary" />
+            <span className="text-sm font-semibold text-foreground">Admin Portal</span>
           </div>
         </header>
 
-        <main className="flex-1 p-6 overflow-auto">{children}</main>
+        <main className="flex-1 overflow-auto px-4 py-5 sm:px-6 lg:px-8 lg:py-8">{children}</main>
       </div>
     </div>
   )

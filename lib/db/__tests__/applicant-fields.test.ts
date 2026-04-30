@@ -93,6 +93,14 @@ describe("decryptOrPlain", () => {
     // encrypted present → decrypted result wins, legacy plain is ignored
     expect(decryptOrPlain("ENC(NewValue)", "OldPlain")).toBe("NewValue")
   })
+
+  it("falls back to plaintext when encrypted value cannot be decrypted", () => {
+    expect(decryptOrPlain("bad-ciphertext", "LegacyPlain")).toBe("LegacyPlain")
+  })
+
+  it("throws decrypt errors when no plaintext fallback exists", () => {
+    expect(() => decryptOrPlain("bad-ciphertext", null)).toThrow(/unexpected input/)
+  })
 })
 
 // ── decryptDisplayName ────────────────────────────────────────────────────────

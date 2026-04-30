@@ -2,7 +2,7 @@
  * @author Bin Lee
  * @email blee@healthcompass.cloud
  *
- * Next.js middleware — runs on the Edge Runtime before every matched request.
+ * Next.js proxy — runs before every matched request.
  *
  * Responsibilities
  * ─────────────────────────────────────────────────────────────────────────────
@@ -26,33 +26,33 @@
  * nonces cannot cover (nonces only protect <style> elements, not attributes).
  */
 
-import { buildCspHeader, generateNonce } from '@/lib/csp/nonce';
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
+import { buildCspHeader, generateNonce } from "@/lib/csp/nonce"
+import type { NextRequest } from "next/server"
+import { NextResponse } from "next/server"
 
-export function middleware(request: NextRequest): NextResponse {
-  const nonce = generateNonce();
-  const isDev = process.env.NODE_ENV === 'development';
-  const csp = buildCspHeader({ nonce, isDev });
+export function proxy(request: NextRequest): NextResponse {
+  const nonce = generateNonce()
+  const isDev = process.env.NODE_ENV === "development"
+  const csp = buildCspHeader({ nonce, isDev })
 
   // Clone the incoming headers so we can add x-nonce.
   // NextResponse.next({ request: { headers } }) forwards these to the page
   // handler — Next.js App Router reads x-nonce internally and applies it to
   // the inline <script> tags it generates for RSC/hydration.
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set('x-nonce', nonce);
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set("x-nonce", nonce)
   // Also forward the CSP via request headers so server components can read it
   // if needed (e.g. for a Report-Only header or debugging).
-  requestHeaders.set('Content-Security-Policy', csp);
+  requestHeaders.set("Content-Security-Policy", csp)
 
   const response = NextResponse.next({
     request: { headers: requestHeaders },
-  });
+  })
 
   // Set the enforcing CSP on the response so browsers act on it.
-  response.headers.set('Content-Security-Policy', csp);
+  response.headers.set("Content-Security-Policy", csp)
 
-  return response;
+  return response
 }
 
 // ── Matcher ───────────────────────────────────────────────────────────────────
@@ -66,12 +66,12 @@ export const config = {
   matcher: [
     {
       source:
-        '/((?!_next/static|_next/image|favicon|apple-icon|manifest|robots\\.txt|sitemap\\.xml).*)',
+        "/((?!_next/static|_next/image|favicon|apple-icon|manifest|robots\\.txt|sitemap\\.xml).*)",
       missing: [
         // Skip client-side prefetch navigation (no full document)
-        { type: 'header', key: 'next-router-prefetch' },
-        { type: 'header', key: 'purpose', value: 'prefetch' },
+        { type: "header", key: "next-router-prefetch" },
+        { type: "header", key: "purpose", value: "prefetch" },
       ],
     },
   ],
-};
+}

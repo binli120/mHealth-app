@@ -47,16 +47,24 @@ export function encryptApplicantField(plain: string | null | undefined): string 
  *
  * Priority: encrypted → plaintext → null
  *
- * If decryption throws (e.g. corrupted ciphertext), the error propagates so
- * the caller can decide whether to return a 500 or substitute a default.
- * We intentionally do NOT silently swallow decryption errors — they indicate
- * data integrity issues that must be investigated.
+ * During the migration window, some rows can contain encrypted values written
+ * with an old or local-only key while legacy plaintext is still present. In
+ * that case, fall back to plaintext so read paths stay available. If there is
+ * no plaintext fallback, propagate the decrypt error so data integrity issues
+ * are still visible.
  */
 export function decryptOrPlain(
   encrypted: string | null | undefined,
   plain: string | null | undefined,
 ): string | null {
-  if (encrypted) return decryptField(encrypted)
+  if (encrypted) {
+    try {
+      return decryptField(encrypted)
+    } catch (error) {
+      if (plain !== null && plain !== undefined) return plain
+      throw error
+    }
+  }
   return plain ?? null
 }
 
