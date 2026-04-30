@@ -19,6 +19,8 @@ import {
 } from "lucide-react"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { toUserFacingError } from "@/lib/errors/user-facing"
+import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-ui"
+import { Button } from "@/components/ui/button"
 import { PERMISSION_GROUPS } from "@/lib/constants/permissions"
 import type { Permission } from "@/lib/constants/permissions"
 
@@ -310,34 +312,33 @@ export default function AdminRolesPage() {
   // ── Main layout ───────────────────────────────────────────────────────────
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <AdminPageShell>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Role & Permission Manager</h1>
-          <p className="text-gray-500 text-sm mt-1">Define what each role can access across the platform</p>
-        </div>
-        <button
+      <AdminPageHeader
+        title="Role & Permission Manager"
+        description="Define what each role can access across the platform"
+        action={
+          <Button
           onClick={() => dispatch({ type: "open_new" })}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="size-4" />
           New Role
-        </button>
-      </div>
+        </Button>
+        }
+      />
 
-      <div className="flex gap-5">
+      <div className="flex flex-col gap-5 lg:flex-row">
         {/* ── Left sidebar: role list ──────────────────────────────────────── */}
-        <div className="w-64 flex-shrink-0 space-y-1">
+        <div className="grid gap-2 sm:grid-cols-2 lg:w-64 lg:flex-shrink-0 lg:grid-cols-1">
           {state.roles.map((role) => (
             <button
               key={role.name}
               onClick={() => dispatch({ type: "select_role", name: role.name })}
               className={`
-                w-full text-left px-3 py-3 rounded-xl border transition-all
+                w-full rounded-lg border px-3 py-3 text-left transition-all
                 ${state.selectedRole === role.name
-                  ? "border-blue-300 bg-blue-50 shadow-sm"
-                  : "border-transparent hover:bg-gray-50"
+                  ? "border-primary/30 bg-primary/10 shadow-sm"
+                  : "border-transparent hover:bg-muted/60"
                 }
               `}
             >
@@ -346,19 +347,19 @@ export default function AdminRolesPage() {
                   className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                   style={{ backgroundColor: role.color }}
                 />
-                <span className="text-sm font-medium text-gray-900 capitalize">
+                <span className="text-sm font-medium text-foreground capitalize">
                   {role.name.replace(/_/g, " ")}
                 </span>
                 {role.is_system && (
-                  <span className="ml-auto text-[10px] text-gray-400 font-medium bg-gray-100 px-1.5 py-0.5 rounded">
+                  <span className="ml-auto rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                     system
                   </span>
                 )}
               </div>
               <div className="flex items-center gap-2 pl-4">
-                <Users className="w-3 h-3 text-gray-400" />
-                <span className="text-xs text-gray-500">{role.user_count} users</span>
-                <span className="ml-auto text-xs text-gray-400">{role.permissions.length} perms</span>
+                <Users className="size-3 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">{role.user_count} users</span>
+                <span className="ml-auto text-xs text-muted-foreground">{role.permissions.length} perms</span>
               </div>
             </button>
           ))}
@@ -366,9 +367,9 @@ export default function AdminRolesPage() {
 
         {/* ── Right panel: permission matrix ──────────────────────────────── */}
         {selectedRoleRow ? (
-          <div className="flex-1 bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="flex-1 overflow-hidden rounded-lg border bg-card shadow-sm">
             {/* Panel header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <div className="flex flex-col gap-3 border-b px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
                 <span
                   className="w-3 h-3 rounded-full flex-shrink-0"
@@ -379,12 +380,12 @@ export default function AdminRolesPage() {
                     {selectedRoleRow.name.replace(/_/g, " ")}
                   </h2>
                   {selectedRoleRow.description && (
-                    <p className="text-xs text-gray-500">{selectedRoleRow.description}</p>
+                    <p className="text-xs text-muted-foreground">{selectedRoleRow.description}</p>
                   )}
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {state.saveMsg && (
                   <span
                     className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${
@@ -401,31 +402,33 @@ export default function AdminRolesPage() {
                 )}
 
                 {!selectedRoleRow.is_system && (
-                  <button
-                    onClick={handleDelete}
-                    disabled={state.deleting}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-40 transition-colors"
-                  >
-                    {state.deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDelete}
+                  disabled={state.deleting}
+                  className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                >
+                    {state.deleting ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
                     Delete
-                  </button>
+                </Button>
                 )}
 
-                <button
+                <Button
+                  size="sm"
                   onClick={handleSave}
                   disabled={state.saving || selectedRoleRow.is_system && selectedRoleRow.name === "admin"}
-                  className="flex items-center gap-1.5 bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40 transition-colors"
                 >
-                  {state.saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  {state.saving ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
                   Save
-                </button>
+                </Button>
               </div>
             </div>
 
             {/* Permission matrix */}
             <div className="p-6 space-y-6">
               {selectedRoleRow.name === "admin" && (
-                <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+                <div className="flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/15 px-4 py-3 text-sm text-warning-foreground">
                   <ShieldCheck className="w-4 h-4 flex-shrink-0" />
                   Admin has all permissions and they cannot be modified.
                 </div>
@@ -433,7 +436,7 @@ export default function AdminRolesPage() {
 
               {PERMISSION_GROUPS.map((group) => (
                 <div key={group.label}>
-                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     {group.label}
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -445,7 +448,7 @@ export default function AdminRolesPage() {
                           key={key}
                           className={`
                             flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
-                            ${checked ? "border-blue-200 bg-blue-50" : "border-gray-100 hover:bg-gray-50"}
+                            ${checked ? "border-primary/30 bg-primary/10" : "border-border hover:bg-muted/60"}
                             ${locked ? "opacity-60 cursor-not-allowed" : ""}
                           `}
                         >
@@ -454,11 +457,11 @@ export default function AdminRolesPage() {
                             checked={checked}
                             disabled={locked}
                             onChange={() => dispatch({ type: "toggle_perm", perm: key })}
-                            className="mt-0.5 w-4 h-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500"
+                            className="mt-0.5 size-4 rounded border-input text-primary focus:ring-ring"
                           />
                           <div className="min-w-0">
-                            <div className="text-sm font-medium text-gray-800">{label}</div>
-                            <div className="text-xs text-gray-500 leading-snug">{description}</div>
+                            <div className="text-sm font-medium text-foreground">{label}</div>
+                            <div className="text-xs leading-snug text-muted-foreground">{description}</div>
                           </div>
                         </label>
                       )
@@ -469,7 +472,7 @@ export default function AdminRolesPage() {
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
+          <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
             Select a role to manage its permissions
           </div>
         )}
@@ -568,6 +571,6 @@ export default function AdminRolesPage() {
           </div>
         </div>
       )}
-    </div>
+    </AdminPageShell>
   )
 }

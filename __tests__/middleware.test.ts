@@ -2,9 +2,9 @@
  * @author Bin Lee
  * @email blee@healthcompass.cloud
  *
- * Unit tests for the CSP middleware (middleware.ts).
+ * Unit tests for the CSP proxy (proxy.ts).
  *
- * We import the middleware handler directly and feed it a minimal NextRequest
+ * We import the proxy handler directly and feed it a minimal NextRequest
  * constructed from a URL string.  No network I/O occurs — the test just
  * verifies that the returned NextResponse carries the expected headers.
  *
@@ -39,19 +39,19 @@ function makeRequest(url = "http://localhost:3000/dashboard"): NextRequest {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-describe("middleware — CSP nonce injection", () => {
+describe("proxy — CSP nonce injection", () => {
   beforeEach(() => { vi.clearAllMocks() })
 
   it("sets Content-Security-Policy on the response", async () => {
-    const { middleware } = await import("../middleware")
-    const res = middleware(makeRequest())
+    const { proxy } = await import("../proxy")
+    const res = proxy(makeRequest())
 
     expect(res.headers.get("Content-Security-Policy")).not.toBeNull()
   })
 
   it("CSP includes the generated nonce", async () => {
-    const { middleware } = await import("../middleware")
-    const res = middleware(makeRequest())
+    const { proxy } = await import("../proxy")
+    const res = proxy(makeRequest())
 
     const csp = res.headers.get("Content-Security-Policy") ?? ""
     expect(csp).toContain(`'nonce-${FIXED_NONCE}'`)
@@ -61,8 +61,8 @@ describe("middleware — CSP nonce injection", () => {
     process.env.NODE_ENV = "production"
     vi.resetModules()
 
-    const { middleware } = await import("../middleware")
-    const res = middleware(makeRequest())
+    const { proxy } = await import("../proxy")
+    const res = proxy(makeRequest())
 
     const csp = res.headers.get("Content-Security-Policy") ?? ""
     const scriptSrc = csp.split(";").find((d) => d.trim().startsWith("script-src"))
@@ -71,8 +71,8 @@ describe("middleware — CSP nonce injection", () => {
   })
 
   it("CSP includes 'strict-dynamic' in script-src", async () => {
-    const { middleware } = await import("../middleware")
-    const res = middleware(makeRequest())
+    const { proxy } = await import("../proxy")
+    const res = proxy(makeRequest())
 
     const csp = res.headers.get("Content-Security-Policy") ?? ""
     expect(csp).toContain("'strict-dynamic'")
@@ -81,8 +81,8 @@ describe("middleware — CSP nonce injection", () => {
   it("x-nonce on the request equals the nonce embedded in the CSP", async () => {
     // We can't directly read the forwarded request headers from NextResponse,
     // but we can verify the nonce the middleware used matches what's in the CSP.
-    const { middleware } = await import("../middleware")
-    const res = middleware(makeRequest())
+    const { proxy } = await import("../proxy")
+    const res = proxy(makeRequest())
 
     const csp = res.headers.get("Content-Security-Policy") ?? ""
     expect(csp).toContain(`'nonce-${FIXED_NONCE}'`)
@@ -91,8 +91,8 @@ describe("middleware — CSP nonce injection", () => {
   })
 
   it("returns a 200-range (non-redirect) response", async () => {
-    const { middleware } = await import("../middleware")
-    const res = middleware(makeRequest())
+    const { proxy } = await import("../proxy")
+    const res = proxy(makeRequest())
 
     // NextResponse.next() produces status 200 internally
     expect(res.status).toBeLessThan(300)
@@ -101,11 +101,11 @@ describe("middleware — CSP nonce injection", () => {
   it("does not override an existing Content-Security-Policy header on the request", async () => {
     // The response header is always the freshly-built one — it must not be
     // the empty string or some stale value.
-    const { middleware } = await import("../middleware")
+    const { proxy } = await import("../proxy")
     const req = new NextRequest("http://localhost:3000/")
     req.headers.set("Content-Security-Policy", "stale-value")
 
-    const res = middleware(req)
+    const res = proxy(req)
     const csp = res.headers.get("Content-Security-Policy") ?? ""
     // Fresh CSP should contain our nonce, not the stale value
     expect(csp).toContain("nonce-")
@@ -114,11 +114,11 @@ describe("middleware — CSP nonce injection", () => {
 
   it("generates a unique nonce on each invocation (calls generateNonce every time)", async () => {
     const { generateNonce } = await import("@/lib/csp/nonce")
-    const { middleware } = await import("../middleware")
+    const { proxy } = await import("../proxy")
 
-    middleware(makeRequest())
-    middleware(makeRequest())
-    middleware(makeRequest())
+    proxy(makeRequest())
+    proxy(makeRequest())
+    proxy(makeRequest())
 
     expect(vi.mocked(generateNonce)).toHaveBeenCalledTimes(3)
   })
@@ -127,8 +127,8 @@ describe("middleware — CSP nonce injection", () => {
     process.env.NODE_ENV = "development"
     vi.resetModules()
 
-    const { middleware } = await import("../middleware")
-    const res = middleware(makeRequest())
+    const { proxy } = await import("../proxy")
+    const res = proxy(makeRequest())
 
     const csp = res.headers.get("Content-Security-Policy") ?? ""
     expect(csp).toContain("'unsafe-eval'")
@@ -140,8 +140,8 @@ describe("middleware — CSP nonce injection", () => {
     process.env.NODE_ENV = "test"
     vi.resetModules()
 
-    const { middleware } = await import("../middleware")
-    const res = middleware(makeRequest())
+    const { proxy } = await import("../proxy")
+    const res = proxy(makeRequest())
 
     const csp = res.headers.get("Content-Security-Policy") ?? ""
     expect(csp).not.toContain("'unsafe-eval'")

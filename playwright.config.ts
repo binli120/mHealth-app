@@ -9,6 +9,7 @@ import * as path from "path"
 
 const BASE_URL = process.env.E2E_BASE_URL ?? "http://localhost:3000"
 const IS_DEMO = process.env.DEMO_MODE === "true"
+const SKIP_WEB_SERVER = process.env.E2E_SKIP_WEB_SERVER === "true"
 // When targeting a remote URL (cloud/staging), skip starting a local dev server
 const IS_REMOTE = !BASE_URL.startsWith("http://localhost") && !BASE_URL.startsWith("http://127.0.0.1")
 const DEMO_ENV_KEYS = [
@@ -125,7 +126,7 @@ export default defineConfig({
     },
   ],
   // Start dev server only for local runs; skip when targeting a remote URL
-  ...(IS_REMOTE
+  ...(IS_REMOTE || SKIP_WEB_SERVER
     ? {}
     : {
         webServer: {

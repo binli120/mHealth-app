@@ -45,7 +45,7 @@ export default async function RootLayout({
         */}
         {nonce && <meta name="csp-nonce" content={nonce} />}
       </head>
-      <body className="font-sans antialiased">
+      <body className="font-sans antialiased" suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange nonce={nonce}>
           <ReduxProvider>
             {children}

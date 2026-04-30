@@ -30,7 +30,7 @@ const ssnSchema = z
   .trim()
   .regex(
     /^(\d{3}-\d{2}-\d{4}|\d{9})$/,
-    "SSN must be in ###-##-#### format or 9 consecutive digits.",
+    "SSN must use ###-##-#### or 9 consecutive digits.",
   )
 
 const postBodySchema = z.object({
@@ -58,9 +58,6 @@ export async function GET(request: Request) {
 // ── POST ──────────────────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
-  const authResult = await requireAuthenticatedUser(request)
-  if (!authResult.ok) return authResult.response
-
   let body: z.infer<typeof postBodySchema>
   try {
     body = postBodySchema.parse(await request.json())
@@ -71,6 +68,9 @@ export async function POST(request: Request) {
         : "Invalid request body."
     return NextResponse.json({ ok: false, error: message }, { status: 400 })
   }
+
+  const authResult = await requireAuthenticatedUser(request)
+  if (!authResult.ok) return authResult.response
 
   try {
     // upsertApplicantSsn owns normalisation (plain → dashed) and encryption.

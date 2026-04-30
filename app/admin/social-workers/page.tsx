@@ -10,6 +10,14 @@ import { useSearchParams } from "next/navigation"
 import { Search, CheckCircle, XCircle, UserCheck, UserPlus, X, Loader2, Copy } from "lucide-react"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { toUserFacingError } from "@/lib/errors/user-facing"
+import {
+  AdminPageHeader,
+  AdminPageShell,
+  AdminPagination,
+  AdminTablePanel,
+  AdminToolbar,
+} from "@/components/admin/admin-ui"
+import { Button } from "@/components/ui/button"
 import type { SocialWorker, CompanyOption } from "./page.types"
 import { STATUS_FILTER_OPTIONS, STATUS_STYLE, VALID_STATUS_FILTERS } from "./page.constants"
 import { initialStatusFromSearchParams, fullName } from "./page.utils"
@@ -137,100 +145,99 @@ function AdminSocialWorkersPageInner() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Social Workers</h1>
-          <p className="text-gray-500 text-sm mt-1">{total} total registrations</p>
-        </div>
-        <button
+    <AdminPageShell>
+      <AdminPageHeader
+        title="Social Workers"
+        description={`${total} total registrations`}
+        action={
+          <Button
           onClick={() => setShowInvite(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
         >
-          <UserPlus className="w-4 h-4" />
+          <UserPlus className="size-4" />
           Invite Social Worker
-        </button>
-      </div>
+        </Button>
+        }
+      />
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-4">
-        <div className="relative flex-1 min-w-52">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+      <AdminToolbar>
+        <div className="relative min-w-0 flex-1 sm:min-w-64">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search by name or email…"
+            placeholder="Search by name or email..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(0) }}
-            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="h-9 w-full rounded-md border bg-background pl-9 pr-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); setPage(0) }}
-          className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="h-9 rounded-md border bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {STATUS_FILTER_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
-      </div>
+      </AdminToolbar>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <AdminTablePanel>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Social Worker</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Company</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">License / Title</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Applied</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">Actions</th>
+              <tr className="border-b bg-muted/50">
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Social Worker</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Company</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">License / Title</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Applied</th>
+                <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-400">Loading…</td>
+                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Loading...</td>
                 </tr>
               ) : workers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-400">No social workers found</td>
+                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No social workers found</td>
                 </tr>
               ) : (
                 workers.map((w) => (
-                  <tr key={w.id} className="hover:bg-gray-50">
+                  <tr key={w.id} className="hover:bg-muted/40">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                          <UserCheck className="w-4 h-4 text-blue-600" />
+                        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                          <UserCheck className="size-4" />
                         </div>
                         <div>
-                          <div className="font-medium text-gray-900">{fullName(w)}</div>
-                          <div className="text-xs text-gray-500">{w.email}</div>
+                          <div className="font-medium text-foreground">{fullName(w)}</div>
+                          <div className="text-xs text-muted-foreground">{w.email}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-700">{w.company_name}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">
+                    <td className="px-4 py-3 text-muted-foreground">{w.company_name}</td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
                       {w.license_number && <div>Lic: {w.license_number}</div>}
                       {w.job_title && <div>{w.job_title}</div>}
                       {!w.license_number && !w.job_title && "—"}
                     </td>
                     <td className="px-4 py-3">
                       <div>
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLE[w.status]}`}>
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[w.status]}`}>
                           {w.status}
                         </span>
                         {w.rejection_note && (
-                          <div className="text-xs text-red-500 mt-0.5 max-w-32 truncate" title={w.rejection_note}>
+                          <div className="mt-0.5 max-w-32 truncate text-xs text-destructive" title={w.rejection_note}>
                             {w.rejection_note}
                           </div>
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
                       {new Date(w.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -239,18 +246,18 @@ function AdminSocialWorkersPageInner() {
                           <button
                             onClick={() => handleApprove(w.id)}
                             title="Approve"
-                            className="p-1.5 rounded hover:bg-emerald-50 text-emerald-600"
+                            className="rounded p-1.5 text-success hover:bg-success/10"
                           >
-                            <CheckCircle className="w-4 h-4" />
+                            <CheckCircle className="size-4" />
                           </button>
                         )}
                         {w.status !== "rejected" && (
                           <button
                             onClick={() => setRejectDialog({ id: w.id, note: "" })}
                             title="Reject"
-                            className="p-1.5 rounded hover:bg-red-50 text-red-500"
+                            className="rounded p-1.5 text-destructive hover:bg-destructive/10"
                           >
-                            <XCircle className="w-4 h-4" />
+                            <XCircle className="size-4" />
                           </button>
                         )}
                       </div>
@@ -261,28 +268,26 @@ function AdminSocialWorkersPageInner() {
             </tbody>
           </table>
         </div>
-        {total > PAGE_SIZE && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-sm text-gray-500">
-            <span>Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} of {total}</span>
-            <div className="flex gap-2">
-              <button disabled={page === 0} onClick={() => setPage(p => p - 1)} className="px-3 py-1 rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50">Previous</button>
-              <button disabled={(page + 1) * PAGE_SIZE >= total} onClick={() => setPage(p => p + 1)} className="px-3 py-1 rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50">Next</button>
-            </div>
-          </div>
-        )}
-      </div>
+        <AdminPagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={total}
+          onPrevious={() => setPage(p => p - 1)}
+          onNext={() => setPage(p => p + 1)}
+        />
+      </AdminTablePanel>
 
       {/* Invite Social Worker Modal */}
       {showInvite && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-lg border bg-card shadow-xl">
+            <div className="flex items-center justify-between border-b px-6 py-4">
               <div className="flex items-center gap-2">
-                <UserPlus className="w-5 h-5 text-blue-600" />
-                <h2 className="text-base font-semibold text-gray-900">Invite Social Worker</h2>
+                <UserPlus className="size-5 text-primary" />
+                <h2 className="text-base font-semibold text-foreground">Invite Social Worker</h2>
               </div>
-              <button onClick={resetInviteModal} className="text-gray-400 hover:text-gray-600">
-                <X className="w-5 h-5" />
+              <button onClick={resetInviteModal} className="text-muted-foreground hover:text-foreground">
+                <X className="size-5" />
               </button>
             </div>
 
@@ -400,27 +405,27 @@ function AdminSocialWorkersPageInner() {
 
       {/* Reject dialog */}
       {rejectDialog && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
-            <h3 className="text-base font-semibold text-gray-900 mb-2">Reject Social Worker</h3>
-            <p className="text-sm text-gray-500 mb-4">Optionally provide a rejection note for the social worker.</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="mx-4 w-full max-w-md rounded-lg border bg-card p-6 shadow-xl">
+            <h3 className="mb-2 text-base font-semibold text-foreground">Reject Social Worker</h3>
+            <p className="mb-4 text-sm text-muted-foreground">Optionally provide a rejection note for the social worker.</p>
             <textarea
               value={rejectDialog.note}
               onChange={(e) => setRejectDialog({ ...rejectDialog, note: e.target.value })}
               placeholder="Reason for rejection (optional)"
               rows={3}
-              className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-500 mb-4"
+              className="mb-4 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setRejectDialog(null)}
-                className="px-4 py-2 text-sm rounded-lg border border-gray-200 hover:bg-gray-50"
+                className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
               >
                 Cancel
               </button>
               <button
                 onClick={handleReject}
-                className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white font-medium hover:bg-red-700"
+                className="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90"
               >
                 Reject
               </button>
@@ -428,7 +433,7 @@ function AdminSocialWorkersPageInner() {
           </div>
         </div>
       )}
-    </div>
+    </AdminPageShell>
   )
 }
 
@@ -436,8 +441,8 @@ export default function AdminSocialWorkersPage() {
   return (
     <Suspense
       fallback={
-        <div className="max-w-6xl mx-auto py-12 text-center text-gray-400 text-sm">
-          Loading…
+        <div className="mx-auto max-w-6xl py-12 text-center text-sm text-muted-foreground">
+          Loading...
         </div>
       }
     >
