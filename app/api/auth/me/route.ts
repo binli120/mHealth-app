@@ -18,7 +18,7 @@ export async function GET(request: Request) {
 
   const pool = getDbPool()
 
-  const [rolesResult, swResult] = await Promise.all([
+  const [rolesResult, swResult, userResult] = await Promise.all([
     pool.query<{ name: string }>(
       `SELECT r.name FROM public.user_roles ur
        JOIN public.roles r ON r.id = ur.role_id
@@ -29,10 +29,15 @@ export async function GET(request: Request) {
       `SELECT status FROM public.social_worker_profiles WHERE user_id = $1::uuid LIMIT 1`,
       [authResult.userId],
     ),
+    pool.query<{ email: string }>(
+      `SELECT email FROM public.users WHERE id = $1::uuid LIMIT 1`,
+      [authResult.userId],
+    ),
   ])
 
   const roles = rolesResult.rows.map((r) => r.name)
   const swStatus = swResult.rows[0]?.status ?? null
+  const email = userResult.rows[0]?.email ?? null
 
-  return NextResponse.json({ ok: true, roles, swStatus })
+  return NextResponse.json({ ok: true, roles, swStatus, email })
 }

@@ -5,7 +5,7 @@
 
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { ArrowLeft, BookOpenText, ChevronDown, ChevronUp, Download, ExternalLink, FileText, Newspaper, Video } from "lucide-react"
@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAppSelector } from "@/lib/redux/hooks"
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher"
 import { ShieldHeartIcon } from "@/lib/icons"
+import { getSafeSupabaseSession } from "@/lib/supabase/client"
 import {
   getArticlePreviewImageUrl,
   getArticleUrlForLanguage,
@@ -34,6 +35,23 @@ export default function KnowledgeCenterPage() {
 
   const [videosExpanded, setVideosExpanded] = useState(false)
   const [articlesExpanded, setArticlesExpanded] = useState(false)
+  const [backHref, setBackHref] = useState("/")
+
+  useEffect(() => {
+    let isMounted = true
+
+    getSafeSupabaseSession()
+      .then(({ session }) => {
+        if (isMounted && session) setBackHref("/customer/dashboard")
+      })
+      .catch(() => {
+        if (isMounted) setBackHref("/")
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   const allVideos = useMemo(() => getVideosForLanguage(selectedLanguage), [selectedLanguage])
   const allArticles = useMemo(() => KNOWLEDGE_ARTICLES, [])
@@ -48,7 +66,7 @@ export default function KnowledgeCenterPage() {
       <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <div className="mx-auto flex h-16 max-w-7xl items-center px-4">
           <Link
-            href="/customer/dashboard"
+            href={backHref}
             className="flex flex-1 items-center gap-2 text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />

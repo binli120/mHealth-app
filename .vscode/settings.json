@@ -10,6 +10,7 @@
     "prescreener",
     "Streamable",
     "supabase",
+    "webauthn",
     "XVCJ"
   ],
   "git.ignoreLimitWarning": true

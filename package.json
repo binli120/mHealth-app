@@ -84,6 +84,8 @@
     "@radix-ui/react-tooltip": "1.2.8",
     "@react-email/components": "^1.0.10",
     "@reduxjs/toolkit": "^2.11.0",
+    "@simplewebauthn/browser": "^13.3.0",
+    "@simplewebauthn/server": "^13.3.0",
     "@supabase/supabase-js": "^2.57.4",
     "@vercel/analytics": "1.6.1",
     "@zxing/browser": "^0.1.5",

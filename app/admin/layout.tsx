@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useState } from "react"
+import { startRegistration } from "@simplewebauthn/browser"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { getSafeSupabaseSession, getSupabaseClient } from "@/lib/supabase/client"
@@ -78,6 +79,12 @@ const NAV_GROUPS: NavGroup[] = [
 
 type AuthState = "loading" | "unauthenticated" | "not-admin" | "ready"
 
+interface AuthMeResponse {
+  ok?: boolean
+  roles?: string[]
+  email?: string | null
+}
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -86,12 +93,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [adminEmail, setAdminEmail] = useState<string | null>(null)
   const [authState, setAuthState] = useState<AuthState>("loading")
   const [granting, setGranting] = useState(false)
+  const [registeringPasskey, setRegisteringPasskey] = useState(false)
 
   useEffect(() => {
     getSafeSupabaseSession()
       .then(async ({ session }) => {
         if (!session) {
-          router.replace("/auth/login?next=/admin")
+          const res = await authenticatedFetch("/api/auth/me", { cache: "no-store" })
+          if (!res.ok) {
+            router.replace("/auth/login?next=/admin")
+            return
+          }
+
+          const payload = (await res.json().catch(() => ({}))) as AuthMeResponse
+          if (!payload.roles?.includes("admin")) {
+            setAuthState("not-admin")
+            return
+          }
+
+          setAdminEmail(payload.email ?? null)
+          setAuthState("ready")
           return
         }
         setAdminEmail(session.user.email ?? null)
@@ -123,8 +144,66 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   const handleLogout = async () => {
-    await getSupabaseClient().auth.signOut()
+    await Promise.allSettled([
+      (async () => {
+        await getSupabaseClient().auth.signOut()
+      })(),
+      fetch("/api/auth/passkey/logout", { method: "POST" }),
+    ])
     router.replace("/auth/login")
+  }
+
+  const handleRegisterPasskey = async () => {
+    setRegisteringPasskey(true)
+
+    try {
+      const optionsResponse = await authenticatedFetch("/api/auth/passkey/register/options", {
+        method: "POST",
+      })
+      const optionsErrorResponse = optionsResponse.clone()
+      const optionsPayload = (await optionsResponse.json().catch(() => ({}))) as {
+        ok?: boolean
+        error?: string
+        options?: Parameters<typeof startRegistration>[0]["optionsJSON"]
+      }
+      if (!optionsResponse.ok || !optionsPayload.ok || !optionsPayload.options) {
+        window.alert(
+          optionsPayload.error ||
+          (await readApiError(optionsErrorResponse, "Unable to start passkey registration.")),
+        )
+        return
+      }
+
+      const response = await startRegistration({ optionsJSON: optionsPayload.options })
+      const verifyResponse = await authenticatedFetch("/api/auth/passkey/register/verify", {
+        method: "POST",
+        body: JSON.stringify({ response, name: "Admin passkey" }),
+      })
+      const verifyErrorResponse = verifyResponse.clone()
+      const verifyPayload = (await verifyResponse.json().catch(() => ({}))) as {
+        ok?: boolean
+        error?: string
+      }
+      if (!verifyResponse.ok || !verifyPayload.ok) {
+        window.alert(verifyPayload.error || (await readApiError(verifyErrorResponse, "Unable to save passkey.")))
+        return
+      }
+
+      window.alert("Admin passkey registered.")
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to register passkey."
+      window.alert(message)
+    } finally {
+      setRegisteringPasskey(false)
+    }
+  }
+
+  const readApiError = async (response: Response, fallback: string) => {
+    const payload = (await response.clone().json().catch(() => null)) as { error?: string } | null
+    if (payload?.error) return payload.error
+
+    const text = await response.text().catch(() => "")
+    return text.trim() || fallback
   }
 
   const isActive = (href: string, exact?: boolean) => {
@@ -245,6 +324,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {adminEmail && (
             <p className="mb-2 truncate px-3 text-xs text-sidebar-foreground/55">{adminEmail}</p>
           )}
+          <button
+            onClick={() => void handleRegisterPasskey()}
+            disabled={registeringPasskey}
+            className="mb-1 flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <KeyRound className="size-4" />
+            {registeringPasskey ? "Adding Passkey..." : "Add Passkey"}
+          </button>
           <button
             onClick={handleLogout}
             className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"

@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useAsyncData } from "@/hooks/use-async-data"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -25,7 +26,7 @@ import { type ApplicationStatus } from "@/lib/application-status"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { toUserFacingError } from "@/lib/errors/user-facing"
 import { useAppSelector, useAppDispatch } from "@/lib/redux/hooks"
-import { setProfile } from "@/lib/redux/features/user-profile-slice"
+import { resetProfile, setProfile } from "@/lib/redux/features/user-profile-slice"
 import type { UserProfile } from "@/lib/user-profile/types"
 import { getMessage } from "@/lib/i18n/messages"
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher"
@@ -51,7 +52,7 @@ import { dispatchOpenSwChat } from "@/lib/events/chat-events"
 import { NotificationBell } from "@/components/notifications/NotificationBell"
 import { SessionInviteBanner } from "@/components/collaborative-sessions/SessionInviteBanner"
 import { IdentityVerificationBanner } from "@/components/identity/IdentityVerificationBanner"
-import { getSafeSupabaseUser } from "@/lib/supabase/client"
+import { getSafeSupabaseUser, signOutAndClearLocalAuth } from "@/lib/supabase/client"
 import { ShieldHeartIcon } from "@/lib/icons"
 import { UserAvatar } from "@/components/shared/UserAvatar"
 import { ThemeToggle } from "@/components/shared/ThemeToggle"
@@ -61,11 +62,13 @@ import { STATUS_META } from "./page.constants"
 import { getApplicationTypeLabel } from "./page.utils"
 
 export default function CustomerDashboardPage() {
+  const router = useRouter()
   const dispatch = useAppDispatch()
   const language = useAppSelector((state) => state.app.language)
   const userProfile = useAppSelector((state) => state.userProfile.profile)
 
   const [firstName, setFirstName] = useState("")
+  const [isSigningOut, setIsSigningOut] = useState(false)
 
   // Social worker access state
   const [socialWorkers, setSocialWorkers] = useState<Array<{
@@ -157,6 +160,18 @@ export default function CustomerDashboardPage() {
       void loadSocialWorkers()
     } catch {
       // non-fatal
+    }
+  }
+
+  const handleLogout = async () => {
+    setIsSigningOut(true)
+
+    try {
+      await signOutAndClearLocalAuth()
+    } finally {
+      dispatch(resetProfile())
+      router.replace("/")
+      router.refresh()
     }
   }
 
@@ -285,11 +300,16 @@ export default function CustomerDashboardPage() {
                 className="cursor-pointer ring-2 ring-transparent transition-all hover:ring-primary/40"
               />
             </Link>
-            <Link href="/">
-              <Button variant="ghost" size="icon">
-                <LogOut className="h-5 w-5" />
-              </Button>
-            </Link>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => void handleLogout()}
+              disabled={isSigningOut}
+              aria-label="Sign out"
+            >
+              {isSigningOut ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogOut className="h-5 w-5" />}
+            </Button>
           </div>
         </div>
       </header>

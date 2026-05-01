@@ -9,6 +9,7 @@ import { createHmac, timingSafeEqual } from "crypto"
 import { NextResponse } from "next/server"
 
 import { isLocalAuthHelperEnabled } from "@/lib/auth/local-auth"
+import { getAdminPasskeySessionUserId } from "@/lib/auth/passkey-session"
 import { isSessionRevoked } from "@/lib/auth/session-revocation"
 import { logServerError } from "@/lib/server/logger"
 import { getSupabaseServerClient } from "@/lib/supabase/server"
@@ -264,6 +265,14 @@ export async function requireAuthenticatedUser(
 > {
   const token = extractAccessToken(request)
   if (!token) {
+    const passkeyUserId = getAdminPasskeySessionUserId(request)
+    if (passkeyUserId) {
+      return {
+        ok: true,
+        userId: passkeyUserId,
+      }
+    }
+
     return {
       ok: false,
       response: NextResponse.json(

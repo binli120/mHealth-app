@@ -132,6 +132,7 @@ jobs:
               "MCP_CLIENT_ID=${{ secrets.MCP_CLIENT_ID }}" \
               "MCP_CLIENT_SECRET=${{ secrets.MCP_CLIENT_SECRET }}" \
               "PROFILE_ENCRYPTION_KEY=${{ secrets.PROFILE_ENCRYPTION_KEY }}" \
+              "ADMIN_PASSKEY_SESSION_SECRET=${{ secrets.ADMIN_PASSKEY_SESSION_SECRET }}" \
               > "$ENV_FILE"
             chmod 600 "$ENV_FILE"
             echo "✅ .env.production.local written ($(wc -l < "$ENV_FILE") lines)"

@@ -6,6 +6,7 @@
 "use client"
 
 import { Suspense, useMemo, useState } from "react"
+import { startAuthentication } from "@simplewebauthn/browser"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -17,7 +18,7 @@ import type { DevAutoConfirmResponse, DevRegisterResponse } from "@/lib/auth/typ
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { isLocalAuthHelperEnabled, normalizeAuthEmail } from "@/lib/auth/local-auth"
 import { toUserFacingError } from "@/lib/errors/user-facing"
-import { Eye, EyeOff, ArrowLeft } from "lucide-react"
+import { Eye, EyeOff, ArrowLeft, KeyRound } from "lucide-react"
 import { ShieldHeartIcon } from "@/lib/icons"
 
 function LoginPageContent() {
@@ -25,6 +26,7 @@ function LoginPageContent() {
   const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isPasskeyLoading, setIsPasskeyLoading] = useState(false)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [errorMessage, setErrorMessage] = useState("")
@@ -37,6 +39,7 @@ function LoginPageContent() {
     [nextPath],
   )
   const isContinuationSignIn = searchParams.has("next")
+  const showPasskeyButton = normalizeAuthEmail(email).length > 0
 
   const handleGoogleSignIn = async () => {
     setErrorMessage("")
@@ -55,6 +58,57 @@ function LoginPageContent() {
       setErrorMessage(toUserFacingError(error, { fallback: "Unable to sign in with Google.", context: "auth" }))
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleAdminPasskeySignIn = async () => {
+    setErrorMessage("")
+    setIsPasskeyLoading(true)
+
+    try {
+      const normalizedEmail = normalizeAuthEmail(email)
+      if (!normalizedEmail) {
+        setErrorMessage("Enter your admin email before using a passkey.")
+        return
+      }
+
+      const optionsResponse = await fetch("/api/auth/passkey/login/options", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: normalizedEmail }),
+      })
+      const optionsPayload = (await optionsResponse.json().catch(() => ({}))) as {
+        ok?: boolean
+        error?: string
+        options?: Parameters<typeof startAuthentication>[0]["optionsJSON"]
+      }
+      if (!optionsResponse.ok || !optionsPayload.ok || !optionsPayload.options) {
+        setErrorMessage(optionsPayload.error || "No admin passkey is available for this email.")
+        return
+      }
+
+      const response = await startAuthentication({ optionsJSON: optionsPayload.options })
+      const verifyResponse = await fetch("/api/auth/passkey/login/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ response }),
+      })
+      const verifyPayload = (await verifyResponse.json().catch(() => ({}))) as {
+        ok?: boolean
+        error?: string
+        redirectTo?: string
+      }
+      if (!verifyResponse.ok || !verifyPayload.ok) {
+        setErrorMessage(verifyPayload.error || "Unable to sign in with passkey.")
+        return
+      }
+
+      router.push(verifyPayload.redirectTo || "/admin")
+      router.refresh()
+    } catch (error) {
+      setErrorMessage(toUserFacingError(error, { fallback: "Unable to sign in with passkey.", context: "auth" }))
+    } finally {
+      setIsPasskeyLoading(false)
     }
   }
 
@@ -291,6 +345,18 @@ function LoginPageContent() {
                 </div>
 
                 <div className="mt-4 space-y-3">
+                  {showPasskeyButton && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full gap-2 border-input"
+                      onClick={() => void handleAdminPasskeySignIn()}
+                      disabled={isLoading || isPasskeyLoading}
+                    >
+                      <KeyRound className="h-4 w-4" />
+                      {isPasskeyLoading ? "Checking passkey..." : "Sign in with passkey"}
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="outline"
