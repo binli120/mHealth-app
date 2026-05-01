@@ -44,16 +44,26 @@ export async function POST(request: Request) {
     `INSERT INTO public.roles (name) VALUES ('social_worker') ON CONFLICT (name) DO NOTHING`,
   )
 
+  // Remove social_worker role first — admin and social_worker are mutually exclusive.
+  await pool.query(
+    `
+      DELETE FROM public.user_roles
+      WHERE user_id = $1::uuid
+        AND role_id IN (SELECT id FROM public.roles WHERE name = 'social_worker')
+    `,
+    [authResult.userId],
+  )
+
   // Assign admin role
-  const insertResult = await pool.query(
+  await pool.query(
     `
       INSERT INTO public.user_roles (user_id, role_id)
       SELECT $1::uuid, r.id FROM public.roles r WHERE r.name = 'admin'
       ON CONFLICT DO NOTHING
-      RETURNING user_id, role_id
     `,
     [authResult.userId],
   )
+
   // Verify the role was actually inserted
   const verify = await pool.query(
     `SELECT ur.user_id, r.name FROM public.user_roles ur JOIN public.roles r ON r.id = ur.role_id WHERE ur.user_id = $1::uuid`,

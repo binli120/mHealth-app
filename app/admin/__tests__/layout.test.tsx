@@ -32,6 +32,12 @@ vi.mock("@/lib/supabase/client", () => ({
   getSupabaseClient: () => ({
     auth: {
       signOut: mockSignOut,
+      mfa: {
+        getAuthenticatorAssuranceLevel: vi.fn().mockResolvedValue({
+          data: { currentLevel: "aal2", nextLevel: "aal2" },
+        }),
+        listFactors: vi.fn().mockResolvedValue({ data: { totp: [] } }),
+      },
     },
   }),
 }))

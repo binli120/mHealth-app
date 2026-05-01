@@ -30,8 +30,11 @@ import {
   KeyRound,
   Monitor,
   ShieldCheck,
+  ShieldPlus,
+  Check,
   type LucideIcon,
 } from "lucide-react"
+import { Input } from "@/components/ui/input"
 
 type NavItem = {
   href: string
@@ -78,11 +81,18 @@ const NAV_GROUPS: NavGroup[] = [
 ]
 
 type AuthState = "loading" | "unauthenticated" | "not-admin" | "ready"
+type MfaSetupStep = "idle" | "qr" | "verifying"
 
 interface AuthMeResponse {
   ok?: boolean
   roles?: string[]
   email?: string | null
+}
+
+interface MfaEnrollData {
+  factorId: string
+  qrCode: string
+  secret: string
 }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -94,6 +104,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [authState, setAuthState] = useState<AuthState>("loading")
   const [granting, setGranting] = useState(false)
   const [registeringPasskey, setRegisteringPasskey] = useState(false)
+  const [mfaHasFactor, setMfaHasFactor] = useState(false)
+  const [mfaSetupStep, setMfaSetupStep] = useState<MfaSetupStep>("idle")
+  const [mfaEnrollData, setMfaEnrollData] = useState<MfaEnrollData | null>(null)
+  const [mfaCode, setMfaCode] = useState("")
+  const [mfaError, setMfaError] = useState("")
 
   useEffect(() => {
     getSafeSupabaseSession()
@@ -115,11 +130,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           setAuthState("ready")
           return
         }
+
         setAdminEmail(session.user.email ?? null)
+
+        // For Supabase sessions, enforce MFA if admin has a TOTP factor enrolled.
+        const supabase = getSupabaseClient()
+        const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+        if (aalData?.nextLevel === "aal2" && aalData.currentLevel !== "aal2") {
+          router.replace("/auth/mfa?next=/admin")
+          return
+        }
+
+        // Track whether MFA is already set up (to show correct sidebar button state).
+        const { data: factorsData } = await supabase.auth.mfa.listFactors()
+        setMfaHasFactor((factorsData?.totp?.length ?? 0) > 0)
 
         // Verify admin role by probing the stats endpoint
         const res = await authenticatedFetch("/api/admin/stats")
         if (res.status === 403) {
+          const body = (await res.json().catch(() => ({}))) as { mfa_required?: boolean }
+          if (body.mfa_required) {
+            router.replace("/auth/mfa?next=/admin")
+            return
+          }
           setAuthState("not-admin")
         } else {
           setAuthState("ready")
@@ -196,6 +229,51 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     } finally {
       setRegisteringPasskey(false)
     }
+  }
+
+  const handleSetupMfa = async () => {
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase.auth.mfa.enroll({
+      factorType: "totp",
+      friendlyName: "Admin 2FA",
+    })
+    if (error || !data) {
+      window.alert(error?.message ?? "Failed to start 2FA setup.")
+      return
+    }
+    setMfaEnrollData({ factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret })
+    setMfaCode("")
+    setMfaError("")
+    setMfaSetupStep("qr")
+  }
+
+  const handleVerifyMfaEnrollment = async () => {
+    if (!mfaEnrollData || mfaCode.length !== 6) return
+    setMfaSetupStep("verifying")
+
+    const supabase = getSupabaseClient()
+    const { error } = await supabase.auth.mfa.challengeAndVerify({
+      factorId: mfaEnrollData.factorId,
+      code: mfaCode,
+    })
+
+    if (error) {
+      setMfaError("Invalid code. Please try again.")
+      setMfaSetupStep("qr")
+      return
+    }
+
+    setMfaHasFactor(true)
+    setMfaSetupStep("idle")
+    setMfaEnrollData(null)
+    setMfaCode("")
+  }
+
+  const cancelMfaSetup = () => {
+    setMfaSetupStep("idle")
+    setMfaEnrollData(null)
+    setMfaCode("")
+    setMfaError("")
   }
 
   const readApiError = async (response: Response, fallback: string) => {
@@ -324,6 +402,61 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {adminEmail && (
             <p className="mb-2 truncate px-3 text-xs text-sidebar-foreground/55">{adminEmail}</p>
           )}
+
+          {/* MFA setup — inline enrollment form when active */}
+          {mfaSetupStep !== "idle" && mfaEnrollData ? (
+            <div className="mb-2 rounded-md border border-sidebar-border bg-sidebar-accent/30 p-3">
+              <p className="mb-2 text-xs font-semibold text-sidebar-foreground">Set up 2FA</p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={mfaEnrollData.qrCode} alt="Scan with your authenticator app" className="mb-1 w-full rounded" />
+              <p className="mb-2 break-all text-[10px] text-sidebar-foreground/60">
+                {mfaEnrollData.secret}
+              </p>
+              <Input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                placeholder="000000"
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                className="mb-2 h-8 text-center text-base tracking-[0.4em]"
+                autoFocus
+              />
+              {mfaError && <p className="mb-2 text-xs text-destructive">{mfaError}</p>}
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  className="flex-1"
+                  disabled={mfaCode.length !== 6 || mfaSetupStep === "verifying"}
+                  onClick={() => void handleVerifyMfaEnrollment()}
+                >
+                  {mfaSetupStep === "verifying" ? (
+                    <Loader2 className="size-3 animate-spin" />
+                  ) : (
+                    <Check className="size-3" />
+                  )}
+                  Confirm
+                </Button>
+                <Button size="sm" variant="ghost" onClick={cancelMfaSetup}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => void handleSetupMfa()}
+              className="mb-1 flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            >
+              {mfaHasFactor ? (
+                <ShieldCheck className="size-4 text-green-500" />
+              ) : (
+                <ShieldPlus className="size-4" />
+              )}
+              {mfaHasFactor ? "2FA Enabled" : "Set up 2FA"}
+            </button>
+          )}
+
           <button
             onClick={() => void handleRegisterPasskey()}
             disabled={registeringPasskey}
@@ -333,7 +466,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {registeringPasskey ? "Adding Passkey..." : "Add Passkey"}
           </button>
           <button
-            onClick={handleLogout}
+            onClick={() => void handleLogout()}
             className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           >
             <LogOut className="size-4" />

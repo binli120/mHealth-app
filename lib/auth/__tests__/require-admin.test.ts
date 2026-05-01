@@ -65,7 +65,7 @@ describe("requireAdmin — auth guard", () => {
 
 describe("requireAdmin — admin user", () => {
   beforeEach(() => {
-    mockAuth.mockResolvedValue({ ok: true, userId: USER_ID })
+    mockAuth.mockResolvedValue({ ok: true, userId: USER_ID, aal: "aal2", isPasskeySession: false })
   })
 
   it("returns ok: true with the userId when the user has the admin role", async () => {
@@ -96,7 +96,7 @@ describe("requireAdmin — admin user", () => {
 
 describe("requireAdmin — non-admin user", () => {
   beforeEach(() => {
-    mockAuth.mockResolvedValue({ ok: true, userId: USER_ID })
+    mockAuth.mockResolvedValue({ ok: true, userId: USER_ID, aal: "aal2", isPasskeySession: false })
   })
 
   it("returns 403 when is_admin is false", async () => {

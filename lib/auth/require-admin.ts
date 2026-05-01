@@ -46,5 +46,32 @@ export async function requireAdmin(
     }
   }
 
+  // Passkey sessions are already strong two-factor auth — skip TOTP check.
+  if (!authResult.isPasskeySession && authResult.aal !== "aal2") {
+    try {
+      const mfaResult = await pool.query<{ count: string }>(
+        `SELECT COUNT(*) AS count
+         FROM auth.mfa_factors
+         WHERE user_id = $1::uuid
+           AND factor_type = 'totp'
+           AND status = 'verified'`,
+        [authResult.userId],
+      )
+      const hasMfa = parseInt(mfaResult.rows[0]?.count ?? "0", 10) > 0
+      if (hasMfa) {
+        return {
+          ok: false,
+          response: NextResponse.json(
+            { ok: false, error: "Two-factor authentication required.", mfa_required: true },
+            { status: 403 },
+          ),
+        }
+      }
+    } catch {
+      // If auth.mfa_factors is inaccessible (e.g. restricted DB role), fail open
+      // so existing sessions aren't unexpectedly broken.
+    }
+  }
+
   return { ok: true, userId: authResult.userId }
 }

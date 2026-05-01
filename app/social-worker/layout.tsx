@@ -5,12 +5,12 @@
  * @email blee@healthcompass.cloud
  */
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { getSafeSupabaseSession, getSupabaseClient } from "@/lib/supabase/client"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
-import { SWSessionProvider }  from "@/components/collaborative-sessions/FloatingSessionBar"
+import { SWSessionProvider } from "@/components/collaborative-sessions/FloatingSessionBar"
 import { IdleTimeoutGuard } from "@/components/shared/IdleTimeoutGuard"
 import {
   LayoutDashboard,
@@ -21,13 +21,15 @@ import {
   X,
   Clock,
   Video,
+  MessageSquare,
 } from "lucide-react"
 import { SwChatDialog } from "@/components/chat/sw-chat-dialog"
 
 const NAV_LINKS = [
-  { href: "/social-worker/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/social-worker/patients",  label: "My Patients", icon: Users },
-  { href: "/social-worker/sessions",  label: "Sessions", icon: Video },
+  { href: "/social-worker/dashboard", label: "Dashboard",          icon: LayoutDashboard },
+  { href: "/social-worker/patients",  label: "My Patients",        icon: Users },
+  { href: "/social-worker/messages",  label: "Messages",           icon: MessageSquare },
+  { href: "/social-worker/sessions",  label: "Sessions",           icon: Video },
 ]
 
 export default function SocialWorkerLayout({ children }: { children: React.ReactNode }) {
@@ -36,7 +38,8 @@ export default function SocialWorkerLayout({ children }: { children: React.React
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [swStatus, setSwStatus] = useState<"loading" | "approved" | "pending" | "rejected" | "none">("loading")
   const [userEmail, setUserEmail] = useState<string | null>(null)
-  // messageBadge removed — SwChatDialog manages its own badge polling
+  const [pendingInvitations, setPendingInvitations] = useState(0)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     getSafeSupabaseSession()
@@ -47,11 +50,37 @@ export default function SocialWorkerLayout({ children }: { children: React.React
         }
         setUserEmail(session.user.email ?? null)
 
-        // Check SW profile status
+        // Block admin accounts — they have their own portal.
+        const meRes = await authenticatedFetch("/api/auth/me", { cache: "no-store" })
+        if (meRes.ok) {
+          const meData = (await meRes.json()) as { roles?: string[] }
+          if (meData.roles?.includes("admin")) {
+            router.replace("/admin")
+            return
+          }
+        }
+
+        // Check SW profile status.
         const res = await authenticatedFetch("/api/social-worker/profile")
         if (res.ok) {
-          const json = await res.json()
-          setSwStatus(json.profile?.status ?? "none")
+          const json = (await res.json()) as { profile?: { status: string } }
+          const status = json.profile?.status ?? "none"
+          setSwStatus(status as typeof swStatus)
+
+          // Start polling pending invitations once approved.
+          if (status === "approved") {
+            const fetchPending = async () => {
+              try {
+                const r = await authenticatedFetch("/api/social-worker/engagement-requests")
+                if (r.ok) {
+                  const d = (await r.json()) as { requests?: unknown[] }
+                  setPendingInvitations(d.requests?.length ?? 0)
+                }
+              } catch { /* non-critical */ }
+            }
+            await fetchPending()
+            pollRef.current = setInterval(() => void fetchPending(), 30_000)
+          }
         } else {
           setSwStatus("none")
         }
@@ -59,11 +88,14 @@ export default function SocialWorkerLayout({ children }: { children: React.React
       .catch(() => {
         router.replace("/auth/login?next=/social-worker/dashboard")
       })
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+    }
   }, [router])
 
-  // Badge polling removed — SwChatDialog handles its own unread/request counts
-
   const handleLogout = async () => {
+    if (pollRef.current) clearInterval(pollRef.current)
     await getSupabaseClient().auth.signOut()
     router.replace("/auth/login")
   }
@@ -85,7 +117,7 @@ export default function SocialWorkerLayout({ children }: { children: React.React
           <p className="text-sm text-gray-500 mb-6">
             Your social worker account is under review. You&apos;ll be notified by email once an admin approves your account.
           </p>
-          <button onClick={handleLogout} className="text-sm text-gray-400 hover:text-gray-600">
+          <button onClick={() => void handleLogout()} className="text-sm text-gray-400 hover:text-gray-600">
             Sign out
           </button>
         </div>
@@ -102,7 +134,7 @@ export default function SocialWorkerLayout({ children }: { children: React.React
           <p className="text-sm text-gray-500 mb-6">
             Your social worker account application was not approved. Please contact support for more information.
           </p>
-          <button onClick={handleLogout} className="text-sm text-gray-400 hover:text-gray-600">
+          <button onClick={() => void handleLogout()} className="text-sm text-gray-400 hover:text-gray-600">
             Sign out
           </button>
         </div>
@@ -116,6 +148,9 @@ export default function SocialWorkerLayout({ children }: { children: React.React
   }
 
   const isActive = (href: string) => pathname.startsWith(href)
+
+  // Hide the floating chat dialog on the dedicated messages page to avoid duplication.
+  const showFloatingChat = !pathname.startsWith("/social-worker/messages")
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -147,29 +182,40 @@ export default function SocialWorkerLayout({ children }: { children: React.React
         </div>
 
         <nav className="px-3 py-4 flex-1">
-          {NAV_LINKS.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => setSidebarOpen(false)}
-              className={`
-                flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm font-medium transition-colors
-                ${isActive(href)
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-300 hover:bg-slate-700 hover:text-white"
-                }
-              `}
-            >
-              <Icon className="w-4 h-4 flex-shrink-0" />
-              {label}
-            </Link>
-          ))}
+          {NAV_LINKS.map(({ href, label, icon: Icon }) => {
+            const badge = href === "/social-worker/messages" && pendingInvitations > 0
+              ? pendingInvitations
+              : null
+
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setSidebarOpen(false)}
+                className={`
+                  flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm font-medium transition-colors
+                  ${isActive(href)
+                    ? "bg-blue-600 text-white"
+                    : "text-slate-300 hover:bg-slate-700 hover:text-white"
+                  }
+                `}
+              >
+                <Icon className="w-4 h-4 flex-shrink-0" />
+                <span className="flex-1">{label}</span>
+                {badge !== null && (
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                    {badge > 99 ? "99+" : badge}
+                  </span>
+                )}
+              </Link>
+            )
+          })}
         </nav>
 
         <div className="px-3 pb-4 border-t border-slate-700 pt-4">
           {userEmail && <p className="text-xs text-slate-400 px-3 mb-2 truncate">{userEmail}</p>}
           <button
-            onClick={handleLogout}
+            onClick={() => void handleLogout()}
             className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
           >
             <LogOut className="w-4 h-4" />
@@ -193,8 +239,7 @@ export default function SocialWorkerLayout({ children }: { children: React.React
         </main>
       </div>
 
-      {/* Floating chat dialog — replaces the /messages full-page route */}
-      {swStatus === "approved" && <SwChatDialog />}
+      {showFloatingChat && <SwChatDialog />}
     </div>
   )
 }

@@ -232,6 +232,15 @@ function LoginPageContent() {
         return
       }
 
+      // If the user has a TOTP factor enrolled, Supabase requires aal2 — redirect to MFA step.
+      const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+      if (aalData?.nextLevel === "aal2" && aalData.currentLevel !== "aal2") {
+        const resolvedPath = await resolvePostAuthRedirect(nextPath, signIn.data.session?.access_token ?? "")
+        router.push(`/auth/mfa?next=${encodeURIComponent(resolvedPath)}`)
+        router.refresh()
+        return
+      }
+
       router.push(await resolvePostAuthRedirect(nextPath, signIn.data.session?.access_token ?? ""))
       router.refresh()
     } catch (error) {

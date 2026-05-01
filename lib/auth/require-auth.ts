@@ -257,6 +257,10 @@ export async function requireAuthenticatedUser(
   | {
       ok: true
       userId: string
+      /** Supabase Authentication Assurance Level: 'aal1' (password only) or 'aal2' (MFA verified). */
+      aal: string
+      /** True when authenticated via the admin passkey cookie rather than a Supabase JWT. */
+      isPasskeySession: boolean
     }
   | {
       ok: false
@@ -270,6 +274,8 @@ export async function requireAuthenticatedUser(
       return {
         ok: true,
         userId: passkeyUserId,
+        aal: "aal2",
+        isPasskeySession: true,
       }
     }
 
@@ -287,6 +293,7 @@ export async function requireAuthenticatedUser(
 
   const localFallbackUserId = extractLocalFallbackUserId(request, token)
   const tokenPayload = parseJwtParts(token)?.payload ?? null
+  const jwtAal = typeof tokenPayload?.aal === "string" ? tokenPayload.aal : "aal1"
 
   try {
     const { data, error } = await getSupabaseServerClient().auth.getUser(token)
@@ -300,6 +307,8 @@ export async function requireAuthenticatedUser(
       return {
         ok: true,
         userId: data.user.id,
+        aal: jwtAal,
+        isPasskeySession: false,
       }
     }
 
@@ -312,6 +321,8 @@ export async function requireAuthenticatedUser(
       return {
         ok: true,
         userId: localFallbackUserId,
+        aal: jwtAal,
+        isPasskeySession: false,
       }
     }
 
@@ -335,6 +346,8 @@ export async function requireAuthenticatedUser(
       return {
         ok: true,
         userId: localFallbackUserId,
+        aal: jwtAal,
+        isPasskeySession: false,
       }
     }
 
