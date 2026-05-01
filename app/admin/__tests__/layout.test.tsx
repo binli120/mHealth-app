@@ -98,6 +98,7 @@ describe("AdminLayout", () => {
 
   it("redirects unauthenticated users to login", async () => {
     mockGetSafeSupabaseSession.mockResolvedValue({ session: null, error: null })
+    mockAuthenticatedFetch.mockResolvedValue({ ok: false, status: 401 })
 
     render(
       <AdminLayout>
@@ -108,6 +109,6 @@ describe("AdminLayout", () => {
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith("/auth/login?next=/admin")
     })
-    expect(mockAuthenticatedFetch).not.toHaveBeenCalled()
+    expect(mockAuthenticatedFetch).toHaveBeenCalledWith("/api/auth/me", { cache: "no-store" })
   })
 })

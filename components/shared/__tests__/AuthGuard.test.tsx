@@ -3,7 +3,7 @@
  * @email blee@healthcompass.cloud
  */
 
-import { render, screen, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { AuthGuard } from "@/components/shared/AuthGuard"
 
@@ -70,5 +70,29 @@ describe("AuthGuard", () => {
     })
     expect(screen.queryByText("Protected content")).not.toBeInTheDocument()
     expect(screen.queryByTestId("idle-timeout-guard")).not.toBeInTheDocument()
+  })
+
+  it("revalidates restored protected pages and redirects when the session is gone", async () => {
+    mockGetSafeSupabaseSession
+      .mockResolvedValue({ session: null, error: null })
+      .mockResolvedValueOnce({ session: { user: { id: "user-1" } }, error: null })
+      .mockResolvedValueOnce({ session: { user: { id: "user-1" } }, error: null })
+
+    render(
+      <AuthGuard next="/customer/dashboard">
+        <div>Protected content</div>
+      </AuthGuard>,
+    )
+
+    await expect(screen.findByText("Protected content")).resolves.toBeInTheDocument()
+
+    const pageShowEvent = new Event("pageshow") as PageTransitionEvent
+    Object.defineProperty(pageShowEvent, "persisted", { value: true })
+    fireEvent(window, pageShowEvent)
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith("/auth/login?next=%2Fcustomer%2Fdashboard")
+    })
+    expect(screen.queryByText("Protected content")).not.toBeInTheDocument()
   })
 })

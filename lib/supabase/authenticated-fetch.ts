@@ -15,12 +15,10 @@ export async function authenticatedFetch(
   }
 
   const accessToken = session?.access_token
-  if (!accessToken) {
-    throw new Error("You must be signed in to continue.")
-  }
-
   const headers = new Headers(init.headers)
-  headers.set("Authorization", `Bearer ${accessToken}`)
+  if (accessToken) {
+    headers.set("Authorization", `Bearer ${accessToken}`)
+  }
 
   // Set JSON content type automatically when body is a plain string
   if (typeof init.body === "string" && !headers.has("Content-Type")) {
@@ -30,5 +28,6 @@ export async function authenticatedFetch(
   return fetch(input, {
     ...init,
     headers,
+    credentials: init.credentials ?? "same-origin",
   })
 }

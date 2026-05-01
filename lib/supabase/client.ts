@@ -51,14 +51,49 @@ function isInvalidRefreshTokenError(message: string): boolean {
   )
 }
 
+function clearSupabaseAuthStorage() {
+  if (typeof window === "undefined") return
+
+  const clearStorage = (storage: Storage) => {
+    for (let index = storage.length - 1; index >= 0; index -= 1) {
+      const key = storage.key(index)
+      if (!key) continue
+      if (key === "supabase.auth.token" || /^sb-.+-auth-token$/.test(key)) {
+        storage.removeItem(key)
+      }
+    }
+  }
+
+  try {
+    clearStorage(window.localStorage)
+    clearStorage(window.sessionStorage)
+  } catch {
+    // Best-effort cache cleanup; storage may be unavailable in private contexts.
+  }
+}
+
+export async function signOutAndClearLocalAuth(): Promise<void> {
+  const supabase = getSupabaseClient()
+
+  try {
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      await supabase.auth.signOut({ scope: "local" }).catch(() => undefined)
+    }
+  } catch {
+    await supabase.auth.signOut({ scope: "local" }).catch(() => undefined)
+  } finally {
+    clearSupabaseAuthStorage()
+  }
+}
+
 async function clearLocalSessionOnRefreshTokenError(errorMessage: string): Promise<boolean> {
   if (!isInvalidRefreshTokenError(errorMessage)) {
     return false
   }
 
   try {
-    const supabase = getSupabaseClient()
-    await supabase.auth.signOut({ scope: "local" })
+    await signOutAndClearLocalAuth()
   } catch {
     // Best-effort local cleanup; ignore follow-up errors.
   }

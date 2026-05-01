@@ -5,7 +5,7 @@
  * @email blee@healthcompass.cloud
  */
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { getSafeSupabaseSession } from "@/lib/supabase/client"
 import { IdleTimeoutGuard } from "@/components/shared/IdleTimeoutGuard"
@@ -25,20 +25,45 @@ interface AuthGuardProps {
 export function AuthGuard({ children, next = "/customer/dashboard", idleTimeout = true }: AuthGuardProps) {
   const router = useRouter()
   const [ready, setReady] = useState(false)
+  const loginPath = `/auth/login?next=${encodeURIComponent(next)}`
 
-  useEffect(() => {
+  const verifySession = useCallback(() => {
     getSafeSupabaseSession()
       .then(({ session }) => {
         if (!session) {
-          router.replace(`/auth/login?next=${encodeURIComponent(next)}`)
+          setReady(false)
+          router.replace(loginPath)
         } else {
           setReady(true)
         }
       })
       .catch(() => {
-        router.replace(`/auth/login?next=${encodeURIComponent(next)}`)
+        setReady(false)
+        router.replace(loginPath)
       })
-  }, [router, next])
+  }, [loginPath, router])
+
+  useEffect(() => {
+    verifySession()
+
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) verifySession()
+    }
+    const handleFocus = () => verifySession()
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") verifySession()
+    }
+
+    window.addEventListener("pageshow", handlePageShow)
+    window.addEventListener("focus", handleFocus)
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow)
+      window.removeEventListener("focus", handleFocus)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+    }
+  }, [verifySession])
 
   if (!ready) return null
 
