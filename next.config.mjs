@@ -61,6 +61,13 @@ const nextConfig = {
     NEXT_PUBLIC_APP_VERSION: version,
   },
   output: "standalone",
+  experimental: {
+    // Upload routes enforce their own per-category limits (10-25 MB). Keep
+    // Next's proxy body ceiling above the largest app-level limit so validation
+    // can return structured 413 responses instead of truncated multipart parse
+    // failures.
+    proxyClientMaxBodySize: "30mb",
+  },
   // Keep pdf-parse and pdfjs-dist out of the server bundle.
   // Both use DOMMatrix / process.getBuiltinModule at module-eval time which
   // crashes the Turbopack build worker on Node < 22.

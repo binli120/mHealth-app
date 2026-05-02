@@ -269,6 +269,9 @@ export class ApplicationPage {
     await this.page.getByRole("link", { name: /download pdf/i }).click()
     const download = await downloadPromise
     expect(download.suggestedFilename()).toBe("aca-3-0325-filled.pdf")
+    // Wait for the full download to complete so Playwright doesn't abort the
+    // HTTP connection early, which would cause ECONNRESET on the server.
+    await download.path()
   }
 
   async assertIncomeChecklistReady() {

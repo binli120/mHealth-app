@@ -51,7 +51,7 @@ describe("app/api/pdf/extract/route", () => {
     })
   })
 
-  it("returns 400 when uploaded file is not a PDF", async () => {
+  it("returns 415 when uploaded file is not a PDF", async () => {
     const { POST } = await import("@/app/api/pdf/extract/route")
     const request = createRequestWithFile({
       name: "note.txt",
@@ -62,10 +62,9 @@ describe("app/api/pdf/extract/route", () => {
 
     const response = await POST(request)
 
-    expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toEqual({
-      error: "Uploaded file must be a PDF.",
-    })
+    expect(response.status).toBe(415)
+    const json = await response.json()
+    expect(json.ok).toBe(false)
   })
 
   it("returns 413 when uploaded file exceeds size limit", async () => {
@@ -80,9 +79,9 @@ describe("app/api/pdf/extract/route", () => {
     const response = await POST(request)
 
     expect(response.status).toBe(413)
-    await expect(response.json()).resolves.toEqual({
-      error: "Uploaded file exceeds the 10 MB limit.",
-    })
+    const json = await response.json()
+    expect(json.ok).toBe(false)
+    expect(json.error).toMatch(/exceeds/)
     expect(extractPdfJsonMock).not.toHaveBeenCalled()
   })
 
@@ -90,11 +89,13 @@ describe("app/api/pdf/extract/route", () => {
     extractPdfJsonMock.mockResolvedValue({ pageCount: 1, formFields: [] })
 
     const { POST } = await import("@/app/api/pdf/extract/route")
+    // %PDF magic bytes are required by validateUpload
+    const pdfBytes = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
     const request = createRequestWithFile({
       name: "input.pdf",
-      size: 3,
+      size: pdfBytes.byteLength,
       type: "application/pdf",
-      arrayBuffer: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3]).buffer),
+      arrayBuffer: vi.fn().mockResolvedValue(pdfBytes.buffer),
     } as unknown as FormDataEntryValue)
 
     const response = await POST(request)

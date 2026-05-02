@@ -22,21 +22,17 @@ import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 import { extractPdfJson } from "@/lib/pdf/extract-pdf-json"
 import { logServerError, logServerInfo } from "@/lib/server/logger"
 import {
-  ACCEPTED_IMAGE_MIME_TYPES,
-  ACCEPTED_DOCUMENT_MIME_TYPES,
   DEFAULT_OLLAMA_VISION_MODEL,
-  MAX_DOCUMENT_UPLOAD_BYTES,
   ERROR_DOCUMENT_EXTRACT_FAILED,
-  ERROR_DOCUMENT_INVALID_TYPE,
   ERROR_DOCUMENT_LOG_PREFIX,
   ERROR_DOCUMENT_MISSING,
-  ERROR_DOCUMENT_TOO_LARGE,
 } from "@/lib/appeals/constants"
 import {
   DEFAULT_OLLAMA_BASE_URL,
   OLLAMA_CHAT_ENDPOINT,
   OLLAMA_TIMEOUT_MS,
 } from "@/app/api/chat/masshealth/constants"
+import { validateUpload } from "@/lib/uploads/validate"
 
 export const runtime = "nodejs"
 
@@ -60,24 +56,6 @@ function getVisionModel(): string {
 
 function isUploadedFile(value: FormDataEntryValue | null): value is File {
   return value !== null && typeof value !== "string"
-}
-
-function isImageMimeType(mimeType: string, fileName: string): boolean {
-  if ((ACCEPTED_IMAGE_MIME_TYPES as readonly string[]).includes(mimeType)) return true
-  if (!mimeType || mimeType === "application/octet-stream") {
-    const lower = fileName.toLowerCase()
-    return lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png") || lower.endsWith(".webp")
-  }
-  return false
-}
-
-function isAcceptedMimeType(mimeType: string, fileName: string): boolean {
-  if ((ACCEPTED_DOCUMENT_MIME_TYPES as readonly string[]).includes(mimeType)) return true
-  const lower = fileName.toLowerCase()
-  if (lower.endsWith(".pdf")) return true
-  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return true
-  if (lower.endsWith(".png") || lower.endsWith(".webp")) return true
-  return false
 }
 
 /**
@@ -153,21 +131,18 @@ export async function POST(request: Request) {
     const formData = await request.formData()
     const uploaded = formData.get("file")
 
-    if (!isUploadedFile(uploaded) || uploaded.size === 0) {
+    if (!isUploadedFile(uploaded)) {
       return NextResponse.json({ ok: false, error: ERROR_DOCUMENT_MISSING }, { status: 400 })
     }
-    if (uploaded.size > MAX_DOCUMENT_UPLOAD_BYTES) {
-      return NextResponse.json({ ok: false, error: ERROR_DOCUMENT_TOO_LARGE }, { status: 413 })
-    }
 
-    const mimeType = uploaded.type || ""
-    if (!isAcceptedMimeType(mimeType, uploaded.name)) {
-      return NextResponse.json({ ok: false, error: ERROR_DOCUMENT_INVALID_TYPE }, { status: 400 })
+    const validation = await validateUpload(uploaded, "vision")
+    if (!validation.ok) {
+      return NextResponse.json({ ok: false, error: validation.error }, { status: validation.status })
     }
 
     logServerInfo(`${AGENT}.request`, {
       userId: authResult.userId,
-      mimeType,
+      mimeType: validation.mimeType,
       fileName: uploaded.name,
       fileSize: uploaded.size,
     })
@@ -175,9 +150,9 @@ export async function POST(request: Request) {
     const bytes = await uploaded.arrayBuffer()
     let extractedText = ""
 
-    if (isImageMimeType(mimeType, uploaded.name)) {
+    if (validation.mimeType !== "application/pdf") {
       const base64 = Buffer.from(bytes).toString("base64")
-      extractedText = await extractTextFromImage(base64, mimeType)
+      extractedText = await extractTextFromImage(base64, validation.mimeType)
     } else {
       try {
         const pdfData = await extractPdfJson({

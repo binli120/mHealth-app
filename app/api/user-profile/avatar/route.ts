@@ -15,15 +15,10 @@ import {
   buildAvatarStoragePath,
   getSignedDocumentUrl,
 } from "@/lib/supabase/storage"
+import { validateUpload } from "@/lib/uploads/validate"
 
 export const runtime = "nodejs"
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const MAX_BYTES = 5 * 1024 * 1024 // 5 MB
-const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"])
 const EXT_MAP: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -54,21 +49,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "No image file provided." }, { status: 400 })
     }
 
-    if (!ALLOWED_MIME.has(file.type)) {
-      return NextResponse.json(
-        { ok: false, error: "Only JPEG, PNG, WebP, and GIF images are allowed." },
-        { status: 400 },
-      )
+    const validation = await validateUpload(file, "avatar")
+    if (!validation.ok) {
+      return NextResponse.json({ ok: false, error: validation.error }, { status: validation.status })
     }
 
-    if (file.size > MAX_BYTES) {
-      return NextResponse.json(
-        { ok: false, error: "Image must be 5 MB or smaller." },
-        { status: 400 },
-      )
-    }
-
-    const ext = EXT_MAP[file.type] ?? "jpg"
+    const ext = EXT_MAP[validation.mimeType] ?? "jpg"
     // Path: {userId}/avatar/avatar.{ext}  (fixed name → upsert replaces previous)
     const storagePath = buildAvatarStoragePath(authResult.userId, ext)
     const fileBuffer = Buffer.from(await file.arrayBuffer())
@@ -78,7 +64,7 @@ export async function POST(request: Request) {
     await uploadToStorage({
       accessToken,
       fileBuffer,
-      mimeType: file.type,
+      mimeType: validation.mimeType,
       storagePath,
       upsert: true,
     })

@@ -29,20 +29,19 @@ import { deleteFromStorage, uploadDocumentToStorage } from "@/lib/supabase/stora
 
 const USER_ID = "11111111-1111-4111-8111-111111111111"
 const APPLICATION_ID = "22222222-2222-4222-8222-222222222222"
-const FILE_BYTES = new TextEncoder().encode("pdf-data")
+
+// %PDF magic bytes followed by padding — satisfies the magic-bytes check in validateUpload.
+const PDF_MAGIC = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 
 class TestFile extends File {
   async arrayBuffer() {
-    return FILE_BYTES.buffer.slice(
-      FILE_BYTES.byteOffset,
-      FILE_BYTES.byteOffset + FILE_BYTES.byteLength,
-    )
+    return PDF_MAGIC.buffer.slice(PDF_MAGIC.byteOffset, PDF_MAGIC.byteOffset + PDF_MAGIC.byteLength)
   }
 }
 
 function makeRequest() {
   const formData = new FormData()
-  const file = new TestFile(["pdf-data"], "test.pdf", { type: "application/pdf" })
+  const file = new TestFile([PDF_MAGIC], "test.pdf", { type: "application/pdf" })
   formData.set("file", file)
   const request = new Request(`http://localhost/api/applications/${APPLICATION_ID}/documents`, {
     method: "POST",

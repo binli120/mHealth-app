@@ -39,24 +39,27 @@ const MAX_BYTES = 10 * 1024 * 1024 // matches MAX_DOCUMENT_UPLOAD_BYTES
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// Magic byte headers for validateUpload's magic-bytes check
+const JPEG_MAGIC  = new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+const PNG_MAGIC   = new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0, 0, 0, 0, 0])
+const PDF_MAGIC   = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+
 /**
- * Build a minimal File-like object with a working arrayBuffer().
- *
- * jsdom does NOT implement Blob/File.arrayBuffer(), so we use a plain object
- * with the four properties the vision route actually reads:
- *   .size, .type, .name, .arrayBuffer()
+ * Build a minimal File-like object with a working arrayBuffer() that includes
+ * correct magic bytes for the given MIME type so validateUpload passes.
  */
 function makeFileLike(options: {
   name: string
   type: string
   size?: number
+  magic?: Uint8Array
 }): File {
-  const bytes = new TextEncoder().encode("a".repeat(Math.min(options.size ?? 100, 200)))
+  const magic = options.magic ?? new Uint8Array(16)
   return {
     name: options.name,
     type: options.type,
-    size: options.size ?? bytes.byteLength,
-    arrayBuffer: () => Promise.resolve(bytes.buffer as ArrayBuffer),
+    size: options.size ?? magic.byteLength,
+    arrayBuffer: () => Promise.resolve(magic.buffer as ArrayBuffer),
   } as unknown as File
 }
 
@@ -84,16 +87,17 @@ function makeEmptyRequest(): Request {
   } as unknown as Request
 }
 
-const PDF_FILE = makeFileLike({ name: "denial-letter.pdf", type: "application/pdf" })
-const JPEG_FILE = makeFileLike({ name: "denial.jpeg", type: "image/jpeg" })
-const PNG_FILE = makeFileLike({ name: "denial.png", type: "image/png" })
+const PDF_FILE   = makeFileLike({ name: "denial-letter.pdf", type: "application/pdf",  magic: PDF_MAGIC })
+const JPEG_FILE  = makeFileLike({ name: "denial.jpeg",        type: "image/jpeg",        magic: JPEG_MAGIC })
+const PNG_FILE   = makeFileLike({ name: "denial.png",         type: "image/png",         magic: PNG_MAGIC })
+// EXCEL is not in the "vision" allowlist — no magic bytes needed, rejected before that check
 const EXCEL_FILE = makeFileLike({
   name: "spreadsheet.xlsx",
   type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 })
 
 // Oversized file (11 MB > 10 MB limit)
-const BIG_PDF = makeFileLike({ name: "big.pdf", type: "application/pdf", size: MAX_BYTES + 1 })
+const BIG_PDF = makeFileLike({ name: "big.pdf", type: "application/pdf", size: MAX_BYTES + 1, magic: PDF_MAGIC })
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
 
@@ -143,10 +147,10 @@ describe("POST /api/agents/vision — file validation", () => {
     expect(json.ok).toBe(false)
   })
 
-  it("returns 400 for an unsupported MIME type", async () => {
+  it("returns 415 for an unsupported MIME type", async () => {
     const response = await POST(makeFormRequest(EXCEL_FILE))
     const json = await response.json()
-    expect(response.status).toBe(400)
+    expect(response.status).toBe(415)
     expect(json.ok).toBe(false)
   })
 })

@@ -52,6 +52,19 @@ if (typeof globalThis.DOMMatrix === "undefined") {
   globalThis.DOMMatrix = DOMMatrixStub
 }
 
+// jsdom's Blob implementation does not include arrayBuffer() — add the method
+// so tests that exercise magic-bytes validation (which reads file bytes) work.
+if (typeof Blob !== "undefined" && typeof Blob.prototype.arrayBuffer !== "function") {
+  Blob.prototype.arrayBuffer = function(this: Blob): Promise<ArrayBuffer> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as ArrayBuffer)
+      reader.onerror = () => reject(reader.error)
+      reader.readAsArrayBuffer(this)
+    })
+  }
+}
+
 afterEach(() => {
   cleanup()
   // Clear Web Storage between tests so component-written localStorage/sessionStorage

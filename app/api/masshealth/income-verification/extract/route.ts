@@ -28,19 +28,12 @@ import {
   OLLAMA_TIMEOUT_MS,
 } from "@/app/api/chat/masshealth/constants"
 import type { IncomeExtractionResult, IncomeDocType } from "@/lib/masshealth/types"
+import { validateUpload } from "@/lib/uploads/validate"
 
 export const runtime = "nodejs"
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-
-const ALLOWED_MIME_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/heic",
-  "application/pdf",
-])
 
 const MODEL_VERSION = process.env.OLLAMA_VISION_MODEL || "llama3.2-vision"
 
@@ -203,17 +196,22 @@ export async function POST(request: Request) {
       }
     }
 
-    if (!(fileEntry instanceof File) || !ALLOWED_MIME_TYPES.has(fileEntry.type)) {
+    if (!(fileEntry instanceof File)) {
       return NextResponse.json(
         { ok: false, error: "A valid file (JPEG, PNG, WebP, HEIC, PDF) is required." },
         { status: 400 },
       )
     }
 
+    const validation = await validateUpload(fileEntry, "document")
+    if (!validation.ok) {
+      return NextResponse.json({ ok: false, error: validation.error }, { status: validation.status })
+    }
+
     const prompt = buildExtractionPrompt(docTypeClaimed, memberName)
     let extraction: IncomeExtractionResult
 
-    if (fileEntry.type === "application/pdf") {
+    if (validation.mimeType === "application/pdf") {
       // PDF path: extract text fields, then build minimal extraction result
       const arrayBuffer = await fileEntry.arrayBuffer()
       const buffer = Buffer.from(arrayBuffer)
@@ -246,7 +244,7 @@ export async function POST(request: Request) {
       // Image path: base64 encode and use vision model
       const arrayBuffer = await fileEntry.arrayBuffer()
       const imageBase64 = Buffer.from(arrayBuffer).toString("base64")
-      const rawOutput = await extractViaVision(imageBase64, fileEntry.type, prompt)
+      const rawOutput = await extractViaVision(imageBase64, validation.mimeType, prompt)
       extraction = parseExtractionJson(rawOutput)
     }
 

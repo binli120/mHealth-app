@@ -7,25 +7,12 @@ import { NextResponse } from "next/server"
 import { extractPdfJson } from "@/lib/pdf/extract-pdf-json"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 import { logServerError } from "@/lib/server/logger"
+import { validateUpload } from "@/lib/uploads/validate"
 
 export const runtime = "nodejs"
 
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024
-
 function isUploadedFile(value: FormDataEntryValue | null): value is File {
   return value !== null && typeof value !== "string"
-}
-
-function isPdfFile(file: File): boolean {
-  if (file.type === "application/pdf") {
-    return true
-  }
-
-  if ((!file.type || file.type === "application/octet-stream") && file.name?.toLowerCase().endsWith(".pdf")) {
-    return true
-  }
-
-  return false
 }
 
 export async function POST(request: Request) {
@@ -42,19 +29,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing file upload. Use multipart/form-data with field 'file'." }, { status: 400 })
     }
 
-    if (uploaded.size === 0) {
-      return NextResponse.json({ error: "Uploaded file is empty." }, { status: 400 })
-    }
-
-    if (uploaded.size > MAX_UPLOAD_BYTES) {
-      return NextResponse.json(
-        { error: "Uploaded file exceeds the 10 MB limit." },
-        { status: 413 },
-      )
-    }
-
-    if (!isPdfFile(uploaded)) {
-      return NextResponse.json({ error: "Uploaded file must be a PDF." }, { status: 400 })
+    const validation = await validateUpload(uploaded, "pdf")
+    if (!validation.ok) {
+      return NextResponse.json({ ok: false, error: validation.error }, { status: validation.status })
     }
 
     const bytes = new Uint8Array(await uploaded.arrayBuffer())

@@ -20,6 +20,7 @@ import {
   buildStoragePath,
 } from "@/lib/supabase/storage"
 import { logServerError } from "@/lib/server/logger"
+import { validateUpload } from "@/lib/uploads/validate"
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -27,16 +28,6 @@ import { logServerError } from "@/lib/server/logger"
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-
-const ALLOWED_MIME_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/heic",
-  "application/pdf",
-])
-
-const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10 MB
 
 interface RouteContext {
   params: Promise<{ applicationId: string }>
@@ -119,13 +110,6 @@ export async function POST(request: Request, context: RouteContext) {
       )
     }
 
-    if (!(await userCanAccessApplication(authResult.userId, applicationId))) {
-      return NextResponse.json(
-        { ok: false, error: "Application not found or not accessible." },
-        { status: 403 },
-      )
-    }
-
     // Parse multipart body
     let formData: FormData
     try {
@@ -145,22 +129,15 @@ export async function POST(request: Request, context: RouteContext) {
       )
     }
 
-    // Validate MIME type
-    if (!ALLOWED_MIME_TYPES.has(fileEntry.type)) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: `Unsupported file type "${fileEntry.type}". Allowed: JPEG, PNG, WebP, HEIC, PDF.`,
-        },
-        { status: 422 },
-      )
+    const validation = await validateUpload(fileEntry, "document")
+    if (!validation.ok) {
+      return NextResponse.json({ ok: false, error: validation.error }, { status: validation.status })
     }
 
-    // Validate file size
-    if (fileEntry.size > MAX_FILE_BYTES) {
+    if (!(await userCanAccessApplication(authResult.userId, applicationId))) {
       return NextResponse.json(
-        { ok: false, error: `File exceeds the 10 MB limit (${fileEntry.size} bytes).` },
-        { status: 422 },
+        { ok: false, error: "Application not found or not accessible." },
+        { status: 403 },
       )
     }
 
@@ -187,7 +164,7 @@ export async function POST(request: Request, context: RouteContext) {
     await uploadDocumentToStorage({
       accessToken,
       fileBuffer,
-      mimeType: fileEntry.type,
+      mimeType: validation.mimeType,
       storagePath,
     })
 
@@ -201,7 +178,7 @@ export async function POST(request: Request, context: RouteContext) {
       fileName: fileEntry.name,
       filePath: storagePath,
       fileSizeBytes: fileEntry.size,
-      mimeType: fileEntry.type,
+      mimeType: validation.mimeType,
     })
 
     if (!document) {

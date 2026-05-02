@@ -23,19 +23,10 @@ import {
 } from "@/lib/db/income-verification"
 import { uploadDocumentToStorage, buildStoragePath } from "@/lib/supabase/storage"
 import type { IncomeDocumentUploadResponse } from "@/lib/masshealth/types"
+import { validateUpload } from "@/lib/uploads/validate"
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-
-const ALLOWED_MIME_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/heic",
-  "application/pdf",
-])
-
-const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10 MB
 
 function extractBearerToken(request: Request): string | undefined {
   const value = request.headers.get("authorization") ?? ""
@@ -87,20 +78,10 @@ export async function POST(request: Request) {
         { status: 400 },
       )
     }
-    if (!ALLOWED_MIME_TYPES.has(fileEntry.type)) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: `Unsupported file type "${fileEntry.type}". Allowed: JPEG, PNG, WebP, HEIC, PDF.`,
-        },
-        { status: 422 },
-      )
-    }
-    if (fileEntry.size > MAX_FILE_BYTES) {
-      return NextResponse.json(
-        { ok: false, error: "File exceeds the 10 MB limit." },
-        { status: 422 },
-      )
+
+    const validation = await validateUpload(fileEntry, "document")
+    if (!validation.ok) {
+      return NextResponse.json({ ok: false, error: validation.error }, { status: validation.status })
     }
 
     const canAccess = await userCanAccessApplication(authResult.userId, applicationId)
@@ -122,14 +103,14 @@ export async function POST(request: Request) {
     const fileBuffer  = Buffer.from(await fileEntry.arrayBuffer())
     const accessToken = extractBearerToken(request)
 
-    await uploadDocumentToStorage({ accessToken, fileBuffer, mimeType: fileEntry.type, storagePath })
+    await uploadDocumentToStorage({ accessToken, fileBuffer, mimeType: validation.mimeType, storagePath })
 
     const { jobId } = await insertIncomeDocument({
       applicationId,
       memberId,
       docTypeClaimed: docTypeClaimed as import("@/lib/masshealth/types").IncomeDocType,
       storageKey:     storagePath,
-      mimeType:       fileEntry.type,
+      mimeType:       validation.mimeType,
       fileName:       fileEntry.name,
       fileSizeBytes:  fileEntry.size,
       uploadedBy:     authResult.userId,

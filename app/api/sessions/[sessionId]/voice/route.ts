@@ -13,20 +13,14 @@ import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 import { createMessage, getSession } from "@/lib/collaborative-sessions/db"
 import { logServerError } from "@/lib/server/logger"
 import { getSignedDocumentUrl, uploadToStorage } from "@/lib/supabase/storage"
+import { validateUpload } from "@/lib/uploads/validate"
 
 export const runtime = "nodejs"
 
-// Allowed audio MIME types
-const ALLOWED_MIME: Record<string, string> = {
-  "audio/webm":  "webm",
-  "audio/ogg":   "ogg",
-  "audio/mpeg":  "mp3",
-  "audio/mp4":   "mp4",
-  "audio/wav":   "wav",
+const EXT_MAP: Record<string, string> = {
+  "audio/webm": "webm", "audio/ogg": "ogg", "audio/mpeg": "mp3",
+  "audio/mp4": "mp4", "audio/wav": "wav",
 }
-
-// Max 10 MB voice clip
-const MAX_BYTES = 10 * 1024 * 1024
 
 type Params = { params: Promise<{ sessionId: string }> }
 
@@ -63,21 +57,14 @@ export async function POST(request: Request, { params }: Params) {
       )
     }
 
-    const mimeType    = audioFile.type || "audio/webm"
-    const ext         = ALLOWED_MIME[mimeType]
-    if (!ext) {
-      return NextResponse.json(
-        { ok: false, error: `Unsupported audio type '${mimeType}'.` },
-        { status: 415 },
-      )
+    const validation = await validateUpload(audioFile, "session-voice")
+    if (!validation.ok) {
+      return NextResponse.json({ ok: false, error: validation.error }, { status: validation.status })
     }
 
+    const ext = EXT_MAP[validation.mimeType] ?? "webm"
     const durationSec = Number(formData?.get("durationSec") ?? 0) || null
-
     const arrayBuffer = await audioFile.arrayBuffer()
-    if (arrayBuffer.byteLength > MAX_BYTES) {
-      return NextResponse.json({ ok: false, error: "Audio file too large (max 10 MB)." }, { status: 413 })
-    }
 
     // Create the DB row first to get a stable ID for the storage path
     const message = await createMessage({
@@ -91,7 +78,7 @@ export async function POST(request: Request, { params }: Params) {
 
     await uploadToStorage({
       fileBuffer: Buffer.from(arrayBuffer),
-      mimeType,
+      mimeType: validation.mimeType,
       storagePath,
       upsert: false,
     })

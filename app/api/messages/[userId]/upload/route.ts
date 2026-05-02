@@ -32,6 +32,7 @@ import { notifyNewDirectMessage } from "@/lib/notifications/service"
 import { logServerError } from "@/lib/server/logger"
 import { getSignedDocumentUrl, uploadToStorage } from "@/lib/supabase/storage"
 import { getDbPool } from "@/lib/db/server"
+import { validateUpload } from "@/lib/uploads/validate"
 
 const execFileAsync = promisify(execFile)
 
@@ -88,31 +89,15 @@ async function transcribeWithWhisper(
   }
 }
 
-// ── Audio / image / file allow-lists ─────────────────────────────────────────
+// ── Extension map for storage path ───────────────────────────────────────────
 
-const ALLOWED_AUDIO: Record<string, string> = {
-  "audio/webm": "webm",
-  "audio/ogg": "ogg",
-  "audio/mpeg": "mp3",
-  "audio/mp4": "mp4",
-  "audio/wav": "wav",
-  "audio/x-wav": "wav",
-  "audio/wave": "wav",
-  "audio/x-m4a": "m4a",
-  "audio/aac": "aac",
-}
-
-const ALLOWED_IMAGE: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/gif": "gif",
-  "image/webp": "webp",
-  "image/heic": "heic",
-}
-
-const ALLOWED_FILE: Record<string, string> = {
-  "application/pdf": "pdf",
-  "application/msword": "doc",
+const EXT_MAP: Record<string, string> = {
+  "audio/webm": "webm", "audio/ogg": "ogg", "audio/mpeg": "mp3",
+  "audio/mp4": "mp4", "audio/wav": "wav", "audio/x-wav": "wav",
+  "audio/wave": "wav", "audio/x-m4a": "m4a", "audio/aac": "aac",
+  "image/jpeg": "jpg", "image/png": "png", "image/gif": "gif",
+  "image/webp": "webp", "image/heic": "heic",
+  "application/pdf": "pdf", "application/msword": "doc",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
   "application/vnd.ms-excel": "xls",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
@@ -120,10 +105,6 @@ const ALLOWED_FILE: Record<string, string> = {
   "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
   "text/plain": "txt",
 }
-
-const MAX_AUDIO_BYTES = 10 * 1024 * 1024   // 10 MB
-const MAX_IMAGE_BYTES = 20 * 1024 * 1024   // 20 MB
-const MAX_FILE_BYTES  = 25 * 1024 * 1024   // 25 MB
 
 type Params = { params: Promise<{ userId: string }> }
 
@@ -183,30 +164,17 @@ export async function POST(request: Request, { params }: Params) {
       )
     }
 
-    const mimeType = fileBlob.type || (messageType === "voice" ? "audio/webm" : "application/octet-stream")
-    const allowedMap =
-      messageType === "voice" ? ALLOWED_AUDIO :
-      messageType === "image" ? ALLOWED_IMAGE :
-      ALLOWED_FILE
-    const ext = allowedMap[mimeType]
-    if (!ext) {
-      return NextResponse.json(
-        { ok: false, error: `Unsupported file type '${mimeType}'.` },
-        { status: 415 },
-      )
+    const category =
+      messageType === "voice" ? "dm-voice" as const :
+      messageType === "image" ? "dm-image" as const :
+      "dm-file" as const
+    const validation = await validateUpload(fileBlob, category)
+    if (!validation.ok) {
+      return NextResponse.json({ ok: false, error: validation.error }, { status: validation.status })
     }
 
-    const maxBytes =
-      messageType === "voice" ? MAX_AUDIO_BYTES :
-      messageType === "image" ? MAX_IMAGE_BYTES :
-      MAX_FILE_BYTES
+    const ext = EXT_MAP[validation.mimeType] ?? "bin"
     const arrayBuffer = await fileBlob.arrayBuffer()
-    if (arrayBuffer.byteLength > maxBytes) {
-      return NextResponse.json(
-        { ok: false, error: `File too large (max ${maxBytes / 1024 / 1024} MB).` },
-        { status: 413 },
-      )
-    }
 
     const durationSec =
       messageType === "voice"
@@ -256,7 +224,7 @@ export async function POST(request: Request, { params }: Params) {
 
     await uploadToStorage({
       fileBuffer: Buffer.from(arrayBuffer),
-      mimeType,
+      mimeType: validation.mimeType,
       storagePath,
       upsert: false,
     })
