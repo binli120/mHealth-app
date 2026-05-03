@@ -15,54 +15,101 @@
  * auth session, and the guard skips them when no auth state file is present.
  */
 
-import { test, expect, type Page } from "@playwright/test"
+import { test, expect, type APIRequestContext } from "@playwright/test"
+import { createHmac } from "crypto"
+import * as fs from "fs"
 import * as path from "path"
 import { hasSupabaseAuthState } from "../auth-state"
 
 const AUTH_FILE = path.join(__dirname, "../.auth/user.json")
 const HAS_AUTH = hasSupabaseAuthState(AUTH_FILE)
+const BASE_URL = process.env.E2E_BASE_URL ?? "http://localhost:3000"
+const IS_LOCAL_E2E =
+  BASE_URL.startsWith("http://localhost") || BASE_URL.startsWith("http://127.0.0.1")
+const LOCAL_AUTH_HELPERS_ENABLED =
+  process.env.NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS !== "false" &&
+  process.env.ENABLE_LOCAL_AUTH_HELPERS !== "false"
+const LOCAL_DEV_JWT_SECRET =
+  process.env.SUPABASE_JWT_SECRET ?? "super-secret-jwt-token-with-at-least-32-characters-long"
 
 // ── Auth helper ───────────────────────────────────────────────────────────────
 //
-// The Playwright storageState only contains localStorage (no cookies) because
-// the Supabase JS v2 browser client stores the session there.
-// `requireAuthenticatedUser` reads from Authorization: Bearer header, so we
-// must extract the access_token from localStorage and attach it manually.
-//
-// We navigate to a page on localhost:3000 first so the storageState's
-// localStorage is accessible to page.evaluate, then build a thin wrapper
-// that forwards the Bearer token on every API call.
+// Read the Supabase session directly from the Playwright storageState file
+// (avoids page.goto which redirects authenticated users before localStorage
+// is readable).  When running against a local dev stack, regenerate a fresh
+// HS256 JWT so requests always travel through the fast local-fallback path in
+// requireAuthenticatedUser instead of hitting Supabase's auth.getUser(), which
+// can fail under concurrent test load.
 
-async function buildAuthedFetch(page: Page) {
-  // Any page loads the origin; /auth/login is lightweight and always accessible
-  await page.goto("/auth/login")
-
-  const token = await page.evaluate((): string | null => {
-    const key = Object.keys(localStorage).find(
-      (k) => k.startsWith("sb-") && k.endsWith("-auth-token"),
-    )
-    if (!key) return null
-    try {
-      const raw = localStorage.getItem(key)
-      if (!raw) return null
-      // Supabase stores { access_token, refresh_token, ... }
-      const parsed = JSON.parse(raw) as Record<string, unknown>
-      return typeof parsed.access_token === "string" ? parsed.access_token : null
-    } catch {
-      return null
+function readAuthSession(filePath: string): { accessToken: string | null; userId: string | null } {
+  try {
+    const state = JSON.parse(fs.readFileSync(filePath, "utf8")) as {
+      origins?: Array<{ localStorage?: Array<{ name: string; value: string }> }>
     }
-  })
+    for (const origin of state.origins ?? []) {
+      for (const item of origin.localStorage ?? []) {
+        if (item.name.startsWith("sb-") && item.name.endsWith("-auth-token")) {
+          const parsed = JSON.parse(item.value) as {
+            access_token?: unknown
+            user?: { id?: unknown }
+          }
+          return {
+            accessToken: typeof parsed.access_token === "string" ? parsed.access_token : null,
+            userId: typeof parsed.user?.id === "string" ? parsed.user.id : null,
+          }
+        }
+      }
+    }
+  } catch {
+    // File missing or malformed — tests skip gracefully via HAS_AUTH
+  }
+  return { accessToken: null, userId: null }
+}
 
-  const authHeader = token ? { Authorization: `Bearer ${token}` } : {}
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const [, payload] = token.split(".")
+  if (!payload) return null
+  try {
+    return JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as Record<string, unknown>
+  } catch {
+    return null
+  }
+}
 
+function makeLocalJwt(userId: string): string {
+  const header  = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url")
+  const body    = Buffer.from(JSON.stringify({
+    sub: userId,
+    exp: Math.floor(Date.now() / 1000) + 3600,
+    aud: "authenticated",
+    iss: "supabase-demo",
+    aal: "aal1",
+  })).toString("base64url")
+  const sig = createHmac("sha256", LOCAL_DEV_JWT_SECRET)
+    .update(`${header}.${body}`)
+    .digest("base64url")
+  return `${header}.${body}.${sig}`
+}
+
+const AUTH_SESSION = readAuthSession(AUTH_FILE)
+
+function getAuthHeader(): Record<string, string> {
+  if (!AUTH_SESSION.accessToken) return {}
+  if (IS_LOCAL_E2E && LOCAL_AUTH_HELPERS_ENABLED) {
+    const payload = decodeJwtPayload(AUTH_SESSION.accessToken)
+    const subject = AUTH_SESSION.userId ?? (typeof payload?.sub === "string" ? payload.sub : null)
+    if (subject) return { Authorization: `Bearer ${makeLocalJwt(subject)}` }
+  }
+  return { Authorization: `Bearer ${AUTH_SESSION.accessToken}` }
+}
+
+function authedFetch(request: APIRequestContext) {
+  const headers = getAuthHeader()
   return {
     get: (url: string) =>
-      page.request.get(url, { headers: authHeader }),
+      request.get(url, { headers }),
     post: (url: string, data: unknown) =>
-      page.request.post(url, {
-        headers: { ...authHeader, "Content-Type": "application/json" },
-        data,
-      }),
+      request.post(url, { headers: { ...headers, "Content-Type": "application/json" }, data }),
   }
 }
 
@@ -153,8 +200,8 @@ test.describe("GET /api/user-profile/ssn — authenticated", () => {
     test.skip(!HAS_AUTH, "No auth session — create a test user to run authenticated SSN tests")
   })
 
-  test("returns { ok: true, hasSsn: boolean } — never the plaintext value", async ({ page }) => {
-    const api = await buildAuthedFetch(page)
+  test("returns { ok: true, hasSsn: boolean } — never the plaintext value", async ({ request }) => {
+    const api = authedFetch(request)
     const res = await api.get("/api/user-profile/ssn")
     expect(res.status()).toBe(200)
     const body = await res.json()
@@ -174,8 +221,8 @@ test.describe("POST /api/user-profile/ssn — authenticated", () => {
     test.skip(!HAS_AUTH, "No auth session — create a test user to run authenticated SSN tests")
   })
 
-  test("accepts dashed SSN format (###-##-####)", async ({ page }) => {
-    const api = await buildAuthedFetch(page)
+  test("accepts dashed SSN format (###-##-####)", async ({ request }) => {
+    const api = authedFetch(request)
     const res = await api.post("/api/user-profile/ssn", { ssn: "123-45-6789" })
     expect(res.status()).toBe(200)
     const body = await res.json()
@@ -186,16 +233,16 @@ test.describe("POST /api/user-profile/ssn — authenticated", () => {
     expect(raw).not.toContain("123456789")
   })
 
-  test("accepts plain 9-digit SSN format", async ({ page }) => {
-    const api = await buildAuthedFetch(page)
+  test("accepts plain 9-digit SSN format", async ({ request }) => {
+    const api = authedFetch(request)
     const res = await api.post("/api/user-profile/ssn", { ssn: "987654321" })
     expect(res.status()).toBe(200)
     const body = await res.json()
     expect(body.ok).toBe(true)
   })
 
-  test("GET reflects hasSsn: true after a successful POST", async ({ page }) => {
-    const api = await buildAuthedFetch(page)
+  test("GET reflects hasSsn: true after a successful POST", async ({ request }) => {
+    const api = authedFetch(request)
 
     // Write
     const post = await api.post("/api/user-profile/ssn", { ssn: "111-22-3333" })
@@ -211,8 +258,8 @@ test.describe("POST /api/user-profile/ssn — authenticated", () => {
     expect(raw).not.toMatch(/111-22-3333/)
   })
 
-  test("500 error response does not leak encrypted blob or internal details", async ({ page }) => {
-    const api = await buildAuthedFetch(page)
+  test("500 error response does not leak encrypted blob or internal details", async ({ request }) => {
+    const api = authedFetch(request)
     const res = await api.post("/api/user-profile/ssn", { ssn: "not-valid" })
     // 400 from Zod validation (auth will be fine since we have a token)
     expect(res.status()).toBe(400)

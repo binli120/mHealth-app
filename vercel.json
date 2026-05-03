@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/purge-identity-extractions",
+      "schedule": "0 3 * * *"
+    }
+  ]
+}
