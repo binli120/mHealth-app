@@ -9,14 +9,14 @@
 
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, type FormEvent } from "react"
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useAppSelector } from "@/lib/redux/hooks"
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher"
-import { CheckCircle2, ChevronRight, Sparkles } from "lucide-react"
+import { CheckCircle2, ChevronRight, Loader2, Mail, Sparkles } from "lucide-react"
 import { ShieldHeartIcon } from "@/lib/icons"
 
 import { LANDING_STYLES } from "@/app/page.styles"
@@ -116,6 +116,92 @@ function FadeUp({ children, delay = 0, className = "" }: FadeUpProps) {
     >
       {children}
     </div>
+  )
+}
+
+// ─── MailingListForm ─────────────────────────────────────────────────────────
+
+function getCurrentCampaign() {
+  if (typeof window === "undefined") return {}
+
+  const params = new URLSearchParams(window.location.search)
+  return ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"].reduce<Record<string, string>>((acc, key) => {
+    const value = params.get(key)?.trim()
+    if (value) acc[key] = value.slice(0, 256)
+    return acc
+  }, {})
+}
+
+function getCurrentReferralCode() {
+  if (typeof window === "undefined") return null
+
+  const params = new URLSearchParams(window.location.search)
+  return params.get("ref")?.trim() ||
+    params.get("referral")?.trim() ||
+    params.get("referral_code")?.trim() ||
+    params.get("utm_referral")?.trim() ||
+    null
+}
+
+function MailingListForm({ copy }: { copy: LandingCopy }) {
+  const [email, setEmail] = useState("")
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const trimmed = email.trim()
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setStatus("error")
+      return
+    }
+
+    setStatus("loading")
+    const response = await fetch("/api/growth/mailing-list", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: trimmed,
+        source: "landing-footer",
+        referralCode: getCurrentReferralCode(),
+        campaign: getCurrentCampaign(),
+      }),
+    }).catch(() => null)
+
+    if (response?.ok) {
+      setStatus("success")
+      setEmail("")
+      return
+    }
+
+    setStatus("error")
+  }
+
+  return (
+    <form className="space-y-3" onSubmit={handleSubmit}>
+      <div className="flex gap-2">
+        <label className="relative min-w-0 flex-1">
+          <span className="sr-only">{copy.mailingListTitle}</span>
+          <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="email"
+            value={email}
+            onChange={(event) => {
+              setEmail(event.target.value)
+              if (status !== "idle") setStatus("idle")
+            }}
+            placeholder={copy.mailingListPlaceholder}
+            className="h-10 w-full rounded-md border border-border bg-background pl-9 pr-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+            autoComplete="email"
+          />
+        </label>
+        <Button type="submit" size="sm" disabled={status === "loading"} className="h-10 shrink-0">
+          {status === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : copy.mailingListButton}
+        </Button>
+      </div>
+      {status === "success" && <p className="text-xs text-accent">{copy.mailingListSuccess}</p>}
+      {status === "error" && <p className="text-xs text-destructive">{copy.mailingListError}</p>}
+    </form>
   )
 }
 
@@ -601,6 +687,11 @@ export default function LandingPage() {
                   <li>TTY: 1-800-497-4648</li>
                   <li>Mon–Fri, 8am–5pm</li>
                 </ul>
+                <div className="mt-6 space-y-2">
+                  <h4 className="font-semibold text-foreground">{copy.mailingListTitle}</h4>
+                  <p className="text-sm text-muted-foreground">{copy.mailingListDesc}</p>
+                  <MailingListForm copy={copy} />
+                </div>
               </div>
             </div>
             <div className="mt-8 border-t border-border pt-8 text-center text-sm text-muted-foreground">

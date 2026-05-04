@@ -79,6 +79,12 @@ export interface LandingCopy {
   footerProgramsLabel: string
   footerPlatformLabel: string
   footerSupportLabel: string
+  mailingListTitle: string
+  mailingListDesc: string
+  mailingListPlaceholder: string
+  mailingListButton: string
+  mailingListSuccess: string
+  mailingListError: string
   footerProgramLinks: string[]
   footerPlatformLinks: string[]
   footerCopyright: string
@@ -190,6 +196,12 @@ const EN: LandingCopy = {
   footerProgramsLabel: "Programs",
   footerPlatformLabel: "Platform",
   footerSupportLabel: "Support",
+  mailingListTitle: "Get benefit updates",
+  mailingListDesc: "Monthly reminders for renewals, deadlines, and new Massachusetts benefit resources.",
+  mailingListPlaceholder: "you@example.com",
+  mailingListButton: "Join list",
+  mailingListSuccess: "You're on the list.",
+  mailingListError: "Enter a valid email address.",
   footerProgramLinks: ["MassHealth", "SNAP / Food Assistance", "EITC Tax Credits", "LIHEAP Energy Aid"],
   footerPlatformLinks: ["Eligibility Checker", "Benefit Stack Tool", "Live Assistance", "Appeal Assistance", "Appeal Letter (AI)", "Knowledge Center", "Create Account"],
   footerCopyright: "© 2026 HealthCompass MA. Not affiliated with the Commonwealth of Massachusetts. All rights reserved.",
@@ -301,6 +313,12 @@ const ES: LandingCopy = {
   footerProgramsLabel: "Programas",
   footerPlatformLabel: "Plataforma",
   footerSupportLabel: "Soporte",
+  mailingListTitle: "Recibe actualizaciones",
+  mailingListDesc: "Recordatorios mensuales sobre renovaciones, fechas límite y recursos de beneficios en Massachusetts.",
+  mailingListPlaceholder: "tu@ejemplo.com",
+  mailingListButton: "Unirme",
+  mailingListSuccess: "Ya estás en la lista.",
+  mailingListError: "Ingresa un correo válido.",
   footerProgramLinks: ["MassHealth", "SNAP / Asistencia Alimentaria", "Créditos Fiscales EITC", "Ayuda Energética LIHEAP"],
   footerPlatformLinks: ["Verificador de Elegibilidad", "Herramienta de Acumulación", "Asistencia en Vivo", "Asistencia para Apelaciones", "Carta de Apelación (IA)", "Centro de Conocimiento", "Crear Cuenta"],
   footerCopyright: "© 2026 HealthCompass MA. No afiliado con el Commonwealth de Massachusetts. Todos los derechos reservados.",
@@ -412,6 +430,12 @@ const ZH_CN: LandingCopy = {
   footerProgramsLabel: "项目",
   footerPlatformLabel: "平台",
   footerSupportLabel: "支持",
+  mailingListTitle: "获取福利更新",
+  mailingListDesc: "每月接收续保、截止日期和马萨诸塞州福利资源提醒。",
+  mailingListPlaceholder: "you@example.com",
+  mailingListButton: "加入列表",
+  mailingListSuccess: "你已加入列表。",
+  mailingListError: "请输入有效的电子邮件地址。",
   footerProgramLinks: ["MassHealth", "SNAP / 食品援助", "EITC税收抵免", "LIHEAP能源援助"],
   footerPlatformLinks: ["资格检查器", "福利叠加工具", "实时援助", "申诉援助", "申诉信 (AI)", "知识中心", "创建账户"],
   footerCopyright: "© 2026 HealthCompass MA。与马萨诸塞州联邦政府无关联。版权所有。",
@@ -523,6 +547,12 @@ const HT: LandingCopy = {
   footerProgramsLabel: "Pwogram",
   footerPlatformLabel: "Platfòm",
   footerSupportLabel: "Sipò",
+  mailingListTitle: "Resevwa mizajou benefis",
+  mailingListDesc: "Rapèl chak mwa pou renouvèlman, dat limit, ak nouvo resous benefis Massachusetts.",
+  mailingListPlaceholder: "ou@example.com",
+  mailingListButton: "Antre nan lis la",
+  mailingListSuccess: "Ou sou lis la.",
+  mailingListError: "Antre yon imèl ki valid.",
   footerProgramLinks: ["MassHealth", "SNAP / Asistans Manje", "Kredi Taks EITC", "Èd Enèji LIHEAP"],
   footerPlatformLinks: ["Verifikateur Kalifikasyon", "Zouti Akimilasyon Benefis", "Asistans an Dirèk", "Asistans pou Apèl", "Lèt Apèl (AI)", "Sant Konesans", "Kreye Kont"],
   footerCopyright: "© 2026 HealthCompass MA. Pa afilye avèk Commonwealth of Massachusetts. Tout dwa rezève.",
@@ -634,6 +664,12 @@ const PT_BR: LandingCopy = {
   footerProgramsLabel: "Programas",
   footerPlatformLabel: "Plataforma",
   footerSupportLabel: "Suporte",
+  mailingListTitle: "Receba atualizações",
+  mailingListDesc: "Lembretes mensais sobre renovações, prazos e recursos de benefícios em Massachusetts.",
+  mailingListPlaceholder: "voce@exemplo.com",
+  mailingListButton: "Entrar na lista",
+  mailingListSuccess: "Você está na lista.",
+  mailingListError: "Insira um e-mail válido.",
   footerProgramLinks: ["MassHealth", "SNAP / Assistência Alimentar", "Créditos Fiscais EITC", "Auxílio Energia LIHEAP"],
   footerPlatformLinks: ["Verificador de Elegibilidade", "Ferramenta de Acumulação", "Assistência ao Vivo", "Assistência para Recurso", "Carta de Recurso (IA)", "Centro de Conhecimento", "Criar Conta"],
   footerCopyright: "© 2026 HealthCompass MA. Não afiliado ao Commonwealth de Massachusetts. Todos os direitos reservados.",
@@ -745,6 +781,12 @@ const VI: LandingCopy = {
   footerProgramsLabel: "Chương Trình",
   footerPlatformLabel: "Nền Tảng",
   footerSupportLabel: "Hỗ Trợ",
+  mailingListTitle: "Nhận cập nhật phúc lợi",
+  mailingListDesc: "Lời nhắc hàng tháng về gia hạn, hạn chót và tài nguyên phúc lợi mới tại Massachusetts.",
+  mailingListPlaceholder: "ban@example.com",
+  mailingListButton: "Tham gia",
+  mailingListSuccess: "Bạn đã có trong danh sách.",
+  mailingListError: "Nhập địa chỉ email hợp lệ.",
   footerProgramLinks: ["MassHealth", "SNAP / Hỗ Trợ Thực Phẩm", "Tín Thuế EITC", "Hỗ Trợ Năng Lượng LIHEAP"],
   footerPlatformLinks: ["Kiểm Tra Tư Cách", "Công Cụ Tích Lũy Phúc Lợi", "Hỗ Trợ Trực Tiếp", "Hỗ Trợ Kháng Cáo", "Thư Kháng Cáo (AI)", "Trung Tâm Kiến Thức", "Tạo Tài Khoản"],
   footerCopyright: "© 2026 HealthCompass MA. Không liên kết với Commonwealth of Massachusetts. Bảo lưu mọi quyền.",

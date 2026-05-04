@@ -64,10 +64,16 @@ export async function register() {
   const auth = Buffer.from(`${user}:${pass}`).toString("base64")
 
   // Dynamic imports keep these packages out of the client bundle
-  const { NodeSDK }                   = await import("@opentelemetry/sdk-node")
-  const { OTLPTraceExporter }         = await import("@opentelemetry/exporter-trace-otlp-http")
+  const { NodeSDK }                     = await import("@opentelemetry/sdk-node")
+  const { OTLPTraceExporter }           = await import("@opentelemetry/exporter-trace-otlp-http")
   const { getNodeAutoInstrumentations } = await import("@opentelemetry/auto-instrumentations-node")
-  const { resourceFromAttributes }    = await import("@opentelemetry/resources")
+  const { resourceFromAttributes }      = await import("@opentelemetry/resources")
+  const {
+    shouldIgnoreIncomingRequest,
+    scrubHttpRequestSpan,
+    scrubHttpResponseSpan,
+    scrubPgStatement,
+  } = await import("@/lib/telemetry/otel-phi-hooks")
 
   const sdk = new NodeSDK({
     resource: resourceFromAttributes({
@@ -81,8 +87,44 @@ export async function register() {
     }),
     instrumentations: [
       getNodeAutoInstrumentations({
-        // Disable noisy fs instrumentation — not useful for request tracing
+        // ── Disabled instrumentations ─────────────────────────────────────
+        // fs: too noisy; not useful for HTTP request tracing
         "@opentelemetry/instrumentation-fs": { enabled: false },
+
+        // ── HTTP instrumentation — PHI header + query-string scrubbing ────
+        //
+        // By default OTel does NOT capture headers unless headersToSpanAttributes
+        // is configured.  We still defensively redact the most sensitive ones so
+        // a future config change cannot accidentally leak PHI into traces.
+        //
+        // We also blank url.query on every span — query strings may carry
+        // OAuth tokens or search terms that echo user-supplied input.
+        // ── HTTP instrumentation — PHI header + query-string scrubbing ────
+        //
+        // By default OTel does NOT capture headers unless headersToSpanAttributes
+        // is configured.  We still defensively redact the most sensitive ones so
+        // a future config change cannot accidentally leak PHI into traces.
+        // We also blank url.query on every span — query strings may carry
+        // OAuth tokens or search terms that echo user-supplied input.
+        // See lib/telemetry/otel-phi-hooks.ts for the implementation.
+        "@opentelemetry/instrumentation-http": {
+          ignoreIncomingRequestHook: shouldIgnoreIncomingRequest,
+          requestHook:               scrubHttpRequestSpan,
+          responseHook:              scrubHttpResponseSpan,
+        },
+
+        // ── Postgres instrumentation — prevent PHI parameter leakage ──────
+        //
+        // enhancedDatabaseReporting: false (the default) means parameter values
+        // ($1, $2 …) are NEVER included in db.statement span attributes —
+        // only the SQL template appears (e.g. "SELECT … WHERE id = $1").
+        // Encrypted PHI blobs stored in *_encrypted columns therefore never
+        // reach the trace backend even if the query touches those columns.
+        // See lib/telemetry/otel-phi-hooks.ts for the implementation.
+        "@opentelemetry/instrumentation-pg": {
+          enhancedDatabaseReporting: false,  // explicit — never capture $-values
+          requestHook:               scrubPgStatement,
+        },
       }),
     ],
   })
