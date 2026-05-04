@@ -36,6 +36,24 @@ export interface CspOptions {
   supabaseHost?: string
 }
 
+const ANALYTICS_SCRIPT_SOURCES = [
+  "https://www.googletagmanager.com",
+  "https://cdn.mxpnl.com",
+]
+
+const ANALYTICS_CONNECT_SOURCES = [
+  "https://www.google-analytics.com",
+  "https://analytics.google.com",
+  "https://stats.g.doubleclick.net",
+  "https://api-js.mixpanel.com",
+  "https://api.mixpanel.com",
+]
+
+const ANALYTICS_IMAGE_SOURCES = [
+  "https://www.google-analytics.com",
+  "https://stats.g.doubleclick.net",
+]
+
 /**
  * Generate a cryptographically random nonce.
  *
@@ -80,6 +98,7 @@ export function buildCspHeader(opts: CspOptions): string {
       "'self'",
       `'nonce-${nonce}'`,
       "'strict-dynamic'",
+      ...ANALYTICS_SCRIPT_SOURCES,
       ...(isDev ? ["'unsafe-eval'"] : []),
     ].join(" "),
 
@@ -87,11 +106,25 @@ export function buildCspHeader(opts: CspOptions): string {
     "style-src 'self' 'unsafe-inline'",
 
     // Supabase REST, Auth, Realtime WebSocket
-    `connect-src 'self' https://${supabaseHost} wss://${supabaseHost}`,
+    [
+      "connect-src",
+      "'self'",
+      `https://${supabaseHost}`,
+      `wss://${supabaseHost}`,
+      ...ANALYTICS_CONNECT_SOURCES,
+    ].join(" "),
 
     // Images: data URIs (base64 avatars), blobs (camera captures), YouTube
     // thumbnails (embedded video), and Thum.io screenshot previews.
-    "img-src 'self' data: blob: https://img.youtube.com https://image.thum.io",
+    [
+      "img-src",
+      "'self'",
+      "data:",
+      "blob:",
+      "https://img.youtube.com",
+      "https://image.thum.io",
+      ...ANALYTICS_IMAGE_SOURCES,
+    ].join(" "),
 
     // Google Fonts serve woff2 over https; data: covers inlined icon fonts.
     "font-src 'self' data:",

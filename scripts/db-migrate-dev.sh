@@ -26,3 +26,4 @@ psql "$db_url" -v ON_ERROR_STOP=1 -f ./supabase/migrations/20260306090000_applic
 psql "$db_url" -v ON_ERROR_STOP=1 -f ./supabase/migrations/20260322000000_collaborative_sessions.sql
 psql "$db_url" -v ON_ERROR_STOP=1 -f ./supabase/migrations/20260410000000_income_verification.sql
 psql "$db_url" -v ON_ERROR_STOP=1 -f ./supabase/migrations/20260430140000_admin_passkeys.sql
+psql "$db_url" -v ON_ERROR_STOP=1 -f ./supabase/migrations/20260503090000_growth_system.sql

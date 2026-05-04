@@ -51,6 +51,9 @@ export function proxy(request: NextRequest): NextResponse {
 
   // Set the enforcing CSP on the response so browsers act on it.
   response.headers.set("Content-Security-Policy", csp)
+  response.headers.set("X-Content-Type-Options", "nosniff")
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
+  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 
   return response
 }

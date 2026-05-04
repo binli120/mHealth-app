@@ -5,14 +5,74 @@
 
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
+import { Suspense } from 'react'
+import { GrowthProvider } from '@/components/analytics/growth-provider'
+import { GrowthScripts } from '@/components/analytics/growth-scripts'
 import { ConditionalChatWidget } from '@/components/chat/conditional-chat-widget'
 import { ReduxProvider } from '@/components/providers/redux-provider'
 import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
 
+function getMetadataBase() {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim()
+
+  try {
+    return new URL(appUrl || 'https://healthcompass.cloud')
+  } catch {
+    return new URL('https://healthcompass.cloud')
+  }
+}
+
 export const metadata: Metadata = {
-  title: 'HealthCompass MA - Apply for Health Coverage',
+  metadataBase: getMetadataBase(),
+  title: {
+    default: 'HealthCompass MA - Apply for Health Coverage',
+    template: '%s | HealthCompass MA',
+  },
   description: 'Navigate MassHealth and other MA benefits with HealthCompass MA. Check eligibility, apply, and manage your coverage online.',
+  applicationName: 'HealthCompass MA',
+  keywords: [
+    'MassHealth',
+    'Massachusetts health coverage',
+    'benefits eligibility',
+    'SNAP Massachusetts',
+    'health insurance application',
+    'benefit navigation',
+  ],
+  alternates: {
+    canonical: '/',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
+    },
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: '/',
+    siteName: 'HealthCompass MA',
+    title: 'HealthCompass MA - Apply for Health Coverage',
+    description: 'Check eligibility across MassHealth and other Massachusetts benefits, apply with guided steps, and manage coverage in one place.',
+    images: [
+      {
+        url: '/brand/healthcompass-ma-logo.png',
+        alt: 'HealthCompass MA',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'HealthCompass MA - Apply for Health Coverage',
+    description: 'Check eligibility across MassHealth and other Massachusetts benefits, apply with guided steps, and manage coverage in one place.',
+    images: ['/brand/healthcompass-ma-logo.png'],
+  },
   icons: {
     icon: '/favicon.svg?v=2',
     shortcut: '/favicon.svg?v=2',
@@ -44,12 +104,16 @@ export default async function RootLayout({
           per-request and unpredictable at render time.
         */}
         {nonce && <meta name="csp-nonce" content={nonce} />}
+        <GrowthScripts nonce={nonce} />
       </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange nonce={nonce}>
           <ReduxProvider>
             {children}
             <ConditionalChatWidget />
+            <Suspense fallback={null}>
+              <GrowthProvider />
+            </Suspense>
           </ReduxProvider>
           <footer className="fixed bottom-1 right-2 text-[10px] text-muted-foreground/40 select-none pointer-events-none">
             v{process.env.NEXT_PUBLIC_APP_VERSION}
