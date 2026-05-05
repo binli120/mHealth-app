@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Displays business-rule check results for an extracted application.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import {

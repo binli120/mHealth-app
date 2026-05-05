@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Next.js OpenTelemetry instrumentation — ships traces to OpenObserve.
  * Loaded automatically by Next.js 15+ on every server start.
  *
@@ -8,7 +13,7 @@
  *   OPENOBSERVE_PASSWORD — e.g. ChangeMe123!
  *   OPENOBSERVE_ORG      — (optional) defaults to "default"
  *
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 export async function register() {

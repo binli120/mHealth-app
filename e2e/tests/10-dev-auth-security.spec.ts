@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * E2E security tests for dev-only auth API routes.
  *
  * These routes (/api/auth/dev-register, dev-grant-admin, dev-auto-confirm)

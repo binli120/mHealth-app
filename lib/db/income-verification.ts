@@ -1,6 +1,6 @@
 /**
- * @author Bin Lee
- * @email blee@healthcompass.cloud
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
  *
  * Database query layer for the income verification subsystem.
  * All SQL is parameterised — no string interpolation of user data.

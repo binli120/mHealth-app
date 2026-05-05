@@ -1,7 +1,12 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Unit tests for GET /api/admin/stats
  * Auth and DB are mocked; only route handler logic is exercised.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest"

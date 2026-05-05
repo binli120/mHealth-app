@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Unit tests for lib/server/logger.ts
  *
  * server-only is stubbed by vitest alias (vitest.mocks/server-only.ts).

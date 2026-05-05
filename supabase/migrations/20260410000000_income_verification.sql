@@ -1,3 +1,6 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- ---------------------------------------------------------------------------
 -- Income Verification Subsystem
 -- Migration: 20260410000000_income_verification.sql

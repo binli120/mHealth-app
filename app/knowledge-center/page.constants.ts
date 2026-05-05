@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Constants for the Knowledge Center page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 export const VIDEO_PREVIEW_COUNT = 6

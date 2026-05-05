@@ -1,6 +1,9 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- Server-side session revocation list.
 -- Used by lib/auth/require-auth.ts to reject access tokens after admin force logout.
--- @author Bin Lee
+-- @author: Bin Lee
 
 CREATE TABLE IF NOT EXISTS public.revoked_sessions (
   id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),

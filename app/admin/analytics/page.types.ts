@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * TypeScript types for the Admin Analytics page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import type { ReactNode } from "react"

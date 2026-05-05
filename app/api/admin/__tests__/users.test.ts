@@ -1,10 +1,15 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Unit tests for the admin users API routes.
  *   GET   /api/admin/users  — list with filters + optional companies
  *   PATCH /api/admin/users  — set_active / set_role
  *
  * Auth and DB are mocked; only route handler logic is exercised.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest"

@@ -2,8 +2,8 @@
  * POST /api/admin/users/invite
  * Admin creates an invitation for a user email, optionally linked to a company.
  * Sends the invitation link via Resend; logs the link via logServerInfo in dev if no API key is set.
- * @author Bin Lee
- * @email blee@healthcompass.cloud
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
  */
 
 import { NextResponse } from "next/server"

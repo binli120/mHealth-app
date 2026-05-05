@@ -1,7 +1,12 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Chat UI sub-components for the Eligibility Pre-Screener.
  * Exports: BotAvatar, ChatBubble, ResultsPanel, FPLReferenceTable
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import Link from "next/link"

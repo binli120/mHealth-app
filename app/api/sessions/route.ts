@@ -1,7 +1,12 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * GET  /api/sessions  — list sessions for the authenticated user
  * POST /api/sessions  — social worker creates a session (sends invite notification)
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { NextResponse } from "next/server"

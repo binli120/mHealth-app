@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Reads vitest JSON output (test-results.json) and creates GitHub Issues
  * for every failing test suite and/or a coverage-threshold failure.
  *

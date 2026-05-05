@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import { type SupportedLanguage } from "@/lib/i18n/languages"
 import type { Step } from "./page.types"
 

@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import path from "node:path"
 import { defineConfig } from "vitest/config"
 

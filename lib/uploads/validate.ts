@@ -7,8 +7,8 @@
  *   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status })
  *   // result.mimeType is the normalised, verified MIME type
  *
- * @author Bin Lee
- * @email blee@healthcompass.cloud
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
  */
 
 // ── Category definitions ──────────────────────────────────────────────────────

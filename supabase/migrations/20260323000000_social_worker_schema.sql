@@ -1,5 +1,8 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- Social Worker, Companies, and Patient Access Schema
--- @author Bin Lee
+-- @author: Bin Lee
 
 INSERT INTO public.roles (name) VALUES ('social_worker') ON CONFLICT (name) DO NOTHING;
 

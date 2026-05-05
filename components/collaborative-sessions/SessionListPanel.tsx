@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Renders a list of sessions with accept/decline actions for patients.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 "use client"

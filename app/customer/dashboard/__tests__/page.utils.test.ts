@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Unit tests for Customer Dashboard page utilities.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { describe, it, expect } from "vitest"

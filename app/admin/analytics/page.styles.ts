@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Style constants for the Admin Analytics page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 export const ANALYTICS_CHART_STYLES = {

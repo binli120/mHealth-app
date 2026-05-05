@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * TypeScript types for the MassHealth Appeals page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 export interface CategoryEntry {

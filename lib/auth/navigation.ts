@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Shared auth navigation helpers.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 interface AuthMeResponse {

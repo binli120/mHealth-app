@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Collaborative Session — DB helpers
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import "server-only"

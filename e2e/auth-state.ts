@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import * as fs from "fs"
 
 export function hasSupabaseAuthState(filePath: string): boolean {

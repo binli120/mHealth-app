@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Shared application page contracts.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import type { ApplicationStatus } from "@/lib/application-status"

@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import { expect, Page } from "@playwright/test"
 import * as path from "path"
 

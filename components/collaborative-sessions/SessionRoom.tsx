@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * SessionRoom
  * Full collaborative session room for both SW and patient roles.
  *
@@ -13,7 +18,7 @@
  *   │  ChatInput                                           │ sticky bottom
  *   └──────────────────────────────────────────────────────┘
  *
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 "use client"

@@ -1,8 +1,11 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 /**
  * Collaborative Session Schema
  * Screen-share + chat sessions between social workers and patients.
  * Run after social_worker_schema.sql
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 -- ── Collaborative sessions ────────────────────────────────────────────────────

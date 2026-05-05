@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import type { Meta, StoryObj } from "@storybook/nextjs"
 import { NotificationItem } from "@/components/notifications/NotificationItem"
 import { makeNotification } from "@/components/storybook/storybook-utils"

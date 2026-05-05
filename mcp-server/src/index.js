@@ -1,6 +1,6 @@
 /**
- * @author Bin Lee
- * @email blee@healthcompass.cloud
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
  * this is MCP server for Healthcompass, we can use it to check application status
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';

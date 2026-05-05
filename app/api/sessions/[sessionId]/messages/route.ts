@@ -1,7 +1,12 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * GET  /api/sessions/[sessionId]/messages  — paginated message history
  * POST /api/sessions/[sessionId]/messages  — send a text message
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { NextResponse } from "next/server"

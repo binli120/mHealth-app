@@ -1,3 +1,6 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 BEGIN;
 
 CREATE TABLE IF NOT EXISTS public.admin_passkey_credentials (

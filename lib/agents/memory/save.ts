@@ -1,6 +1,6 @@
 /**
- * @author Bin Lee
- * @email blee@healthcompass.cloud
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
  *
  * mergeAndSaveAgentMemory — upsert agent memory, merging new facts with
  * previously persisted ones.

@@ -1,8 +1,8 @@
 "use client"
 
 /**
- * @author Bin Lee
- * @email blee@healthcompass.cloud
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
  *
  * Admin PHI Audit Log viewer - /admin/phi-audit
  *

@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Shared auth response types.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 export interface DevAutoConfirmResponse {

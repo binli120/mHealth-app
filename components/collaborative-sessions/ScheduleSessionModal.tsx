@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Modal for social workers to schedule or immediately invite a patient to a session.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 "use client"

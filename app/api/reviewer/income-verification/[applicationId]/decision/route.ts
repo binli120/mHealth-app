@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * POST /api/reviewer/income-verification/:applicationId/decision
  *
  * Reviewer override for a single income source decision.

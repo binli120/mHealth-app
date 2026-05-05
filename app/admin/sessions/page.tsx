@@ -1,7 +1,12 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 "use client"
 
 /**
- * @author Bin Lee
+ * @author: Bin Lee
  * @email binlee120@gmail.com
  */
 

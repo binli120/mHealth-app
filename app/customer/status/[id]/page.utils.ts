@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Utility functions for the Application Status Detail page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { getMessage } from "@/lib/i18n/messages"

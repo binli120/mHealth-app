@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * POST /api/masshealth/income-verification/:applicationId/recompute
  *
  * Idempotent recompute: re-aggregate all existing decisions into the case row.

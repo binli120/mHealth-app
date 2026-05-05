@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Unit tests for lib/server/rate-limit.ts
  *
  * RateLimiter, getClientIp, and checkRateLimit are tested with fresh

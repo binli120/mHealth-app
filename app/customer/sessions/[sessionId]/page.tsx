@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Patient — Session room page
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 "use client"

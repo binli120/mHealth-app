@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import type { Meta, StoryObj } from "@storybook/nextjs"
 import { ChatBubble, FPLReferenceTable, ResultsPanel } from "@/components/prescreener/EligibilityResults"
 import { sampleEligibilityReport, sampleScreenerData } from "@/components/storybook/storybook-utils"

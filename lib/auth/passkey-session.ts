@@ -1,7 +1,7 @@
 /**
  * Admin passkey session cookies.
- * @author Bin Lee
- * @email blee@healthcompass.cloud
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
  */
 
 import "server-only"

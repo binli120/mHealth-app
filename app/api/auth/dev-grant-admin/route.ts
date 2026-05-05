@@ -1,8 +1,8 @@
 /**
  * Dev-only endpoint: grants admin role to the currently authenticated user.
  * Only active when local auth helpers are enabled (development mode).
- * @author Bin Lee
- * @email blee@healthcompass.cloud
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
  */
 
 import { NextResponse } from "next/server"

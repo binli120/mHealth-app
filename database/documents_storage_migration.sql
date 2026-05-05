@@ -1,3 +1,6 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- ============================================================
 -- documents_storage_migration.sql
 -- Extends the documents table for Supabase Storage integration.

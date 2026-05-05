@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Utilities for the Social Worker Patient Conversation page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { useCallback, useRef, useState } from "react"

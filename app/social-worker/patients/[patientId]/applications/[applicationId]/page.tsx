@@ -1,8 +1,13 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * SW-scoped "edit existing draft" page — stays inside the /social-worker/ layout
  * so SWSessionProvider (and the active screen-share) is never unmounted.
  *
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 "use client"

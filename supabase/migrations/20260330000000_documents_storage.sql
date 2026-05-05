@@ -1,5 +1,8 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- Documents Storage migration — extends documents table for Supabase Storage
--- @author Bin Lee
+-- @author: Bin Lee
 
 ALTER TABLE public.documents ALTER COLUMN file_url DROP NOT NULL;
 

@@ -1,8 +1,13 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * POST /api/masshealth/appeals/draft
  * Proxy → masshealth-analysis service: POST /masshealth/appeals/draft
  * Generates a full appeal letter via Gemma3. Typically takes 30–90 seconds.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { NextResponse } from "next/server"

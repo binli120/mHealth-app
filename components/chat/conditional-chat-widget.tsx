@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * ConditionalChatWidget
  * Renders the patient-facing MassHealthChatWidget only on customer-facing pages.
  * Suppressed on /social-worker, /admin, and /reviewer routes because those
@@ -7,7 +12,7 @@
  * This wrapper exists because app/layout.tsx is a Server Component and cannot
  * call usePathname() directly.
  *
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 "use client"

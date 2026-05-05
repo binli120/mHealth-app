@@ -8,8 +8,8 @@
  *        ({ hasSsn: boolean }).  The plaintext value is NEVER returned over the
  *        wire; it is only used server-side (e.g. PDF generation).
  *
- * @author Bin Lee
- * @email blee@healthcompass.cloud
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
  */
 
 import { NextResponse } from "next/server"

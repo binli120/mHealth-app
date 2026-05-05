@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * ChatBubble
  * Renders a single chat message — text or voice.
  *
@@ -7,7 +12,7 @@
  *   • Otherwise, fetches a fresh signed URL from
  *     GET /api/sessions/[sessionId]/voice/[messageId] on first render.
  *
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 'use client';

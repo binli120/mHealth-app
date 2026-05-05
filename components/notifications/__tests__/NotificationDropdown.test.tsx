@@ -1,8 +1,13 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Unit tests for NotificationDropdown.
  * Covers: rendering states, optimistic mark-read, mark-all-read, rollback on failure,
  * navigation routing, and the isSafeInternalPath open-redirect guard.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import React from "react"

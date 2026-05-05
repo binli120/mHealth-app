@@ -1,3 +1,6 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- ── Notifications ──────────────────────────────────────────────────────────────
 -- Stores in-app and email notifications for users.
 -- Run after user_profile_schema.sql (depends on auth.users).

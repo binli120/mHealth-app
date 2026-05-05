@@ -2,8 +2,8 @@
  * GET /api/social-worker/patients/[patientId]/dashboard
  * Returns patient profile + applications in the same camelCase shape that
  * the customer dashboard expects, so the same UI can be reused.
- * @author Bin Lee
- * @email blee@healthcompass.cloud
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
  */
 
 import { NextResponse } from "next/server"

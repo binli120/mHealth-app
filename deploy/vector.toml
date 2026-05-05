@@ -1,3 +1,6 @@
+# @author: Bin Lee
+# @email: blee@healthcompass.cloud
+
 # Vector — container log collector for HealthCompass MA
 # Reads Docker logs from all containers and ships them to OpenObserve.
 #

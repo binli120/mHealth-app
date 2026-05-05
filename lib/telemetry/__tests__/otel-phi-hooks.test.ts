@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Unit tests for lib/telemetry/otel-phi-hooks.ts
  *
  * All hooks are pure, synchronous functions — no OTel SDK or Next.js runtime

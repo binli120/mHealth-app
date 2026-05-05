@@ -1,3 +1,6 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Encrypt PHI fields on the applicants table
 --

@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Utility functions for the Admin Social Workers page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { VALID_STATUS_FILTERS } from "./page.constants"

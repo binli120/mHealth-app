@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * GET /api/masshealth/income-verification/:applicationId
  *
  * Return the full verification case: requirements, per-source decisions,

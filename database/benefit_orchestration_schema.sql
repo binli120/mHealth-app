@@ -1,3 +1,6 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- Cross-Program Benefit Orchestration Schema
 -- Family profiles (standalone, reusable across multiple applications)
 -- Benefit stack results (evaluation outputs)

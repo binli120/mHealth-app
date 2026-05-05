@@ -1,6 +1,6 @@
 /**
- * @author Bin Lee
- * @email blee@healthcompass.cloud
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
  *
  * POST /api/messages/[userId]/upload
  * Upload a voice recording or image to a direct message thread.

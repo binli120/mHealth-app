@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Tests for the startup security assertion in instrumentation.ts.
  *
  * The register() function must throw at server startup when

@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * TypeScript interfaces for the Admin Companies page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 export interface Company {

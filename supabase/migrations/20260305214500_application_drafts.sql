@@ -1,3 +1,6 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 BEGIN;
 
 ALTER TABLE public.applications

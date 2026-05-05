@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Landing page copy — all UI strings translated into all 6 supported languages.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import type { SupportedLanguage } from "@/lib/i18n/languages"

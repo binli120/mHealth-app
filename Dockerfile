@@ -1,3 +1,6 @@
+# @author: Bin Lee
+# @email: blee@healthcompass.cloud
+
 # ── Stage 1: install dependencies ───────────────────────────────────────────
 FROM node:20-alpine AS deps
 RUN corepack enable && corepack prepare pnpm@latest --activate

@@ -10,8 +10,8 @@
  *   5. CHAT_WIDGET_ALL_KEYS matches the full set of copy keys.
  *   6. All 6 locales are covered (regression against missing catalog entry).
  *
- * @author Bin Lee
- * @email blee@healthcompass.cloud
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
  */
 
 import { describe, it, expect } from "vitest"

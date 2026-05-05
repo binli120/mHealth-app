@@ -1,3 +1,6 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 BEGIN;
 
 CREATE OR REPLACE FUNCTION public.request_user_id()

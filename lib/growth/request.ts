@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import { createHash } from "crypto"
 
 const FORWARDED_FOR_HEADER = "x-forwarded-for"

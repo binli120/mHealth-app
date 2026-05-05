@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# @author: Bin Lee
+# @email: blee@healthcompass.cloud
+
 # Usage:
 #   ./benchmark/run.sh smoke
 #   ./benchmark/run.sh load

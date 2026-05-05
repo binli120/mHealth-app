@@ -1,6 +1,6 @@
 /**
- * @author Bin Lee
- * @email blee@healthcompass.cloud
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
  */
 
 export const ERROR_APPLICATION_DRAFT_NOT_FOUND = "Application draft not found."

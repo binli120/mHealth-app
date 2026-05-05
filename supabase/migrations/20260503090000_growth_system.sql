@@ -1,3 +1,6 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- Growth analytics support: referral attribution and mailing-list capture.
 -- These tables intentionally avoid storing PHI or authenticated profile data.
 

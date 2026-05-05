@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import { describe, it, expect } from "vitest"
 import { evaluateMSP } from "@/lib/benefit-orchestration/programs/msp"
 import type { FamilyProfile } from "@/lib/benefit-orchestration/types"

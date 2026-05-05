@@ -1,5 +1,8 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- Add extracted_data to mobile_verify_sessions for AAMVA auto-fill
--- @author Bin Lee
+-- @author: Bin Lee
 
 ALTER TABLE public.mobile_verify_sessions
   ADD COLUMN IF NOT EXISTS extracted_data JSONB;

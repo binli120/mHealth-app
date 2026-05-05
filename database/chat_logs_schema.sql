@@ -1,3 +1,6 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- Chat / Ollama request log
 -- Run this migration once against your database.
 

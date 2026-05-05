@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Unit tests for all four notification API routes.
  *   GET  /api/notifications           — list
  *   GET  /api/notifications/unread-count
@@ -6,7 +11,7 @@
  *   POST /api/notifications/read-all
  *
  * DB and auth are mocked; only the route handler logic is exercised.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest"

@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Collaborative Session — shared types
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 export type SessionStatus = "scheduled" | "active" | "ended" | "cancelled"

@@ -1,7 +1,12 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Unit tests for lib/auth/local-auth.ts
  * Pure utility functions — no mocks needed, only process.env manipulation.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { describe, it, expect, vi } from "vitest"

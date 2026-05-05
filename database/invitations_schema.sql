@@ -2,8 +2,8 @@
 -- Invitations schema
 -- Admin can invite users by email, optionally linked to a company.
 -- The invited user receives a link to set their name + password.
--- @author Bin Lee
--- @email blee@healthcompass.cloud
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
 -- ============================================================
 
 -- Add company_id to public.users so members can be linked to a company

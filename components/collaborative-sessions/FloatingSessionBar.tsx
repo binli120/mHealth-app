@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * SWSessionProvider — mounts the WebRTC hook at layout level so screen share
  * persists as the SW navigates between pages (dashboard → patient application).
  *
@@ -6,7 +11,7 @@
  * session room itself) while a session is active. Lets the SW start/stop
  * screen share and jump to chat without going back to the session room.
  *
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 "use client"

@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * ScreenSharePanel
  *
  * Renders differently for each role:
@@ -13,7 +18,7 @@
  *    connected   → full <video> element (resizable, min/max toggle)
  *    idle        → nothing rendered
  *
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 "use client"

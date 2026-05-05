@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Sync local public schema data to a Supabase cloud project.
  *
  * Usage:
@@ -9,7 +14,7 @@
  * Or for prod specifically:
  *   pnpm db:sync:prod   (requires SUPABASE_DB_URL_PROD in .env.production)
  *
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { execSync, spawnSync } from "node:child_process"

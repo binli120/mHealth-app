@@ -1,7 +1,7 @@
 /**
  * Server-side storage helpers for admin passkeys.
- * @author Bin Lee
- * @email blee@healthcompass.cloud
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
  */
 
 import "server-only"

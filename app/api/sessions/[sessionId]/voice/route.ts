@@ -1,10 +1,15 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * POST /api/sessions/[sessionId]/voice
  * Receives a multipart audio blob, uploads it to Supabase Storage,
  * inserts a voice message row, and returns the new message.
  *
  * Storage path: sessions/{sessionId}/voice/{messageId}.{ext}
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { NextResponse } from "next/server"

@@ -1,3 +1,6 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- mHealth schema hardening migration (schema-tolerant)
 -- NOTE: Timestamp conversion assumes existing TIMESTAMP values are UTC.
 

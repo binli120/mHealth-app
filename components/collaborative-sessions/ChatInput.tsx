@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * ChatInput
  * Text area + send button + voice recorder.
  *
@@ -14,7 +19,7 @@
  *     POST /api/sessions/[sessionId]/messages
  *   • Shift+Enter inserts a newline
  *
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 "use client"

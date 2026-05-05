@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import { generateAuthenticationOptions } from "@simplewebauthn/server"
 import { NextResponse } from "next/server"
 import { getAdminUserByEmail, listAdminPasskeysForUser } from "@/lib/auth/admin-passkeys"

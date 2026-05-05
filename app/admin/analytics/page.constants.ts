@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Constants for the Admin Analytics page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 export const DRILL_DOWN_PAGE_SIZE = 20

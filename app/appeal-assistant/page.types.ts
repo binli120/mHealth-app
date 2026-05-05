@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * TypeScript types for the Appeal Assistant page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import type { AppealAnalysis } from "@/lib/appeals/types"
