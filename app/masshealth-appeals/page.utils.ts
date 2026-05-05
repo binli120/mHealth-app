@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Utilities for the MassHealth Appeals page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { getSafeSupabaseSession } from "@/lib/supabase/client"

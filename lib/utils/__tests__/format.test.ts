@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Unit tests for shared formatting utilities.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"

@@ -1,9 +1,14 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * GET   /api/sessions/[sessionId]  — fetch session details
  * PATCH /api/sessions/[sessionId]  — update session status
  *   Patient: scheduled → cancelled  (decline)
  *   SW:      scheduled → active     (start) | active → ended
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { NextResponse } from "next/server"

@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Social Worker — Session room page
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 "use client"

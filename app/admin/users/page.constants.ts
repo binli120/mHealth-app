@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Constants for the Admin Users page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 export const ROLE_OPTIONS = [

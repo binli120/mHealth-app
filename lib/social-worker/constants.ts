@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Shared social worker constants.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import {

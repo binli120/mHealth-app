@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import type { Meta, StoryObj } from "@storybook/nextjs"
 import { BenefitStackView } from "@/components/benefit-orchestration/BenefitStackView"
 import { sampleBenefitStack } from "@/components/storybook/storybook-utils"

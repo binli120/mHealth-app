@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Constants for the Customer Dashboard page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import {

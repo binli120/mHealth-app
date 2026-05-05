@@ -13,8 +13,8 @@
  * To add a new string key: add it to EN_CHAT_WIDGET first (the type is
  * derived from that object), then translate it in every locale block.
  *
- * @author Bin Lee
- * @email blee@healthcompass.cloud
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
  */
 
 import { type SupportedLanguage } from "@/lib/i18n/languages"

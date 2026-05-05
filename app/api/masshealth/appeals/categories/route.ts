@@ -1,8 +1,13 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * GET /api/masshealth/appeals/categories
  * Proxy → masshealth-analysis service: GET /masshealth/appeals/categories
  * Returns the 8 denial-reason taxonomy entries used to populate the dropdown.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { NextResponse } from "next/server"

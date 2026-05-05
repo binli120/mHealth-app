@@ -1,6 +1,6 @@
 /**
- * @author Bin Lee
- * @email blee@healthcompass.cloud
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
  */
 
 import { describe, expect, it } from "vitest"

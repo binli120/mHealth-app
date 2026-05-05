@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Utilities for the Customer Status List page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import {

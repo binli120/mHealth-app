@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import { describe, expect, it } from "vitest"
 import { runEligibilityCheck, type ScreenerData } from "@/lib/eligibility-engine"
 import { getPrescreenerSteps } from "@/app/prescreener/prescreener-copy"

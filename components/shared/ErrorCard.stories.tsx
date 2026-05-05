@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import type { Meta, StoryObj } from "@storybook/nextjs"
 import { ErrorCard } from "@/components/shared/ErrorCard"
 

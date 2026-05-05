@@ -1,5 +1,8 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- Add avatar_url to user_profiles (idempotent — column may already exist from 20260326)
--- @author Bin Lee
+-- @author: Bin Lee
 
 ALTER TABLE public.user_profiles
   ADD COLUMN IF NOT EXISTS avatar_url TEXT DEFAULT NULL;

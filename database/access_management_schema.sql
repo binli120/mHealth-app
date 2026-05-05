@@ -1,6 +1,9 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- Access Management Schema — Role & Permission Manager, Session Tracking
 -- Run this migration once against your database.
--- @author Bin Lee
+-- @author: Bin Lee
 
 -- ── Extend roles table ───────────────────────────────────────────────────────
 

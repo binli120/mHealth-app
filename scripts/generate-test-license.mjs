@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * generate-test-license.mjs
  *
  * Generates a fake Massachusetts driver's license for scanner testing.

@@ -1,8 +1,13 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * POST /api/masshealth/appeals/research
  * Proxy → masshealth-analysis service: POST /masshealth/appeals/research
  * Returns matched categories, evidence checklist, argument themes, and top sources.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { NextResponse } from "next/server"

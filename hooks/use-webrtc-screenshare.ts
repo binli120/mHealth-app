@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * useWebRTCScreenShare
  *
  * One-way screen share: SW (offerer) → Patient (answerer/viewer).
@@ -8,7 +13,7 @@
  * subscription is confirmed. If the SW is already sharing, it re-sends the
  * offer immediately so the patient doesn't stay spinning forever.
  *
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 "use client"

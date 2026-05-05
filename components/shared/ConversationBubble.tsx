@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import type { ReactNode } from "react"
 import { cn } from "@/lib/utils"
 

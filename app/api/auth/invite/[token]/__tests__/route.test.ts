@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@/lib/db/invitations", () => ({

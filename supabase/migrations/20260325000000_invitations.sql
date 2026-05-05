@@ -1,5 +1,8 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- Invitations schema — depends on companies (20260323)
--- @author Bin Lee
+-- @author: Bin Lee
 
 ALTER TABLE public.users
   ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES public.companies(id) ON DELETE SET NULL;

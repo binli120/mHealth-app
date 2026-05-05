@@ -1,3 +1,6 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- RAG Policy Document Store
 -- Requires pgvector extension (enable via Supabase Dashboard → Extensions → vector)
 -- Run AFTER enabling pgvector in your Supabase project

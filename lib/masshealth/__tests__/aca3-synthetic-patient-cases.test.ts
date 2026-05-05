@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import { describe, expect, it } from "vitest"
 
 import syntheticCases from "@/data/aca3-synthetic-patient-cases.json"

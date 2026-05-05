@@ -1,6 +1,6 @@
 /**
- * @author Bin Lee
- * @email blee@healthcompass.cloud
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
  */
 
 import { cva, type VariantProps } from 'class-variance-authority'

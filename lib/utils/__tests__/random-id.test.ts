@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import { describe, it, expect, vi, afterEach } from "vitest"
 import { createUuid } from "@/lib/utils/random-id"
 

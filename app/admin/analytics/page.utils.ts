@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Utilities for the Admin Analytics page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 export function formatAnalyticsMonth(ym: string): string {

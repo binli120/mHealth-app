@@ -1,6 +1,6 @@
 /**
- * @author Bin Lee
- * @email blee@healthcompass.cloud
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
  *
  * Persistent long-term memory for the ReAct agent pipeline (Phase 4).
  *

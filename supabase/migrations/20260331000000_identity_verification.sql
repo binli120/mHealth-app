@@ -1,5 +1,8 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- Identity Verification Schema — depends on applicants + users (20260301)
--- @author Bin Lee
+-- @author: Bin Lee
 
 ALTER TABLE public.applicants
   ADD COLUMN IF NOT EXISTS identity_status      TEXT NOT NULL DEFAULT 'unverified'

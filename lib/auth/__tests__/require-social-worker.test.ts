@@ -1,8 +1,13 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Unit tests for lib/auth/require-social-worker.ts
  * requireAuthenticatedUser and the DB pool are mocked; only the social-worker
  * role check logic is exercised.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest"

@@ -1,6 +1,6 @@
 /**
- * @author Bin Lee
- * @email blee@healthcompass.cloud
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
  */
 
 const DEFAULT_ERROR_MESSAGE = "Something went wrong. Please try again."

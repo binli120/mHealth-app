@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import pptxgen from "pptxgenjs";
 
 const pptx = new pptxgen();

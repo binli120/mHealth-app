@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Load test — ramps up to find the breaking point under realistic traffic.
  * Run this before scaling decisions, not in production during peak hours.
  *

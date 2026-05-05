@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * TypeScript types for the Social Worker Patient Dashboard page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 export type { ApplicationListRecord as ApplicationRecord } from "@/lib/applications/types"

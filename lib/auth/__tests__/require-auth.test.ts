@@ -1,8 +1,13 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Unit tests for lib/auth/require-auth.ts
  * Supabase client and local-auth helper are mocked; the JWT helpers are exercised
  * indirectly through requireAuthenticatedUser.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { createHmac } from "crypto"

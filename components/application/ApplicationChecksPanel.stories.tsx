@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import type { Meta, StoryObj } from "@storybook/nextjs"
 import { ApplicationChecksPanel } from "@/components/application/ApplicationChecksPanel"
 import { sampleApplicationChecks } from "@/components/storybook/storybook-utils"

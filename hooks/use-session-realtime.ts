@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * useSessionRealtime
  * Manages the Supabase Realtime channel for a collaborative session.
  *
@@ -9,7 +14,7 @@
  * Presence: tracks who is currently viewing the room so the SW can see
  * when the patient goes online/offline.
  *
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 "use client"

@@ -1,6 +1,9 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- Separate staff identity from patients table; update handle_new_auth_user trigger
 -- Depends on social_worker_profiles (20260323)
--- @author Bin Lee
+-- @author: Bin Lee
 
 BEGIN;
 

@@ -16,8 +16,8 @@
  * Structured results (scores, breakdown booleans, hashed DL number) are kept
  * indefinitely for audit purposes.
  *
- * @author Bin Lee
- * @email blee@healthcompass.cloud
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
  */
 
 import { NextResponse } from "next/server"

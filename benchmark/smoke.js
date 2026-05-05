@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Smoke test — run after every deploy to verify the app is alive.
  * 1 user, 30 seconds, all critical endpoints must return 200.
  *

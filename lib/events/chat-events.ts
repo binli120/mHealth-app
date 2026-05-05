@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Shared custom-event helpers for opening the patient chat widget
  * programmatically from anywhere on the page (dashboard card, notification
  * dropdown, etc.) without prop-drilling or shared state.

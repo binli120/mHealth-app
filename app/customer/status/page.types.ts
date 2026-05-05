@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * TypeScript types for the Customer Status List page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import type { ApplicationStatus } from "@/lib/application-status"

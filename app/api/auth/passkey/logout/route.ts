@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import { NextResponse } from "next/server"
 import { clearAdminPasskeySessionCookie } from "@/lib/auth/passkey-session"
 

@@ -1,7 +1,10 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 /**
  * Social Worker, Companies, and Patient Access Schema
  * Run after mHealth_schema.sql
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 -- Add social_worker role

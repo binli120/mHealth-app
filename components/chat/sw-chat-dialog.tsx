@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * SwChatDialog
  * Floating chat dialog for social workers.
  *
@@ -7,7 +12,7 @@
  *   • Conversations — click a thread to open SwDirectChatPanel inline
  *   • Requests      — pending engagement requests via EngagementRequestsPanel
  *
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 "use client"

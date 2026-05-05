@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * TypeScript interfaces for the Application Status Detail page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import type { ApplicationStatus } from "@/lib/application-status"

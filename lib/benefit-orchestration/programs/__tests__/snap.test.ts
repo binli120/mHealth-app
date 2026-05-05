@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import { describe, it, expect } from "vitest"
 import { evaluateSnap } from "@/lib/benefit-orchestration/programs/snap"
 import type { FamilyProfile, HouseholdMemberProfile } from "@/lib/benefit-orchestration/types"

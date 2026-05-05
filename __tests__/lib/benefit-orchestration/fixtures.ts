@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 // Shared test fixtures for benefit-orchestration tests
 import type { FamilyProfile, IncomeBreakdown, AssetBreakdown, HouseholdMemberProfile } from '../../../lib/benefit-orchestration/types'
 

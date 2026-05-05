@@ -1,3 +1,6 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- User Profile Schema
 -- Extends the core applicants record with demographic, accessibility,
 -- education, bank (encrypted), and notification preference data.

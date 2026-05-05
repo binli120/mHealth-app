@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * POST /api/masshealth/income-verification/extract
  *
  * LLM/OCR extraction for a single income document.

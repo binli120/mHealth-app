@@ -1,3 +1,6 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 /**
  * Migration: Separate staff identity data from the patients (applicants) table.
  *
@@ -15,7 +18,7 @@
  *      attached) — patients are left untouched.
  *
  * Run order: after mHealth_schema.sql + social_worker_schema.sql
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 BEGIN;

@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Prominently surfaces pending session invites at the top of the patient dashboard.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 "use client"

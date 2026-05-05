@@ -1,5 +1,8 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 /**
- * @author Bin Lee
+ * @author: Bin Lee
  * Adds extracted_data to mobile_verify_sessions so the desktop can receive
  * parsed AAMVA fields (name, address) after a phone scan and auto-fill the profile.
  * No sensitive PII is stored — license number and DOB are excluded.

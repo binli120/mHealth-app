@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import { describe, it, expect } from 'vitest'
 import { evaluateBenefitStack } from '../../../lib/benefit-orchestration/orchestrator'
 import { baseProfile, childMember, emptyIncome } from './fixtures'

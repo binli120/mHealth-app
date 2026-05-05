@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * TypeScript interfaces for the Pre-Screener page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import type { ScreenerData } from "@/lib/eligibility-engine"

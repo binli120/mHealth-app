@@ -1,7 +1,12 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Unit tests for the SessionCard component.
  * Verifies that the right action buttons are shown for each role / status combo.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import React from "react"

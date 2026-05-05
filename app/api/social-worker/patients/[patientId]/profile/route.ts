@@ -1,8 +1,8 @@
 /**
  * GET /api/social-worker/patients/[patientId]/profile
  * Returns the patient's profile and care team for a social worker who has active access.
- * @author Bin Lee
- * @email blee@healthcompass.cloud
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
  */
 
 import { NextResponse } from "next/server"

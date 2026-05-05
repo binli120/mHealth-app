@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Permission keys and role defaults for the HealthCompass MA admin portal.
- * @author Bin Lee
+ * @author: Bin Lee
  * @email binlee120@gmail.com
  */
 

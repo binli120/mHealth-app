@@ -1,7 +1,12 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Static data for the landing page — programs, steps, features, testimonials, etc.
  * Kept in a separate file to keep page.tsx focused on layout and behaviour.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import {

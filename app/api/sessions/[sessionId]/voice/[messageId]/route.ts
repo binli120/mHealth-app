@@ -1,7 +1,12 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * GET /api/sessions/[sessionId]/voice/[messageId]
  * Returns a fresh 1-hour signed URL for a voice message.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { NextResponse } from "next/server"

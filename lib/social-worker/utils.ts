@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Shared social worker utilities.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 export function getSocialWorkerPatientDisplayName(patient: {

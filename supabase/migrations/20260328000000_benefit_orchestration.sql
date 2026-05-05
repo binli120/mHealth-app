@@ -1,5 +1,8 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- Benefit Orchestration Schema — depends on applicants (20260301)
--- @author Bin Lee
+-- @author: Bin Lee
 
 CREATE TABLE IF NOT EXISTS public.family_profiles (
   id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),

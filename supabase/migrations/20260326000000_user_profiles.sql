@@ -1,5 +1,8 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- User Profiles table — depends on applicants (20260301)
--- @author Bin Lee
+-- @author: Bin Lee
 
 CREATE TABLE IF NOT EXISTS public.user_profiles (
   id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),

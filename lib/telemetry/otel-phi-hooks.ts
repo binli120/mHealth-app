@@ -1,10 +1,15 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * OpenTelemetry PHI-filtering hooks.
  *
  * Extracted from instrumentation.ts as pure, synchronous functions so they
  * can be unit-tested without spinning up the OTel SDK or Next.js runtime.
  *
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import type { Span } from "@opentelemetry/api"

@@ -1,3 +1,6 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 BEGIN;
 
 DROP POLICY IF EXISTS sessions_insert ON public.collaborative_sessions;

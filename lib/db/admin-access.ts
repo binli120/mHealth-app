@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * DB helpers for Role & Permission Manager, Session Management, and Bulk Actions.
- * @author Bin Lee
+ * @author: Bin Lee
  * @email binlee120@gmail.com
  */
 
@@ -66,15 +71,8 @@ export async function listRoles(): Promise<RoleRow[]> {
     pool.query<{ role_name: string; cnt: string }>(
       `SELECT r.name AS role_name, COUNT(ur.user_id)::text AS cnt
          FROM public.roles r
-         LEFT JOIN public.user_roles ur ON ur.role_name = r.name
+         LEFT JOIN public.user_roles ur ON ur.role_id = r.id
          GROUP BY r.name`,
-    ).catch(() =>
-      pool.query<{ role_name: string; cnt: string }>(
-        `SELECT r.name AS role_name, COUNT(ur.user_id)::text AS cnt
-           FROM public.roles r
-           LEFT JOIN public.users u ON u.role = r.name
-           GROUP BY r.name`,
-      ),
     ),
   ])
 

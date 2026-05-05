@@ -1,7 +1,7 @@
 /**
  * Unit tests for app/api/auth/passkey/register/options/route.ts
- * @author Bin Lee
- * @email blee@healthcompass.cloud
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';

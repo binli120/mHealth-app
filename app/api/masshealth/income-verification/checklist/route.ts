@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * POST /api/masshealth/income-verification/checklist
  *
  * Build (or refresh) the per-member, per-source evidence checklist for an

@@ -1,7 +1,12 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Unit tests for NotificationItem.
  * Pure render component — no Redux, no network calls.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import React from "react"

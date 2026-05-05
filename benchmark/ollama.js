@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Ollama throughput test — measures how many concurrent inference requests
  * the Ollama instance can handle before queuing or timing out.
  *

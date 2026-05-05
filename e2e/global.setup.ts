@@ -1,6 +1,6 @@
 /**
- * @author Bin Lee
- * @email blee@healthcompass.cloud
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
  *
  * Global setup: creates demo users via the dev-register API and saves
  * Playwright storage-state so auth-dependent tests start already logged in.

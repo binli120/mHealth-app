@@ -1,3 +1,6 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- Voice transcription columns for sw_direct_messages
 -- Stores Web Speech API transcription text and detected language code
 

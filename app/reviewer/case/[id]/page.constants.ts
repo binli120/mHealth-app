@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Mock data constants for the Case Detail (Reviewer) page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 export const extractedData = [

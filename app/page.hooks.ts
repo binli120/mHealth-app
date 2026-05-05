@@ -1,8 +1,13 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Custom hooks used by the landing page.
  *   useInView   — fires once when an element enters the viewport
  *   useCounter  — animates a number from 0 → end when triggered
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 "use client"

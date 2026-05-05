@@ -1,6 +1,9 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- SW Messaging: engagement requests + direct messages
 -- Depends on: social_worker_schema (20260323), notifications (20260324), collaborative_sessions (20260322)
--- @author Bin Lee
+-- @author: Bin Lee
 
 CREATE TABLE IF NOT EXISTS public.sw_engagement_requests (
   id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -1,7 +1,12 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * CSS keyframe animations and utility classes injected into the landing page
  * via a <style> tag so Tailwind's JIT doesn't need to know about them at build time.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 export const LANDING_STYLES = `

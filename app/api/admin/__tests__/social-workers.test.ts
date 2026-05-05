@@ -1,10 +1,15 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Unit tests for the admin social-workers API routes.
  *   GET   /api/admin/social-workers  — list with filters
  *   PATCH /api/admin/social-workers  — approve / reject
  *
  * Auth and DB are mocked; only route handler logic is exercised.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest"

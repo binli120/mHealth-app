@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * React context that shares the layout-level WebRTC screen share state
  * with any descendant component (e.g. SessionRoom).
  *
@@ -7,7 +12,7 @@
  * SessionRoom consumes this instead of calling the hook a second time,
  * avoiding duplicate Supabase channel subscriptions.
  *
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 "use client"

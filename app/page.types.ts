@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * TypeScript interfaces for the landing page data shapes.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import type { ReactNode } from "react"

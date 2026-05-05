@@ -1,7 +1,10 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 /**
  * Seed admin account: no-reply@healthcompass.cloud / password
  * Run after mHealth_schema.sql in local development
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 DO $$

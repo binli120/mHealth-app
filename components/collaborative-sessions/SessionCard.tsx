@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Single session card — used in both SW list and patient list.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 "use client"

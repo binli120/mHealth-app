@@ -1,3 +1,6 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- Migration: enforce_role_exclusivity
 -- Admin and social_worker are distinct roles — a user may not hold both simultaneously.
 -- This trigger fires before every INSERT on public.user_roles and raises an exception

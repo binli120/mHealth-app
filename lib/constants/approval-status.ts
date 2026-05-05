@@ -1,11 +1,16 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Shared constants for the three-state approval workflow:
  * pending → approved | rejected.
  *
  * Used by admin/social-workers, admin/companies, and any future
  * entity that follows the same approval lifecycle.
  *
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import type { SelectOption } from "../types/common"

@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 // ── Shared layout (React Email inline styles) ───────────────────────────────
 
 export const bodyStyle = { fontFamily: "sans-serif", backgroundColor: "#f9fafb", margin: "0", padding: "32px 16px" }

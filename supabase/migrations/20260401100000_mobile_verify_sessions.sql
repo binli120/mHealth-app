@@ -1,5 +1,8 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- Cross-device identity verification sessions — depends on identity_verification (20260331)
--- @author Bin Lee
+-- @author: Bin Lee
 
 CREATE TABLE IF NOT EXISTS public.mobile_verify_sessions (
   id               UUID        PRIMARY KEY DEFAULT gen_random_uuid(),

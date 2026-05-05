@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Utilities for the Admin Reports page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"

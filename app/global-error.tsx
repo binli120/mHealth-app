@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 "use client"
 
 import { AlertTriangle } from "lucide-react"

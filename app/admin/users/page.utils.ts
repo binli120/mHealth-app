@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Utility functions for the Admin Users page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 // fullName logic is shared across all person-like entities — lives in lib.

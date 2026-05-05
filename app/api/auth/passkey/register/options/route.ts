@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import { generateRegistrationOptions } from "@simplewebauthn/server"
 import { NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/auth/require-admin"

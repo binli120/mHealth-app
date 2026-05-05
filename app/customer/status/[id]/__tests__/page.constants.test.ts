@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Unit tests for Application Status Detail page constants.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { describe, it, expect } from "vitest"

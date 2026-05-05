@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import type { Meta, StoryObj } from "@storybook/nextjs"
 import { Heart, Scale } from "lucide-react"
 import { PageIntro } from "@/components/shared/PageIntro"

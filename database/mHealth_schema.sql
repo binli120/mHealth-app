@@ -1,3 +1,6 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TABLE organizations (

@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Utility functions for the Check Application page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import type { FormRecord, PersonState, WizardData } from "@/components/application/aca3/types"

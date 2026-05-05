@@ -1,7 +1,12 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Unit tests for NotificationBell.
  * Tests the badge display logic and the polling/fetch-on-mount behaviour.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import React from "react"

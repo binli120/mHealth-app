@@ -1,3 +1,6 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- Migration: add avatar_url column to user_profiles
 -- Run once against the target database.
 

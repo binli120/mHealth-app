@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * TypeScript types for the Accept Invite page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 export interface InvitationInfo {

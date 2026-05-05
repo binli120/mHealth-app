@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import { describe, it, expect } from 'vitest'
 import { evaluateWIC } from '../../../../lib/benefit-orchestration/programs/wic'
 import { baseProfile, childMember, emptyIncome } from '../fixtures'

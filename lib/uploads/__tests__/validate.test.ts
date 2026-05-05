@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Unit tests for lib/uploads/validate.ts
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { describe, it, expect } from "vitest"

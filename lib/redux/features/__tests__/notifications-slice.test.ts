@@ -1,7 +1,12 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Unit tests for notificationsSlice reducers.
  * Pure Redux logic — no mocks required.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { describe, it, expect } from "vitest"

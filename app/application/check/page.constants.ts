@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Constants for the Check Application page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import type { CheckSeverity } from "@/lib/masshealth/application-checks"

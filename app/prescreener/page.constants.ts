@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Conversation flow lookup helpers for the Pre-Screener page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 import { type SupportedLanguage } from "@/lib/i18n/languages"

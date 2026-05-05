@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Constants for the Accept Invite page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 export const INVITE_ROLE_LABELS: Record<string, string> = {

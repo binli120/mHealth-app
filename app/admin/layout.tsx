@@ -1,8 +1,8 @@
 "use client"
 
 /**
- * @author Bin Lee
- * @email blee@healthcompass.cloud
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
  */
 
 import { useEffect, useState } from "react"
@@ -28,7 +28,6 @@ import {
   BarChart2,
   Download,
   KeyRound,
-  Monitor,
   ShieldCheck,
   ShieldPlus,
   Check,
@@ -74,7 +73,6 @@ const NAV_GROUPS: NavGroup[] = [
   {
     title: "System",
     items: [
-      { href: "/admin/sessions",  label: "Sessions",     icon: Monitor },
       { href: "/admin/phi-audit", label: "PHI Audit Log", icon: ShieldCheck },
     ],
   },

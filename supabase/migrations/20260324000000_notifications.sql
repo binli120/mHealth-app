@@ -1,5 +1,8 @@
+-- @author: Bin Lee
+-- @email: blee@healthcompass.cloud
+
 -- Notifications table
--- @author Bin Lee
+-- @author: Bin Lee
 
 CREATE TABLE IF NOT EXISTS public.notifications (
   id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),

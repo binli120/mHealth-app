@@ -1,6 +1,6 @@
 /**
- * @author Bin Lee
- * @email blee@healthcompass.cloud
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
  *
  * Unit tests for lib/db/phi-audit:
  *   logPhiAccess, getPhiAuditLogs

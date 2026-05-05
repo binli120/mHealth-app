@@ -1,6 +1,11 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Constants for the Admin Companies page.
- * @author Bin Lee
+ * @author: Bin Lee
  */
 
 // Shared approval-lifecycle constants — single source of truth in lib.
