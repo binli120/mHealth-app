@@ -170,8 +170,10 @@ export class ApplicationPage {
   // Assertions
 
   async assertChatModeVisible() {
-    await expect(this.page.getByRole("tab", { name: /ai assistant/i })).toBeVisible()
-    await expect(this.page.getByText(/application assistant/i).first()).toBeVisible({ timeout: 10_000 })
+    // Tab was renamed from "AI Assistant" → "Compass"
+    await expect(this.page.getByRole("tab", { name: /compass/i })).toBeVisible()
+    // Heading inside the chat panel is "Compass"
+    await expect(this.page.getByText(/compass/i).first()).toBeVisible({ timeout: 10_000 })
     await expect(this.page.locator("textarea").first()).toBeVisible()
   }
 
