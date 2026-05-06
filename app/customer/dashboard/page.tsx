@@ -5,12 +5,13 @@
 
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
 import { useAsyncData } from "@/hooks/use-async-data"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +39,7 @@ import {
   ChevronRight,
   Clock,
   FileText,
+  HelpCircle,
   LogOut,
   MessageCircle,
   Scale,
@@ -59,16 +61,37 @@ import { ThemeToggle } from "@/components/shared/ThemeToggle"
 import { formatDate } from "@/lib/utils/format"
 import type { ApplicationListApiResponse } from "./page.types"
 import { STATUS_META } from "./page.constants"
-import { getApplicationTypeLabel } from "./page.utils"
+import { buildDashboardGreeting, getApplicationTypeLabel } from "./page.utils"
+import { DashboardTour } from "./dashboard-tour"
+
+interface DashboardWidgetTooltipProps {
+  children: ReactNode
+  content: string
+  side?: "top" | "right" | "bottom" | "left"
+}
+
+function DashboardWidgetTooltip({ children, content, side = "bottom" }: DashboardWidgetTooltipProps) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side={side} sideOffset={8} className="max-w-xs text-left leading-5">
+        {content}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
 
 export default function CustomerDashboardPage() {
   const router = useRouter()
   const dispatch = useAppDispatch()
   const language = useAppSelector((state) => state.app.language)
   const userProfile = useAppSelector((state) => state.userProfile.profile)
+  const unreadNotificationCount = useAppSelector((state) => state.notifications.unreadCount)
 
   const [firstName, setFirstName] = useState("")
   const [isSigningOut, setIsSigningOut] = useState(false)
+  const [dashboardTourRunId, setDashboardTourRunId] = useState(0)
+  const [loginGreetingDate] = useState(() => new Date())
 
   // Social worker access state
   const [socialWorkers, setSocialWorkers] = useState<Array<{
@@ -235,6 +258,15 @@ export default function CustomerDashboardPage() {
   }, [applications])
 
   const greetingName = firstName || fallbackFirstName
+  const dashboardGreeting = useMemo(
+    () => buildDashboardGreeting({
+      applications,
+      greetingName,
+      now: loginGreetingDate,
+      unreadNotificationCount,
+    }),
+    [applications, greetingName, loginGreetingDate, unreadNotificationCount],
+  )
 
   return (
     <div className="min-h-screen bg-background">
@@ -288,40 +320,69 @@ export default function CustomerDashboardPage() {
             </Link>
           </nav>
           <div className="flex shrink-0 items-center gap-3">
-            <LanguageSwitcher />
-            <ThemeToggle />
-            <NotificationBell />
-            <Link href="/customer/profile" aria-label="My Profile">
-              <UserAvatar
-                avatarUrl={userProfile?.avatarUrl}
-                firstName={userProfile?.firstName ?? firstName}
-                lastName={userProfile?.lastName}
-                size="sm"
-                className="cursor-pointer ring-2 ring-transparent transition-all hover:ring-primary/40"
-              />
-            </Link>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => void handleLogout()}
-              disabled={isSigningOut}
-              aria-label="Sign out"
-            >
-              {isSigningOut ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogOut className="h-5 w-5" />}
-            </Button>
+            <div className="flex items-center gap-3" data-tour="dashboard-account-tools">
+              <LanguageSwitcher />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    data-tour="dashboard-help"
+                    onClick={() => setDashboardTourRunId((id) => id + 1)}
+                    aria-label="Open dashboard tutorial"
+                  >
+                    <HelpCircle className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" sideOffset={8}>
+                  Open dashboard tutorial
+                </TooltipContent>
+              </Tooltip>
+              <ThemeToggle />
+              <NotificationBell />
+              <Link href="/customer/profile" aria-label="My Profile">
+                <UserAvatar
+                  avatarUrl={userProfile?.avatarUrl}
+                  firstName={userProfile?.firstName ?? firstName}
+                  lastName={userProfile?.lastName}
+                  size="sm"
+                  className="cursor-pointer ring-2 ring-transparent transition-all hover:ring-primary/40"
+                />
+              </Link>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => void handleLogout()}
+                disabled={isSigningOut}
+                aria-label="Sign out"
+              >
+                {isSigningOut ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogOut className="h-5 w-5" />}
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-7xl px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-foreground md:text-3xl">
-            {`${getMessage(language, "dashboardWelcomeBack")}, ${greetingName}`}
-          </h1>
-          <p className="mt-1 text-muted-foreground">
-            {getMessage(language, "dashboardSubtitle")}
-          </p>
+        <div className="mb-8 flex flex-col gap-4 rounded-lg border border-border bg-card p-5 shadow-sm md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl font-normal text-foreground md:text-3xl">
+              {dashboardGreeting.heading}
+            </h1>
+            <p className="mt-2 max-w-3xl text-muted-foreground">
+              {dashboardGreeting.message}
+            </p>
+          </div>
+          {dashboardGreeting.cta && (
+            <Button asChild className="w-full shrink-0 md:w-auto">
+              <Link href={dashboardGreeting.cta.href}>
+                {dashboardGreeting.cta.label}
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          )}
         </div>
 
         <SessionInviteBanner />
@@ -331,182 +392,205 @@ export default function CustomerDashboardPage() {
 
         {/* Row 1: primary actions */}
         <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Link href="/application/type">
-            <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
+          <DashboardWidgetTooltip content="Start a new MassHealth application. You will choose the right form type, then complete it step by step.">
+            <Link href="/application/type" data-tour="dashboard-new-application">
+              <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
+                <CardContent className="flex items-center gap-4 p-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                    <FileText className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-card-foreground">{getMessage(language, "dashboardNewApp")}</p>
+                    <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardNewAppDesc")}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </DashboardWidgetTooltip>
+          <DashboardWidgetTooltip content="Screen your household for MassHealth and other support programs, including food, housing, childcare, and cash assistance.">
+            <Link href="/benefit-stack" data-tour="dashboard-benefit-stack">
+              <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
+                <CardContent className="flex items-center gap-4 p-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50">
+                    <span className="text-xl">🏛️</span>
+                  </div>
+                  <div>
+                    <p className="font-medium text-card-foreground">{getMessage(language, "dashboardNavBenefitStack")}</p>
+                    <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardBenefitStackDesc")}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </DashboardWidgetTooltip>
+          <DashboardWidgetTooltip content="Use guided appeal support when an application is denied, delayed, or needs a response to a MassHealth notice.">
+            <Link href="/appeal-assistant" data-tour="dashboard-appeals">
+              <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
+                <CardContent className="flex items-center gap-4 p-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-destructive/10">
+                    <Scale className="h-5 w-5 text-destructive" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-card-foreground">{getMessage(language, "dashboardAppealAssistant")}</p>
+                    <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardAppealAssistantDesc")}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </DashboardWidgetTooltip>
+          <DashboardWidgetTooltip content="Research the denial reason and draft a MassHealth appeal letter using your case details and supporting documents.">
+            <Link href="/masshealth-appeals" data-tour="dashboard-appeal-letter">
+              <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
+                <CardContent className="flex items-center gap-4 p-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-50">
+                    <FileSearch className="h-5 w-5 text-violet-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-card-foreground">Appeal Letter</p>
+                    <p className="text-sm text-muted-foreground">Research &amp; draft a MassHealth appeal</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </DashboardWidgetTooltip>
+          <DashboardWidgetTooltip content="Upload proof documents when MassHealth asks for verification, such as income, identity, residency, or insurance records.">
+            <Card
+              className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md"
+              data-tour="dashboard-upload-documents"
+            >
               <CardContent className="flex items-center gap-4 p-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                  <FileText className="h-5 w-5 text-primary" />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-success/10">
+                  <Upload className="h-5 w-5 text-success" />
                 </div>
                 <div>
-                  <p className="font-medium text-card-foreground">{getMessage(language, "dashboardNewApp")}</p>
-                  <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardNewAppDesc")}</p>
+                  <p className="font-medium text-card-foreground">{getMessage(language, "dashboardUploadDocs")}</p>
+                  <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardUploadDocsDesc")}</p>
                 </div>
               </CardContent>
             </Card>
-          </Link>
-          <Link href="/benefit-stack">
-            <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
-              <CardContent className="flex items-center gap-4 p-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50">
-                  <span className="text-xl">🏛️</span>
-                </div>
-                <div>
-                  <p className="font-medium text-card-foreground">{getMessage(language, "dashboardNavBenefitStack")}</p>
-                  <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardBenefitStackDesc")}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-          <Link href="/appeal-assistant">
-            <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
-              <CardContent className="flex items-center gap-4 p-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-destructive/10">
-                  <Scale className="h-5 w-5 text-destructive" />
-                </div>
-                <div>
-                  <p className="font-medium text-card-foreground">{getMessage(language, "dashboardAppealAssistant")}</p>
-                  <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardAppealAssistantDesc")}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-          <Link href="/masshealth-appeals">
-            <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
-              <CardContent className="flex items-center gap-4 p-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-50">
-                  <FileSearch className="h-5 w-5 text-violet-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-card-foreground">Appeal Letter</p>
-                  <p className="text-sm text-muted-foreground">Research &amp; draft a MassHealth appeal</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-          <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-success/10">
-                <Upload className="h-5 w-5 text-success" />
-              </div>
-              <div>
-                <p className="font-medium text-card-foreground">{getMessage(language, "dashboardUploadDocs")}</p>
-                <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardUploadDocsDesc")}</p>
-              </div>
-            </CardContent>
-          </Card>
+          </DashboardWidgetTooltip>
         </div>
 
         {/* Row 2: secondary actions */}
         <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Link href="/customer/status">
-            <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
-              <CardContent className="flex items-center gap-4 p-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10">
-                  <Clock className="h-5 w-5 text-accent" />
-                </div>
-                <div>
-                  <p className="font-medium text-card-foreground">{getMessage(language, "dashboardTrackStatus")}</p>
-                  <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardTrackStatusDesc")}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-          <Link href="/knowledge-center">
-            <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
-              <CardContent className="flex items-center gap-4 p-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-warning/10">
-                  <BookOpenText className="h-5 w-5 text-warning" />
-                </div>
-                <div>
-                  <p className="font-medium text-card-foreground">{getMessage(language, "dashboardNavKnowledgeCenter")}</p>
-                  <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardKnowledgeCenterDesc")}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
+          <DashboardWidgetTooltip content="Track draft and submitted applications, review status changes, and open any application that needs more work.">
+            <Link href="/customer/status" data-tour="dashboard-track-status">
+              <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
+                <CardContent className="flex items-center gap-4 p-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10">
+                    <Clock className="h-5 w-5 text-accent" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-card-foreground">{getMessage(language, "dashboardTrackStatus")}</p>
+                    <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardTrackStatusDesc")}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </DashboardWidgetTooltip>
+          <DashboardWidgetTooltip content="Open guides, articles, and videos that explain MassHealth rules, documents, renewals, and next steps.">
+            <Link href="/knowledge-center" data-tour="dashboard-knowledge-center">
+              <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
+                <CardContent className="flex items-center gap-4 p-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-warning/10">
+                    <BookOpenText className="h-5 w-5 text-warning" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-card-foreground">{getMessage(language, "dashboardNavKnowledgeCenter")}</p>
+                    <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardKnowledgeCenterDesc")}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </DashboardWidgetTooltip>
         </div>
 
         <div className="grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <Card className="border-border bg-card">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-card-foreground">{getMessage(language, "dashboardMyApplicationsTitle")}</CardTitle>
-                    <CardDescription>{getMessage(language, "dashboardMyApplicationsDesc")}</CardDescription>
+            <DashboardWidgetTooltip
+              content="Review recent applications. Open drafts to continue editing, or open submitted applications to see status, notices, and history."
+              side="right"
+            >
+              <Card className="border-border bg-card" data-tour="dashboard-applications">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-card-foreground">{getMessage(language, "dashboardMyApplicationsTitle")}</CardTitle>
+                      <CardDescription>{getMessage(language, "dashboardMyApplicationsDesc")}</CardDescription>
+                    </div>
+                    <Link href="/customer/status">
+                      <Button variant="ghost" size="sm" className="gap-1">
+                        {getMessage(language, "dashboardViewAll")}
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </Link>
                   </div>
-                  <Link href="/customer/status">
-                    <Button variant="ghost" size="sm" className="gap-1">
-                      {getMessage(language, "dashboardViewAll")}
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardLoadingApps")}</p>
-                ) : loadError ? (
-                  <div className="space-y-3">
-                    <p className="text-sm text-destructive">{loadError}</p>
-                    <Button type="button" variant="outline" size="sm" onClick={() => void loadApplications()}>
-                      {getMessage(language, "dashboardRetry")}
-                    </Button>
-                  </div>
-                ) : applications.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-border p-4">
-                    <p className="text-sm text-muted-foreground">
-                      {getMessage(language, "dashboardNoApps")}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {applications.map((app) => {
-                      const status = statusConfig[app.status]
-                      const StatusIcon = status.icon
-                      const itemHref =
-                        app.status === "draft"
-                          ? `/application/new?applicationId=${app.id}`
-                          : `/customer/status/${app.id}`
+                </CardHeader>
+                <CardContent>
+                  {isLoading ? (
+                    <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardLoadingApps")}</p>
+                  ) : loadError ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-destructive">{loadError}</p>
+                      <Button type="button" variant="outline" size="sm" onClick={() => void loadApplications()}>
+                        {getMessage(language, "dashboardRetry")}
+                      </Button>
+                    </div>
+                  ) : applications.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-border p-4">
+                      <p className="text-sm text-muted-foreground">
+                        {getMessage(language, "dashboardNoApps")}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {applications.map((app) => {
+                        const status = statusConfig[app.status]
+                        const StatusIcon = status.icon
+                        const itemHref =
+                          app.status === "draft"
+                            ? `/application/new?applicationId=${app.id}`
+                            : `/customer/status/${app.id}`
 
-                      return (
-                        <Link key={app.id} href={itemHref}>
-                          <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 p-4 transition-colors hover:bg-secondary/50">
-                            <div className="flex items-center gap-4">
-                              <div
-                                className={`flex h-10 w-10 items-center justify-center rounded-lg ${status.color}`}
-                              >
-                                <StatusIcon className="h-5 w-5" />
+                        return (
+                          <Link key={app.id} href={itemHref}>
+                            <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 p-4 transition-colors hover:bg-secondary/50">
+                              <div className="flex items-center gap-4">
+                                <div
+                                  className={`flex h-10 w-10 items-center justify-center rounded-lg ${status.color}`}
+                                >
+                                  <StatusIcon className="h-5 w-5" />
+                                </div>
+                                <div>
+                                  <p className="font-medium text-foreground">
+                                    {getApplicationTypeLabel(app.applicationType)}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">ID: {app.id}</p>
+                                </div>
                               </div>
-                              <div>
-                                <p className="font-medium text-foreground">
-                                  {getApplicationTypeLabel(app.applicationType)}
+                              <div className="text-right">
+                                <span
+                                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${status.color}`}
+                                >
+                                  {status.label}
+                                </span>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {getMessage(language, "dashboardUpdated")} {formatDate(app.lastSavedAt ?? app.updatedAt)}
                                 </p>
-                                <p className="text-sm text-muted-foreground">ID: {app.id}</p>
                               </div>
                             </div>
-                            <div className="text-right">
-                              <span
-                                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${status.color}`}
-                              >
-                                {status.label}
-                              </span>
-                              <p className="mt-1 text-xs text-muted-foreground">
-                                {getMessage(language, "dashboardUpdated")} {formatDate(app.lastSavedAt ?? app.updatedAt)}
-                              </p>
-                            </div>
-                          </div>
-                        </Link>
-                      )
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </DashboardWidgetTooltip>
           </div>
 
           <div className="space-y-6">
-            <Card className="border-warning/50 bg-warning/5">
+            <DashboardWidgetTooltip content="Shows urgent MassHealth requests, such as missing documents or information you need to review." side="left">
+              <Card className="border-warning/50 bg-warning/5" data-tour="dashboard-action-required">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base text-card-foreground">
                   <AlertCircle className="h-5 w-5 text-warning" />
@@ -536,8 +620,10 @@ export default function CustomerDashboardPage() {
                 )}
               </CardContent>
             </Card>
+            </DashboardWidgetTooltip>
 
-            <Card className="border-border bg-card">
+            <DashboardWidgetTooltip content="Summarizes the latest updates across your applications so you can see what changed recently." side="left">
+              <Card className="border-border bg-card" data-tour="dashboard-activity">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base text-card-foreground">
                   <Calendar className="h-5 w-5 text-primary" />
@@ -568,8 +654,10 @@ export default function CustomerDashboardPage() {
                 )}
               </CardContent>
             </Card>
+            </DashboardWidgetTooltip>
 
-            <Card className="border-border bg-card">
+            <DashboardWidgetTooltip content="Find official MassHealth phone and TTY support contact information." side="left">
+              <Card className="border-border bg-card" data-tour="dashboard-support">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base text-card-foreground">{getMessage(language, "dashboardNeedHelp")}</CardTitle>
               </CardHeader>
@@ -583,9 +671,11 @@ export default function CustomerDashboardPage() {
                 </div>
               </CardContent>
             </Card>
+            </DashboardWidgetTooltip>
 
             {/* Social Worker Access Panel */}
-            <Card className="border-border bg-card">
+            <DashboardWidgetTooltip content="Grant an approved social worker access to help review applications, respond to requests, and chat with you." side="left">
+              <Card className="border-border bg-card" data-tour="dashboard-social-worker">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2 text-base text-card-foreground">
@@ -647,6 +737,7 @@ export default function CustomerDashboardPage() {
                 )}
               </CardContent>
             </Card>
+            </DashboardWidgetTooltip>
           </div>
         </div>
       </main>
@@ -725,6 +816,7 @@ export default function CustomerDashboardPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <DashboardTour runId={dashboardTourRunId} />
     </div>
   )
 }

@@ -20,8 +20,11 @@ const AUTH_FILE = path.join(__dirname, "../.auth/user.json")
 test.describe("Customer Dashboard", () => {
   let dashboard: DashboardPage
 
-  test.beforeEach(({ page }) => {
+  test.beforeEach(async ({ page }) => {
     test.skip(!hasSupabaseAuthState(AUTH_FILE), "No auth session — create a test user in the Supabase dashboard to run these tests")
+    await page.addInitScript(() => {
+      window.localStorage.setItem("healthcompass.dashboardTour.v1.completed", "true")
+    })
     dashboard = new DashboardPage(page)
   })
 
@@ -42,6 +45,37 @@ test.describe("Customer Dashboard", () => {
     await expect(
       page.getByText(/benefit|stack|program|check/i).first(),
     ).toBeVisible({ timeout: 10_000 })
+  })
+
+  test("shows a warm dynamic greeting in regular font weight", async ({ page }) => {
+    await dashboard.goto()
+    const greeting = page.getByRole("heading", {
+      name: /good (morning|afternoon|evening), .+\./i,
+    }).first()
+
+    await expect(greeting).toBeVisible({ timeout: 15_000 })
+    await expect(greeting).toHaveCSS("font-weight", "400")
+    await expect(
+      page.getByRole("link", { name: /review request|check notifications|continue application|start application|view status/i }),
+    ).toBeVisible()
+  })
+
+  test("shows hover help popup for dashboard widgets", async ({ page }) => {
+    await dashboard.goto()
+    await page.locator("[data-tour='dashboard-new-application']").hover()
+
+    await expect(
+      page.getByText(/start a new masshealth application/i),
+    ).toBeVisible({ timeout: 5_000 })
+  })
+
+  test("opens the visual tutorial from the help icon", async ({ page }) => {
+    await dashboard.goto()
+    await page.getByRole("button", { name: /open dashboard tutorial/i }).click()
+
+    await expect(page.getByRole("dialog", { name: /open this guide anytime/i })).toBeVisible({ timeout: 5_000 })
+    await page.getByRole("button", { name: /^next$/i }).click()
+    await expect(page.getByRole("dialog", { name: /manage dashboard preferences/i })).toBeVisible({ timeout: 5_000 })
   })
 
   test("navigation to Benefit Stack works", async ({ page }) => {
