@@ -18,7 +18,7 @@ import { ApplicationAssistant } from "@/components/application/aca3/application-
 import { FormWizard } from "@/components/application/aca3/form-wizard"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { ApplicationEntryMode } from "@/lib/applications/types"
-import { Sparkles } from "lucide-react"
+import { UserRound } from "lucide-react"
 
 export default function SWEditApplicationPage() {
   const params = useParams()
@@ -41,8 +41,8 @@ export default function SWEditApplicationPage() {
           </div>
           <TabsList>
             <TabsTrigger value="chat" className="flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5" />
-              AI Assistant
+              <UserRound className="h-3.5 w-3.5" />
+              Compass
             </TabsTrigger>
             <TabsTrigger value="wizard">Form Wizard</TabsTrigger>
           </TabsList>

@@ -14,11 +14,13 @@ import {
   useRef,
   useState,
 } from "react"
-import { Mic, MicOff, Send, CheckCircle2, Circle, ChevronDown, ChevronUp, ArrowRight, Loader2, User, Bot, Volume2 } from "lucide-react"
+import { Mic, MicOff, Send, CheckCircle2, Circle, ChevronDown, ChevronUp, ArrowRight, Loader2, User, UserRound, Volume2, CalendarDays, Pencil, Check, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import {
@@ -43,6 +45,7 @@ import {
   type ProfilePreFillSummary,
 } from "@/lib/masshealth/chat-knowledge"
 import type { UserProfile } from "@/lib/user-profile/types"
+import { parsePastedUsAddress } from "@/lib/utils/address-parse"
 import {
   summarizeCollectedFields,
   detectCurrentSection,
@@ -76,6 +79,20 @@ interface ApiChatMessage {
   content: string
 }
 
+interface QuickReply {
+  label: string
+  value: string
+}
+
+interface AssistantDraftState {
+  mode: "form_assistant"
+  updatedAt: string
+  formData: Partial<ApplicationFormData>
+  messages: AssistantMessage[]
+  noHouseholdMembers: boolean
+  noIncome: boolean
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const SECTION_LABELS: Record<FormSection, string> = {
@@ -105,6 +122,25 @@ const REQUIRED_DOCS = [
     description: "Utility bill, bank statement, or lease agreement",
   },
 ]
+
+const ACTIVE_ASSISTANT_APPLICATION_KEY = "healthcompass.applicationAssistant.activeApplicationId"
+const ASSISTANT_DRAFT_STORAGE_PREFIX = "healthcompass.applicationAssistant.draft."
+
+function getAssistantDraftCacheKey(applicationId: string): string {
+  return `${ASSISTANT_DRAFT_STORAGE_PREFIX}${applicationId}`
+}
+
+function resolveInitialAssistantApplicationId(providedApplicationId?: string): string {
+  if (providedApplicationId) return providedApplicationId
+  if (typeof window === "undefined") return createUuid()
+
+  const existing = window.localStorage.getItem(ACTIVE_ASSISTANT_APPLICATION_KEY)
+  if (existing) return existing
+
+  const next = createUuid()
+  window.localStorage.setItem(ACTIVE_ASSISTANT_APPLICATION_KEY, next)
+  return next
+}
 
 const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
   en: "EN",
@@ -167,6 +203,33 @@ function formatDateDigits(raw: string): string {
   if (d.length <= 2) return d
   if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`
   return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`
+}
+
+function formatCalendarDate(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${month}/${day}/${date.getFullYear()}`
+}
+
+function parseCalendarDate(raw: string): Date | undefined {
+  const formatted = parseNaturalDate(raw)
+  const match = formatted.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+  if (!match) return undefined
+
+  const month = Number(match[1])
+  const day = Number(match[2])
+  const year = Number(match[3])
+  const date = new Date(year, month - 1, day)
+
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return undefined
+  }
+
+  return date
 }
 
 const MONTH_MAP: Record<string, number> = {
@@ -244,28 +307,250 @@ const FIELD_TYPE_HINT: Record<InputFieldType, string> = {
   text: "",
 }
 
+export const ASSISTANT_CONNECTION_FAILURE_MESSAGE =
+  "Compass is having trouble reaching the AI engine right now. Your answers are still in this session. You can try again after the service is back, or switch to the Form Wizard to continue without the AI assistant."
+
+function CompassIcon({ className }: { className?: string }) {
+  return <UserRound className={className} aria-hidden="true" />
+}
+
+export function getQuickRepliesForAssistantPrompt(
+  prompt: string,
+  profileFillMode: "pending" | "confirming" | "accepted" | "declined",
+): QuickReply[] {
+  if (profileFillMode === "pending") {
+    return [
+      { label: "Yes, use my saved info", value: "Yes" },
+      { label: "No, start fresh", value: "No" },
+    ]
+  }
+
+  const normalized = prompt.toLowerCase()
+  if (/use your saved info|saved info|start fresh/.test(normalized) && /\byes\b/.test(normalized) && /\bno\b/.test(normalized)) {
+    return [
+      { label: "Yes, use my saved info", value: "Yes" },
+      { label: "No, start fresh", value: "No" },
+    ]
+  }
+
+  const asksForConfirmation =
+    /\b(reply|answer|select|choose)\b[\s\S]*\b(yes|no)\b/.test(normalized) ||
+    /\b(yes|no)\b[\s\S]*\b(confirm|continue|start fresh|use your saved info)\b/.test(normalized) ||
+    /\bdid you mean\b/.test(normalized)
+
+  if (!asksForConfirmation) return []
+
+  return [
+    { label: "Yes", value: "Yes" },
+    { label: "No", value: "No" },
+  ]
+}
+
+export function getNextMissingApplicationQuestion(
+  formData: Partial<ApplicationFormData>,
+  noHouseholdMembers = false,
+  noIncome = false,
+): string {
+  if (!formData.firstName) return "Let's start with your name. What's your first name?"
+  if (!formData.lastName) return "What is your last name?"
+  if (!formData.dob) return "What is your date of birth?"
+  if (!formData.email) return "What is your email address?"
+  if (!formData.phone) return "What phone number should MassHealth use to contact you?"
+  if (!formData.address) return "What is your home street address?"
+  if (!formData.city) return "What city do you live in?"
+  if (!formData.zip) return "What is your ZIP code?"
+  if (!noHouseholdMembers && !formData.householdMembers?.length) {
+    return "Does anyone else live in your household?"
+  }
+  if (!noIncome && !formData.incomeSources?.length) {
+    return "Do you or anyone in your household have income from work, benefits, or another source?"
+  }
+  return "Your main application details are complete. Please upload any requested supporting documents when you're ready."
+}
+
+interface ImmediateFieldPatch {
+  fields: Partial<ApplicationFormData>
+  noHouseholdMembers?: boolean
+  noIncome?: boolean
+}
+
+function hasPatchValueChanged(
+  formData: ApplicationFormData,
+  patch: Partial<ApplicationFormData>,
+): boolean {
+  return Object.entries(patch).some(([key, value]) => {
+    const fieldKey = key as keyof ApplicationFormData
+    return JSON.stringify(formData[fieldKey]) !== JSON.stringify(value)
+  })
+}
+
+export function getImmediateFieldPatchFromAnswer(
+  answer: string,
+  lastAssistantPrompt: string,
+  formData: ApplicationFormData,
+  currentSection: FormSection,
+  inputFieldType: InputFieldType,
+): ImmediateFieldPatch {
+  const trimmed = answer.trim()
+  if (!trimmed) return { fields: {} }
+
+  const prompt = lastAssistantPrompt.toLowerCase()
+  const normalizedAnswer = trimmed.toLowerCase()
+  const fields: Partial<ApplicationFormData> = {}
+
+  const parsedAddress = parsePastedUsAddress(trimmed)
+  if (parsedAddress) {
+    return {
+      fields: {
+        address: parsedAddress.streetAddress,
+        city: parsedAddress.city,
+        state: parsedAddress.state,
+        zip: parsedAddress.zipCode,
+      },
+    }
+  }
+
+  if (
+    currentSection === "household" &&
+    !formData.householdMembers.length &&
+    /\b(no|none|nobody|no one|live alone|alone)\b/.test(normalizedAnswer)
+  ) {
+    return { fields: {}, noHouseholdMembers: true }
+  }
+
+  if (
+    currentSection === "income" &&
+    !formData.incomeSources.length &&
+    /\b(no|none|no income|unemployed|not working)\b/.test(normalizedAnswer)
+  ) {
+    return { fields: {}, noIncome: true }
+  }
+
+  if (inputFieldType === "email" || /\bemail\b|e-mail/.test(prompt)) {
+    if (isValidEmail(trimmed)) fields.email = trimmed.toLowerCase()
+    return { fields }
+  }
+
+  if (inputFieldType === "phone" || /\bphone\b|telephone|cell|mobile/.test(prompt)) {
+    fields.phone = formatPhone(trimmed)
+    return { fields }
+  }
+
+  if (inputFieldType === "date" || /date of birth|\bdob\b|birthday|born/.test(prompt)) {
+    fields.dob = parseNaturalDate(trimmed)
+    return { fields }
+  }
+
+  if (/\bfirst name\b/.test(prompt) && !formData.firstName) {
+    fields.firstName = trimmed
+  } else if (/\blast name\b/.test(prompt) && !formData.lastName) {
+    fields.lastName = trimmed
+  } else if (/\b(city|town)\b/.test(prompt) && !formData.city) {
+    fields.city = trimmed
+  } else if (/\b(zip|postal)\b/.test(prompt) && !formData.zip) {
+    const zip = trimmed.match(/\d{5}/)?.[0]
+    if (zip) fields.zip = zip
+  } else if (/\b(street|home address|address)\b/.test(prompt) && !formData.address) {
+    fields.address = trimmed
+  } else if (currentSection === "personal") {
+    if (!formData.firstName) fields.firstName = trimmed
+    else if (!formData.lastName) fields.lastName = trimmed
+  } else if (currentSection === "contact") {
+    if (!formData.email && isValidEmail(trimmed)) fields.email = trimmed.toLowerCase()
+    else if (!formData.phone && /\d{10,}/.test(trimmed.replace(/\D/g, ""))) fields.phone = formatPhone(trimmed)
+    else if (!formData.address) fields.address = trimmed
+    else if (!formData.city) fields.city = trimmed
+    else if (!formData.zip) {
+      const zip = trimmed.match(/\d{5}/)?.[0]
+      if (zip) fields.zip = zip
+    }
+  }
+
+  return { fields }
+}
+
+export function recoverImmediateFieldsFromMessages(
+  messages: AssistantMessage[],
+  baseFormData: ApplicationFormData,
+  noHouseholdMembers = false,
+  noIncome = false,
+): ImmediateFieldPatch {
+  let workingData = { ...baseFormData }
+  let householdComplete = noHouseholdMembers
+  let incomeComplete = noIncome
+  let lastAssistantPrompt = ""
+  const recovered: Partial<ApplicationFormData> = {}
+
+  for (const message of messages) {
+    if (message.type !== "text") continue
+
+    if (message.role === "assistant") {
+      if (message.content !== ASSISTANT_CONNECTION_FAILURE_MESSAGE) {
+        lastAssistantPrompt = message.content
+      }
+      continue
+    }
+
+    const section = detectCurrentSection(workingData, householdComplete, incomeComplete)
+    const patch = getImmediateFieldPatchFromAnswer(
+      message.content,
+      lastAssistantPrompt,
+      workingData,
+      section,
+      detectInputFieldType(lastAssistantPrompt),
+    )
+
+    if (Object.keys(patch.fields).length > 0) {
+      recovered.applicationType = recovered.applicationType ?? patch.fields.applicationType
+      recovered.firstName = recovered.firstName ?? patch.fields.firstName
+      recovered.lastName = recovered.lastName ?? patch.fields.lastName
+      recovered.dob = recovered.dob ?? patch.fields.dob
+      recovered.email = recovered.email ?? patch.fields.email
+      recovered.phone = recovered.phone ?? patch.fields.phone
+      recovered.address = recovered.address ?? patch.fields.address
+      recovered.city = recovered.city ?? patch.fields.city
+      recovered.state = recovered.state ?? patch.fields.state
+      recovered.zip = recovered.zip ?? patch.fields.zip
+      workingData = { ...workingData, ...patch.fields }
+    }
+    if (patch.noHouseholdMembers) householdComplete = true
+    if (patch.noIncome) incomeComplete = true
+  }
+
+  return {
+    fields: Object.fromEntries(
+      Object.entries(recovered).filter(([, value]) => value !== undefined && value !== ""),
+    ) as Partial<ApplicationFormData>,
+    noHouseholdMembers: householdComplete && !noHouseholdMembers,
+    noIncome: incomeComplete && !noIncome,
+  }
+}
+
 // ── Progress helpers ──────────────────────────────────────────────────────────
 
 interface SectionField {
   label: string
   value: string
+  key?: keyof ApplicationFormData
+  editable?: boolean
 }
 
 function getSectionFields(formData: ApplicationFormData, section: FormSection): SectionField[] {
   switch (section) {
     case "personal":
       return [
-        { label: "First name", value: formData.firstName },
-        { label: "Last name", value: formData.lastName },
-        { label: "Date of birth", value: formData.dob },
+        { label: "First name", value: formData.firstName, key: "firstName", editable: true },
+        { label: "Last name", value: formData.lastName, key: "lastName", editable: true },
+        { label: "Date of birth", value: formData.dob, key: "dob", editable: true },
       ]
     case "contact":
       return [
-        { label: "Email", value: formData.email },
-        { label: "Phone", value: formData.phone },
-        { label: "Address", value: formData.address },
-        { label: "City", value: formData.city },
-        { label: "ZIP", value: formData.zip },
+        { label: "Email", value: formData.email, key: "email", editable: true },
+        { label: "Phone", value: formData.phone, key: "phone", editable: true },
+        { label: "Address", value: formData.address, key: "address", editable: true },
+        { label: "City", value: formData.city, key: "city", editable: true },
+        { label: "State", value: formData.state, key: "state", editable: true },
+        { label: "ZIP", value: formData.zip, key: "zip", editable: true },
       ]
     case "household":
       return (formData.householdMembers?.length ?? 0) > 0
@@ -349,6 +634,63 @@ function describedAppliedFields(profile: UserProfile): string[] {
   return labels
 }
 
+function sanitizeAssistantDraftMessages(messages: AssistantMessage[]): AssistantMessage[] {
+  return messages
+    .filter((message) => {
+      const content = message.content.trim()
+      return content.length > 0 && content !== ASSISTANT_CONNECTION_FAILURE_MESSAGE
+    })
+    .slice(-60)
+}
+
+function createAssistantDraftState(
+  formData: ApplicationFormData,
+  messages: AssistantMessage[],
+  noHouseholdMembers: boolean,
+  noIncome: boolean,
+): AssistantDraftState {
+  return {
+    mode: "form_assistant",
+    updatedAt: new Date().toISOString(),
+    formData: {
+      ...formData,
+      ssn: "",
+      householdMembers: formData.householdMembers.map((member) => ({ ...member, ssn: "" })),
+    },
+    messages: sanitizeAssistantDraftMessages(messages),
+    noHouseholdMembers,
+    noIncome,
+  }
+}
+
+function readAssistantDraftState(raw: unknown): AssistantDraftState | null {
+  if (!raw || typeof raw !== "object") return null
+  const candidate = "formAssistant" in raw
+    ? (raw as { formAssistant?: unknown }).formAssistant
+    : raw
+  if (!candidate || typeof candidate !== "object") return null
+  const draft = candidate as Partial<AssistantDraftState>
+  if (draft.mode !== "form_assistant" || !draft.formData || typeof draft.formData !== "object") return null
+
+  return {
+    mode: "form_assistant",
+    updatedAt: typeof draft.updatedAt === "string" ? draft.updatedAt : "",
+    formData: draft.formData,
+    messages: sanitizeAssistantDraftMessages(Array.isArray(draft.messages) ? draft.messages.filter((message): message is AssistantMessage => {
+      return Boolean(
+        message &&
+        typeof message === "object" &&
+        "type" in message &&
+        "role" in message &&
+        "content" in message &&
+        typeof (message as { content?: unknown }).content === "string",
+      )
+    }) : []),
+    noHouseholdMembers: draft.noHouseholdMembers === true,
+    noIncome: draft.noIncome === true,
+  }
+}
+
 export function ApplicationAssistant({ applicationId, onSwitchToWizard }: ApplicationAssistantProps) {
   const dispatch = useAppDispatch()
   const language = useAppSelector((state) => state.app.language) as SupportedLanguage
@@ -357,7 +699,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
   // Stable ID for this chat session — either the provided applicationId or a fresh UUID.
   // Using useState guarantees it never changes across re-renders.
   const [sessionApplicationId] = useState<string>(
-    () => applicationId ?? createUuid(),
+    () => resolveInitialAssistantApplicationId(applicationId),
   )
 
   // ── Local field mirror ────────────────────────────────────────────────────
@@ -376,28 +718,63 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
     () => ({ ...(savedFormData ?? {}), ...localFields } as ApplicationFormData),
     [savedFormData, localFields],
   )
+  const formDataRef = useRef<ApplicationFormData>(formData)
 
   const [messages, setMessages] = useState<AssistantMessage[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isListening, setIsListening] = useState(false)
+  const [datePickerOpen, setDatePickerOpen] = useState(false)
+  const [hasAssistantConnectionError, setHasAssistantConnectionError] = useState(false)
+  const [editingField, setEditingField] = useState<{ key: keyof ApplicationFormData; value: string } | null>(null)
+  const [isAssistantDraftHydrated, setIsAssistantDraftHydrated] = useState(false)
   const [noHouseholdMembers, setNoHouseholdMembers] = useState(false)
   const [noIncome, setNoIncome] = useState(false)
   const [expandedSections, setExpandedSections] = useState<Set<FormSection>>(new Set(["personal"]))
   const [documentsTriggered, setDocumentsTriggered] = useState(false)
 
   // "pending"    — waiting for user's yes/no on profile pre-fill
-  // "confirming" — user said yes; confirmation shown; LLM being auto-called for first question
+  // "confirming" — reserved for future server-assisted pre-fill continuation
   // "accepted"   — LLM responded after pre-fill; normal chat mode
   // "declined"   — user said no, or no profile exists; start fresh / normal chat mode
   const [profileFillMode, setProfileFillMode] = useState<"pending" | "confirming" | "accepted" | "declined">("declined")
 
   const recognitionRef = useRef<{ stop: () => void } | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  // Guard so the auto-trigger fires exactly once per pre-fill acceptance.
-  const profileAutoTriggeredRef = useRef(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const saveDraftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const assistantDraftSaveTimerRef = useRef<number | null>(null)
+  const hydratedAssistantDraftRef = useRef(false)
+
+  useEffect(() => {
+    formDataRef.current = formData
+  }, [formData])
+
+  const applyFormPatch = useCallback((patch: Partial<ApplicationFormData>) => {
+    if (Object.keys(patch).length === 0) return
+    formDataRef.current = { ...formDataRef.current, ...patch }
+    setLocalFields((prev) => ({ ...prev, ...patch }))
+    dispatch(patchNewApplicationForm({ applicationId: sessionApplicationId, patch }))
+  }, [dispatch, sessionApplicationId])
+
+  useEffect(() => {
+    if (!isAssistantDraftHydrated || messages.length === 0) return
+
+    const recovered = recoverImmediateFieldsFromMessages(
+      messages,
+      formDataRef.current,
+      noHouseholdMembers,
+      noIncome,
+    )
+
+    if (
+      Object.keys(recovered.fields).length > 0 &&
+      hasPatchValueChanged(formDataRef.current, recovered.fields)
+    ) {
+      applyFormPatch(recovered.fields)
+    }
+    if (recovered.noHouseholdMembers) setNoHouseholdMembers(true)
+    if (recovered.noIncome) setNoIncome(true)
+  }, [applyFormPatch, isAssistantDraftHydrated, messages, noHouseholdMembers, noIncome])
 
   // ── Initialise application record ─────────────────────────────────────────
   // useLayoutEffect runs synchronously after DOM paint but before the browser
@@ -407,6 +784,60 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
     dispatch(createApplication({ applicationId: sessionApplicationId, setActive: true }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // intentionally run once on mount only
+
+  useEffect(() => {
+    let cancelled = false
+
+    const applyDraft = (draft: AssistantDraftState) => {
+      if (cancelled) return
+      hydratedAssistantDraftRef.current = true
+      formDataRef.current = { ...formDataRef.current, ...draft.formData }
+      setLocalFields(draft.formData)
+      setMessages(draft.messages)
+      setNoHouseholdMembers(draft.noHouseholdMembers)
+      setNoIncome(draft.noIncome)
+      setIsAssistantDraftHydrated(true)
+      dispatch(patchNewApplicationForm({
+        applicationId: sessionApplicationId,
+        patch: draft.formData,
+      }))
+    }
+
+    const loadDraft = async () => {
+      const cacheKey = getAssistantDraftCacheKey(sessionApplicationId)
+      try {
+        const raw = window.localStorage.getItem(cacheKey)
+        const localDraft = raw ? readAssistantDraftState(JSON.parse(raw) as unknown) : null
+        if (localDraft) {
+          applyDraft(localDraft)
+          return
+        }
+      } catch {
+        // Ignore corrupt local cache and fall back to server.
+      }
+
+      try {
+        const response = await authenticatedFetch(
+          `/api/applications/${encodeURIComponent(sessionApplicationId)}/draft`,
+          { method: "GET", cache: "no-store" },
+        )
+        if (!response.ok) return
+        const payload = (await response.json()) as { draftState?: unknown }
+        const serverDraft = readAssistantDraftState(payload.draftState)
+        if (serverDraft) applyDraft(serverDraft)
+      } catch {
+        // Draft hydration is best effort; the greeting initializer still works.
+      } finally {
+        if (!cancelled) setIsAssistantDraftHydrated(true)
+      }
+    }
+
+    void loadDraft()
+
+    return () => {
+      cancelled = true
+    }
+  }, [dispatch, sessionApplicationId])
 
   // Compute current section from form data
   const currentSection = useMemo(
@@ -422,6 +853,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
   // ── Initialise greeting ───────────────────────────────────────────────────
 
   useEffect(() => {
+    if (hydratedAssistantDraftRef.current) return
     let greeting: string
 
     if (userProfile?.firstName) {
@@ -496,84 +928,41 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
   // ── Draft save ────────────────────────────────────────────────────────────
 
   const scheduleDraftSave = useCallback(() => {
-    if (!applicationId) return
-    if (saveDraftTimerRef.current) clearTimeout(saveDraftTimerRef.current)
-    saveDraftTimerRef.current = setTimeout(async () => {
-      try {
-        await authenticatedFetch(`/api/applications/${applicationId}/draft`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ wizardState: { formAssistantMessages: messages.length } }),
-        })
-      } catch {
-        // Silently ignore draft save failures
-      }
-    }, 1500)
-  }, [applicationId, messages.length])
-
-  // ── Auto-trigger LLM after profile pre-fill ────────────────────────────────
-  // When the user says "yes" we show a confirmation message and enter "confirming"
-  // state.  This effect immediately calls the LLM so its first real question
-  // ("What's your email?", etc.) becomes the last assistant message — keeping
-  // field-type detection accurate.
+    // Persistence is handled by the formData/messages effect below so every
+    // extracted field, edit, and chat turn is saved consistently.
+  }, [])
 
   useEffect(() => {
-    if (profileFillMode !== "confirming" || profileAutoTriggeredRef.current) return
-    profileAutoTriggeredRef.current = true
+    if (!isAssistantDraftHydrated) return
+    if (!messages.length && Object.keys(localFields).length === 0) return
 
-    const trigger = async () => {
-      setIsLoading(true)
-      try {
-        const collectedSummary = summarizeCollectedFields(formData)
-        const response = await authenticatedFetch("/api/chat/masshealth", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            // A minimal user turn gives the LLM something to respond to.
-            // It is NOT added to the visible chat — only the assistant reply is shown.
-            messages: [{ role: "user", content: "I confirmed my information. Please ask me for what's still needed to complete the application." }],
-            language,
-            mode: "form_assistant",
-            currentFields: collectedSummary,
-            currentSection,
-            existingMembers: formData.householdMembers ?? [],
-            existingSources: formData.incomeSources ?? [],
-          }),
-        })
-        if (!response.ok) throw new Error(`API error ${response.status}`)
+    const draft = createAssistantDraftState(formData, messages, noHouseholdMembers, noIncome)
+    const cacheKey = getAssistantDraftCacheKey(sessionApplicationId)
+    window.localStorage.setItem(cacheKey, JSON.stringify(draft))
 
-        const placeholderId = createUuid()
-        setMessages((prev) => [
-          ...prev,
-          { id: placeholderId, type: "text" as const, role: "assistant" as const, content: "" },
-        ])
-
-        const { text } = await readChatStream(response, (_token, accumulated) => {
-          setMessages((prev) =>
-            prev.map((m) => m.id === placeholderId ? { ...m, content: accumulated } : m),
-          )
-        })
-
-        // Ensure final text is set (handles any trailing buffering)
-        const finalReply = text.trim() || getFormAssistantGreeting(language)
-        setMessages((prev) =>
-          prev.map((m) => m.id === placeholderId ? { ...m, content: finalReply } : m),
-        )
-      } catch {
-        // Surface a short nudge so the user knows they can continue typing
-        setMessages((prev) => [
-          ...prev,
-          { id: createUuid(), type: "text" as const, role: "assistant" as const, content: "I'm ready to continue. What would you like to tell me next?" },
-        ])
-      } finally {
-        setIsLoading(false)
-        setProfileFillMode("accepted")
-      }
+    if (assistantDraftSaveTimerRef.current) {
+      window.clearTimeout(assistantDraftSaveTimerRef.current)
     }
 
-    void trigger()
-    // formData, currentSection deliberately included so we always use the post-prefill snapshot
-  }, [profileFillMode, formData, language, currentSection])
+    assistantDraftSaveTimerRef.current = window.setTimeout(() => {
+      void authenticatedFetch(`/api/applications/${encodeURIComponent(sessionApplicationId)}/draft`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          wizardState: { formAssistant: draft },
+          applicationType: formData.applicationType || undefined,
+        }),
+      }).catch(() => {
+        // Local cache still preserves progress if the server save is temporarily unavailable.
+      })
+    }, 800)
+
+    return () => {
+      if (assistantDraftSaveTimerRef.current) {
+        window.clearTimeout(assistantDraftSaveTimerRef.current)
+      }
+    }
+  }, [formData, isAssistantDraftHydrated, localFields, messages, noHouseholdMembers, noIncome, sessionApplicationId])
 
   // ── Voice input ───────────────────────────────────────────────────────────
 
@@ -637,12 +1026,19 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
     [lastAssistantContent, profileFillMode],
   )
 
+  const quickReplies = useMemo(
+    () => getQuickRepliesForAssistantPrompt(lastAssistantContent, profileFillMode),
+    [lastAssistantContent, profileFillMode],
+  )
+
+  const selectedInputDate = useMemo(() => parseCalendarDate(input), [input])
+
   // ── Chat submission ───────────────────────────────────────────────────────
 
   const handleSubmit = useCallback(
-    async (e?: FormEvent) => {
+    async (e?: FormEvent, quickReplyValue?: string) => {
       e?.preventDefault()
-      let trimmed = input.trim()
+      let trimmed = (quickReplyValue ?? input).trim()
       if (!trimmed || isLoading) return
 
       // ── Profile pre-fill yes/no intercept ──────────────────────────────
@@ -664,19 +1060,16 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
         if (isYes && userProfile) {
           // Pre-fill from profile
           const preFilled = buildPreFillFromProfile(userProfile)
-          setLocalFields(preFilled)
-          dispatch(patchNewApplicationForm({ applicationId: sessionApplicationId, patch: preFilled }))
+          const mergedFormData = { ...formDataRef.current, ...preFilled }
+          applyFormPatch(preFilled)
           const appliedLabels = describedAppliedFields(userProfile)
           const confirmMsg = getProfilePreFillConfirmation(appliedLabels, language)
+          const nextQuestion = getNextMissingApplicationQuestion(mergedFormData, noHouseholdMembers, noIncome)
           setMessages((prev) => [
             ...prev,
-            { id: createUuid(), type: "text", role: "assistant", content: confirmMsg },
+            { id: createUuid(), type: "text", role: "assistant", content: `${confirmMsg} ${nextQuestion}` },
           ])
-          // "confirming" triggers a useEffect below that auto-calls the LLM
-          // to ask the first missing question. This ensures the LLM's question
-          // (not the confirmation message) becomes the last assistant message,
-          // so field-type detection works correctly.
-          setProfileFillMode("confirming")
+          setProfileFillMode("accepted")
         } else {
           // Declined or unclear — start fresh
           setProfileFillMode("declined")
@@ -716,6 +1109,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
       setMessages((prev) => [...prev, userMessage])
       setInput("")
       setIsLoading(true)
+      setHasAssistantConnectionError(false)
 
       // Build API messages (text only, no upload_prompt messages)
       const apiMessages: ApiChatMessage[] = messages
@@ -723,7 +1117,26 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
         .map((m) => ({ role: m.role, content: m.content }))
       apiMessages.push({ role: "user", content: trimmed })
 
-      const collectedSummary = summarizeCollectedFields(formData)
+      const liveFormData = formDataRef.current
+      const collectedSummary = summarizeCollectedFields(liveFormData)
+      const immediatePatch = getImmediateFieldPatchFromAnswer(
+        trimmed,
+        lastAssistantContent,
+        liveFormData,
+        detectCurrentSection(liveFormData, noHouseholdMembers, noIncome),
+        inputFieldType,
+      )
+      if (
+        Object.keys(immediatePatch.fields).length > 0 ||
+        immediatePatch.noHouseholdMembers ||
+        immediatePatch.noIncome
+      ) {
+        if (Object.keys(immediatePatch.fields).length > 0) {
+          applyFormPatch(immediatePatch.fields)
+        }
+        if (immediatePatch.noHouseholdMembers) setNoHouseholdMembers(true)
+        if (immediatePatch.noIncome) setNoIncome(true)
+      }
 
       try {
         const response = await authenticatedFetch("/api/chat/masshealth", {
@@ -734,13 +1147,16 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
             language,
             mode: "form_assistant",
             currentFields: collectedSummary,
-            currentSection,
-            existingMembers: formData.householdMembers,
-            existingSources: formData.incomeSources,
+            currentSection: detectCurrentSection(formDataRef.current, noHouseholdMembers, noIncome),
+            existingMembers: formDataRef.current.householdMembers,
+            existingSources: formDataRef.current.incomeSources,
           }),
         })
 
-        if (!response.ok) throw new Error(`API error ${response.status}`)
+        if (!response.ok) {
+          const detail = await response.text().catch(() => "")
+          throw new Error(`API error ${response.status}${detail ? `: ${detail}` : ""}`)
+        }
 
         // Add a streaming placeholder for the assistant reply
         const placeholderId = createUuid()
@@ -755,11 +1171,15 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
           )
         })
 
-        if (!text.trim()) throw new Error("No reply from assistant")
+        const finalReply = annotation?.reply && typeof annotation.reply === "string"
+          ? annotation.reply.trim()
+          : text.trim()
+        if (!finalReply) throw new Error("No reply from assistant")
+        setHasAssistantConnectionError(false)
 
         // Finalise the streamed message
         setMessages((prev) =>
-          prev.map((m) => m.id === placeholderId ? { ...m, content: text.trim() } : m),
+          prev.map((m) => m.id === placeholderId ? { ...m, content: finalReply } : m),
         )
 
         // Structured fields come from the data annotation (arrives before text tokens)
@@ -767,7 +1187,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
           extractedFields: annotation?.extractedFields as Partial<ApplicationFormData> | undefined,
           noHouseholdMembers: annotation?.noHouseholdMembers as boolean | undefined,
           noIncome: annotation?.noIncome as boolean | undefined,
-          reply: text.trim(),
+          reply: finalReply,
         }
 
         // Apply extracted fields — update localFields immediately for instant UI
@@ -778,59 +1198,40 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
           // ── 1. Merge new household members ─────────────────────────────────
           let mergedMembers: HouseholdMember[] | undefined
           if (Array.isArray(householdMembers) && householdMembers.length > 0) {
-            const existingIds = new Set(formData.householdMembers.map((m) => m.id))
+            const existingIds = new Set(formDataRef.current.householdMembers.map((m) => m.id))
             const newMembers = householdMembers.filter((m) => !existingIds.has(m.id))
             if (newMembers.length > 0) {
-              mergedMembers = [...formData.householdMembers, ...newMembers]
+              mergedMembers = [...formDataRef.current.householdMembers, ...newMembers]
             }
           }
 
           // ── 2. Merge new income sources ─────────────────────────────────────
           let mergedSources: IncomeSource[] | undefined
           if (Array.isArray(incomeSources) && incomeSources.length > 0) {
-            const existingIds = new Set(formData.incomeSources.map((s) => s.id))
+            const existingIds = new Set(formDataRef.current.incomeSources.map((s) => s.id))
             const newSources = incomeSources.filter((s) => !existingIds.has(s.id))
             if (newSources.length > 0) {
-              mergedSources = [...formData.incomeSources, ...newSources]
+              mergedSources = [...formDataRef.current.incomeSources, ...newSources]
             }
           }
 
           // ── 3. Update local state immediately (drives sidebar + progress) ───
-          setLocalFields((prev) => ({
-            ...prev,
+          applyFormPatch({
             ...flatFields,
             ...(mergedMembers ? { householdMembers: mergedMembers } : {}),
             ...(mergedSources ? { incomeSources: mergedSources } : {}),
-          }))
-
-          // ── 4. Persist to Redux (for draft save / cross-tab continuity) ─────
+          })
           dispatch(setActiveApplication(sessionApplicationId))
-          if (Object.keys(flatFields).length > 0) {
-            dispatch(patchNewApplicationForm({ applicationId: sessionApplicationId, patch: flatFields }))
-          }
-          if (mergedMembers) {
-            // Replace the whole list so we stay in sync with local state
-            dispatch(patchNewApplicationForm({
-              applicationId: sessionApplicationId,
-              patch: { householdMembers: mergedMembers },
-            }))
-          }
-          if (mergedSources) {
-            dispatch(patchNewApplicationForm({
-              applicationId: sessionApplicationId,
-              patch: { incomeSources: mergedSources },
-            }))
-          }
 
           // ── Address validation ────────────────────────────────────────────
           // Call /api/address/validate whenever the LLM extracted address fields.
           // Merge with whatever is already stored so we always send a full address.
           const addressChanged = flatFields.address || flatFields.city || flatFields.zip
           if (addressChanged) {
-            const streetAddress = (flatFields.address ?? formData.address ?? "").trim()
-            const city = (flatFields.city ?? formData.city ?? "").trim()
-            const state = (flatFields.state ?? formData.state ?? "MA").trim()
-            const zipCode = (flatFields.zip ?? formData.zip ?? "").trim()
+            const streetAddress = (flatFields.address ?? formDataRef.current.address ?? "").trim()
+            const city = (flatFields.city ?? formDataRef.current.city ?? "").trim()
+            const state = (flatFields.state ?? formDataRef.current.state ?? "MA").trim()
+            const zipCode = (flatFields.zip ?? formDataRef.current.zip ?? "").trim()
 
             if (streetAddress && city) {
               try {
@@ -865,11 +1266,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
                       zip: s.zipCode || zipCode,
                       ...(s.county ? { county: s.county } : {}),
                     }
-                    setLocalFields((prev) => ({ ...prev, ...addrPatch }))
-                    dispatch(patchNewApplicationForm({
-                      applicationId: sessionApplicationId,
-                      patch: addrPatch,
-                    }))
+                    applyFormPatch(addrPatch)
 
                     setMessages((prev) => [
                       ...prev,
@@ -906,21 +1303,23 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
         if (data.noHouseholdMembers) setNoHouseholdMembers(true)
         if (data.noIncome) setNoIncome(true)
         // Reply already applied to the streaming placeholder above
-      } catch {
+      } catch (error) {
+        console.error("Compass chat request failed", error)
+        setHasAssistantConnectionError(true)
         setMessages((prev) => [
-          ...prev,
+          ...prev.filter((message) => message.content.trim().length > 0),
           {
             id: createUuid(),
             type: "text",
             role: "assistant",
-            content: "I'm having trouble connecting right now. Please try again in a moment.",
+            content: ASSISTANT_CONNECTION_FAILURE_MESSAGE,
           },
         ])
       } finally {
         setIsLoading(false)
       }
     },
-    [input, isLoading, messages, formData, language, currentSection, dispatch, scheduleDraftSave, sessionApplicationId, inputFieldType, profileFillMode, userProfile],
+    [applyFormPatch, dispatch, input, isLoading, messages, language, scheduleDraftSave, sessionApplicationId, inputFieldType, profileFillMode, userProfile, noHouseholdMembers, noIncome, lastAssistantContent],
   )
 
   const handleKeyDown = useCallback(
@@ -932,6 +1331,13 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
     },
     [handleSubmit],
   )
+
+  const saveEditedField = useCallback(() => {
+    if (!editingField) return
+    const patch = { [editingField.key]: editingField.value } as Partial<ApplicationFormData>
+    applyFormPatch(patch)
+    setEditingField(null)
+  }, [applyFormPatch, editingField])
 
   const toggleSection = useCallback((section: FormSection) => {
     setExpandedSections((prev) => {
@@ -993,10 +1399,10 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
         <div className="flex items-center justify-between border-b px-4 py-3">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-              <Bot className="h-4 w-4 text-primary" />
+              <CompassIcon className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <p className="text-sm font-medium">Application Assistant</p>
+              <p className="text-sm font-medium">Compass</p>
               <p className="text-xs text-muted-foreground capitalize">{SECTION_LABELS[currentSection]} step</p>
             </div>
           </div>
@@ -1031,7 +1437,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
           {isLoading && (
             <div className="flex items-center gap-2 text-muted-foreground">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
-                <Bot className="h-4 w-4" />
+                <CompassIcon className="h-4 w-4" />
               </div>
               <div className="flex gap-1">
                 <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:0ms]" />
@@ -1045,6 +1451,75 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
 
         {/* Input area */}
         <div className="border-t p-4">
+          {hasAssistantConnectionError && (
+            <div className="mb-3 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
+              <p className="text-foreground">
+                The AI engine is not responding. You can keep this page open and try again, or continue in the Form Wizard.
+              </p>
+              {onSwitchToWizard && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 gap-1.5"
+                  onClick={onSwitchToWizard}
+                >
+                  Continue in Form Wizard
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          )}
+          {quickReplies.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-2">
+              {quickReplies.map((reply) => (
+                <Button
+                  key={`${reply.label}-${reply.value}`}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full"
+                  disabled={isLoading}
+                  onClick={() => void handleSubmit(undefined, reply.value)}
+                >
+                  {reply.label}
+                </Button>
+              ))}
+            </div>
+          )}
+          {inputFieldType === "date" && !isLoading && (
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button type="button" variant="outline" size="sm" className="gap-1.5">
+                    <CalendarDays className="h-4 w-4" />
+                    Pick date
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-auto p-0" sideOffset={8}>
+                  <Calendar
+                    mode="single"
+                    selected={selectedInputDate}
+                    defaultMonth={selectedInputDate ?? new Date(1990, 0, 1)}
+                    captionLayout="dropdown"
+                    startMonth={new Date(1900, 0, 1)}
+                    endMonth={new Date()}
+                    disabled={(date) => date > new Date()}
+                    onSelect={(date) => {
+                      if (!date) return
+                      setInput(formatCalendarDate(date))
+                      setInputError("")
+                      setDatePickerOpen(false)
+                      window.setTimeout(() => textareaRef.current?.focus(), 0)
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
+              <span className="text-xs text-muted-foreground">
+                Or type the date as MM/DD/YYYY.
+              </span>
+            </div>
+          )}
           <form onSubmit={(e) => void handleSubmit(e)} className="flex items-end gap-2">
             <Textarea
               ref={textareaRef}
@@ -1175,18 +1650,62 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
 
                 {isExpanded && (
                   <div className="space-y-1 px-4 pb-3">
-                    {fields.map((field) => (
-                      <div key={field.label} className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">{field.label}</span>
-                        {field.value ? (
-                          <span className="max-w-[120px] truncate text-xs font-medium text-green-700">
-                            {field.value}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </div>
-                    ))}
+                    {fields.map((field) => {
+                      const isEditing = editingField?.key === field.key
+                      const activeEdit = isEditing ? editingField : null
+                      return (
+                        <div key={field.label} className="space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs text-muted-foreground">{field.label}</span>
+                            {isEditing ? (
+                              <div className="flex items-center gap-1">
+                                <Button type="button" variant="ghost" size="icon-sm" onClick={saveEditedField} aria-label={`Save ${field.label}`}>
+                                  <Check className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button type="button" variant="ghost" size="icon-sm" onClick={() => setEditingField(null)} aria-label={`Cancel ${field.label}`}>
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                className={cn(
+                                  "group flex min-w-0 items-center gap-1 text-right",
+                                  field.editable && "hover:text-primary",
+                                )}
+                                disabled={!field.editable || !field.key}
+                                onClick={() => {
+                                  if (!field.editable || !field.key) return
+                                  setEditingField({ key: field.key, value: field.value })
+                                }}
+                                title={field.editable ? `Edit ${field.label}` : undefined}
+                              >
+                                {field.value ? (
+                                  <span className="max-w-[120px] truncate text-xs font-medium text-green-700">
+                                    {field.value}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                )}
+                                {field.editable && <Pencil className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />}
+                              </button>
+                            )}
+                          </div>
+                          {activeEdit && (
+                            <input
+                              value={activeEdit.value}
+                              onChange={(event) => setEditingField({ key: activeEdit.key, value: event.target.value })}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") saveEditedField()
+                                if (event.key === "Escape") setEditingField(null)
+                              }}
+                              className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-primary"
+                              autoFocus
+                            />
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </div>
@@ -1244,7 +1763,7 @@ function MessageBubble({
     return (
       <div className="flex items-start gap-2">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
-          <Bot className="h-4 w-4 text-muted-foreground" />
+          <CompassIcon className="h-4 w-4 text-muted-foreground" />
         </div>
         <div className="flex-1 space-y-3">
           <div className="max-w-[90%] rounded-2xl rounded-tl-sm bg-muted px-4 py-2.5 text-sm">
@@ -1271,7 +1790,7 @@ function MessageBubble({
   return (
     <div className="flex items-start gap-2">
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
-        <Bot className="h-4 w-4 text-muted-foreground" />
+        <CompassIcon className="h-4 w-4 text-muted-foreground" />
       </div>
       <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-muted px-4 py-2.5 text-sm leading-relaxed">
         {message.content}

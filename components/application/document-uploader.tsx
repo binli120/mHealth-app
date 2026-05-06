@@ -9,7 +9,25 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Upload, Camera, X, FileText, CheckCircle2, Loader2, ZoomIn, AlertCircle } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  Upload,
+  Camera,
+  X,
+  FileText,
+  CheckCircle2,
+  Loader2,
+  ZoomIn,
+  AlertCircle,
+  Clock,
+  RefreshCw,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { toUserFacingError } from "@/lib/errors/user-facing"
@@ -53,6 +71,247 @@ interface DocumentUploaderProps {
 type UploadStatus = "idle" | "uploading" | "uploaded" | "error"
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Returns true when running in a mobile browser (phone / tablet). */
+function isMobileBrowser(): boolean {
+  if (typeof navigator === "undefined") return false
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+}
+
+// ---------------------------------------------------------------------------
+// QR Code Dialog (desktop → phone camera)
+// ---------------------------------------------------------------------------
+
+interface QrUploadDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  applicationId: string
+  documentType?: string
+  requiredDocumentLabel?: string
+  onCompleted: () => void
+}
+
+type QrDialogState = "creating" | "waiting" | "expired" | "error"
+
+function QrUploadDialog({
+  open,
+  onOpenChange,
+  applicationId,
+  documentType,
+  requiredDocumentLabel,
+  onCompleted,
+}: QrUploadDialogProps) {
+  const [dialogState, setDialogState] = useState<QrDialogState>("creating")
+  const [mobileUrl, setMobileUrl] = useState<string | null>(null)
+  const [token, setToken] = useState<string | null>(null)
+  const [expiresAt, setExpiresAt] = useState<Date | null>(null)
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const clearTimers = useCallback(() => {
+    if (pollRef.current) clearInterval(pollRef.current)
+    if (countdownRef.current) clearInterval(countdownRef.current)
+  }, [])
+
+  // Create session when dialog opens
+  useEffect(() => {
+    if (!open) {
+      clearTimers()
+      setDialogState("creating")
+      setMobileUrl(null)
+      setToken(null)
+      setExpiresAt(null)
+      setSecondsLeft(null)
+      return
+    }
+
+    let cancelled = false
+
+    async function createSession() {
+      setDialogState("creating")
+      try {
+        const res = await authenticatedFetch(
+          `/api/applications/${applicationId}/mobile-upload-session`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ documentType, requiredDocumentLabel }),
+          },
+        )
+        const data = (await res.json()) as {
+          ok: boolean
+          token?: string
+          mobileUrl?: string
+          expiresAt?: string
+          error?: string
+        }
+
+        if (cancelled) return
+
+        if (!data.ok || !data.token || !data.mobileUrl) {
+          setDialogState("error")
+          return
+        }
+
+        setToken(data.token)
+        setMobileUrl(data.mobileUrl)
+        const exp = new Date(data.expiresAt ?? Date.now() + 15 * 60_000)
+        setExpiresAt(exp)
+        setDialogState("waiting")
+      } catch {
+        if (!cancelled) setDialogState("error")
+      }
+    }
+
+    void createSession()
+    return () => { cancelled = true }
+  }, [open, applicationId, documentType, requiredDocumentLabel, clearTimers])
+
+  // Poll for completion once we have a token
+  useEffect(() => {
+    if (dialogState !== "waiting" || !token) {
+      clearTimers()
+      return
+    }
+
+    // Countdown timer
+    countdownRef.current = setInterval(() => {
+      if (!expiresAt) return
+      const secs = Math.max(0, Math.round((expiresAt.getTime() - Date.now()) / 1000))
+      setSecondsLeft(secs)
+      if (secs <= 0) {
+        clearTimers()
+        setDialogState("expired")
+      }
+    }, 1000)
+
+    // Poll session status every 3 s
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await authenticatedFetch(
+          `/api/applications/${applicationId}/mobile-upload-session?token=${encodeURIComponent(token)}`,
+        )
+        const data = (await res.json()) as { ok: boolean; status?: string }
+        if (data.ok && data.status === "completed") {
+          clearTimers()
+          onOpenChange(false)
+          onCompleted()
+        } else if (data.ok && data.status === "expired") {
+          clearTimers()
+          setDialogState("expired")
+        }
+      } catch {
+        // Non-fatal — keep polling
+      }
+    }, 3000)
+
+    return clearTimers
+  }, [dialogState, token, expiresAt, applicationId, clearTimers, onOpenChange, onCompleted])
+
+  const qrSrc = mobileUrl
+    ? `/api/identity/qrcode?url=${encodeURIComponent(mobileUrl)}`
+    : null
+
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60)
+    const s = secs % 60
+    return `${m}:${s.toString().padStart(2, "0")}`
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Camera className="h-4 w-4" />
+            Use Mobile Camera
+          </DialogTitle>
+          <DialogDescription>
+            Scan the QR code with your phone to take a photo of the document.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex flex-col items-center gap-4 py-2">
+          {dialogState === "creating" && (
+            <div className="flex flex-col items-center gap-2 py-6">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Generating QR code…</p>
+            </div>
+          )}
+
+          {dialogState === "waiting" && qrSrc && (
+            <>
+              <div className="overflow-hidden rounded-xl border border-border bg-white p-2 shadow-sm">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={qrSrc}
+                  alt="QR code to open document upload on mobile"
+                  width={220}
+                  height={220}
+                  className="block"
+                />
+              </div>
+
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Waiting for photo…
+              </div>
+
+              {secondsLeft !== null && secondsLeft > 0 && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  Expires in {formatTime(secondsLeft)}
+                </div>
+              )}
+
+              <p className="text-center text-xs text-muted-foreground">
+                Open your phone&rsquo;s camera app and point it at the QR code above.
+              </p>
+            </>
+          )}
+
+          {dialogState === "expired" && (
+            <div className="flex flex-col items-center gap-3 py-4 text-center">
+              <Clock className="h-8 w-8 text-muted-foreground" />
+              <p className="text-sm font-medium">QR code expired</p>
+              <p className="text-xs text-muted-foreground">
+                The link has expired. Generate a new QR code to try again.
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-2"
+                onClick={() => {
+                  setDialogState("creating")
+                  setToken(null)
+                  setMobileUrl(null)
+                  // Re-trigger by toggling open — easier: just call onOpenChange(false) then true
+                  onOpenChange(false)
+                  setTimeout(() => onOpenChange(true), 50)
+                }}
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Generate New QR Code
+              </Button>
+            </div>
+          )}
+
+          {dialogState === "error" && (
+            <div className="flex flex-col items-center gap-2 py-4 text-center text-sm text-destructive">
+              <AlertCircle className="h-6 w-6" />
+              Failed to create upload session. Please try again.
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -71,7 +330,9 @@ export function DocumentUploader({
   const [document, setDocument] = useState<UploadedDocument | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isRemoving, setIsRemoving] = useState(false)
+  const [qrDialogOpen, setQrDialogOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
 
   // ---------------------------------------------------------------------------
   // On mount: load any previously uploaded document for this type
@@ -90,7 +351,6 @@ export function DocumentUploader({
 
         if (!payload.ok || cancelled) return
 
-        // Find the most recent document matching this documentType (if specified)
         const match = documentType
           ? payload.documents.find((d) => d.documentType === documentType)
           : payload.documents[0]
@@ -100,14 +360,12 @@ export function DocumentUploader({
           setUploadStatus("uploaded")
         }
       } catch {
-        // Non-fatal — user can upload fresh
+        // Non-fatal
       }
     }
 
     void loadExistingDocument()
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [applicationId, documentType])
 
   // ---------------------------------------------------------------------------
@@ -151,6 +409,32 @@ export function DocumentUploader({
   )
 
   // ---------------------------------------------------------------------------
+  // Reload document after mobile upload completes
+  // ---------------------------------------------------------------------------
+  const handleMobileUploadCompleted = useCallback(async () => {
+    try {
+      const res = await authenticatedFetch(`/api/applications/${applicationId}/documents`)
+      const payload = (await res.json()) as
+        | { ok: true; documents: UploadedDocument[] }
+        | { ok: false; error: string }
+
+      if (!payload.ok) return
+
+      const match = documentType
+        ? payload.documents.find((d) => d.documentType === documentType)
+        : payload.documents[0]
+
+      if (match) {
+        setDocument(match)
+        setUploadStatus("uploaded")
+        onDocumentUpload?.(match)
+      }
+    } catch {
+      // Non-fatal — user can refresh
+    }
+  }, [applicationId, documentType, onDocumentUpload])
+
+  // ---------------------------------------------------------------------------
   // Remove handler
   // ---------------------------------------------------------------------------
   const handleRemove = useCallback(async () => {
@@ -180,8 +464,20 @@ export function DocumentUploader({
     } finally {
       setIsRemoving(false)
       if (fileInputRef.current) fileInputRef.current.value = ""
+      if (cameraInputRef.current) cameraInputRef.current.value = ""
     }
   }, [applicationId, document, onDocumentRemove])
+
+  // ---------------------------------------------------------------------------
+  // Camera button handler — mobile uses native capture, desktop shows QR
+  // ---------------------------------------------------------------------------
+  const handleCameraClick = useCallback(() => {
+    if (isMobileBrowser()) {
+      cameraInputRef.current?.click()
+    } else {
+      setQrDialogOpen(true)
+    }
+  }, [])
 
   // ---------------------------------------------------------------------------
   // Drag-and-drop helpers
@@ -198,65 +494,90 @@ export function DocumentUploader({
   // ---------------------------------------------------------------------------
   if (uploadStatus === "idle" || uploadStatus === "error") {
     return (
-      <div className="space-y-3">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={accept}
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) void handleFileSelect(file)
-          }}
-        />
+      <>
+        <div className="space-y-3">
+          {/* Browse files input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={accept}
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) void handleFileSelect(file)
+            }}
+          />
+          {/* Mobile camera capture input */}
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) void handleFileSelect(file)
+            }}
+          />
 
-        <div
-          className={cn(
-            "rounded-lg border-2 border-dashed p-8 text-center transition-colors",
-            isDragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/50",
-          )}
-          onDragOver={(e) => {
-            e.preventDefault()
-            setIsDragging(true)
-          }}
-          onDragLeave={() => setIsDragging(false)}
-          onDrop={handleDrop}
-        >
-          <Upload className="mx-auto h-10 w-10 text-muted-foreground" />
-          <h4 className="mt-3 font-medium text-foreground">{title}</h4>
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-          <div className="mt-4 flex flex-col justify-center gap-2 sm:flex-row">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="h-4 w-4" />
-              Browse Files
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-2"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Camera className="h-4 w-4" />
-              Use Camera
-            </Button>
+          <div
+            className={cn(
+              "rounded-lg border-2 border-dashed p-8 text-center transition-colors",
+              isDragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/50",
+            )}
+            onDragOver={(e) => {
+              e.preventDefault()
+              setIsDragging(true)
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={handleDrop}
+          >
+            <Upload className="mx-auto h-10 w-10 text-muted-foreground" />
+            <h4 className="mt-3 font-medium text-foreground">{title}</h4>
+            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+            <div className="mt-4 flex flex-col justify-center gap-2 sm:flex-row">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="h-4 w-4" />
+                Browse Files
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2"
+                onClick={handleCameraClick}
+              >
+                <Camera className="h-4 w-4" />
+                Use Camera
+              </Button>
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Drag and drop or click to upload · PDF, JPG, PNG, WebP, HEIC (max 10 MB)
+            </p>
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Drag and drop or click to upload · PDF, JPG, PNG, WebP, HEIC (max 10 MB)
-          </p>
+
+          {errorMessage && (
+            <div className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {errorMessage}
+            </div>
+          )}
         </div>
 
-        {errorMessage && (
-          <div className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            {errorMessage}
-          </div>
-        )}
-      </div>
+        {/* QR dialog for desktop camera flow */}
+        <QrUploadDialog
+          open={qrDialogOpen}
+          onOpenChange={setQrDialogOpen}
+          applicationId={applicationId}
+          documentType={documentType}
+          requiredDocumentLabel={requiredDocumentLabel}
+          onCompleted={() => void handleMobileUploadCompleted()}
+        />
+      </>
     )
   }
 
@@ -266,6 +587,7 @@ export function DocumentUploader({
   return (
     <div className="space-y-3">
       <input ref={fileInputRef} type="file" accept={accept} className="hidden" />
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" />
 
       <Card className="border-border bg-card">
         <CardContent className="p-4">

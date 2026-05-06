@@ -16,6 +16,7 @@ import {
 import type { FormSection } from "./form-sections"
 import { callOllama } from "./ollama-client"
 import { incrementCounter } from "@/lib/server/counters"
+import { parsePastedUsAddress } from "@/lib/utils/address-parse"
 
 // Re-export for server-side consumers
 export type { FormSection }
@@ -140,10 +141,34 @@ interface RawExtracted {
   noIncome?: unknown
 }
 
+function getLastUserContent(messages: ChatMessage[]): string {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index].role === "user") return messages[index].content
+  }
+  return ""
+}
+
+function applyDeterministicAddressParsing(
+  fields: Partial<ExtractableFormFields>,
+  candidate: string,
+): Partial<ExtractableFormFields> {
+  const parsed = parsePastedUsAddress(candidate)
+  if (!parsed) return fields
+
+  return {
+    ...fields,
+    address: parsed.streetAddress,
+    city: fields.city ?? parsed.city,
+    state: fields.state ?? parsed.state,
+    zip: fields.zip ?? parsed.zipCode,
+  }
+}
+
 function parseExtractedFormFields(
   raw: string,
   existingMembers: HouseholdMember[],
   existingSources: IncomeSource[],
+  lastUserContent = "",
 ): { fields: Partial<ExtractableFormFields>; noHouseholdMembers: boolean; noIncome: boolean; extractionFailed?: boolean } {
   const cleaned = raw
     .replace(/^```(?:json)?/m, "")
@@ -275,8 +300,12 @@ function parseExtractedFormFields(
     }
   }
 
+  const addressCandidate = typeof parsed.address === "string" && parsed.address.trim()
+    ? parsed.address
+    : lastUserContent
+
   return {
-    fields,
+    fields: applyDeterministicAddressParsing(fields, addressCandidate),
     noHouseholdMembers: parsed.noHouseholdMembers === true,
     noIncome: parsed.noIncome === true,
   }
@@ -308,8 +337,13 @@ export async function extractFormFields(
   try {
     const systemPrompt = buildFormFieldExtractionPrompt(collectedSummary, currentSection)
     const raw = await callOllamaForFormJson(systemPrompt, messages)
-    return parseExtractedFormFields(raw, existingMembers, existingSources)
+    return parseExtractedFormFields(raw, existingMembers, existingSources, getLastUserContent(messages))
   } catch {
-    return { fields: {}, noHouseholdMembers: false, noIncome: false, extractionFailed: true }
+    return {
+      fields: applyDeterministicAddressParsing({}, getLastUserContent(messages)),
+      noHouseholdMembers: false,
+      noIncome: false,
+      extractionFailed: true,
+    }
   }
 }

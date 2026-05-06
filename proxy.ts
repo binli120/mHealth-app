@@ -53,7 +53,14 @@ export function proxy(request: NextRequest): NextResponse {
   response.headers.set("Content-Security-Policy", csp)
   response.headers.set("X-Content-Type-Options", "nosniff")
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
-  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+  // Allow camera on the mobile document-upload page; block it everywhere else.
+  const isMobileUpload = request.nextUrl.pathname.startsWith("/upload/mobile/")
+  response.headers.set(
+    "Permissions-Policy",
+    isMobileUpload
+      ? "camera=(self), microphone=(), geolocation=()"
+      : "camera=(), microphone=(), geolocation=()",
+  )
 
   return response
 }

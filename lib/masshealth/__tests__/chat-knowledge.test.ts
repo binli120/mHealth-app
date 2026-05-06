@@ -8,6 +8,8 @@ import { describe, expect, it } from "vitest"
 import {
   getMassHealthGreeting,
   getMassHealthOutOfScopeResponse,
+  getFormAssistantGreeting,
+  getProfileAwareFormAssistantGreeting,
   MASSHEALTH_COMMON_QUESTIONS,
   MASSHEALTH_OUT_OF_SCOPE_RESPONSE,
   isMassHealthTopic,
@@ -33,5 +35,23 @@ describe("lib/masshealth/chat-knowledge", () => {
   it("returns language-aware helper copy", () => {
     expect(getMassHealthGreeting("en")).toContain("MassHealth assistant")
     expect(getMassHealthOutOfScopeResponse("es")).toContain("MassHealth")
+  })
+
+  it("names Compass in the application assistant greeting", () => {
+    const greeting = getFormAssistantGreeting("en")
+    expect(greeting).toContain("I am Compass")
+    expect(greeting).toContain("I will guide you through your MassHealth application")
+  })
+
+  it("names Compass in the profile-aware application assistant greeting", () => {
+    const greeting = getProfileAwareFormAssistantGreeting({
+      firstName: "John",
+      hasLastName: true,
+      hasDob: true,
+      hasPhone: false,
+      hasAddress: false,
+    }, "en")
+    expect(greeting).toContain("Hi John! I am Compass.")
+    expect(greeting).toContain("pre-fill")
   })
 })

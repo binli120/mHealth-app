@@ -1036,21 +1036,21 @@ export function buildFormAssistantSystemPrompt(
 }
 
 const FORM_ASSISTANT_GREETING_BY_LANGUAGE: Record<SupportedLanguage, string> = {
-  en: "Hi! I'm your HealthCompass MA application assistant. I'll guide you through your MassHealth application step by step — it usually takes about 5 minutes. Let's start with your name. What's your first name?",
-  "zh-CN": "您好！我是您的 HealthCompass MA 申请助手。我将一步步引导您完成 MassHealth 申请，通常只需约5分钟。我们先从您的姓名开始。请问您的名字（名）是什么？",
-  ht: "Bonjou! Mwen se asistan aplikasyon HealthCompass MA ou. M ap gide ou etap pa etap pou ranpli aplikasyon MassHealth ou a — sa pran anviron 5 minit. Ann kòmanse ak non ou. Ki prenon ou?",
-  "pt-BR": "Olá! Sou seu assistente de inscrição HealthCompass MA. Vou te guiar passo a passo pelo seu pedido MassHealth — geralmente leva cerca de 5 minutos. Vamos começar com seu nome. Qual é o seu primeiro nome?",
-  es: "¡Hola! Soy su asistente de solicitud HealthCompass MA. Le guiaré paso a paso a través de su solicitud MassHealth, lo cual suele tomar unos 5 minutos. Empecemos con su nombre. ¿Cuál es su nombre?",
-  vi: "Xin chào! Tôi là trợ lý nộp đơn HealthCompass MA của bạn. Tôi sẽ hướng dẫn bạn từng bước để hoàn thành đơn xin MassHealth — thường mất khoảng 5 phút. Hãy bắt đầu với tên của bạn. Tên của bạn là gì?",
+  en: "Hi! I am Compass. I will guide you through your MassHealth application step by step — it usually takes about 5 minutes. Let's start with your name. What's your first name?",
+  "zh-CN": "您好！我是 Compass。我将一步步引导您完成 MassHealth 申请，通常只需约5分钟。我们先从您的姓名开始。请问您的名字（名）是什么？",
+  ht: "Bonjou! Mwen se Compass. M ap gide ou etap pa etap pou ranpli aplikasyon MassHealth ou a — sa pran anviron 5 minit. Ann kòmanse ak non ou. Ki prenon ou?",
+  "pt-BR": "Olá! Eu sou o Compass. Vou guiar você passo a passo pelo seu pedido MassHealth — geralmente leva cerca de 5 minutos. Vamos começar com seu nome. Qual é o seu primeiro nome?",
+  es: "¡Hola! Soy Compass. Le guiaré paso a paso a través de su solicitud MassHealth, lo cual suele tomar unos 5 minutos. Empecemos con su nombre. ¿Cuál es su nombre?",
+  vi: "Xin chào! Tôi là Compass. Tôi sẽ hướng dẫn bạn từng bước để hoàn thành đơn xin MassHealth — thường mất khoảng 5 phút. Hãy bắt đầu với tên của bạn. Tên của bạn là gì?",
 }
 
 const ACA3AP_FORM_ASSISTANT_GREETING_BY_LANGUAGE: Record<SupportedLanguage, string> = {
-  en: "Hi! I'm your HealthCompass MA assistant. I'll help you add a person to an existing MassHealth case using the ACA-3-AP form — it usually takes about 3 minutes. Let's start. Do you have the existing MassHealth application or case number?",
-  "zh-CN": "您好！我是您的 HealthCompass MA 助手。我将帮助您使用 ACA-3-AP 表格向现有 MassHealth 案例中添加人员，通常只需约3分钟。我们开始吧。请问您有现有 MassHealth 申请或案例号吗？",
-  ht: "Bonjou! Mwen se asistan HealthCompass MA ou. M ap ede ou ajoute yon moun nan yon ka MassHealth ki deja egziste a avèk fòm ACA-3-AP — sa pran anviron 3 minit. Ann kòmanse. Èske ou gen nimewo aplikasyon oswa ka MassHealth ki egziste deja a?",
-  "pt-BR": "Olá! Sou seu assistente HealthCompass MA. Vou ajudá-lo a adicionar uma pessoa a um caso MassHealth existente usando o formulário ACA-3-AP — geralmente leva cerca de 3 minutos. Vamos começar. Você tem o número do processo ou pedido MassHealth existente?",
-  es: "¡Hola! Soy su asistente HealthCompass MA. Le ayudaré a agregar una persona a un caso MassHealth existente usando el formulario ACA-3-AP — suele tomar unos 3 minutos. Empecemos. ¿Tiene el número de caso o solicitud MassHealth existente?",
-  vi: "Xin chào! Tôi là trợ lý HealthCompass MA của bạn. Tôi sẽ giúp bạn thêm một người vào hồ sơ MassHealth hiện có bằng biểu mẫu ACA-3-AP — thường mất khoảng 3 phút. Hãy bắt đầu. Bạn có số hồ sơ hoặc đơn MassHealth hiện có không?",
+  en: "Hi! I am Compass. I will help you add a person to an existing MassHealth case using the ACA-3-AP form — it usually takes about 3 minutes. Let's start. Do you have the existing MassHealth application or case number?",
+  "zh-CN": "您好！我是 Compass。我将帮助您使用 ACA-3-AP 表格向现有 MassHealth 案例中添加人员，通常只需约3分钟。我们开始吧。请问您有现有 MassHealth 申请或案例号吗？",
+  ht: "Bonjou! Mwen se Compass. M ap ede ou ajoute yon moun nan yon ka MassHealth ki deja egziste a avèk fòm ACA-3-AP — sa pran anviron 3 minit. Ann kòmanse. Èske ou gen nimewo aplikasyon oswa ka MassHealth ki egziste deja a?",
+  "pt-BR": "Olá! Eu sou o Compass. Vou ajudar você a adicionar uma pessoa a um caso MassHealth existente usando o formulário ACA-3-AP — geralmente leva cerca de 3 minutos. Vamos começar. Você tem o número do processo ou pedido MassHealth existente?",
+  es: "¡Hola! Soy Compass. Le ayudaré a agregar una persona a un caso MassHealth existente usando el formulario ACA-3-AP — suele tomar unos 3 minutos. Empecemos. ¿Tiene el número de caso o solicitud MassHealth existente?",
+  vi: "Xin chào! Tôi là Compass. Tôi sẽ giúp bạn thêm một người vào hồ sơ MassHealth hiện có bằng biểu mẫu ACA-3-AP — thường mất khoảng 3 phút. Hãy bắt đầu. Bạn có số hồ sơ hoặc đơn MassHealth hiện có không?",
 }
 
 export function getFormAssistantGreeting(language: SupportedLanguage): string {
@@ -1086,12 +1086,12 @@ export function getProfileAwareFormAssistantGreeting(
   const fieldList = fieldsHad.join(", ")
 
   const BY_LANGUAGE: Record<SupportedLanguage, string> = {
-    en: `Hi ${profile.firstName}! I can see we already have your ${fieldList} on file. Would you like me to pre-fill those fields so you can skip straight to what's missing? Reply **Yes** to use your saved info, or **No** to start fresh.`,
-    "zh-CN": `您好，${profile.firstName}！我们系统中已保存了您的${fieldList}。您是否希望我用这些信息预填申请表，跳过相关问题？回复**是**使用已保存信息，或回复**否**重新填写。`,
-    ht: `Bonjou ${profile.firstName}! Sistèm nou an genyen déjà ${fieldList} ou. Èske ou ta renmen m itilize yo pou ranpli aplikasyon ou alavans epi sote kesyon ki gen rapò yo? Reponn **Wi** pou itilize enfòmasyon sove ou yo, oswa **Non** pou kòmanse depi nan kòmansman.`,
-    "pt-BR": `Olá, ${profile.firstName}! Já temos seu(sua) ${fieldList} em nosso sistema. Gostaria que eu pré-preenchesse esses campos para você pular direto para o que falta? Responda **Sim** para usar seus dados salvos, ou **Não** para começar do zero.`,
-    es: `¡Hola, ${profile.firstName}! Ya tenemos su ${fieldList} en el sistema. ¿Le gustaría que rellene esos campos automáticamente para pasar directamente a lo que falta? Responda **Sí** para usar su información guardada, o **No** para comenzar desde cero.`,
-    vi: `Xin chào ${profile.firstName}! Chúng tôi đã có ${fieldList} của bạn trong hệ thống. Bạn có muốn tôi điền trước những thông tin đó để bỏ qua những câu hỏi đã có không? Trả lời **Có** để dùng thông tin đã lưu, hoặc **Không** để bắt đầu lại từ đầu.`,
+    en: `Hi ${profile.firstName}! I am Compass. I can see we already have your ${fieldList} on file. Would you like me to pre-fill those fields so you can skip straight to what's missing? Reply **Yes** to use your saved info, or **No** to start fresh.`,
+    "zh-CN": `您好，${profile.firstName}！我是 Compass。我们系统中已保存了您的${fieldList}。您是否希望我用这些信息预填申请表，跳过相关问题？回复**是**使用已保存信息，或回复**否**重新填写。`,
+    ht: `Bonjou ${profile.firstName}! Mwen se Compass. Sistèm nou an genyen déjà ${fieldList} ou. Èske ou ta renmen m itilize yo pou ranpli aplikasyon ou alavans epi sote kesyon ki gen rapò yo? Reponn **Wi** pou itilize enfòmasyon sove ou yo, oswa **Non** pou kòmanse depi nan kòmansman.`,
+    "pt-BR": `Olá, ${profile.firstName}! Eu sou o Compass. Já temos seu(sua) ${fieldList} em nosso sistema. Gostaria que eu pré-preenchesse esses campos para você pular direto para o que falta? Responda **Sim** para usar seus dados salvos, ou **Não** para começar do zero.`,
+    es: `¡Hola, ${profile.firstName}! Soy Compass. Ya tenemos su ${fieldList} en el sistema. ¿Le gustaría que rellene esos campos automáticamente para pasar directamente a lo que falta? Responda **Sí** para usar su información guardada, o **No** para comenzar desde cero.`,
+    vi: `Xin chào ${profile.firstName}! Tôi là Compass. Chúng tôi đã có ${fieldList} của bạn trong hệ thống. Bạn có muốn tôi điền trước những thông tin đó để bỏ qua những câu hỏi đã có không? Trả lời **Có** để dùng thông tin đã lưu, hoặc **Không** để bắt đầu lại từ đầu.`,
   }
   return BY_LANGUAGE[language] ?? BY_LANGUAGE.en
 }
@@ -1105,7 +1105,7 @@ export function getProfilePreFillConfirmation(
 ): string {
   const list = appliedFields.join(", ")
   const BY_LANGUAGE: Record<SupportedLanguage, string> = {
-    en: `I've pre-filled your ${list}. Let me check what's still needed and we'll pick up from there.`,
+    en: `I've pre-filled your ${list}.`,
     "zh-CN": `我已为您预填了${list}。让我检查还缺什么信息，然后继续。`,
     ht: `Mwen ranpli ${list} ou alavans. Kite m tcheke sa ki toujou manke epi nou a kontinye.`,
     "pt-BR": `Preenchi automaticamente seu(sua) ${list}. Vou verificar o que ainda falta e continuamos a partir daí.`,
