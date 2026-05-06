@@ -116,17 +116,9 @@ function QrUploadDialog({
     if (countdownRef.current) clearInterval(countdownRef.current)
   }, [])
 
-  // Create session when dialog opens
+  // Create session when dialog opens; reset state in cleanup when it closes
   useEffect(() => {
-    if (!open) {
-      clearTimers()
-      setDialogState("creating")
-      setMobileUrl(null)
-      setToken(null)
-      setExpiresAt(null)
-      setSecondsLeft(null)
-      return
-    }
+    if (!open) return
 
     let cancelled = false
 
@@ -167,7 +159,17 @@ function QrUploadDialog({
     }
 
     void createSession()
-    return () => { cancelled = true }
+
+    return () => {
+      cancelled = true
+      clearTimers()
+      // Reset dialog back to initial state so it's clean on next open
+      setDialogState("creating")
+      setMobileUrl(null)
+      setToken(null)
+      setExpiresAt(null)
+      setSecondsLeft(null)
+    }
   }, [open, applicationId, documentType, requiredDocumentLabel, clearTimers])
 
   // Poll for completion once we have a token

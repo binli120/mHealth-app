@@ -17,7 +17,7 @@
 
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Image from "next/image"
 import {
   Camera,
@@ -210,7 +210,16 @@ function CameraView({ side, dualSide, documentLabel, onCapture }: CameraViewProp
   const onCaptureRef = useRef(onCapture)
   useEffect(() => { onCaptureRef.current = onCapture }, [onCapture])
 
-  const [camState, setCamState] = useState<"init" | "live" | "failed">("init")
+  // Compute camera support once at mount — never changes, so safe as a memo
+  // with no deps. This keeps the effect below free of synchronous setState calls.
+  const cameraSupported = useMemo(() => {
+    if (typeof window === "undefined") return false
+    return window.isSecureContext && Boolean(navigator.mediaDevices?.getUserMedia)
+  }, [])
+
+  const [camState, setCamState] = useState<"init" | "live" | "failed">(
+    cameraSupported ? "init" : "failed",
+  )
   const [stability, setStability] = useState(0) // 0–1
   const stableCountRef = useRef(0)
   const prevPixelsRef = useRef<Uint8ClampedArray | null>(null)
@@ -219,22 +228,12 @@ function CameraView({ side, dualSide, documentLabel, onCapture }: CameraViewProp
   // ── Start camera ──────────────────────────────────────────────────────────
 
   useEffect(() => {
-    // Require secure context for getUserMedia (HTTPS or localhost)
-    if (
-      typeof window === "undefined" ||
-      !window.isSecureContext ||
-      !navigator.mediaDevices?.getUserMedia
-    ) {
-      setCamState("failed")
-      return
-    }
+    if (!cameraSupported) return
 
     let cancelled = false
-    setCamState("init")
     capturedFiredRef.current = false
     stableCountRef.current = 0
     prevPixelsRef.current = null
-    setStability(0)
 
     navigator.mediaDevices
       .getUserMedia({
@@ -261,8 +260,35 @@ function CameraView({ side, dualSide, documentLabel, onCapture }: CameraViewProp
       cancelled = true
       streamRef.current?.getTracks().forEach((t) => t.stop())
       streamRef.current = null
+      // Reset visual state so the loading spinner shows while the next side's stream starts
+      setCamState("init")
+      setStability(0)
     }
-  }, [side]) // re-init stream when switching front ↔ back
+  }, [side, cameraSupported]) // re-init stream when switching front ↔ back
+
+  // ── Capture helpers (declared before the stability effect that calls them) ──
+
+  const doCapture = useCallback(() => {
+    const video = videoRef.current
+    if (!video) return
+    const canvas = document.createElement("canvas")
+    canvas.width = video.videoWidth || 1280
+    canvas.height = video.videoHeight || 720
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+    ctx.drawImage(video, 0, 0)
+    canvas.toBlob(
+      (blob) => { if (blob) onCaptureRef.current(blob) },
+      "image/jpeg",
+      0.92,
+    )
+  }, []) // refs are stable — no deps needed
+
+  const handleManualCapture = useCallback(() => {
+    if (capturedFiredRef.current) return
+    capturedFiredRef.current = true
+    doCapture()
+  }, [doCapture])
 
   // ── Stability-based auto-capture ─────────────────────────────────────────
 
@@ -315,31 +341,7 @@ function CameraView({ side, dualSide, documentLabel, onCapture }: CameraViewProp
     }, INTERVAL_MS)
 
     return () => clearInterval(id)
-  }, [camState])
-
-  // ── Capture helpers ───────────────────────────────────────────────────────
-
-  function doCapture() {
-    const video = videoRef.current
-    if (!video) return
-    const canvas = document.createElement("canvas")
-    canvas.width = video.videoWidth || 1280
-    canvas.height = video.videoHeight || 720
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
-    ctx.drawImage(video, 0, 0)
-    canvas.toBlob(
-      (blob) => { if (blob) onCaptureRef.current(blob) },
-      "image/jpeg",
-      0.92,
-    )
-  }
-
-  function handleManualCapture() {
-    if (capturedFiredRef.current) return
-    capturedFiredRef.current = true
-    doCapture()
-  }
+  }, [camState, doCapture])
 
   // ── Fallback if getUserMedia unavailable ─────────────────────────────────
 
@@ -383,7 +385,6 @@ function CameraView({ side, dualSide, documentLabel, onCapture }: CameraViewProp
         className="relative w-full overflow-hidden rounded-xl bg-black"
         style={{ aspectRatio: "4 / 3" }}
       >
-        {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
         <video
           ref={videoRef}
           autoPlay
