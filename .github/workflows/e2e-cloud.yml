@@ -85,10 +85,15 @@ jobs:
         env:
           CI: "true"
           E2E_BASE_URL: "https://${{ secrets.DOMAIN }}"
-          # Credentials match demo-data.ts defaults — no secrets needed.
-          # Accounts must exist in the cloud Supabase project:
-          #   demo.e2e@masshealth-test.local / Demo@2026!
-          #   reviewer.e2e@masshealth-test.local / Staff@2026!
+          # Explicit credentials — fall back to demo-data.ts defaults when the
+          # secrets are absent (e.g. forks / PRs from external contributors).
+          # Accounts must exist in the cloud Supabase project.
+          E2E_DEMO_EMAIL:         ${{ secrets.E2E_DEMO_EMAIL }}
+          E2E_DEMO_PASSWORD:      ${{ secrets.E2E_DEMO_PASSWORD }}
+          E2E_REVIEWER_EMAIL:     ${{ secrets.E2E_REVIEWER_EMAIL }}
+          E2E_REVIEWER_PASSWORD:  ${{ secrets.E2E_REVIEWER_PASSWORD }}
+          E2E_ADMIN_EMAIL:        ${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD:     ${{ secrets.E2E_ADMIN_PASSWORD }}
 
       - name: Upload Playwright report
         if: always()
