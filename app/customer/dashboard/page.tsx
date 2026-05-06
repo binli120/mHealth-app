@@ -390,10 +390,10 @@ export default function CustomerDashboardPage() {
         {/* Identity verification soft nudge — hidden once verified */}
         <IdentityVerificationBanner className="mb-4" />
 
-        {/* Row 1: primary actions */}
-        <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Dashboard actions */}
+        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12">
           <DashboardWidgetTooltip content="Start a new MassHealth application. You will choose the right form type, then complete it step by step.">
-            <Link href="/application/type" data-tour="dashboard-new-application">
+            <Link href="/application/type" data-tour="dashboard-new-application" className="h-full lg:col-span-3">
               <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
                 <CardContent className="flex items-center gap-4 p-4">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
@@ -408,7 +408,7 @@ export default function CustomerDashboardPage() {
             </Link>
           </DashboardWidgetTooltip>
           <DashboardWidgetTooltip content="Screen your household for MassHealth and other support programs, including food, housing, childcare, and cash assistance.">
-            <Link href="/benefit-stack" data-tour="dashboard-benefit-stack">
+            <Link href="/benefit-stack" data-tour="dashboard-benefit-stack" className="h-full lg:col-span-3">
               <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
                 <CardContent className="flex items-center gap-4 p-4">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50">
@@ -423,7 +423,7 @@ export default function CustomerDashboardPage() {
             </Link>
           </DashboardWidgetTooltip>
           <DashboardWidgetTooltip content="Use guided appeal support when an application is denied, delayed, or needs a response to a MassHealth notice.">
-            <Link href="/appeal-assistant" data-tour="dashboard-appeals">
+            <Link href="/appeal-assistant" data-tour="dashboard-appeals" className="h-full lg:col-span-3">
               <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
                 <CardContent className="flex items-center gap-4 p-4">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-destructive/10">
@@ -438,7 +438,7 @@ export default function CustomerDashboardPage() {
             </Link>
           </DashboardWidgetTooltip>
           <DashboardWidgetTooltip content="Research the denial reason and draft a MassHealth appeal letter using your case details and supporting documents.">
-            <Link href="/masshealth-appeals" data-tour="dashboard-appeal-letter">
+            <Link href="/masshealth-appeals" data-tour="dashboard-appeal-letter" className="h-full lg:col-span-3">
               <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
                 <CardContent className="flex items-center gap-4 p-4">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-50">
@@ -454,7 +454,7 @@ export default function CustomerDashboardPage() {
           </DashboardWidgetTooltip>
           <DashboardWidgetTooltip content="Upload proof documents when MassHealth asks for verification, such as income, identity, residency, or insurance records.">
             <Card
-              className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md"
+              className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md lg:col-span-4"
               data-tour="dashboard-upload-documents"
             >
               <CardContent className="flex items-center gap-4 p-4">
@@ -468,12 +468,8 @@ export default function CustomerDashboardPage() {
               </CardContent>
             </Card>
           </DashboardWidgetTooltip>
-        </div>
-
-        {/* Row 2: secondary actions */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <DashboardWidgetTooltip content="Track draft and submitted applications, review status changes, and open any application that needs more work.">
-            <Link href="/customer/status" data-tour="dashboard-track-status">
+            <Link href="/customer/status" data-tour="dashboard-track-status" className="h-full lg:col-span-4">
               <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
                 <CardContent className="flex items-center gap-4 p-4">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10">
@@ -488,7 +484,7 @@ export default function CustomerDashboardPage() {
             </Link>
           </DashboardWidgetTooltip>
           <DashboardWidgetTooltip content="Open guides, articles, and videos that explain MassHealth rules, documents, renewals, and next steps.">
-            <Link href="/knowledge-center" data-tour="dashboard-knowledge-center">
+            <Link href="/knowledge-center" data-tour="dashboard-knowledge-center" className="h-full lg:col-span-4">
               <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
                 <CardContent className="flex items-center gap-4 p-4">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-warning/10">
