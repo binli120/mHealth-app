@@ -18,6 +18,7 @@ import { useAppSelector } from "@/lib/redux/hooks"
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher"
 import { CheckCircle2, ChevronRight, Loader2, Mail, Sparkles } from "lucide-react"
 import { ShieldHeartIcon } from "@/lib/icons"
+import { PrivacyPromiseBlock } from "@/components/privacy/privacy-promise-block"
 
 import { LANDING_STYLES } from "@/app/page.styles"
 import { useInView, useCounter } from "@/app/page.hooks"
@@ -630,6 +631,9 @@ export default function LandingPage() {
           </FadeUp>
         </section>
 
+        {/* ── Privacy Promise ──────────────────────────────────────────────── */}
+        <PrivacyPromiseBlock />
+
         {/* ── Footer ──────────────────────────────────────────────────────────── */}
         <footer className="border-t border-border bg-card px-4 py-12">
           <div className="mx-auto max-w-7xl">
@@ -696,6 +700,11 @@ export default function LandingPage() {
             </div>
             <div className="mt-8 border-t border-border pt-8 text-center text-sm text-muted-foreground">
               <p>{copy.footerCopyright}</p>
+              <p className="mt-2">
+                <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
+                {" · "}
+                <Link href="/privacy/cookies" className="hover:text-foreground">Cookies</Link>
+              </p>
             </div>
           </div>
         </footer>

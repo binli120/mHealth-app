@@ -140,3 +140,34 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ── Print styles for /privacy ────────────────────────────────────────────── */
+@media print {
+  header,
+  footer,
+  nav[aria-label="Table of contents"],
+  .dsr-cta {
+    display: none !important;
+  }
+  details {
+    display: block !important;
+  }
+  details > summary {
+    display: none !important;
+  }
+  details[open] > *:not(summary) {
+    display: block !important;
+  }
+  body {
+    color: black !important;
+    background: white !important;
+  }
+  h2 {
+    page-break-before: always;
+    break-before: page;
+  }
+  h2:first-of-type {
+    page-break-before: avoid;
+    break-before: avoid;
+  }
+}
