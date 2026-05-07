@@ -49,3 +49,8 @@ export const MASSHEALTH_FORMS_EXTRACT_PATH = "/masshealth/forms/extract-workflow
 
 /** Path to the MassHealth analysis service auto-extraction endpoint. */
 export const MASSHEALTH_ANALYSIS_EXTRACT_AUTO_PATH = "/masshealth/extract/auto"
+
+/** Path to the MassHealth analysis service driver-license image validation endpoint. */
+export const MASSHEALTH_DRIVER_LICENSE_ANALYSIS_PATH =
+  process.env.NEXT_PUBLIC_MASSHEALTH_DRIVER_LICENSE_ANALYSIS_PATH ??
+  "/identity/driver-license/analyze"

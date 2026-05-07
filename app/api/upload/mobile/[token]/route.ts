@@ -34,6 +34,14 @@ import {
 import { insertDocument } from "@/lib/db/documents"
 import { validateUpload } from "@/lib/uploads/validate"
 import { logServerError } from "@/lib/server/logger"
+import {
+  isDriverLicenseDocument,
+  requiresDualSideDocument,
+} from "@/lib/uploads/document-requirements"
+import {
+  analyzeMassachusettsDriverLicenseImages,
+  isValidMassachusettsDriverLicense,
+} from "@/lib/masshealth/driver-license-analysis-client"
 
 interface RouteContext {
   params: Promise<{ token: string }>
@@ -107,8 +115,26 @@ export async function POST(request: Request, { params }: RouteContext) {
     )
   }
 
+  const requiresDualSide = requiresDualSideDocument(
+    session.documentType,
+    session.requiredDocumentLabel,
+  )
+  const requiresDriverLicenseAnalysis = isDriverLicenseDocument(
+    session.documentType,
+    session.requiredDocumentLabel,
+  )
   const isDualSide = formData.has("file_front") && formData.has("file_back")
   const isSingleFile = formData.has("file")
+
+  if (requiresDualSide && !isDualSide) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "Front and back photos are required for a driver's license or government ID.",
+      },
+      { status: 400 },
+    )
+  }
 
   if (!isDualSide && !isSingleFile) {
     return NextResponse.json(
@@ -145,6 +171,49 @@ export async function POST(request: Request, { params }: RouteContext) {
         { ok: false, error: `Back photo: ${backVal.error}` },
         { status: backVal.status },
       )
+    }
+
+    if (requiresDriverLicenseAnalysis) {
+      if (!frontVal.mimeType.startsWith("image/") || !backVal.mimeType.startsWith("image/")) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "Driver's license validation requires front and back image photos.",
+          },
+          { status: 400 },
+        )
+      }
+
+      let analysis
+      try {
+        analysis = await analyzeMassachusettsDriverLicenseImages({
+          userId: session.userId,
+          frontFile: frontEntry,
+          backFile: backEntry,
+        })
+      } catch (err) {
+        logServerError("Driver license analysis request failed", err, { module: "upload/mobile" })
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              "We could not validate this driver's license right now. Please try again, or use the desktop upload if the problem continues.",
+          },
+          { status: 502 },
+        )
+      }
+
+      if (!isValidMassachusettsDriverLicense(analysis)) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              analysis.reason ||
+              "This does not appear to be a valid Massachusetts driver's license. Please retake clear front and back photos.",
+          },
+          { status: 422 },
+        )
+      }
     }
 
     const frontDocId = randomUUID()

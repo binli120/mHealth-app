@@ -28,25 +28,7 @@ import {
   XCircle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-/** Document types that require both front and back photos */
-const DUAL_SIDE_TYPES = new Set([
-  "government_id",
-  "government-id",
-  "driver_license",
-  "drivers_license",
-  "driver-license",
-  "drivers-license",
-  "state_id",
-  "state-id",
-])
-
-function needsDualSide(documentType: string | null): boolean {
-  if (!documentType) return false
-  return DUAL_SIDE_TYPES.has(documentType.toLowerCase().replace(/\s+/g, "_"))
-}
+import { requiresDualSideDocument } from "@/lib/uploads/document-requirements"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -72,7 +54,7 @@ export function MobileUploadCamera({
   documentLabel,
   documentType,
 }: MobileUploadCameraProps) {
-  const dualSide = needsDualSide(documentType)
+  const dualSide = requiresDualSideDocument(documentType, documentLabel)
 
   const [phase, setPhase] = useState<Phase>({ name: "camera", side: "front" })
   // Hold captured blobs across phase transitions without triggering re-renders
