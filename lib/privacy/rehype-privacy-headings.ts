@@ -1,5 +1,4 @@
 import type { Root, Element } from "hast"
-import type { Plugin } from "unified"
 import { visit } from "unist-util-visit"
 
 const HEADING_ID_MAP: Record<string, string> = {
@@ -26,7 +25,7 @@ function getTextContent(node: Element): string {
   return text.trim()
 }
 
-export const rehypePrivacyHeadings: Plugin<[], Root> = () => {
+export const rehypePrivacyHeadings: () => (tree: Root) => void = () => {
   return (tree: Root) => {
     visit(tree, "element", (node: Element) => {
       if (node.tagName === "h2") {
