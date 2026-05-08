@@ -18,14 +18,11 @@ import {
   getSignedDocumentUrls,
   getSignedDocumentUrl,
   buildStoragePath,
-  buildThumbnailStoragePath,
 } from "@/lib/supabase/storage"
 import { logServerError } from "@/lib/server/logger"
 import { validateUpload } from "@/lib/uploads/validate"
-import {
-  canCreateDocumentThumbnail,
-  uploadDocumentThumbnail,
-} from "@/lib/uploads/document-thumbnail"
+import { createAndUploadDocumentArtifacts } from "@/lib/uploads/document-artifacts"
+import { validateUploadedDocument } from "@/lib/masshealth/document-validation-workflow"
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -67,25 +64,18 @@ export async function GET(request: Request, context: RouteContext) {
 
     const accessToken = extractBearerToken(request)
     const docs = await listDocumentsByApplication(authResult.userId, applicationId)
-    const filePaths = docs
-      .map((doc) => doc.filePath)
+    const uniquePaths = docs
+      .flatMap((doc) => [doc.filePath, doc.thumbnailPath, doc.pdfPath])
       .filter((path): path is string => Boolean(path))
-    const thumbnailPaths = docs
-      .filter((doc) => canCreateDocumentThumbnail(doc.mimeType))
-      .map((doc) => doc.filePath)
-      .filter((path): path is string => Boolean(path))
-      .map(buildThumbnailStoragePath)
     const signedUrlMap = await getSignedDocumentUrls({
       accessToken,
-      storagePaths: [...filePaths, ...thumbnailPaths],
+      storagePaths: uniquePaths,
     })
     const docsWithUrls = docs.map((doc) => ({
       ...doc,
       signedUrl: doc.filePath ? signedUrlMap[doc.filePath] ?? null : null,
-      thumbnailSignedUrl:
-        doc.filePath && canCreateDocumentThumbnail(doc.mimeType)
-          ? signedUrlMap[buildThumbnailStoragePath(doc.filePath)] ?? null
-          : null,
+      thumbnailSignedUrl: doc.thumbnailPath ? signedUrlMap[doc.thumbnailPath] ?? null : null,
+      pdfSignedUrl: doc.pdfPath ? signedUrlMap[doc.pdfPath] ?? null : null,
     }))
 
     return NextResponse.json({ ok: true, documents: docsWithUrls })
@@ -183,24 +173,25 @@ export async function POST(request: Request, context: RouteContext) {
     })
 
     let thumbnailPath: string | null = null
-    if (canCreateDocumentThumbnail(validation.mimeType)) {
-      try {
-        thumbnailPath = await uploadDocumentThumbnail({
-          accessToken,
-          fileBuffer,
-          mimeType: validation.mimeType,
-          storagePath,
-        })
-      } catch (thumbnailError) {
-        logServerError("Failed to create document thumbnail", thumbnailError, {
-          module: "api/applications/[applicationId]/documents",
-          storagePath,
-        })
-      }
+    let pdfPath: string | null = null
+    try {
+      const artifacts = await createAndUploadDocumentArtifacts({
+        accessToken,
+        fileBuffer,
+        mimeType: validation.mimeType,
+        storagePath,
+      })
+      thumbnailPath = artifacts.thumbnailPath
+      pdfPath = artifacts.pdfPath
+    } catch (artifactError) {
+      logServerError("Failed to create document artifacts", artifactError, {
+        module: "api/applications/[applicationId]/documents",
+        storagePath,
+      })
     }
 
     // 2. Persist document record in PostgreSQL with an ownership check.
-    const document = await insertDocument({
+    let document = await insertDocument({
       id: documentId,
       applicationId,
       uploadedBy: authResult.userId,
@@ -208,6 +199,8 @@ export async function POST(request: Request, context: RouteContext) {
       requiredDocumentLabel,
       fileName: fileEntry.name,
       filePath: storagePath,
+      thumbnailPath,
+      pdfPath,
       fileSizeBytes: fileEntry.size,
       mimeType: validation.mimeType,
     })
@@ -216,7 +209,7 @@ export async function POST(request: Request, context: RouteContext) {
       try {
         await deleteFromStorage({
           accessToken,
-          storagePaths: [storagePath, thumbnailPath].filter((path): path is string => Boolean(path)),
+          storagePaths: [storagePath, thumbnailPath, pdfPath].filter((path): path is string => Boolean(path)),
         })
       } catch {
         // Best-effort cleanup for an upload that failed authorization at insert time.
@@ -227,19 +220,42 @@ export async function POST(request: Request, context: RouteContext) {
       )
     }
 
-    // 3. Generate a signed URL for the freshly uploaded file
+    // 3. Analyze/validate after the document is saved. Failure is persisted but does not abort upload.
+    try {
+      document = await validateUploadedDocument({
+        userId: authResult.userId,
+        document,
+        file: fileEntry,
+        mimeType: validation.mimeType,
+      })
+    } catch (analysisError) {
+      logServerError("Document analysis workflow failed", analysisError, {
+        module: "api/applications/[applicationId]/documents",
+        documentId,
+      })
+    }
+
+    // 4. Generate signed URLs for the freshly uploaded artifacts
     let signedUrl: string | null = null
     let thumbnailSignedUrl: string | null = null
+    let pdfSignedUrl: string | null = null
     try {
       signedUrl = await getSignedDocumentUrl({ accessToken, storagePath })
     } catch {
       // Non-fatal — client can request a signed URL separately
     }
-    if (thumbnailPath) {
+    if (document.thumbnailPath) {
       try {
-        thumbnailSignedUrl = await getSignedDocumentUrl({ accessToken, storagePath: thumbnailPath })
+        thumbnailSignedUrl = await getSignedDocumentUrl({ accessToken, storagePath: document.thumbnailPath })
       } catch {
-        // Non-fatal — the original file remains available
+        // Non-fatal
+      }
+    }
+    if (document.pdfPath) {
+      try {
+        pdfSignedUrl = await getSignedDocumentUrl({ accessToken, storagePath: document.pdfPath })
+      } catch {
+        // Non-fatal
       }
     }
 
@@ -254,12 +270,21 @@ export async function POST(request: Request, context: RouteContext) {
           requiredDocumentLabel: document.requiredDocumentLabel,
           fileName: document.fileName,
           filePath: document.filePath,
+          thumbnailPath: document.thumbnailPath,
+          pdfPath: document.pdfPath,
           fileSizeBytes: document.fileSizeBytes,
           mimeType: document.mimeType,
           documentStatus: document.documentStatus,
+          analysisDocumentType: document.analysisDocumentType,
+          validationStatus: document.validationStatus,
+          validationError: document.validationError,
+          validationSummary: document.validationSummary,
+          validationCertificate: document.validationCertificate,
+          analyzedAt: document.analyzedAt,
           uploadedAt: document.uploadedAt,
           signedUrl,
           thumbnailSignedUrl,
+          pdfSignedUrl,
         },
       },
       { status: 201 },

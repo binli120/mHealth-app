@@ -107,14 +107,19 @@ const SECTION_ORDER: FormSection[] = ["personal", "contact", "household", "incom
 
 const REQUIRED_DOCS = [
   {
-    type: "identity",
-    label: "Government-Issued ID",
-    description: "Driver's license, state ID, or passport",
+    type: "driver_license",
+    label: "Driver License",
+    description: "Front and back photos of a driver's license",
   },
   {
-    type: "proof_of_income",
-    label: "Proof of Income",
-    description: "Recent pay stubs, tax return, or benefit award letter",
+    type: "passport",
+    label: "Passport",
+    description: "Passport photo page",
+  },
+  {
+    type: "paystub",
+    label: "Paystub",
+    description: "Recent paystub for income verification",
   },
   {
     type: "proof_of_residency",

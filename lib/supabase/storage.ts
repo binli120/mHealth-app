@@ -127,13 +127,21 @@ export function buildStoragePath(
   return `${userId}/${applicationId}/${documentId}/${safe}`;
 }
 
-export function buildThumbnailStoragePath(storagePath: string): string {
+function buildSiblingPath(storagePath: string, suffix: string): string {
   const lastSlashIndex = storagePath.lastIndexOf('/');
   const fileName = lastSlashIndex < 0 ? storagePath : storagePath.slice(lastSlashIndex + 1);
-  const thumbnailName = `${fileName}.thumb.webp`;
-  if (lastSlashIndex < 0) return thumbnailName;
+  const siblingName = `${fileName}${suffix}`;
+  if (lastSlashIndex < 0) return siblingName;
 
-  return `${storagePath.slice(0, lastSlashIndex)}/${thumbnailName}`;
+  return `${storagePath.slice(0, lastSlashIndex)}/${siblingName}`;
+}
+
+export function buildThumbnailStoragePath(storagePath: string): string {
+  return buildSiblingPath(storagePath, '.thumb.webp');
+}
+
+export function buildPdfStoragePath(storagePath: string): string {
+  return buildSiblingPath(storagePath, '.pdf');
 }
 
 /**

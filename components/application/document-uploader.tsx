@@ -22,12 +22,14 @@ import {
   X,
   FileText,
   CheckCircle2,
+  BadgeCheck,
   Loader2,
   ZoomIn,
   AlertCircle,
   Clock,
   RefreshCw,
 } from "lucide-react"
+import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { toUserFacingError } from "@/lib/errors/user-facing"
@@ -43,14 +45,23 @@ export interface UploadedDocument {
   requiredDocumentLabel: string | null
   fileName: string | null
   filePath: string | null
+  thumbnailPath: string | null
+  pdfPath: string | null
   fileSizeBytes: number | null
   mimeType: string | null
   documentStatus: string
+  analysisDocumentType: string | null
+  validationStatus: "not_required" | "pending" | "analyzing" | "valid" | "invalid" | "error"
+  validationError: string | null
+  validationSummary: Record<string, unknown> | null
+  validationCertificate: Record<string, unknown> | null
+  analyzedAt: string | null
   uploadedAt: string
   /** Time-limited signed URL for preview / download */
   signedUrl: string | null
   /** Time-limited signed URL for the derived storage thumbnail */
   thumbnailSignedUrl: string | null
+  pdfSignedUrl: string | null
 }
 
 interface DocumentUploaderProps {
@@ -71,6 +82,13 @@ interface DocumentUploaderProps {
 }
 
 type UploadStatus = "idle" | "uploading" | "uploaded" | "error"
+type ValidationStage = "saving" | "analyzing" | "validating"
+
+const VALIDATION_STAGE_COPY: Record<ValidationStage, { label: string; progress: number }> = {
+  saving: { label: "Saving document…", progress: 30 },
+  analyzing: { label: "Analyzing document…", progress: 68 },
+  validating: { label: "Validating application data…", progress: 92 },
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -80,6 +98,23 @@ type UploadStatus = "idle" | "uploading" | "uploaded" | "error"
 function isMobileBrowser(): boolean {
   if (typeof navigator === "undefined") return false
   return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+}
+
+function getValidationStatusLabel(document: UploadedDocument | null): string {
+  if (!document) return "Saving document…"
+  switch (document.validationStatus) {
+    case "valid":
+      return "Document validated"
+    case "invalid":
+      return "Document validation failed"
+    case "error":
+      return "Document validation unavailable"
+    case "pending":
+    case "analyzing":
+      return "Document validation in progress"
+    default:
+      return "Uploaded successfully"
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -325,18 +360,36 @@ export function DocumentUploader({
   requiredDocumentLabel,
   title,
   description,
-  accept = "image/*,application/pdf",
+  accept = "image/*,.tif,.tiff,application/pdf",
   onDocumentUpload,
   onDocumentRemove,
 }: DocumentUploaderProps) {
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>("idle")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [document, setDocument] = useState<UploadedDocument | null>(null)
+  const [validationStage, setValidationStage] = useState<ValidationStage>("saving")
   const [isDragging, setIsDragging] = useState(false)
   const [isRemoving, setIsRemoving] = useState(false)
   const [qrDialogOpen, setQrDialogOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (uploadStatus !== "uploading") {
+      setValidationStage("saving")
+      return
+    }
+
+    setValidationStage("saving")
+    const timers = [
+      window.setTimeout(() => setValidationStage("analyzing"), 900),
+      window.setTimeout(() => setValidationStage("validating"), 2400),
+    ]
+
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer))
+    }
+  }, [uploadStatus])
 
   // ---------------------------------------------------------------------------
   // On mount: load any previously uploaded document for this type
@@ -560,7 +613,7 @@ export function DocumentUploader({
               </Button>
             </div>
             <p className="mt-3 text-xs text-muted-foreground">
-              Drag and drop or click to upload · PDF, JPG, PNG, WebP, HEIC (max 10 MB)
+              Drag and drop or click to upload · PDF, JPG, PNG, WebP, TIFF, HEIC (max 10 MB)
             </p>
           </div>
 
@@ -591,6 +644,7 @@ export function DocumentUploader({
   const previewUrl =
     document?.thumbnailSignedUrl ??
     (document?.mimeType?.startsWith("image/") ? document.signedUrl : null)
+  const stage = VALIDATION_STAGE_COPY[validationStage]
 
   return (
     <div className="space-y-3">
@@ -658,34 +712,75 @@ export function DocumentUploader({
               {/* Status badge */}
               <div className="mt-2">
                 {uploadStatus === "uploading" && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Uploading…
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {stage.label}
+                    </div>
+                    <Progress value={stage.progress} className="h-2" />
                   </div>
                 )}
                 {uploadStatus === "uploaded" && (
-                  <div className="flex items-center gap-2 text-sm text-success">
-                    <CheckCircle2 className="h-4 w-4" />
-                    Uploaded successfully
-                    {document?.documentStatus === "verified" && " · Verified"}
-                    {document?.documentStatus === "pending_review" && " · Pending review"}
-                  </div>
+                  <>
+                    <div
+                      className={cn(
+                        "flex items-center gap-2 text-sm",
+                        document?.validationStatus === "valid" && "text-success",
+                        document?.validationStatus === "invalid" && "text-destructive",
+                        document?.validationStatus === "error" && "text-amber-600",
+                        (!document || document.validationStatus === "not_required") && "text-success",
+                      )}
+                    >
+                      {document?.validationStatus === "valid" ? (
+                        <BadgeCheck className="h-4 w-4" />
+                      ) : document?.validationStatus === "invalid" || document?.validationStatus === "error" ? (
+                        <AlertCircle className="h-4 w-4" />
+                      ) : (
+                        <CheckCircle2 className="h-4 w-4" />
+                      )}
+                      {getValidationStatusLabel(document)}
+                    </div>
+                    {document?.validationCertificate && (
+                      <div className="mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                        Validation certificate issued {document.analyzedAt ? new Date(document.analyzedAt).toLocaleString() : "now"}.
+                      </div>
+                    )}
+                    {document?.validationError && (
+                      <div className="mt-2 rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                        {document.validationError}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
           </div>
 
           {/* Download link */}
-          {document?.signedUrl && (
+          {(document?.signedUrl || document?.pdfSignedUrl) && (
             <div className="mt-3 border-t border-border pt-3">
-              <a
-                href={document.signedUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-primary underline-offset-4 hover:underline"
-              >
-                View / download
-              </a>
+              <div className="flex gap-3">
+                {document?.signedUrl && (
+                  <a
+                    href={document.signedUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary underline-offset-4 hover:underline"
+                  >
+                    View original
+                  </a>
+                )}
+                {document?.pdfSignedUrl && (
+                  <a
+                    href={document.pdfSignedUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary underline-offset-4 hover:underline"
+                  >
+                    View PDF
+                  </a>
+                )}
+              </div>
             </div>
           )}
         </CardContent>

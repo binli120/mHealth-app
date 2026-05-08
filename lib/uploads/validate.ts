@@ -34,8 +34,8 @@ interface CategoryConfig {
 const CATEGORY_CONFIG: Record<UploadCategory, CategoryConfig> = {
   document: {
     maxBytes: 10 * MB,
-    allowed: new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "application/pdf"]),
-    label: "JPEG, PNG, WebP, HEIC, or PDF",
+    allowed: new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/tiff", "application/pdf"]),
+    label: "JPEG, PNG, WebP, TIFF, HEIC, or PDF",
   },
   avatar: {
     maxBytes: 5 * MB,
@@ -109,6 +109,12 @@ function matchesMagicBytes(h: Uint8Array, mime: string): boolean {
       return (
         h[0] === 0x52 && h[1] === 0x49 && h[2] === 0x46 && h[3] === 0x46 &&
         h[8] === 0x57 && h[9] === 0x45 && h[10] === 0x42 && h[11] === 0x50
+      )
+
+    case "image/tiff":
+      return (
+        (h[0] === 0x49 && h[1] === 0x49 && h[2] === 0x2A && h[3] === 0x00) ||
+        (h[0] === 0x4D && h[1] === 0x4D && h[2] === 0x00 && h[3] === 0x2A)
       )
 
     case "image/gif":

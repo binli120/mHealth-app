@@ -11,6 +11,9 @@ import { getDbPool } from "@/lib/db/server"
 // Types
 // ---------------------------------------------------------------------------
 
+export type DocumentStatus = "uploaded" | "pending_review" | "verified" | "rejected"
+export type DocumentValidationStatus = "not_required" | "pending" | "analyzing" | "valid" | "invalid" | "error"
+
 export interface DocumentRecord {
   id: string
   applicationId: string
@@ -19,10 +22,18 @@ export interface DocumentRecord {
   requiredDocumentLabel: string | null
   fileName: string | null
   filePath: string | null
+  thumbnailPath: string | null
+  pdfPath: string | null
   fileUrl: string | null
   fileSizeBytes: number | null
   mimeType: string | null
-  documentStatus: string
+  documentStatus: DocumentStatus
+  analysisDocumentType: string | null
+  validationStatus: DocumentValidationStatus
+  validationError: string | null
+  validationSummary: Record<string, unknown> | null
+  validationCertificate: Record<string, unknown> | null
+  analyzedAt: string | null
   uploadedAt: string
 }
 
@@ -34,8 +45,28 @@ export interface InsertDocumentParams {
   requiredDocumentLabel?: string
   fileName: string
   filePath: string
+  thumbnailPath?: string | null
+  pdfPath?: string | null
   fileSizeBytes: number
   mimeType: string
+}
+
+export interface UpdateDocumentValidationParams {
+  documentId: string
+  documentStatus: DocumentStatus
+  validationStatus: DocumentValidationStatus
+  analysisDocumentType?: string | null
+  validationError?: string | null
+  validationSummary?: Record<string, unknown> | null
+  validationCertificate?: Record<string, unknown> | null
+}
+
+export interface InsertDocumentExtractionParams {
+  documentId: string
+  modelName: string
+  rawOutput: Record<string, unknown> | null
+  structuredOutput: Record<string, unknown> | null
+  confidenceScore?: number | null
 }
 
 // ---------------------------------------------------------------------------
@@ -51,11 +82,19 @@ function toRecord(row: Record<string, unknown>): DocumentRecord {
     requiredDocumentLabel: (row.required_document_label as string | null) ?? null,
     fileName: (row.file_name as string | null) ?? null,
     filePath: (row.file_path as string | null) ?? null,
+    thumbnailPath: (row.thumbnail_path as string | null) ?? null,
+    pdfPath: (row.pdf_path as string | null) ?? null,
     fileUrl: (row.file_url as string | null) ?? null,
     fileSizeBytes:
       row.file_size_bytes != null ? Number(row.file_size_bytes) : null,
     mimeType: (row.mime_type as string | null) ?? null,
-    documentStatus: String(row.document_status ?? "uploaded"),
+    documentStatus: String(row.document_status ?? "uploaded") as DocumentStatus,
+    analysisDocumentType: (row.analysis_document_type as string | null) ?? null,
+    validationStatus: String(row.validation_status ?? "not_required") as DocumentValidationStatus,
+    validationError: (row.validation_error as string | null) ?? null,
+    validationSummary: (row.validation_summary as Record<string, unknown> | null) ?? null,
+    validationCertificate: (row.validation_certificate as Record<string, unknown> | null) ?? null,
+    analyzedAt: (row.analyzed_at as string | null) ?? null,
     uploadedAt: String(row.uploaded_at),
   }
 }
@@ -106,9 +145,12 @@ export async function insertDocument(params: InsertDocumentParams): Promise<Docu
         required_document_label,
         file_name,
         file_path,
+        thumbnail_path,
+        pdf_path,
         file_size_bytes,
         mime_type,
-        document_status
+        document_status,
+        validation_status
       )
       SELECT
         COALESCE($1::uuid, gen_random_uuid()),
@@ -120,7 +162,10 @@ export async function insertDocument(params: InsertDocumentParams): Promise<Docu
         $7,
         $8,
         $9,
-        'uploaded'
+        $10,
+        $11,
+        'uploaded',
+        'pending'
       FROM accessible_application
       RETURNING *
     `,
@@ -132,12 +177,71 @@ export async function insertDocument(params: InsertDocumentParams): Promise<Docu
       params.requiredDocumentLabel ?? null,
       params.fileName,
       params.filePath,
+      params.thumbnailPath ?? null,
+      params.pdfPath ?? null,
       params.fileSizeBytes,
       params.mimeType,
     ],
   )
 
   return rows[0] ? toRecord(rows[0] as Record<string, unknown>) : null
+}
+
+export async function updateDocumentValidation(
+  params: UpdateDocumentValidationParams,
+): Promise<DocumentRecord | null> {
+  const pool = getDbPool()
+  const { rows } = await pool.query(
+    `
+      UPDATE public.documents
+      SET
+        document_status = $2,
+        validation_status = $3,
+        analysis_document_type = $4,
+        validation_error = $5,
+        validation_summary = $6::jsonb,
+        validation_certificate = $7::jsonb,
+        analyzed_at = CASE WHEN $3 IN ('valid', 'invalid', 'error', 'not_required') THEN now() ELSE analyzed_at END
+      WHERE id = $1::uuid
+      RETURNING *
+    `,
+    [
+      params.documentId,
+      params.documentStatus,
+      params.validationStatus,
+      params.analysisDocumentType ?? null,
+      params.validationError ?? null,
+      params.validationSummary ? JSON.stringify(params.validationSummary) : null,
+      params.validationCertificate ? JSON.stringify(params.validationCertificate) : null,
+    ],
+  )
+
+  return rows[0] ? toRecord(rows[0] as Record<string, unknown>) : null
+}
+
+export async function insertDocumentExtraction(
+  params: InsertDocumentExtractionParams,
+): Promise<void> {
+  const pool = getDbPool()
+  await pool.query(
+    `
+      INSERT INTO public.document_extractions (
+        document_id,
+        model_name,
+        raw_output,
+        structured_output,
+        confidence_score
+      )
+      VALUES ($1::uuid, $2, $3::jsonb, $4::jsonb, $5)
+    `,
+    [
+      params.documentId,
+      params.modelName,
+      params.rawOutput ? JSON.stringify(params.rawOutput) : null,
+      params.structuredOutput ? JSON.stringify(params.structuredOutput) : null,
+      params.confidenceScore ?? null,
+    ],
+  )
 }
 
 /**
@@ -209,7 +313,7 @@ export async function getDocumentById(
 export async function deleteDocumentById(
   userId: string,
   documentId: string,
-): Promise<{ filePath: string | null } | null> {
+): Promise<{ filePath: string | null; thumbnailPath: string | null; pdfPath: string | null } | null> {
   const pool = getDbPool()
 
   const { rows } = await pool.query(
@@ -222,7 +326,7 @@ export async function deleteDocumentById(
           JOIN public.applicants ap ON ap.id = a.applicant_id
           WHERE ap.user_id = $2::uuid
         )
-      RETURNING file_path
+      RETURNING file_path, thumbnail_path, pdf_path
     `,
     [documentId, userId],
   )
@@ -233,5 +337,7 @@ export async function deleteDocumentById(
 
   return {
     filePath: ((rows[0] as Record<string, unknown>).file_path as string | null) ?? null,
+    thumbnailPath: ((rows[0] as Record<string, unknown>).thumbnail_path as string | null) ?? null,
+    pdfPath: ((rows[0] as Record<string, unknown>).pdf_path as string | null) ?? null,
   }
 }

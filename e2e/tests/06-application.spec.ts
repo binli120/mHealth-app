@@ -10,6 +10,7 @@ import { hasSupabaseAuthState } from "../auth-state"
 
 test.use({ storageState: path.join(__dirname, "../.auth/user.json") })
 const AUTH_FILE = path.join(__dirname, "../.auth/user.json")
+const DOCUMENT_UPLOAD_FILE = path.join(__dirname, "../../public/placeholder.jpg")
 
 test.describe("Application Flow", () => {
   let applicationPage: ApplicationPage
@@ -90,6 +91,100 @@ test.describe("Application Flow", () => {
     await applicationPage.assertIncomeChecklistReady()
     await applicationPage.uploadIncomeEvidenceDocument()
     await applicationPage.assertDraftVisibleOnStatusPage(applicationId)
+  })
+
+  test("document upload UI shows validation progress and certificate", async ({ page }) => {
+    await applicationPage.gotoTypeSelector()
+    const applicationId = await applicationPage.selectAca3Draft()
+    let uploadedDocument: Record<string, unknown> | null = null
+
+    await page.route(`**/api/applications/${applicationId}/documents`, async (route) => {
+      const request = route.request()
+      if (request.method() === "GET") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ ok: true, documents: uploadedDocument ? [uploadedDocument] : [] }),
+        })
+        return
+      }
+
+      if (request.method() === "POST") {
+        await new Promise((resolve) => setTimeout(resolve, 2_800))
+        uploadedDocument = {
+          id: "33333333-3333-4333-8333-333333333333",
+          applicationId,
+          uploadedBy: "11111111-1111-4111-8111-111111111111",
+          documentType: "passport",
+          requiredDocumentLabel: "Passport",
+          fileName: "placeholder.jpg",
+          filePath: "uploads/passport/placeholder.jpg",
+          signedUrl: "https://example.test/original.jpg",
+          thumbnailSignedUrl: "https://example.test/thumbnail.webp",
+          pdfSignedUrl: "https://example.test/passport.pdf",
+          fileSizeBytes: 1024,
+          mimeType: "image/jpeg",
+          documentStatus: "verified",
+          validationStatus: "valid",
+          validationError: null,
+          validationSummary: { matchedFields: ["name", "dateOfBirth"] },
+          validationCertificate: { id: "cert-passport-e2e" },
+          uploadedAt: new Date().toISOString(),
+          analyzedAt: new Date().toISOString(),
+        }
+        await route.fulfill({
+          status: 201,
+          contentType: "application/json",
+          body: JSON.stringify({ ok: true, document: uploadedDocument }),
+        })
+        return
+      }
+
+      await route.continue()
+    })
+
+    await page.evaluate(({ key, draft }) => {
+      window.localStorage.setItem(key, JSON.stringify(draft))
+    }, {
+      key: `healthcompass.applicationAssistant.draft.${applicationId}`,
+      draft: {
+        mode: "form_assistant",
+        updatedAt: new Date().toISOString(),
+        formData: {},
+        noHouseholdMembers: true,
+        noIncome: true,
+        messages: [
+          {
+            id: "assistant-documents-ready",
+            type: "upload_prompt",
+            role: "assistant",
+            content: "Upload supporting documents to complete your application.",
+            docTypes: [
+              {
+                type: "passport",
+                label: "Passport",
+                description: "Passport photo page",
+              },
+            ],
+          },
+        ],
+      },
+    })
+
+    await page.reload()
+    await expect(page.getByRole("heading", { name: "Passport" })).toBeVisible({ timeout: 15_000 })
+
+    const fileChooserPromise = page.waitForEvent("filechooser")
+    await page.getByRole("button", { name: /browse files/i }).click()
+    const fileChooser = await fileChooserPromise
+    await fileChooser.setFiles(DOCUMENT_UPLOAD_FILE)
+
+    await expect(page.getByText(/saving document/i)).toBeVisible({ timeout: 2_000 })
+    await expect(page.getByText(/analyzing document/i)).toBeVisible({ timeout: 2_000 })
+    await expect(page.getByText(/validating application data/i)).toBeVisible({ timeout: 3_000 })
+    await expect(page.getByText(/document validated/i)).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText(/validation certificate issued/i)).toBeVisible()
+    await expect(page.getByRole("link", { name: /view pdf/i })).toBeVisible()
   })
 
   test("critical application pages avoid server 500s during draft creation", async ({ page }) => {

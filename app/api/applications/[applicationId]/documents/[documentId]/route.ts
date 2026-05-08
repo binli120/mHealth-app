@@ -7,13 +7,8 @@ import { NextResponse } from "next/server"
 
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 import { getDocumentById, deleteDocumentById } from "@/lib/db/documents"
-import {
-  buildThumbnailStoragePath,
-  deleteFromStorage,
-  getSignedDocumentUrl,
-} from "@/lib/supabase/storage"
+import { deleteFromStorage, getSignedDocumentUrl } from "@/lib/supabase/storage"
 import { logServerError } from "@/lib/server/logger"
-import { canCreateDocumentThumbnail } from "@/lib/uploads/document-thumbnail"
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -58,25 +53,30 @@ export async function GET(request: Request, context: RouteContext) {
     const accessToken = extractBearerToken(request)
     let signedUrl: string | null = null
     let thumbnailSignedUrl: string | null = null
+    let pdfSignedUrl: string | null = null
     if (doc.filePath) {
       try {
         signedUrl = await getSignedDocumentUrl({ accessToken, storagePath: doc.filePath })
       } catch {
         // Non-fatal
       }
-      if (canCreateDocumentThumbnail(doc.mimeType)) {
-        try {
-          thumbnailSignedUrl = await getSignedDocumentUrl({
-            accessToken,
-            storagePath: buildThumbnailStoragePath(doc.filePath),
-          })
-        } catch {
-          // Non-fatal
-        }
+    }
+    if (doc.thumbnailPath) {
+      try {
+        thumbnailSignedUrl = await getSignedDocumentUrl({ accessToken, storagePath: doc.thumbnailPath })
+      } catch {
+        // Non-fatal
+      }
+    }
+    if (doc.pdfPath) {
+      try {
+        pdfSignedUrl = await getSignedDocumentUrl({ accessToken, storagePath: doc.pdfPath })
+      } catch {
+        // Non-fatal
       }
     }
 
-    return NextResponse.json({ ok: true, document: { ...doc, signedUrl, thumbnailSignedUrl } })
+    return NextResponse.json({ ok: true, document: { ...doc, signedUrl, thumbnailSignedUrl, pdfSignedUrl } })
   } catch (error) {
     logServerError("Failed to fetch document", error, {
       module: "api/applications/[applicationId]/documents/[documentId]",
@@ -118,18 +118,17 @@ export async function DELETE(request: Request, context: RouteContext) {
     }
 
     // Remove the file from Supabase Storage (best-effort)
-    if (deleted.filePath) {
+    const storagePaths = [deleted.filePath, deleted.thumbnailPath, deleted.pdfPath]
+      .filter((path): path is string => Boolean(path))
+    if (storagePaths.length > 0) {
       const accessToken = extractBearerToken(request)
       try {
-        await deleteFromStorage({
-          accessToken,
-          storagePaths: [deleted.filePath, buildThumbnailStoragePath(deleted.filePath)],
-        })
+        await deleteFromStorage({ accessToken, storagePaths })
       } catch (storageError) {
         // Log the orphaned file but return success — the DB record is authoritative
         logServerError("Storage delete failed after DB delete; file may be orphaned", storageError, {
           module: "api/applications/[applicationId]/documents/[documentId]",
-          filePath: deleted.filePath,
+          storagePaths,
         })
       }
     }

@@ -29,6 +29,7 @@ tsconfig.tsbuildinfo
 
 # Supabase temp files
 supabase/.temp/
+supabase/migrations/.$*.drawio.bkp
 
 # Large binary policy docs (txt versions committed instead)
 resources/*.pdf

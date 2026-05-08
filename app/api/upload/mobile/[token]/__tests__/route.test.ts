@@ -12,6 +12,26 @@ vi.mock("@/lib/db/mobile-upload-session", () => ({
 
 vi.mock("@/lib/db/documents", () => ({
   insertDocument: vi.fn(),
+  updateDocumentValidation: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock("@/lib/uploads/document-artifacts", () => ({
+  createAndUploadDocumentArtifacts: vi.fn().mockResolvedValue({
+    thumbnailPath: null,
+    pdfPath: null,
+  }),
+}))
+
+vi.mock("@/lib/masshealth/document-validation-workflow", () => ({
+  validateUploadedDocument: vi.fn(async ({ document }) => ({
+    ...document,
+    documentStatus: document.documentStatus ?? "uploaded",
+    validationStatus: document.validationStatus ?? "valid",
+    analysisDocumentType: document.analysisDocumentType ?? "driver_license",
+    validationError: document.validationError ?? null,
+    validationSummary: document.validationSummary ?? null,
+    validationCertificate: document.validationCertificate ?? null,
+  })),
 }))
 
 vi.mock("@/lib/supabase/storage", () => ({
@@ -155,4 +175,3 @@ describe("POST /api/upload/mobile/[token]", () => {
     expect(uploadDocumentToStorage).not.toHaveBeenCalled()
   })
 })
-

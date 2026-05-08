@@ -31,12 +31,10 @@ import {
   uploadDocumentToStorage,
   buildStoragePath,
 } from "@/lib/supabase/storage"
-import { insertDocument } from "@/lib/db/documents"
+import { insertDocument, updateDocumentValidation } from "@/lib/db/documents"
 import { validateUpload } from "@/lib/uploads/validate"
-import {
-  canCreateDocumentThumbnail,
-  uploadDocumentThumbnail,
-} from "@/lib/uploads/document-thumbnail"
+import { createAndUploadDocumentArtifacts } from "@/lib/uploads/document-artifacts"
+import { validateUploadedDocument } from "@/lib/masshealth/document-validation-workflow"
 import { logServerError } from "@/lib/server/logger"
 import {
   isDriverLicenseDocument,
@@ -240,6 +238,14 @@ export async function POST(request: Request, { params }: RouteContext) {
     try {
       const frontBuffer = Buffer.from(await frontEntry.arrayBuffer())
       const backBuffer = Buffer.from(await backEntry.arrayBuffer())
+      let frontArtifacts: { thumbnailPath: string | null; pdfPath: string | null } = {
+        thumbnailPath: null,
+        pdfPath: null,
+      }
+      let backArtifacts: { thumbnailPath: string | null; pdfPath: string | null } = {
+        thumbnailPath: null,
+        pdfPath: null,
+      }
 
       // Upload both sides to Supabase Storage (service-role — no user JWT needed)
       await uploadDocumentToStorage({
@@ -247,38 +253,34 @@ export async function POST(request: Request, { params }: RouteContext) {
         mimeType: frontVal.mimeType,
         storagePath: frontPath,
       })
-      if (canCreateDocumentThumbnail(frontVal.mimeType)) {
-        try {
-          await uploadDocumentThumbnail({
-            fileBuffer: frontBuffer,
-            mimeType: frontVal.mimeType,
-            storagePath: frontPath,
-          })
-        } catch (thumbnailError) {
-          logServerError("Failed to create mobile front document thumbnail", thumbnailError, {
-            module: "upload/mobile",
-            storagePath: frontPath,
-          })
-        }
+      try {
+        frontArtifacts = await createAndUploadDocumentArtifacts({
+          fileBuffer: frontBuffer,
+          mimeType: frontVal.mimeType,
+          storagePath: frontPath,
+        })
+      } catch (artifactError) {
+        logServerError("Failed to create mobile front document artifacts", artifactError, {
+          module: "upload/mobile",
+          storagePath: frontPath,
+        })
       }
       await uploadDocumentToStorage({
         fileBuffer: backBuffer,
         mimeType: backVal.mimeType,
         storagePath: backPath,
       })
-      if (canCreateDocumentThumbnail(backVal.mimeType)) {
-        try {
-          await uploadDocumentThumbnail({
-            fileBuffer: backBuffer,
-            mimeType: backVal.mimeType,
-            storagePath: backPath,
-          })
-        } catch (thumbnailError) {
-          logServerError("Failed to create mobile back document thumbnail", thumbnailError, {
-            module: "upload/mobile",
-            storagePath: backPath,
-          })
-        }
+      try {
+        backArtifacts = await createAndUploadDocumentArtifacts({
+          fileBuffer: backBuffer,
+          mimeType: backVal.mimeType,
+          storagePath: backPath,
+        })
+      } catch (artifactError) {
+        logServerError("Failed to create mobile back document artifacts", artifactError, {
+          module: "upload/mobile",
+          storagePath: backPath,
+        })
       }
 
       // Insert front document record
@@ -290,6 +292,8 @@ export async function POST(request: Request, { params }: RouteContext) {
         requiredDocumentLabel: `${baseLabel} (Front)`,
         fileName: frontEntry.name,
         filePath: frontPath,
+        thumbnailPath: frontArtifacts.thumbnailPath,
+        pdfPath: frontArtifacts.pdfPath,
         fileSizeBytes: frontEntry.size,
         mimeType: frontVal.mimeType,
       })
@@ -310,6 +314,8 @@ export async function POST(request: Request, { params }: RouteContext) {
         requiredDocumentLabel: `${baseLabel} (Back)`,
         fileName: backEntry.name,
         filePath: backPath,
+        thumbnailPath: backArtifacts.thumbnailPath,
+        pdfPath: backArtifacts.pdfPath,
         fileSizeBytes: backEntry.size,
         mimeType: backVal.mimeType,
       })
@@ -320,6 +326,32 @@ export async function POST(request: Request, { params }: RouteContext) {
           { status: 500 },
         )
       }
+
+      const validatedFrontDoc = await validateUploadedDocument({
+        userId: session.userId,
+        document: frontDoc,
+        file: frontEntry,
+        backFile: backEntry,
+        mimeType: frontVal.mimeType,
+      }).catch((analysisError) => {
+        logServerError("Mobile front document analysis workflow failed", analysisError, {
+          module: "upload/mobile",
+          documentId: frontDocId,
+        })
+        return frontDoc
+      })
+
+      await updateDocumentValidation({
+        documentId: backDoc.id,
+        documentStatus: validatedFrontDoc.documentStatus,
+        validationStatus: validatedFrontDoc.validationStatus,
+        analysisDocumentType: validatedFrontDoc.analysisDocumentType,
+        validationError: validatedFrontDoc.validationError,
+        validationSummary: validatedFrontDoc.validationSummary
+          ? { ...validatedFrontDoc.validationSummary, pairedWithFrontDocumentId: frontDoc.id }
+          : { pairedWithFrontDocumentId: frontDoc.id },
+        validationCertificate: validatedFrontDoc.validationCertificate,
+      }).catch(() => undefined)
 
       // Mark session completed — front document is the primary reference
       await completeUploadSession(token, frontDocId)
@@ -364,28 +396,30 @@ export async function POST(request: Request, { params }: RouteContext) {
   try {
     const arrayBuffer = await fileEntry.arrayBuffer()
     const fileBuffer = Buffer.from(arrayBuffer)
+    let artifacts: { thumbnailPath: string | null; pdfPath: string | null } = {
+      thumbnailPath: null,
+      pdfPath: null,
+    }
 
     await uploadDocumentToStorage({
       fileBuffer,
       mimeType: validation.mimeType,
       storagePath,
     })
-    if (canCreateDocumentThumbnail(validation.mimeType)) {
-      try {
-        await uploadDocumentThumbnail({
-          fileBuffer,
-          mimeType: validation.mimeType,
-          storagePath,
-        })
-      } catch (thumbnailError) {
-        logServerError("Failed to create mobile document thumbnail", thumbnailError, {
-          module: "upload/mobile",
-          storagePath,
-        })
-      }
+    try {
+      artifacts = await createAndUploadDocumentArtifacts({
+        fileBuffer,
+        mimeType: validation.mimeType,
+        storagePath,
+      })
+    } catch (artifactError) {
+      logServerError("Failed to create mobile document artifacts", artifactError, {
+        module: "upload/mobile",
+        storagePath,
+      })
     }
 
-    const document = await insertDocument({
+    let document = await insertDocument({
       id: documentId,
       applicationId: session.applicationId,
       uploadedBy: session.userId,
@@ -393,6 +427,8 @@ export async function POST(request: Request, { params }: RouteContext) {
       requiredDocumentLabel: session.requiredDocumentLabel ?? undefined,
       fileName: fileEntry.name,
       filePath: storagePath,
+      thumbnailPath: artifacts.thumbnailPath,
+      pdfPath: artifacts.pdfPath,
       fileSizeBytes: fileEntry.size,
       mimeType: validation.mimeType,
     })
@@ -404,9 +440,27 @@ export async function POST(request: Request, { params }: RouteContext) {
       )
     }
 
+    document = await validateUploadedDocument({
+      userId: session.userId,
+      document,
+      file: fileEntry,
+      mimeType: validation.mimeType,
+    }).catch((analysisError) => {
+      logServerError("Mobile document analysis workflow failed", analysisError, {
+        module: "upload/mobile",
+        documentId,
+      })
+      return document!
+    })
+
     await completeUploadSession(token, documentId)
 
-    return NextResponse.json({ ok: true, documentId })
+    return NextResponse.json({
+      ok: true,
+      documentId,
+      validationStatus: document.validationStatus,
+      validationError: document.validationError,
+    })
   } catch (err) {
     logServerError("Mobile document upload error", err, { module: "upload/mobile" })
     return NextResponse.json(
