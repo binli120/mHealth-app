@@ -33,6 +33,10 @@ import {
 } from "@/lib/supabase/storage"
 import { insertDocument } from "@/lib/db/documents"
 import { validateUpload } from "@/lib/uploads/validate"
+import {
+  canCreateDocumentThumbnail,
+  uploadDocumentThumbnail,
+} from "@/lib/uploads/document-thumbnail"
 import { logServerError } from "@/lib/server/logger"
 import {
   isDriverLicenseDocument,
@@ -234,17 +238,48 @@ export async function POST(request: Request, { params }: RouteContext) {
     )
 
     try {
+      const frontBuffer = Buffer.from(await frontEntry.arrayBuffer())
+      const backBuffer = Buffer.from(await backEntry.arrayBuffer())
+
       // Upload both sides to Supabase Storage (service-role — no user JWT needed)
       await uploadDocumentToStorage({
-        fileBuffer: Buffer.from(await frontEntry.arrayBuffer()),
+        fileBuffer: frontBuffer,
         mimeType: frontVal.mimeType,
         storagePath: frontPath,
       })
+      if (canCreateDocumentThumbnail(frontVal.mimeType)) {
+        try {
+          await uploadDocumentThumbnail({
+            fileBuffer: frontBuffer,
+            mimeType: frontVal.mimeType,
+            storagePath: frontPath,
+          })
+        } catch (thumbnailError) {
+          logServerError("Failed to create mobile front document thumbnail", thumbnailError, {
+            module: "upload/mobile",
+            storagePath: frontPath,
+          })
+        }
+      }
       await uploadDocumentToStorage({
-        fileBuffer: Buffer.from(await backEntry.arrayBuffer()),
+        fileBuffer: backBuffer,
         mimeType: backVal.mimeType,
         storagePath: backPath,
       })
+      if (canCreateDocumentThumbnail(backVal.mimeType)) {
+        try {
+          await uploadDocumentThumbnail({
+            fileBuffer: backBuffer,
+            mimeType: backVal.mimeType,
+            storagePath: backPath,
+          })
+        } catch (thumbnailError) {
+          logServerError("Failed to create mobile back document thumbnail", thumbnailError, {
+            module: "upload/mobile",
+            storagePath: backPath,
+          })
+        }
+      }
 
       // Insert front document record
       const frontDoc = await insertDocument({
@@ -335,6 +370,20 @@ export async function POST(request: Request, { params }: RouteContext) {
       mimeType: validation.mimeType,
       storagePath,
     })
+    if (canCreateDocumentThumbnail(validation.mimeType)) {
+      try {
+        await uploadDocumentThumbnail({
+          fileBuffer,
+          mimeType: validation.mimeType,
+          storagePath,
+        })
+      } catch (thumbnailError) {
+        logServerError("Failed to create mobile document thumbnail", thumbnailError, {
+          module: "upload/mobile",
+          storagePath,
+        })
+      }
+    }
 
     const document = await insertDocument({
       id: documentId,

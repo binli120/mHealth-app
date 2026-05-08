@@ -6,7 +6,7 @@
  *
  * Features
  * ─────────────────────────────────────────────────────────────────────────────
- * • getUserMedia live feed with a credit-card–shaped overlay frame
+ * • getUserMedia live feed with document-specific overlay framing
  * • Stability-based auto-capture: fills a progress bar while the phone is
  *   held steady, then fires automatically (~1.5 s of stillness)
  * • Manual capture button as a fallback to auto-capture
@@ -28,11 +28,61 @@ import {
   XCircle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { requiresDualSideDocument } from "@/lib/uploads/document-requirements"
+import {
+  isDriverLicenseDocument,
+  isPassportDocument,
+  requiresDualSideDocument,
+} from "@/lib/uploads/document-requirements"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Side = "front" | "back"
+type CaptureGuideKind = "driver-license" | "passport" | "document"
+
+interface CaptureGuide {
+  aspectRatio: string
+  frameWidth: string
+  translateY: string
+  borderRadius: number
+  reviewAspectRatio: string
+}
+
+const CAPTURE_GUIDES: Record<CaptureGuideKind, CaptureGuide> = {
+  "driver-license": {
+    aspectRatio: "85.6 / 54",
+    frameWidth: "78%",
+    translateY: "-52%",
+    borderRadius: 10,
+    reviewAspectRatio: "85.6 / 54",
+  },
+  passport: {
+    aspectRatio: "5 / 3.5",
+    frameWidth: "92%",
+    translateY: "-52%",
+    borderRadius: 6,
+    reviewAspectRatio: "5 / 3.5",
+  },
+  document: {
+    aspectRatio: "1.414",
+    frameWidth: "86%",
+    translateY: "-52%",
+    borderRadius: 8,
+    reviewAspectRatio: "1.414",
+  },
+}
+
+function getCaptureGuide(
+  documentType: string | null | undefined,
+  documentLabel: string | null | undefined,
+): CaptureGuide {
+  if (isDriverLicenseDocument(documentType, documentLabel)) {
+    return CAPTURE_GUIDES["driver-license"]
+  }
+  if (isPassportDocument(documentType, documentLabel)) {
+    return CAPTURE_GUIDES.passport
+  }
+  return CAPTURE_GUIDES.document
+}
 
 type Phase =
   | { name: "camera"; side: Side }
@@ -55,6 +105,10 @@ export function MobileUploadCamera({
   documentType,
 }: MobileUploadCameraProps) {
   const dualSide = requiresDualSideDocument(documentType, documentLabel)
+  const captureGuide = useMemo(
+    () => getCaptureGuide(documentType, documentLabel),
+    [documentType, documentLabel],
+  )
 
   const [phase, setPhase] = useState<Phase>({ name: "camera", side: "front" })
   // Hold captured blobs across phase transitions without triggering re-renders
@@ -152,6 +206,7 @@ export function MobileUploadCamera({
     return (
       <ReviewView
         imageUrl={url}
+        captureGuide={captureGuide}
         sideLabel={dualSide ? (side === "front" ? "Front" : "Back") : undefined}
         confirmLabel={
           dualSide && side === "front"
@@ -172,6 +227,8 @@ export function MobileUploadCamera({
       side={side}
       dualSide={dualSide}
       documentLabel={documentLabel}
+      documentType={documentType}
+      captureGuide={captureGuide}
       onCapture={(blob) => handleCapture(side, blob)}
     />
   )
@@ -183,10 +240,19 @@ interface CameraViewProps {
   side: Side
   dualSide: boolean
   documentLabel: string | null
+  documentType: string | null
+  captureGuide: CaptureGuide
   onCapture: (blob: Blob) => void
 }
 
-function CameraView({ side, dualSide, documentLabel, onCapture }: CameraViewProps) {
+function CameraView({
+  side,
+  dualSide,
+  documentLabel,
+  documentType,
+  captureGuide,
+  onCapture,
+}: CameraViewProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const onCaptureRef = useRef(onCapture)
@@ -344,10 +410,13 @@ function CameraView({ side, dualSide, documentLabel, onCapture }: CameraViewProp
     ? side === "front"
       ? "Front of ID"
       : "Back of ID"
-    : (documentLabel ?? "Document")
+    : isPassportDocument(documentType, documentLabel)
+      ? "Passport"
+      : (documentLabel ?? "Document")
 
-  const hint =
-    side === "front"
+  const hint = isPassportDocument(documentType, documentLabel)
+    ? "Align the passport photo page inside the frame"
+    : side === "front"
       ? "Align the front of your ID inside the frame"
       : "Flip your ID and align the back inside the frame"
 
@@ -387,16 +456,16 @@ function CameraView({ side, dualSide, documentLabel, onCapture }: CameraViewProp
         {/* Card outline overlay + dark vignette */}
         {camState === "live" && (
           <div className="pointer-events-none absolute inset-0">
-            {/* The card rectangle — credit-card ratio 85.6 : 54 ≈ 1.586 */}
+            {/* Document-specific capture rectangle. */}
             <div
               style={{
                 position: "absolute",
-                left: "6%",
-                right: "6%",
+                left: "50%",
                 top: "50%",
-                transform: "translateY(-55%)",
-                aspectRatio: "1.586",
-                borderRadius: 10,
+                width: captureGuide.frameWidth,
+                transform: `translate(-50%, ${captureGuide.translateY})`,
+                aspectRatio: captureGuide.aspectRatio,
+                borderRadius: captureGuide.borderRadius,
                 border: "2.5px solid rgba(255,255,255,0.92)",
                 // box-shadow trick creates the darkened area outside the cutout
                 boxShadow: "0 0 0 9999px rgba(0,0,0,0.48)",
@@ -551,12 +620,14 @@ function FileFallback({ side, dualSide, documentLabel, onCapture }: FileFallback
 
 function ReviewView({
   imageUrl,
+  captureGuide,
   sideLabel,
   confirmLabel,
   onRetake,
   onConfirm,
 }: {
   imageUrl: string
+  captureGuide: CaptureGuide
   sideLabel?: string
   confirmLabel: string
   onRetake: () => void
@@ -570,10 +641,10 @@ function ReviewView({
         </p>
       )}
 
-      {/* Preview — uses credit-card aspect ratio so the photo isn't distorted */}
+      {/* Preview uses the same document ratio as the capture guide. */}
       <div
         className="relative w-full overflow-hidden rounded-xl border border-border bg-secondary"
-        style={{ aspectRatio: "1.586" }}
+        style={{ aspectRatio: captureGuide.reviewAspectRatio }}
       >
         <Image
           src={imageUrl}

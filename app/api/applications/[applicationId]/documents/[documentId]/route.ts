@@ -7,8 +7,13 @@ import { NextResponse } from "next/server"
 
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 import { getDocumentById, deleteDocumentById } from "@/lib/db/documents"
-import { deleteDocumentFromStorage, getSignedDocumentUrl } from "@/lib/supabase/storage"
+import {
+  buildThumbnailStoragePath,
+  deleteFromStorage,
+  getSignedDocumentUrl,
+} from "@/lib/supabase/storage"
 import { logServerError } from "@/lib/server/logger"
+import { canCreateDocumentThumbnail } from "@/lib/uploads/document-thumbnail"
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -52,15 +57,26 @@ export async function GET(request: Request, context: RouteContext) {
 
     const accessToken = extractBearerToken(request)
     let signedUrl: string | null = null
+    let thumbnailSignedUrl: string | null = null
     if (doc.filePath) {
       try {
         signedUrl = await getSignedDocumentUrl({ accessToken, storagePath: doc.filePath })
       } catch {
         // Non-fatal
       }
+      if (canCreateDocumentThumbnail(doc.mimeType)) {
+        try {
+          thumbnailSignedUrl = await getSignedDocumentUrl({
+            accessToken,
+            storagePath: buildThumbnailStoragePath(doc.filePath),
+          })
+        } catch {
+          // Non-fatal
+        }
+      }
     }
 
-    return NextResponse.json({ ok: true, document: { ...doc, signedUrl } })
+    return NextResponse.json({ ok: true, document: { ...doc, signedUrl, thumbnailSignedUrl } })
   } catch (error) {
     logServerError("Failed to fetch document", error, {
       module: "api/applications/[applicationId]/documents/[documentId]",
@@ -105,7 +121,10 @@ export async function DELETE(request: Request, context: RouteContext) {
     if (deleted.filePath) {
       const accessToken = extractBearerToken(request)
       try {
-        await deleteDocumentFromStorage({ accessToken, storagePath: deleted.filePath })
+        await deleteFromStorage({
+          accessToken,
+          storagePaths: [deleted.filePath, buildThumbnailStoragePath(deleted.filePath)],
+        })
       } catch (storageError) {
         // Log the orphaned file but return success — the DB record is authoritative
         logServerError("Storage delete failed after DB delete; file may be orphaned", storageError, {

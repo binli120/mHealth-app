@@ -634,11 +634,21 @@ function describedAppliedFields(profile: UserProfile): string[] {
   return labels
 }
 
-function sanitizeAssistantDraftMessages(messages: AssistantMessage[]): AssistantMessage[] {
+export function hasDocumentUploadPrompt(messages: AssistantMessage[]): boolean {
+  return messages.some((message) => message.type === "upload_prompt")
+}
+
+export function sanitizeAssistantDraftMessages(messages: AssistantMessage[]): AssistantMessage[] {
+  const lastUploadPromptIndex = messages.findLastIndex((message) => message.type === "upload_prompt")
+
   return messages
-    .filter((message) => {
+    .filter((message, index) => {
       const content = message.content.trim()
-      return content.length > 0 && content !== ASSISTANT_CONNECTION_FAILURE_MESSAGE
+      if (content.length === 0 || content === ASSISTANT_CONNECTION_FAILURE_MESSAGE) return false
+
+      if (message.type === "upload_prompt") return index === lastUploadPromptIndex
+
+      return true
     })
     .slice(-60)
 }
@@ -794,6 +804,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
       formDataRef.current = { ...formDataRef.current, ...draft.formData }
       setLocalFields(draft.formData)
       setMessages(draft.messages)
+      setDocumentsTriggered(hasDocumentUploadPrompt(draft.messages))
       setNoHouseholdMembers(draft.noHouseholdMembers)
       setNoIncome(draft.noIncome)
       setIsAssistantDraftHydrated(true)
@@ -889,7 +900,12 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
   // ── Trigger document upload prompts when reaching documents section ────────
 
   useEffect(() => {
-    if (currentSection === "documents" && !documentsTriggered && messages.length > 1) {
+    if (
+      currentSection === "documents" &&
+      !documentsTriggered &&
+      !hasDocumentUploadPrompt(messages) &&
+      messages.length > 1
+    ) {
       setDocumentsTriggered(true)
       setMessages((prev) => [
         ...prev,
@@ -903,7 +919,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
         },
       ])
     }
-  }, [currentSection, documentsTriggered, messages.length])
+  }, [currentSection, documentsTriggered, messages])
 
   // ── Auto-scroll ───────────────────────────────────────────────────────────
 

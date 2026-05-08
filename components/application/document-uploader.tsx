@@ -49,6 +49,8 @@ export interface UploadedDocument {
   uploadedAt: string
   /** Time-limited signed URL for preview / download */
   signedUrl: string | null
+  /** Time-limited signed URL for the derived storage thumbnail */
+  thumbnailSignedUrl: string | null
 }
 
 interface DocumentUploaderProps {
@@ -586,6 +588,10 @@ export function DocumentUploader({
   // ---------------------------------------------------------------------------
   // Render: uploading / uploaded card
   // ---------------------------------------------------------------------------
+  const previewUrl =
+    document?.thumbnailSignedUrl ??
+    (document?.mimeType?.startsWith("image/") ? document.signedUrl : null)
+
   return (
     <div className="space-y-3">
       <input ref={fileInputRef} type="file" accept={accept} className="hidden" />
@@ -596,11 +602,11 @@ export function DocumentUploader({
           <div className="flex items-start gap-4">
             {/* Preview / icon */}
             <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-border bg-secondary">
-              {document?.signedUrl && document.mimeType?.startsWith("image/") ? (
+              {previewUrl ? (
                 <>
                   <Image
-                    src={document.signedUrl}
-                    alt={document.fileName ?? "document"}
+                    src={previewUrl}
+                    alt={document?.fileName ?? "document"}
                     fill
                     unoptimized
                     className="object-cover"

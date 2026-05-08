@@ -40,6 +40,23 @@ export function isDriverLicenseDocument(
   )
 }
 
+export function isPassportDocument(
+  documentType: string | null | undefined,
+  documentLabel?: string | null,
+): boolean {
+  const text = normalizeDocumentText(`${documentType ?? ""} ${documentLabel ?? ""}`)
+  if (!text) return false
+
+  return includesAny(text, [
+    "passport",
+    "passport book",
+    "passport card",
+    "us passport",
+    "u s passport",
+    "united states passport",
+  ])
+}
+
 export function requiresDualSideDocument(
   documentType: string | null | undefined,
   documentLabel?: string | null,
@@ -63,4 +80,3 @@ export function requiresDualSideDocument(
     "proof of identity",
   ])
 }
-

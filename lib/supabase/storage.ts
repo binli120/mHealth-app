@@ -127,6 +127,15 @@ export function buildStoragePath(
   return `${userId}/${applicationId}/${documentId}/${safe}`;
 }
 
+export function buildThumbnailStoragePath(storagePath: string): string {
+  const lastSlashIndex = storagePath.lastIndexOf('/');
+  const fileName = lastSlashIndex < 0 ? storagePath : storagePath.slice(lastSlashIndex + 1);
+  const thumbnailName = `${fileName}.thumb.webp`;
+  if (lastSlashIndex < 0) return thumbnailName;
+
+  return `${storagePath.slice(0, lastSlashIndex)}/${thumbnailName}`;
+}
+
 /**
  * Avatar path: {userId}/avatar/avatar.{ext}
  * Fixed name → upsert always replaces the previous avatar at the same path.

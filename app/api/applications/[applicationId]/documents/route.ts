@@ -18,9 +18,14 @@ import {
   getSignedDocumentUrls,
   getSignedDocumentUrl,
   buildStoragePath,
+  buildThumbnailStoragePath,
 } from "@/lib/supabase/storage"
 import { logServerError } from "@/lib/server/logger"
 import { validateUpload } from "@/lib/uploads/validate"
+import {
+  canCreateDocumentThumbnail,
+  uploadDocumentThumbnail,
+} from "@/lib/uploads/document-thumbnail"
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -62,16 +67,25 @@ export async function GET(request: Request, context: RouteContext) {
 
     const accessToken = extractBearerToken(request)
     const docs = await listDocumentsByApplication(authResult.userId, applicationId)
-    const uniquePaths = docs
+    const filePaths = docs
       .map((doc) => doc.filePath)
       .filter((path): path is string => Boolean(path))
+    const thumbnailPaths = docs
+      .filter((doc) => canCreateDocumentThumbnail(doc.mimeType))
+      .map((doc) => doc.filePath)
+      .filter((path): path is string => Boolean(path))
+      .map(buildThumbnailStoragePath)
     const signedUrlMap = await getSignedDocumentUrls({
       accessToken,
-      storagePaths: uniquePaths,
+      storagePaths: [...filePaths, ...thumbnailPaths],
     })
     const docsWithUrls = docs.map((doc) => ({
       ...doc,
       signedUrl: doc.filePath ? signedUrlMap[doc.filePath] ?? null : null,
+      thumbnailSignedUrl:
+        doc.filePath && canCreateDocumentThumbnail(doc.mimeType)
+          ? signedUrlMap[buildThumbnailStoragePath(doc.filePath)] ?? null
+          : null,
     }))
 
     return NextResponse.json({ ok: true, documents: docsWithUrls })
@@ -168,6 +182,23 @@ export async function POST(request: Request, context: RouteContext) {
       storagePath,
     })
 
+    let thumbnailPath: string | null = null
+    if (canCreateDocumentThumbnail(validation.mimeType)) {
+      try {
+        thumbnailPath = await uploadDocumentThumbnail({
+          accessToken,
+          fileBuffer,
+          mimeType: validation.mimeType,
+          storagePath,
+        })
+      } catch (thumbnailError) {
+        logServerError("Failed to create document thumbnail", thumbnailError, {
+          module: "api/applications/[applicationId]/documents",
+          storagePath,
+        })
+      }
+    }
+
     // 2. Persist document record in PostgreSQL with an ownership check.
     const document = await insertDocument({
       id: documentId,
@@ -183,7 +214,10 @@ export async function POST(request: Request, context: RouteContext) {
 
     if (!document) {
       try {
-        await deleteFromStorage({ accessToken, storagePaths: [storagePath] })
+        await deleteFromStorage({
+          accessToken,
+          storagePaths: [storagePath, thumbnailPath].filter((path): path is string => Boolean(path)),
+        })
       } catch {
         // Best-effort cleanup for an upload that failed authorization at insert time.
       }
@@ -195,10 +229,18 @@ export async function POST(request: Request, context: RouteContext) {
 
     // 3. Generate a signed URL for the freshly uploaded file
     let signedUrl: string | null = null
+    let thumbnailSignedUrl: string | null = null
     try {
       signedUrl = await getSignedDocumentUrl({ accessToken, storagePath })
     } catch {
       // Non-fatal — client can request a signed URL separately
+    }
+    if (thumbnailPath) {
+      try {
+        thumbnailSignedUrl = await getSignedDocumentUrl({ accessToken, storagePath: thumbnailPath })
+      } catch {
+        // Non-fatal — the original file remains available
+      }
     }
 
     return NextResponse.json(
@@ -217,6 +259,7 @@ export async function POST(request: Request, context: RouteContext) {
           documentStatus: document.documentStatus,
           uploadedAt: document.uploadedAt,
           signedUrl,
+          thumbnailSignedUrl,
         },
       },
       { status: 201 },

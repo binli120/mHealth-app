@@ -10,7 +10,9 @@ import {
   getImmediateFieldPatchFromAnswer,
   getNextMissingApplicationQuestion,
   getQuickRepliesForAssistantPrompt,
+  hasDocumentUploadPrompt,
   recoverImmediateFieldsFromMessages,
+  sanitizeAssistantDraftMessages,
 } from "@/components/application/aca3/application-assistant"
 import { initialApplicationFormData } from "@/lib/redux/features/application-slice"
 
@@ -137,6 +139,35 @@ describe("recoverImmediateFieldsFromMessages", () => {
       state: "MA",
       zip: "02210",
     })
+  })
+})
+
+describe("sanitizeAssistantDraftMessages", () => {
+  it("keeps only one document upload prompt when a resumed draft already has duplicates", () => {
+    const messages = sanitizeAssistantDraftMessages([
+      { id: "a1", type: "text", role: "assistant", content: "Question one" },
+      {
+        id: "d1",
+        type: "upload_prompt",
+        role: "assistant",
+        content: "Now let's upload a few supporting documents to complete your application.",
+        docTypes: [{ type: "identity", label: "Government-Issued ID", description: "ID" }],
+      },
+      { id: "u1", type: "text", role: "user", content: "I came back later" },
+      {
+        id: "d2",
+        type: "upload_prompt",
+        role: "assistant",
+        content: "Now let's upload a few supporting documents to complete your application.",
+        docTypes: [{ type: "proof_of_income", label: "Proof of Income", description: "Pay stub" }],
+      },
+    ])
+
+    const uploadPrompts = messages.filter((message) => message.type === "upload_prompt")
+
+    expect(uploadPrompts).toHaveLength(1)
+    expect(uploadPrompts[0].id).toBe("d2")
+    expect(hasDocumentUploadPrompt(messages)).toBe(true)
   })
 })
 
