@@ -7,8 +7,17 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { createApplication } from "@/lib/redux/features/application-slice"
 import { MASSHEALTH_APPLICATION_TYPES } from "@/lib/masshealth/application-types"
 import { useAppDispatch } from "@/lib/redux/hooks"
@@ -17,11 +26,19 @@ import { createUuid } from "@/lib/utils/random-id"
 import { ArrowLeft, FileText, ChevronRight } from "lucide-react"
 import { ShieldHeartIcon } from "@/lib/icons"
 
+interface ExistingDraftPrompt {
+  existingApplicationId: string
+  applicationType: (typeof MASSHEALTH_APPLICATION_TYPES)[number]["id"]
+}
+
 export default function ApplicationTypePage() {
   const router = useRouter()
   const dispatch = useAppDispatch()
+  const [existingDraftPrompt, setExistingDraftPrompt] = useState<ExistingDraftPrompt | null>(null)
 
-  const handleSelectType = async (applicationType: (typeof MASSHEALTH_APPLICATION_TYPES)[number]["id"]) => {
+  const startNewApplication = async (
+    applicationType: (typeof MASSHEALTH_APPLICATION_TYPES)[number]["id"],
+  ) => {
     const applicationId = createUuid()
     try {
       await authenticatedFetch("/api/applications", {
@@ -46,6 +63,44 @@ export default function ApplicationTypePage() {
     )
     router.push(`/application/new?applicationId=${applicationId}`)
   }
+
+  const handleSelectType = async (applicationType: (typeof MASSHEALTH_APPLICATION_TYPES)[number]["id"]) => {
+    try {
+      const res = await authenticatedFetch(`/api/applications?status=draft`, { method: "GET" })
+      const data = (await res.json()) as {
+        ok: boolean
+        records?: Array<{ id: string; applicationType: string | null }>
+      }
+      if (data.ok && data.records) {
+        const existingDraft = data.records.find((r) => r.applicationType === applicationType)
+        if (existingDraft) {
+          setExistingDraftPrompt({ existingApplicationId: existingDraft.id, applicationType })
+          return
+        }
+      }
+    } catch {
+      // If the check fails, fall through to start a new application.
+    }
+
+    await startNewApplication(applicationType)
+  }
+
+  const handleContinueExisting = () => {
+    if (!existingDraftPrompt) return
+    router.push(`/application/new?applicationId=${existingDraftPrompt.existingApplicationId}`)
+    setExistingDraftPrompt(null)
+  }
+
+  const handleStartNew = async () => {
+    if (!existingDraftPrompt) return
+    const { applicationType } = existingDraftPrompt
+    setExistingDraftPrompt(null)
+    await startNewApplication(applicationType)
+  }
+
+  const pendingTypeLabel = existingDraftPrompt
+    ? (MASSHEALTH_APPLICATION_TYPES.find((t) => t.id === existingDraftPrompt.applicationType)?.shortLabel ?? existingDraftPrompt.applicationType)
+    : ""
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -130,6 +185,26 @@ export default function ApplicationTypePage() {
           </Card>
         </div>
       </main>
+
+      {/* Continue vs New Application Dialog */}
+      <Dialog open={existingDraftPrompt !== null} onOpenChange={(open) => { if (!open) setExistingDraftPrompt(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>You have an unfinished {pendingTypeLabel} application</DialogTitle>
+            <DialogDescription>
+              Would you like to continue where you left off, or start a brand new application?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => { void handleStartNew() }}>
+              Start New Application
+            </Button>
+            <Button className="w-full sm:w-auto" onClick={handleContinueExisting}>
+              Continue Existing Application
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
