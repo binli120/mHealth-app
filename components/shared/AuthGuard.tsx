@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { getSafeSupabaseSession } from "@/lib/supabase/client"
+import { clearSessionCookie, syncSessionCookie } from "@/lib/supabase/session-cookie"
 import { IdleTimeoutGuard } from "@/components/shared/IdleTimeoutGuard"
 
 interface AuthGuardProps {
@@ -31,13 +32,16 @@ export function AuthGuard({ children, next = "/customer/dashboard", idleTimeout 
     getSafeSupabaseSession()
       .then(({ session }) => {
         if (!session) {
+          void clearSessionCookie()
           setReady(false)
           router.replace(loginPath)
         } else {
+          void syncSessionCookie(session)
           setReady(true)
         }
       })
       .catch(() => {
+        void clearSessionCookie()
         setReady(false)
         router.replace(loginPath)
       })

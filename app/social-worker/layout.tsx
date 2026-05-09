@@ -24,6 +24,7 @@ import {
   MessageSquare,
 } from "lucide-react"
 import { SwChatDialog } from "@/components/chat/sw-chat-dialog"
+import { CUSTOMER_SUPPORT_EMAIL, CUSTOMER_SUPPORT_MAILTO } from "@/lib/support/contact"
 
 const NAV_LINKS = [
   { href: "/social-worker/dashboard", label: "Dashboard",          icon: LayoutDashboard },
@@ -132,7 +133,11 @@ export default function SocialWorkerLayout({ children }: { children: React.React
           <UserCheck className="w-10 h-10 text-red-400 mx-auto mb-4" />
           <h2 className="text-lg font-semibold text-gray-900 mb-2">Account Not Approved</h2>
           <p className="text-sm text-gray-500 mb-6">
-            Your social worker account application was not approved. Please contact support for more information.
+            Your social worker account application was not approved. Email{" "}
+            <a href={CUSTOMER_SUPPORT_MAILTO} className="font-medium text-gray-700 hover:underline">
+              {CUSTOMER_SUPPORT_EMAIL}
+            </a>{" "}
+            for more information.
           </p>
           <button onClick={() => void handleLogout()} className="text-sm text-gray-400 hover:text-gray-600">
             Sign out

@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { cn } from "@/lib/utils"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
+import { CUSTOMER_SUPPORT_EMAIL, CUSTOMER_SUPPORT_MAILTO } from "@/lib/support/contact"
 import {
   openScanner,
   setIdentityStatus,
@@ -81,8 +82,15 @@ const STATUS_CONFIG = {
     iconColor: "text-destructive",
     wrapperClass: "border-destructive/30 bg-destructive/5",
     title: "Verification Failed",
-    description:
-      "We couldn't confirm your identity. Please try scanning again or contact support.",
+    description: (
+      <>
+        We could not confirm your identity. Please try scanning again or email{" "}
+        <a href={CUSTOMER_SUPPORT_MAILTO} className="font-medium text-foreground hover:underline">
+          {CUSTOMER_SUPPORT_EMAIL}
+        </a>
+        .
+      </>
+    ),
     cta: "Try Again",
     ctaVariant: "destructive" as const,
   },

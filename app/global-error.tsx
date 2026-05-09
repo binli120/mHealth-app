@@ -7,6 +7,9 @@
 
 import { AlertTriangle } from "lucide-react"
 
+const CUSTOMER_SUPPORT_EMAIL = "customer_supports@healthcompass.cloud"
+const CUSTOMER_SUPPORT_MAILTO = `mailto:${CUSTOMER_SUPPORT_EMAIL}`
+
 interface GlobalErrorProps {
   error: Error & { digest?: string }
   reset: () => void
@@ -50,8 +53,11 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
             Something went wrong
           </h2>
           <p style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "1.5rem" }}>
-            A critical error occurred. Please refresh the page or contact support if the problem
-            persists.
+            A critical error occurred. Please refresh the page or email{" "}
+            <a href={CUSTOMER_SUPPORT_MAILTO} style={{ color: "#111827", fontWeight: 600 }}>
+              {CUSTOMER_SUPPORT_EMAIL}
+            </a>{" "}
+            if the problem persists.
           </p>
 
           {error.digest && (

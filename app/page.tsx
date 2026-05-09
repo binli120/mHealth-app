@@ -37,6 +37,7 @@ import {
 } from "@/app/page.constants"
 import { getLandingCopy } from "@/app/page.copy"
 import type { LandingCopy } from "@/app/page.copy"
+import { CUSTOMER_SUPPORT_EMAIL, CUSTOMER_SUPPORT_MAILTO } from "@/lib/support/contact"
 
 // ─── BenefitPreview ───────────────────────────────────────────────────────────
 
@@ -687,9 +688,11 @@ export default function LandingPage() {
               <div>
                 <h4 className="mb-4 font-semibold text-foreground">{copy.footerSupportLabel}</h4>
                 <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>1-800-841-2900</li>
-                  <li>TTY: 1-800-497-4648</li>
-                  <li>Mon–Fri, 8am–5pm</li>
+                  <li>
+                    <a href={CUSTOMER_SUPPORT_MAILTO} className="hover:text-foreground">
+                      {CUSTOMER_SUPPORT_EMAIL}
+                    </a>
+                  </li>
                 </ul>
                 <div className="mt-6 space-y-2">
                   <h4 className="font-semibold text-foreground">{copy.mailingListTitle}</h4>

@@ -13,9 +13,9 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getApplicationTypeLabel } from "@/lib/masshealth/application-types"
-import { MASSHEALTH_PHONE, MASSHEALTH_TTY_DIRECT } from "@/lib/masshealth/constants"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { toUserFacingError } from "@/lib/errors/user-facing"
+import { CUSTOMER_SUPPORT_EMAIL, CUSTOMER_SUPPORT_MAILTO } from "@/lib/support/contact"
 import { formatDate } from "@/lib/utils/format"
 import { AlertCircle, ArrowLeft, BookOpenText, Calendar, ChevronRight, Clock, FileText, Loader2, Scale, Upload, UserCheck, X } from "lucide-react"
 import { STATUS_META } from "./page.constants"
@@ -345,11 +345,12 @@ export default function SWPatientDashboardPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  MassHealth Customer Service is available Mon–Fri, 8am–5pm ET.
+                  Email HealthCompass support for help with patient account or application questions.
                 </p>
                 <div className="text-sm">
-                  <p className="font-medium text-foreground">{MASSHEALTH_PHONE}</p>
-                  <p className="text-muted-foreground">TTY: {MASSHEALTH_TTY_DIRECT}</p>
+                  <a href={CUSTOMER_SUPPORT_MAILTO} className="font-medium text-foreground hover:underline">
+                    {CUSTOMER_SUPPORT_EMAIL}
+                  </a>
                 </div>
               </CardContent>
             </Card>

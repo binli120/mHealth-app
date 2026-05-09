@@ -16,7 +16,7 @@ export class ReviewerPage {
     await this.page.goto("/reviewer/cases")
   }
 
-  async gotoCaseDetail(caseId = "MH-2024-ABC12") {
+  async gotoCaseDetail(caseId: string) {
     await this.page.goto(`/reviewer/case/${caseId}`)
   }
 

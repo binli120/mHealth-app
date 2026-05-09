@@ -29,6 +29,7 @@ import {
 } from "@/app/prescreener/prescreener-copy"
 import { getEligibilityBadgeLabel } from "@/app/prescreener/prescreener-results"
 import { type SupportedLanguage } from "@/lib/i18n/languages"
+import { CUSTOMER_SUPPORT_EMAIL, CUSTOMER_SUPPORT_MAILTO } from "@/lib/support/contact"
 
 // ─── Bot Avatar ────────────────────────────────────────────────────────────
 
@@ -210,8 +211,8 @@ export function ResultsPanel({
         </div>
         <p className="text-xs text-muted-foreground text-center">
           {copy.callMassHealth}{" "}
-          <a href="tel:18008412900" className="font-medium text-primary">
-            1-800-841-2900
+          <a href={CUSTOMER_SUPPORT_MAILTO} className="font-medium text-primary">
+            {CUSTOMER_SUPPORT_EMAIL}
           </a>{" "}
           {copy.supportHours}
         </p>

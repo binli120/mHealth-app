@@ -3,12 +3,14 @@
  * @email: blee@healthcompass.cloud
  */
 
+import { CUSTOMER_SUPPORT_EMAIL } from "@/lib/support/contact"
+
 const DEFAULT_ERROR_MESSAGE = "Something went wrong. Please try again."
 const NETWORK_ERROR_MESSAGE =
   "We could not reach HealthCompass MA. Check your connection and try again."
 const SIGN_IN_EXPIRED_MESSAGE = "Your sign-in session expired. Please sign in again."
 const PERMISSION_ERROR_MESSAGE =
-  "You do not have permission to do that. If this looks wrong, sign in again or contact support."
+  `You do not have permission to do that. If this looks wrong, sign in again or email ${CUSTOMER_SUPPORT_EMAIL}.`
 const SERVER_ERROR_MESSAGE =
   "The server had trouble completing this request. Please try again."
 const INVALID_REQUEST_MESSAGE =

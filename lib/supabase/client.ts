@@ -21,35 +21,21 @@ export function getSupabaseClient() {
     )
   }
 
+  // Pre-clear any session whose access token has already expired.
+  // Even with autoRefreshToken: false, the Supabase SDK will still attempt a
+  // refresh when getSession() is called and the stored expires_at is in the
+  // past.  If the refresh token is also invalid (e.g. after a DB reset), the
+  // SDK logs an AuthApiError to the console internally before our error handler
+  // can intercept it.  Wiping the storage here prevents the SDK from ever
+  // seeing the stale token, so no network call is attempted and no console
+  // error appears.
+  clearExpiredSupabaseSessionFromStorage()
+
   supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       autoRefreshToken: false,
     },
   })
-
-  // ── Eager stale-session recovery ──────────────────────────────────────────
-  // The Supabase SDK schedules a background auto-refresh as soon as the client
-  // is created.  If localStorage holds an expired / invalid refresh token (e.g.
-  // after a DB reset or a long time between logins), that background refresh
-  // fires, gets a 400 from the server, and the SDK logs an AuthApiError to the
-  // console BEFORE any of our safe-wrapper code runs.
-  //
-  // Calling getSession() eagerly here races ahead of the background timer,
-  // detects the bad token first, and wipes it via signOut({ scope: "local" })
-  // so the SDK never attempts the doomed background refresh.
-  void supabaseClient.auth
-    .getSession()
-    .then(({ error }) => {
-      if (error && isInvalidRefreshTokenError(error.message)) {
-        clearSupabaseAuthStorage()
-      }
-    })
-    .catch((error: unknown) => {
-      const message = error instanceof Error ? error.message : String(error)
-      if (isInvalidRefreshTokenError(message)) {
-        clearSupabaseAuthStorage()
-      }
-    })
 
   return supabaseClient
 }
@@ -63,24 +49,64 @@ function isInvalidRefreshTokenError(message: string): boolean {
   )
 }
 
+function isSupabaseAuthKey(key: string): boolean {
+  return key === "supabase.auth.token" || /^sb-.+-auth-token$/.test(key)
+}
+
 function clearSupabaseAuthStorage() {
   if (typeof window === "undefined") return
 
-  const clearStorage = (storage: Storage) => {
+  const sweep = (storage: Storage) => {
     for (let index = storage.length - 1; index >= 0; index -= 1) {
       const key = storage.key(index)
-      if (!key) continue
-      if (key === "supabase.auth.token" || /^sb-.+-auth-token$/.test(key)) {
+      if (key && isSupabaseAuthKey(key)) storage.removeItem(key)
+    }
+  }
+
+  try {
+    sweep(window.localStorage)
+    sweep(window.sessionStorage)
+  } catch {
+    // Best-effort cache cleanup; storage may be unavailable in private contexts.
+  }
+}
+
+// Removes stored Supabase sessions whose access token has already expired.
+// Called before the client is created so the SDK never sees a stale token
+// and never attempts a doomed refresh-token network request.
+function clearExpiredSupabaseSessionFromStorage() {
+  if (typeof window === "undefined") return
+
+  const nowSeconds = Math.floor(Date.now() / 1000)
+
+  const sweep = (storage: Storage) => {
+    for (let index = storage.length - 1; index >= 0; index -= 1) {
+      const key = storage.key(index)
+      if (!key || !isSupabaseAuthKey(key)) continue
+      try {
+        const raw = storage.getItem(key)
+        if (!raw) { storage.removeItem(key); continue }
+        const parsed = JSON.parse(raw) as {
+          expires_at?: unknown
+          currentSession?: { expires_at?: unknown }
+        }
+        const expiresAt =
+          parsed.expires_at ??
+          parsed.currentSession?.expires_at
+        if (typeof expiresAt === "number" && expiresAt < nowSeconds) {
+          storage.removeItem(key)
+        }
+      } catch {
         storage.removeItem(key)
       }
     }
   }
 
   try {
-    clearStorage(window.localStorage)
-    clearStorage(window.sessionStorage)
+    sweep(window.localStorage)
+    sweep(window.sessionStorage)
   } catch {
-    // Best-effort cache cleanup; storage may be unavailable in private contexts.
+    // Best-effort; storage may be unavailable in private contexts.
   }
 }
 

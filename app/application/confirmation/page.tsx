@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { CheckCircle2, Download, Mail, Calendar, ArrowRight } from "lucide-react"
 import { ShieldHeartIcon } from "@/lib/icons"
 import { createUuid } from "@/lib/utils/random-id"
+import { CUSTOMER_SUPPORT_EMAIL, CUSTOMER_SUPPORT_MAILTO } from "@/lib/support/contact"
 
 const submittedDate = new Date().toLocaleDateString()
 
@@ -110,8 +111,10 @@ export default function ConfirmationPage() {
 
           {/* Help Text */}
           <p className="mt-8 text-sm text-muted-foreground">
-            Questions? Contact us at{" "}
-            <span className="font-medium text-foreground">1-800-841-2900</span>
+            Questions? Email{" "}
+            <a href={CUSTOMER_SUPPORT_MAILTO} className="font-medium text-foreground hover:underline">
+              {CUSTOMER_SUPPORT_EMAIL}
+            </a>
           </p>
         </div>
       </main>

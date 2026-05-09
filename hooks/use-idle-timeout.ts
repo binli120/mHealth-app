@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { getSupabaseClient } from "@/lib/supabase/client"
+import { clearSessionCookie } from "@/lib/supabase/session-cookie"
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -131,6 +132,7 @@ export function useIdleTimeout({
     try {
       const supabase = getSupabaseClient()
       await supabase.auth.signOut()
+      await clearSessionCookie()
     } catch {
       // Best-effort — if the sign-out call fails, redirect anyway so the user
       // ends up back at the public home page.
