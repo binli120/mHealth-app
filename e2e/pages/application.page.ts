@@ -151,7 +151,16 @@ export class ApplicationPage {
       .first()
 
     await aca3Button.click()
-    await expect(this.page).toHaveURL(/\/application\/new\?applicationId=/, { timeout: 15_000 })
+
+    // The page first checks the API for existing drafts before navigating.
+    // If a draft exists it shows a dialog; otherwise it navigates directly.
+    // Try the fast path first; on timeout handle the dialog and retry.
+    try {
+      await expect(this.page).toHaveURL(/\/application\/new\?applicationId=/, { timeout: 8_000 })
+    } catch {
+      await this.page.getByRole("button", { name: /start new application/i }).click()
+      await expect(this.page).toHaveURL(/\/application\/new\?applicationId=/, { timeout: 15_000 })
+    }
 
     const applicationId = this.currentApplicationId()
     expect(applicationId).toMatch(UUID_PATTERN)

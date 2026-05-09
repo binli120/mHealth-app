@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest"
 import {
   MASSHEALTH_APPLICATION_TYPES,
   APPLICATION_TYPE_LABELS,
+  getApplicationTypeQuickCheckRecommendation,
   getApplicationTypeLabel,
   isMassHealthApplicationType,
 } from "../application-types"
@@ -145,5 +146,66 @@ describe("getApplicationTypeLabel", () => {
 
   it("uppercases even when a custom fallback is supplied", () => {
     expect(getApplicationTypeLabel("zzz", "Fallback")).toBe("ZZZ")
+  })
+})
+
+// ── getApplicationTypeQuickCheckRecommendation ───────────────────────────────
+
+describe("getApplicationTypeQuickCheckRecommendation", () => {
+  it("recommends ACA-3-AP when adding a person to an existing case", () => {
+    expect(
+      getApplicationTypeQuickCheckRecommendation({
+        ageGroup: "senior",
+        hasMedicare: "yes",
+        needsLongTermCare: "yes",
+        addingPersonToExistingCase: "yes",
+      })?.applicationType,
+    ).toBe("aca3ap")
+  })
+
+  it("recommends SACA-2 for seniors or long-term-care coverage", () => {
+    expect(
+      getApplicationTypeQuickCheckRecommendation({
+        ageGroup: "senior",
+        hasMedicare: "no",
+        needsLongTermCare: "no",
+        addingPersonToExistingCase: "no",
+      })?.applicationType,
+    ).toBe("saca2")
+
+    expect(
+      getApplicationTypeQuickCheckRecommendation({
+        ageGroup: "under65",
+        hasMedicare: "no",
+        needsLongTermCare: "yes",
+        addingPersonToExistingCase: "no",
+      })?.applicationType,
+    ).toBe("saca2")
+  })
+
+  it("recommends MSP for Medicare applicants outside senior and long-term-care paths", () => {
+    expect(
+      getApplicationTypeQuickCheckRecommendation({
+        ageGroup: "under65",
+        hasMedicare: "yes",
+        needsLongTermCare: "no",
+        addingPersonToExistingCase: "no",
+      })?.applicationType,
+    ).toBe("msp")
+  })
+
+  it("recommends ACA-3 for the standard under-65 application path", () => {
+    expect(
+      getApplicationTypeQuickCheckRecommendation({
+        ageGroup: "under65",
+        hasMedicare: "no",
+        needsLongTermCare: "no",
+        addingPersonToExistingCase: "no",
+      })?.applicationType,
+    ).toBe("aca3")
+  })
+
+  it("returns null until enough answers are available", () => {
+    expect(getApplicationTypeQuickCheckRecommendation({ ageGroup: "under65" })).toBeNull()
   })
 })

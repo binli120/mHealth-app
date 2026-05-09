@@ -21,7 +21,11 @@ export function getSupabaseClient() {
     )
   }
 
-  supabaseClient = createClient(supabaseUrl, supabaseAnonKey)
+  supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: false,
+    },
+  })
 
   // ── Eager stale-session recovery ──────────────────────────────────────────
   // The Supabase SDK schedules a background auto-refresh as soon as the client
@@ -33,11 +37,19 @@ export function getSupabaseClient() {
   // Calling getSession() eagerly here races ahead of the background timer,
   // detects the bad token first, and wipes it via signOut({ scope: "local" })
   // so the SDK never attempts the doomed background refresh.
-  void supabaseClient.auth.getSession().then(({ error }) => {
-    if (error && isInvalidRefreshTokenError(error.message)) {
-      void supabaseClient?.auth.signOut({ scope: "local" })
-    }
-  })
+  void supabaseClient.auth
+    .getSession()
+    .then(({ error }) => {
+      if (error && isInvalidRefreshTokenError(error.message)) {
+        clearSupabaseAuthStorage()
+      }
+    })
+    .catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error)
+      if (isInvalidRefreshTokenError(message)) {
+        clearSupabaseAuthStorage()
+      }
+    })
 
   return supabaseClient
 }

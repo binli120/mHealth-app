@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { formatRelativeTime } from "@/lib/utils/format"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
-import { getSupabaseClient } from "@/lib/supabase/client"
+import { getSafeSupabaseSession } from "@/lib/supabase/client"
 import { EngagementRequestsPanel } from "@/components/social-worker/engagement-requests-panel"
 import { SwDirectChatPanel } from "@/components/chat/sw-direct-chat-panel"
 import type { DirectMessage } from "@/components/chat/sw-direct-chat-panel"
@@ -61,11 +61,9 @@ export function SwChatDialog() {
 
   // Resolve current user once
   useEffect(() => {
-    getSupabaseClient()
-      .auth.getSession()
-      .then(({ data }) => {
-        if (data.session?.user) setCurrentUserId(data.session.user.id)
-      })
+    getSafeSupabaseSession().then(({ session }) => {
+      if (session?.user) setCurrentUserId(session.user.id)
+    })
   }, [])
 
   // ── Data fetching ──────────────────────────────────────────────────────────

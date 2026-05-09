@@ -7,6 +7,18 @@
 import type { MassHealthApplicationType, MassHealthApplicationTypeOption } from "./types"
 export type { MassHealthApplicationType, MassHealthApplicationTypeOption }
 
+export interface ApplicationTypeQuickCheckAnswers {
+  ageGroup?: "under65" | "senior"
+  hasMedicare?: "yes" | "no"
+  needsLongTermCare?: "yes" | "no"
+  addingPersonToExistingCase?: "yes" | "no"
+}
+
+export interface ApplicationTypeRecommendation {
+  applicationType: MassHealthApplicationType
+  reason: string
+}
+
 export const MASSHEALTH_APPLICATION_TYPES: MassHealthApplicationTypeOption[] = [
   {
     id: "aca3",
@@ -80,4 +92,45 @@ export function getApplicationTypeLabel(
 ): string {
   if (!type) return fallback
   return APPLICATION_TYPE_LABELS.get(type) ?? type.toUpperCase()
+}
+
+export function getApplicationTypeQuickCheckRecommendation(
+  answers: ApplicationTypeQuickCheckAnswers,
+): ApplicationTypeRecommendation | null {
+  if (answers.addingPersonToExistingCase === "yes") {
+    return {
+      applicationType: "aca3ap",
+      reason: "You are adding another person to an existing ACA-3 household case.",
+    }
+  }
+
+  if (answers.needsLongTermCare === "yes" || answers.ageGroup === "senior") {
+    return {
+      applicationType: "saca2",
+      reason: answers.needsLongTermCare === "yes"
+        ? "You selected long-term-care coverage."
+        : "You selected age 65 or older.",
+    }
+  }
+
+  if (answers.hasMedicare === "yes") {
+    return {
+      applicationType: "msp",
+      reason: "You selected Medicare and may need help with Medicare costs.",
+    }
+  }
+
+  if (
+    answers.ageGroup === "under65" &&
+    answers.hasMedicare === "no" &&
+    answers.needsLongTermCare === "no" &&
+    answers.addingPersonToExistingCase === "no"
+  ) {
+    return {
+      applicationType: "aca3",
+      reason: "You selected the standard coverage path for most individuals and families.",
+    }
+  }
+
+  return null
 }

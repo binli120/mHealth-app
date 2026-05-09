@@ -20,7 +20,7 @@ import {
 import type { SocialWorkerPatient, SocialWorkerPatientStatusFilter } from "@/lib/social-worker/types"
 import { getAgeFromDateOfBirth, getSocialWorkerPatientDisplayName } from "@/lib/social-worker/utils"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
-import { getSupabaseClient } from "@/lib/supabase/client"
+import { getSafeSupabaseSession } from "@/lib/supabase/client"
 import {
   Dialog,
   DialogContent,
@@ -45,8 +45,8 @@ export default function SocialWorkerPatientsPage() {
 
   // Get the SW's own user ID for the chat panel
   useEffect(() => {
-    getSupabaseClient().auth.getSession().then(({ data }) => {
-      setCurrentUserId(data.session?.user?.id ?? null)
+    getSafeSupabaseSession().then(({ session }) => {
+      setCurrentUserId(session?.user?.id ?? null)
     })
   }, [])
 

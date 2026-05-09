@@ -49,7 +49,11 @@ describe("lib/supabase/client", () => {
     expect(first).toBe(fakeClient)
     expect(second).toBe(fakeClient)
     expect(createClientMock).toHaveBeenCalledTimes(1)
-    expect(createClientMock).toHaveBeenCalledWith("https://example.supabase.co", "anon")
+    expect(createClientMock).toHaveBeenCalledWith("https://example.supabase.co", "anon", {
+      auth: {
+        autoRefreshToken: false,
+      },
+    })
   })
 
   it("clears Supabase auth cache during sign out", async () => {
@@ -76,5 +80,55 @@ describe("lib/supabase/client", () => {
     expect(window.localStorage.getItem("supabase.auth.token")).toBeNull()
     expect(window.sessionStorage.getItem("sb-example-auth-token")).toBeNull()
     expect(window.localStorage.getItem("unrelated")).toBe("keep")
+  })
+
+  it("clears stale auth cache when initial session lookup returns an invalid refresh token", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co"
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon"
+
+    const fakeClient = {
+      auth: {
+        getSession: vi.fn().mockResolvedValue({
+          data: { session: null },
+          error: new Error("Invalid Refresh Token: Refresh Token Not Found"),
+        }),
+        signOut: vi.fn().mockResolvedValue({ error: null }),
+      },
+    }
+    createClientMock.mockReturnValue(fakeClient)
+    window.localStorage.setItem("sb-example-auth-token", "token")
+    window.sessionStorage.setItem("sb-example-auth-token", "token")
+
+    const { getSupabaseClient } = await import("@/lib/supabase/client")
+    getSupabaseClient()
+    await Promise.resolve()
+
+    expect(window.localStorage.getItem("sb-example-auth-token")).toBeNull()
+    expect(window.sessionStorage.getItem("sb-example-auth-token")).toBeNull()
+    expect(fakeClient.auth.signOut).not.toHaveBeenCalled()
+  })
+
+  it("clears stale auth cache when initial session lookup rejects with an invalid refresh token", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co"
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon"
+
+    const fakeClient = {
+      auth: {
+        getSession: vi.fn().mockRejectedValue(
+          new Error("Invalid Refresh Token: Refresh Token Not Found"),
+        ),
+        signOut: vi.fn().mockResolvedValue({ error: null }),
+      },
+    }
+    createClientMock.mockReturnValue(fakeClient)
+    window.localStorage.setItem("sb-example-auth-token", "token")
+
+    const { getSupabaseClient } = await import("@/lib/supabase/client")
+    getSupabaseClient()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(window.localStorage.getItem("sb-example-auth-token")).toBeNull()
+    expect(fakeClient.auth.signOut).not.toHaveBeenCalled()
   })
 })

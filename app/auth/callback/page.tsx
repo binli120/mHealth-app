@@ -12,7 +12,7 @@
 import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { getSafeAuthNextPath, resolvePostAuthRedirect } from "@/lib/auth/navigation"
-import { getSupabaseClient } from "@/lib/supabase/client"
+import { getSafeSupabaseSession, getSupabaseClient } from "@/lib/supabase/client"
 import { toUserFacingError } from "@/lib/errors/user-facing"
 import { ShieldHeartIcon } from "@/lib/icons"
 import { Loader2 } from "lucide-react"
@@ -66,7 +66,7 @@ function CallbackContent() {
     })
 
     // Also check in case the session was already set before we subscribed.
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    getSafeSupabaseSession().then(({ session }) => {
       if (session) doRedirect(session.access_token)
     })
 
