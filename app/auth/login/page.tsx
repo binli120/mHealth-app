@@ -5,12 +5,13 @@
 
 "use client"
 
-import { Suspense, useMemo, useState } from "react"
+import { Suspense, useEffect, useMemo, useState } from "react"
 import { startAuthentication } from "@simplewebauthn/browser"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { getSafeAuthNextPath, resolvePostAuthRedirect } from "@/lib/auth/navigation"
@@ -21,6 +22,36 @@ import { toUserFacingError } from "@/lib/errors/user-facing"
 import { Eye, EyeOff, ArrowLeft, KeyRound } from "lucide-react"
 import { ShieldHeartIcon } from "@/lib/icons"
 
+const REMEMBER_EMAIL_STORAGE_KEY = "healthcompass.rememberedEmail"
+
+function getRememberedEmail() {
+  if (typeof window === "undefined") return ""
+
+  try {
+    return normalizeAuthEmail(window.localStorage.getItem(REMEMBER_EMAIL_STORAGE_KEY) ?? "")
+  } catch {
+    return ""
+  }
+}
+
+function saveRememberedEmail(shouldRememberEmail: boolean, email: string) {
+  if (typeof window === "undefined") return
+
+  try {
+    if (!shouldRememberEmail) {
+      window.localStorage.removeItem(REMEMBER_EMAIL_STORAGE_KEY)
+      return
+    }
+
+    const normalizedEmail = normalizeAuthEmail(email)
+    if (normalizedEmail) {
+      window.localStorage.setItem(REMEMBER_EMAIL_STORAGE_KEY, normalizedEmail)
+    }
+  } catch {
+    // Browser storage can be unavailable in private or restricted contexts.
+  }
+}
+
 function LoginPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -28,6 +59,7 @@ function LoginPageContent() {
   const [isLoading, setIsLoading] = useState(false)
   const [isPasskeyLoading, setIsPasskeyLoading] = useState(false)
   const [email, setEmail] = useState("")
+  const [shouldRememberEmail, setShouldRememberEmail] = useState(false)
   const [password, setPassword] = useState("")
   const [errorMessage, setErrorMessage] = useState("")
   const nextPath = useMemo(
@@ -40,6 +72,23 @@ function LoginPageContent() {
   )
   const isContinuationSignIn = searchParams.has("next")
   const showPasskeyButton = normalizeAuthEmail(email).length > 0
+
+  useEffect(() => {
+    const rememberedEmail = getRememberedEmail()
+    if (!rememberedEmail) return
+
+    setEmail(rememberedEmail)
+    setShouldRememberEmail(true)
+  }, [])
+
+  const handleRememberEmailChange = (checked: boolean | "indeterminate") => {
+    const nextShouldRememberEmail = checked === true
+    setShouldRememberEmail(nextShouldRememberEmail)
+
+    if (!nextShouldRememberEmail) {
+      saveRememberedEmail(false, "")
+    }
+  }
 
   const handleGoogleSignIn = async () => {
     setErrorMessage("")
@@ -103,6 +152,7 @@ function LoginPageContent() {
         return
       }
 
+      saveRememberedEmail(shouldRememberEmail, normalizedEmail)
       router.push(verifyPayload.redirectTo || "/admin")
       router.refresh()
     } catch (error) {
@@ -199,6 +249,7 @@ function LoginPageContent() {
             })
 
             if (!retry.error) {
+              saveRememberedEmail(shouldRememberEmail, normalizedEmail)
               router.push(await resolvePostAuthRedirect(nextPath, retry.data.session?.access_token ?? ""))
               router.refresh()
               return
@@ -219,6 +270,7 @@ function LoginPageContent() {
           })
 
           if (repaired.ok) {
+            saveRememberedEmail(shouldRememberEmail, normalizedEmail)
             router.push(await resolvePostAuthRedirect(nextPath, repaired.accessToken))
             router.refresh()
             return
@@ -236,11 +288,13 @@ function LoginPageContent() {
       const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
       if (aalData?.nextLevel === "aal2" && aalData.currentLevel !== "aal2") {
         const resolvedPath = await resolvePostAuthRedirect(nextPath, signIn.data.session?.access_token ?? "")
+        saveRememberedEmail(shouldRememberEmail, normalizedEmail)
         router.push(`/auth/mfa?next=${encodeURIComponent(resolvedPath)}`)
         router.refresh()
         return
       }
 
+      saveRememberedEmail(shouldRememberEmail, normalizedEmail)
       router.push(await resolvePostAuthRedirect(nextPath, signIn.data.session?.access_token ?? ""))
       router.refresh()
     } catch (error) {
@@ -332,6 +386,19 @@ function LoginPageContent() {
                       )}
                     </button>
                   </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="remember-email"
+                    checked={shouldRememberEmail}
+                    onCheckedChange={handleRememberEmailChange}
+                  />
+                  <Label
+                    htmlFor="remember-email"
+                    className="cursor-pointer text-sm font-normal text-muted-foreground"
+                  >
+                    Remember email address
+                  </Label>
                 </div>
                 {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
                 <Button 
