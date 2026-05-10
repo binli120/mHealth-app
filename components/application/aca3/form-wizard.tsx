@@ -875,14 +875,17 @@ function FormProvider({
   children,
   applicationId,
   actingForPatientId,
+  prefillFormData,
 }: {
   children: ReactNode
   applicationId?: string
   /** When set (social worker acting for patient), all API calls include X-Acting-For-Patient header */
   actingForPatientId?: string
+  prefillFormData?: Partial<import("@/lib/redux/features/application-slice").ApplicationFormData>
 }) {
   const [state, dispatch] = useReducer(formReducer, undefined, createInitialState)
   const [isHydratedReady, setIsHydratedReady] = useState(false)
+  const prefillAppliedRef = useRef(false)
   const [hydratedApplicationIdState, setHydratedApplicationIdState] = useState<string | null>(null)
   const reduxDispatch = useAppDispatch()
   const activeApplicationId = useAppSelector((rootState) => rootState.application.activeApplicationId)
@@ -1066,6 +1069,35 @@ function FormProvider({
       cancelled = true
     }
   }, [applicationRecord?.aca3Wizard, resolvedApplicationId, actingForPatientId])
+
+  // Apply prefill data once after hydration completes.
+  // Maps ApplicationFormData keys → wizard contact field IDs.
+  useEffect(() => {
+    if (!isHydratedReady || !prefillFormData || prefillAppliedRef.current) return
+    prefillAppliedRef.current = true
+
+    const set = (fieldId: string, value: string) => {
+      if (!value) return
+      dispatch({ type: "set_root_field", payload: { scope: "contact", fieldId, value } })
+    }
+
+    const { firstName, lastName, dob, email, phone, otherPhone, address, apartment, city, state: stateCode, zip, county, preferredSpokenLanguage, preferredWrittenLanguage } = prefillFormData
+
+    const fullName = [firstName, lastName].filter(Boolean).join(" ")
+    set("p1_name", fullName)
+    set("p1_dob", dob ?? "")
+    set("p1_email", email ?? "")
+    set("p1_phone", phone ?? "")
+    set("p1_other_phone", otherPhone ?? "")
+    set("p1_home_street", address ?? "")
+    set("p1_home_apt", apartment ?? "")
+    set("p1_home_city", city ?? "")
+    set("p1_home_state", stateCode ?? "")
+    set("p1_home_zip", zip ?? "")
+    set("p1_home_county", county ?? "")
+    set("p1_language_spoken", preferredSpokenLanguage ?? "")
+    set("p1_language_written", preferredWrittenLanguage ?? "")
+  }, [isHydratedReady, prefillFormData])
 
   useEffect(() => {
     if (!hydratedRef.current) {
@@ -4157,12 +4189,14 @@ function FormWizardBody() {
 export function FormWizard({
   applicationId,
   actingForPatientId,
+  prefillFormData,
 }: {
   applicationId?: string
   actingForPatientId?: string
+  prefillFormData?: Partial<import("@/lib/redux/features/application-slice").ApplicationFormData>
 }) {
   return (
-    <FormProvider applicationId={applicationId} actingForPatientId={actingForPatientId}>
+    <FormProvider applicationId={applicationId} actingForPatientId={actingForPatientId} prefillFormData={prefillFormData}>
       <FormWizardBody />
     </FormProvider>
   )
