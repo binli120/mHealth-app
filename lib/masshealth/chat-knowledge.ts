@@ -990,6 +990,7 @@ export function buildFormAssistantSystemPrompt(
   collectedSummary: string,
   currentSection: FormSection,
   ragContext?: string,
+  documentContext?: string,
 ): string {
   const responseLanguage = LANGUAGE_RESPONSE_HINT[language] ?? LANGUAGE_RESPONSE_HINT.en
   const sectionLabel = FORM_SECTION_LABELS[currentSection]
@@ -1023,6 +1024,16 @@ export function buildFormAssistantSystemPrompt(
     "Data already collected (do not ask for these again):",
     collectedSummary || "Nothing yet — start from the beginning.",
   ]
+
+  if (documentContext) {
+    sections.push(
+      "",
+      "UPLOADED FORM DATA (pre-extracted from an applicant-uploaded document):",
+      "Use the following information to pre-fill fields. Extract every applicable value.",
+      "After extracting all available fields, ask the user to confirm the pre-filled data and then ask for any remaining missing fields.",
+      documentContext,
+    )
+  }
 
   if (ragContext) {
     sections.push(

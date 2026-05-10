@@ -100,6 +100,8 @@ const requestSchema = z.object({
   currentSection: z.enum(FORM_ASSISTANT_SECTIONS).optional(),
   existingMembers: z.array(householdMemberSchema).max(20).optional(),
   existingSources: z.array(incomeSourceSchema).max(20).optional(),
+  // pre-extracted text from an uploaded form document
+  documentContext: z.string().max(8000).optional(),
 })
 
 type ValidatedPayload = z.infer<typeof requestSchema>
@@ -248,6 +250,7 @@ async function handleFormAssistant(
     collectedSummary,
     currentSection,
     ragContext || undefined,
+    payload.documentContext || undefined,
   )
 
   return createUIMessageStreamResponse({

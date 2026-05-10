@@ -461,21 +461,6 @@ function LoginPageContent() {
                     Sign in with Google
                   </Button>
 
-                  <div className="rounded-lg border border-border bg-secondary/50 p-3">
-                    <p className="text-center text-sm text-muted-foreground">
-                      Returning user? Enter last 4 digits of SSN
-                    </p>
-                    <div className="mt-2 flex gap-2">
-                      <Input
-                        placeholder="Last 4 of SSN"
-                        maxLength={4}
-                        className="border-input bg-background text-center text-foreground"
-                      />
-                      <Button variant="secondary" className="shrink-0">
-                        Verify
-                      </Button>
-                    </div>
-                  </div>
                 </div>
               </div>
 

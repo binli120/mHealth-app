@@ -11,16 +11,38 @@ import { ApplicationAssistant } from "@/components/application/aca3/application-
 import { FormWizard } from "@/components/application/aca3/form-wizard"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { ApplicationEntryMode } from "@/lib/applications/types"
+import type { ApplicationFormData } from "@/lib/redux/features/application-slice"
 import { UserRound } from "lucide-react"
+
+function readPrefillFromSessionStorage(key: string | null): Partial<ApplicationFormData> | undefined {
+  if (!key || typeof window === "undefined") return undefined
+  try {
+    const raw = sessionStorage.getItem(key) ?? ""
+    sessionStorage.removeItem(key)
+    if (!raw) return undefined
+    const parsed = JSON.parse(raw) as unknown
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Partial<ApplicationFormData>
+    }
+  } catch {
+    // sessionStorage unavailable or corrupt — proceed without prefill
+  }
+  return undefined
+}
 
 function NewApplicationPageContent() {
   const searchParams = useSearchParams()
   const queryApplicationId = searchParams.get("applicationId")?.trim()
   const requestedMode = searchParams.get("mode")
+  const prefillKey = searchParams.get("prefillKey")
   // When a social worker opens the form on behalf of a patient
   const actingForPatientId = searchParams.get("patientId")?.trim() || undefined
   const [entryMode, setEntryMode] = useState<ApplicationEntryMode>(
     requestedMode === "wizard" ? "wizard" : "chat",
+  )
+  // Lazy initializer reads + clears sessionStorage exactly once on mount.
+  const [prefillFormData] = useState<Partial<ApplicationFormData> | undefined>(
+    () => readPrefillFromSessionStorage(prefillKey),
   )
 
   return (
@@ -50,6 +72,7 @@ function NewApplicationPageContent() {
         <TabsContent value="chat" className="mt-4">
           <ApplicationAssistant
             applicationId={queryApplicationId || undefined}
+            prefillFormData={prefillFormData}
             onSwitchToWizard={() => setEntryMode("wizard")}
           />
         </TabsContent>

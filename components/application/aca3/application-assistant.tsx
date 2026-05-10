@@ -611,6 +611,10 @@ function computeProgress(
 
 interface ApplicationAssistantProps {
   applicationId?: string
+  /** Structured form data pre-parsed from an uploaded document. When provided
+   *  these fields are applied directly to the Redux store and the assistant
+   *  skips to asking only about missing or uncertain fields. */
+  prefillFormData?: Partial<ApplicationFormData>
   onSwitchToWizard?: () => void
 }
 
@@ -706,16 +710,25 @@ function readAssistantDraftState(raw: unknown): AssistantDraftState | null {
   }
 }
 
-export function ApplicationAssistant({ applicationId, onSwitchToWizard }: ApplicationAssistantProps) {
+export function ApplicationAssistant({ applicationId, prefillFormData, onSwitchToWizard }: ApplicationAssistantProps) {
   const dispatch = useAppDispatch()
   const language = useAppSelector((state) => state.app.language) as SupportedLanguage
   const userProfile = useAppSelector((state) => state.userProfile.profile)
 
   // Stable ID for this chat session — either the provided applicationId or a fresh UUID.
-  // Using useState guarantees it never changes across re-renders.
-  const [sessionApplicationId] = useState<string>(
-    () => resolveInitialAssistantApplicationId(applicationId),
-  )
+  // When prefillFormData is provided (document upload flow) we always start a NEW
+  // application so that the draft loader never finds a stale draft for a previous
+  // session and overwrites the pre-filled fields.
+  const [sessionApplicationId] = useState<string>(() => {
+    if (prefillFormData && !applicationId) {
+      const next = createUuid()
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(ACTIVE_ASSISTANT_APPLICATION_KEY, next)
+      }
+      return next
+    }
+    return resolveInitialAssistantApplicationId(applicationId)
+  })
 
   // ── Local field mirror ────────────────────────────────────────────────────
   // localFields is updated immediately when extraction returns, so the sidebar
@@ -758,6 +771,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const assistantDraftSaveTimerRef = useRef<number | null>(null)
+  const prefillAppliedRef = useRef(false)
   const hydratedAssistantDraftRef = useRef(false)
 
   useEffect(() => {
@@ -872,7 +886,23 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
     if (hydratedAssistantDraftRef.current) return
     let greeting: string
 
-    if (userProfile?.firstName) {
+    if (prefillFormData && !prefillAppliedRef.current) {
+      // Apply structured fields from uploaded document immediately.
+      prefillAppliedRef.current = true
+      const nonEmpty = Object.fromEntries(
+        Object.entries(prefillFormData).filter(([, v]) => v !== "" && v !== undefined && v !== null),
+      ) as Partial<ApplicationFormData>
+      if (Object.keys(nonEmpty).length > 0) {
+        applyFormPatch(nonEmpty)
+        const mergedData = { ...formDataRef.current, ...nonEmpty }
+        const firstQuestion = getNextMissingApplicationQuestion(mergedData)
+        const fieldCount = Object.keys(nonEmpty).length
+        greeting = `I pre-filled ${fieldCount} field${fieldCount === 1 ? "" : "s"} from your uploaded document. Let's confirm the details and fill in anything that's missing. ${firstQuestion}`
+      } else {
+        greeting = "I read your uploaded document but couldn't extract specific fields. Let's fill in the application together. What's your first name?"
+      }
+      setProfileFillMode("declined")
+    } else if (userProfile?.firstName) {
       // We have a profile — offer to pre-fill.
       const summary: ProfilePreFillSummary = {
         firstName: userProfile.firstName,
@@ -900,7 +930,22 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
     // Focus textarea so user can start typing immediately
     textareaRef.current?.focus()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [language]) // intentionally omit userProfile — greeting is set once on mount/language change
+  }, [language]) // intentionally omit userProfile/prefillFormData — greeting is set once on mount/language change
+
+  // ── Re-apply prefill after draft hydration (safety net) ──────────────────
+  // If draft loading somehow replaces localFields before the greeting effect
+  // applies them, re-apply prefill once hydration is confirmed complete.
+  useEffect(() => {
+    if (!isAssistantDraftHydrated || !prefillFormData || prefillAppliedRef.current) return
+    prefillAppliedRef.current = true
+    const nonEmpty = Object.fromEntries(
+      Object.entries(prefillFormData).filter(([, v]) => v !== "" && v !== undefined && v !== null),
+    ) as Partial<ApplicationFormData>
+    if (Object.keys(nonEmpty).length > 0) {
+      applyFormPatch(nonEmpty)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAssistantDraftHydrated]) // run once when hydration completes
 
   // ── Trigger document upload prompts when reaching documents section ────────
 
