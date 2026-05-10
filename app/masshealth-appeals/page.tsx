@@ -55,6 +55,7 @@ import {
   ACCEPTED_DOCUMENT_MIME_TYPES,
   MAX_DOCUMENT_UPLOAD_BYTES,
 } from "@/lib/appeals/constants"
+import { FALLBACK_APPEAL_CATEGORIES } from "@/lib/masshealth/appeal-categories"
 import {
   buildAppealDraftFilename,
   buildAppealDraftPrefill,
@@ -80,6 +81,25 @@ import {
 
 const ACCEPTED_MIME_STRING = [...ACCEPTED_DOCUMENT_MIME_TYPES].join(",")
 
+interface CategoriesPayload {
+  categories?: CategoryEntry[]
+  degraded?: boolean
+  warning?: string
+}
+
+function readCategoriesPayload(payload: unknown): CategoriesPayload {
+  if (Array.isArray(payload)) return { categories: payload as CategoryEntry[], degraded: false }
+  if (payload && typeof payload === "object") {
+    const body = payload as CategoriesPayload
+    return {
+      categories: Array.isArray(body.categories) ? body.categories : [],
+      degraded: body.degraded === true,
+      warning: typeof body.warning === "string" ? body.warning : undefined,
+    }
+  }
+  return { categories: [] }
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MassHealthAppealsPage() {
@@ -94,6 +114,7 @@ export default function MassHealthAppealsPage() {
 
   // Step 1 — research form
   const [categories, setCategories] = useState<CategoryEntry[]>([])
+  const [categoriesDegradedMessage, setCategoriesDegradedMessage] = useState<string | null>(null)
   const [denialText, setDenialText] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("")
   const {
@@ -183,19 +204,30 @@ export default function MassHealthAppealsPage() {
     if (extractedText) setDenialText(extractedText)
   }, [documentState])
 
-  // Load categories on mount (non-fatal if it fails)
+  // Load categories on mount, falling back to deterministic built-in categories.
   useEffect(() => {
     void (async () => {
       try {
         const res = await masshealthFetch("/api/masshealth/appeals/categories")
+        if (res.status === 401) { goToLogin(); return }
         if (res.ok) {
-          setCategories((await res.json()) as CategoryEntry[])
+          const payload = readCategoriesPayload(await res.json().catch(() => []))
+          setCategories(payload.categories?.length ? payload.categories : FALLBACK_APPEAL_CATEGORIES)
+          setCategoriesDegradedMessage(
+            payload.degraded
+              ? (payload.warning ?? "Using built-in categories while live analysis categories are unavailable.")
+              : null,
+          )
+          return
         }
-      } catch {
-        // categories are optional — skip silently
+        throw new Error(`Category service returned ${res.status}`)
+      } catch (e) {
+        if (e instanceof AuthNeededError) { goToLogin(); return }
+        setCategories(FALLBACK_APPEAL_CATEGORIES)
+        setCategoriesDegradedMessage("Using built-in categories while live analysis categories are unavailable.")
       }
     })()
-  }, [])
+  }, [goToLogin])
 
   // ── Step 1 → research ────────────────────────────────────────────────────
 
@@ -577,6 +609,11 @@ export default function MassHealthAppealsPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {categoriesDegradedMessage ? (
+                    <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                      {categoriesDegradedMessage}
+                    </p>
+                  ) : null}
                 </div>
               )}
 

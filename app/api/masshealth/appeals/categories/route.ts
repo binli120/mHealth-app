@@ -12,11 +12,21 @@
 
 import { NextResponse } from "next/server"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
+import { FALLBACK_APPEAL_CATEGORIES } from "@/lib/masshealth/appeal-categories"
 import { logServerError, logServerInfo } from "@/lib/server/logger"
 
 export const runtime = "nodejs"
 
 const ANALYSIS_BASE = process.env.NEXT_PUBLIC_MASSHEALTH_ANALYSIS_BASE_URL ?? "http://localhost:8000"
+
+function fallbackCategoriesResponse() {
+  return NextResponse.json({
+    ok: true,
+    categories: FALLBACK_APPEAL_CATEGORIES,
+    degraded: true,
+    warning: "Using built-in appeal categories while the analysis service is unavailable.",
+  })
+}
 
 export async function GET(request: Request) {
   const start = Date.now()
@@ -33,15 +43,21 @@ export async function GET(request: Request) {
 
     const body = await upstream.text()
     logServerInfo("masshealth.appeals.categories.done", { status: upstream.status, ms: Date.now() - start })
+
+    if (!upstream.ok) {
+      logServerInfo("masshealth.appeals.categories.fallback", {
+        status: upstream.status,
+        ms: Date.now() - start,
+      })
+      return fallbackCategoriesResponse()
+    }
+
     return new NextResponse(body, {
-      status:  upstream.status,
+      status: upstream.status,
       headers: { "Content-Type": "application/json" },
     })
   } catch (err) {
     logServerError("masshealth.appeals.categories.error", err, { ms: Date.now() - start })
-    return NextResponse.json(
-      { ok: false, error: "Appeal categories service unavailable" },
-      { status: 503 },
-    )
+    return fallbackCategoriesResponse()
   }
 }

@@ -710,6 +710,30 @@ function readAssistantDraftState(raw: unknown): AssistantDraftState | null {
   }
 }
 
+function hasMeaningfulDraftValue(value: unknown): boolean {
+  if (Array.isArray(value)) return value.length > 0
+  if (value && typeof value === "object") return Object.keys(value).length > 0
+  if (typeof value === "string") return value.trim().length > 0
+  if (typeof value === "number") return Number.isFinite(value)
+  if (typeof value === "boolean") return value
+  return false
+}
+
+export function hasPersistableAssistantDraft(
+  fields: Partial<ApplicationFormData>,
+  messages: AssistantMessage[],
+  noHouseholdMembers: boolean,
+  noIncome: boolean,
+): boolean {
+  return (
+    Object.values(fields).some(hasMeaningfulDraftValue) ||
+    messages.some((message) => message.role === "user") ||
+    messages.some((message) => message.type === "upload_prompt") ||
+    noHouseholdMembers ||
+    noIncome
+  )
+}
+
 export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillFormData }: ApplicationAssistantProps) {
   const dispatch = useAppDispatch()
   const language = useAppSelector((state) => state.app.language) as SupportedLanguage
@@ -844,6 +868,11 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
         // Ignore corrupt local cache and fall back to server.
       }
 
+      if (!applicationId) {
+        if (!cancelled) setIsAssistantDraftHydrated(true)
+        return
+      }
+
       try {
         const response = await authenticatedFetch(
           `/api/applications/${encodeURIComponent(sessionApplicationId)}/draft`,
@@ -865,7 +894,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
     return () => {
       cancelled = true
     }
-  }, [dispatch, sessionApplicationId])
+  }, [applicationId, dispatch, sessionApplicationId])
 
   // Compute current section from form data
   const currentSection = useMemo(
@@ -996,7 +1025,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
 
   useEffect(() => {
     if (!isAssistantDraftHydrated) return
-    if (!messages.length && Object.keys(localFields).length === 0) return
+    if (!hasPersistableAssistantDraft(localFields, messages, noHouseholdMembers, noIncome)) return
 
     const draft = createAssistantDraftState(formData, messages, noHouseholdMembers, noIncome)
     const cacheKey = getAssistantDraftCacheKey(sessionApplicationId)
