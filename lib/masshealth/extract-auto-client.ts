@@ -78,14 +78,27 @@ export async function extractMasshealthAuto({
   const payload = (await response.json().catch(() => ({}))) as unknown
 
   if (!response.ok) {
-    const errorMessage =
-      payload && typeof payload === "object" && "error" in payload
-        ? String((payload as { error?: unknown }).error || "")
+    // Server wraps error details under `detail` (FastAPI convention)
+    const detail =
+      payload && typeof payload === "object" && "detail" in payload
+        ? (payload as { detail?: unknown }).detail
+        : payload
+
+    const errorCode =
+      detail && typeof detail === "object" && "error" in detail
+        ? String((detail as { error?: unknown }).error || "")
         : ""
 
-    throw new Error(
-      errorMessage || `Extract auto request failed with status ${response.status}.`,
-    )
+    const errorMessage =
+      detail && typeof detail === "object" && "message" in detail
+        ? String((detail as { message?: unknown }).message || "")
+        : errorCode || `Extract auto request failed with status ${response.status}.`
+
+    const err = new Error(errorMessage)
+    // Attach the error code so callers can distinguish expected rejections
+    // (e.g. "blank_template") from unexpected server errors.
+    ;(err as Error & { code?: string }).code = errorCode
+    throw err
   }
 
   assertOkResponseShape(payload)

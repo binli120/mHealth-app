@@ -17,9 +17,27 @@ type PdfParseFn = (buf: Buffer) => Promise<{ text: string }>
 function loadPdfParse(): PdfParseFn | null {
   try {
     const _mod = _require("pdf-parse") as unknown
+
+    // pdf-parse < v2: exported as a plain function
     if (typeof _mod === "function") return _mod as PdfParseFn
+
+    // pdf-parse < v2: .default is a function
     if (typeof (_mod as { default?: unknown })?.default === "function")
       return (_mod as { default: PdfParseFn }).default
+
+    // pdf-parse v2.x: exports { PDFParse } class
+    // new PDFParse({ data: Uint8Array, verbosity: 0 }).getText() → { text: string }
+    type PDFParseV2Ctor = new (opts: { data: Uint8Array; verbosity: number }) => {
+      getText(): Promise<{ text: string }>
+    }
+    const PDFParseClass = (_mod as { PDFParse?: PDFParseV2Ctor }).PDFParse
+    if (typeof PDFParseClass === "function") {
+      return async (buf: Buffer) => {
+        const parser = new PDFParseClass({ data: new Uint8Array(buf), verbosity: 0 })
+        return parser.getText()
+      }
+    }
+
     return null
   } catch {
     return null

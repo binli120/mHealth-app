@@ -611,8 +611,11 @@ function computeProgress(
 
 interface ApplicationAssistantProps {
   applicationId?: string
-  onSwitchToWizard?: () => void
+  /** Structured form data pre-parsed from an uploaded document. When provided
+   *  these fields are applied directly to the Redux store and the assistant
+   *  skips to asking only about missing or uncertain fields. */
   prefillFormData?: Partial<ApplicationFormData>
+  onSwitchToWizard?: () => void
 }
 
 /** Maps a saved UserProfile into ApplicationFormData fields that can be pre-filled. */

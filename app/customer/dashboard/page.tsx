@@ -63,6 +63,7 @@ import type { ApplicationListApiResponse } from "./page.types"
 import { STATUS_META } from "./page.constants"
 import { buildDashboardGreeting, getApplicationTypeLabel } from "./page.utils"
 import { DashboardTour } from "./dashboard-tour"
+import { UploadToApplicationDialog } from "@/components/dashboard/UploadToApplicationDialog"
 
 interface DashboardWidgetTooltipProps {
   children: ReactNode
@@ -276,7 +277,7 @@ export default function CustomerDashboardPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
               <ShieldHeartIcon color="currentColor" className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="whitespace-nowrap text-xl font-semibold text-foreground">HealthCompass MA</span>
+            <span className="hidden whitespace-nowrap text-xl font-semibold text-foreground sm:inline">HealthCompass MA</span>
           </div>
           <nav className="hidden min-w-0 flex-1 items-center gap-3 overflow-hidden md:flex">
             <Link href="/customer/dashboard" className="shrink-0 whitespace-nowrap text-sm font-medium text-foreground">
@@ -320,25 +321,29 @@ export default function CustomerDashboardPage() {
             </Link>
           </nav>
           <div className="flex shrink-0 items-center gap-3">
-            <div className="flex items-center gap-3" data-tour="dashboard-account-tools">
-              <LanguageSwitcher />
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    data-tour="dashboard-help"
-                    onClick={() => setDashboardTourRunId((id) => id + 1)}
-                    aria-label="Open dashboard tutorial"
-                  >
-                    <HelpCircle className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" sideOffset={8}>
-                  Open dashboard tutorial
-                </TooltipContent>
-              </Tooltip>
+            <div className="flex items-center gap-2 sm:gap-3" data-tour="dashboard-account-tools">
+              <span className="hidden sm:contents">
+                <LanguageSwitcher />
+              </span>
+              <span className="hidden sm:contents">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      data-tour="dashboard-help"
+                      onClick={() => setDashboardTourRunId((id) => id + 1)}
+                      aria-label="Open dashboard tutorial"
+                    >
+                      <HelpCircle className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" sideOffset={8}>
+                    Open dashboard tutorial
+                  </TooltipContent>
+                </Tooltip>
+              </span>
               <ThemeToggle />
               <NotificationBell />
               <Link href="/customer/profile" aria-label="My Profile">
@@ -452,21 +457,25 @@ export default function CustomerDashboardPage() {
               </Card>
             </Link>
           </DashboardWidgetTooltip>
-          <DashboardWidgetTooltip content="Upload proof documents when MassHealth asks for verification, such as income, identity, residency, or insurance records.">
-            <Card
-              className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md lg:col-span-4"
-              data-tour="dashboard-upload-documents"
-            >
-              <CardContent className="flex items-center gap-4 p-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-success/10">
-                  <Upload className="h-5 w-5 text-success" />
-                </div>
-                <div>
-                  <p className="font-medium text-card-foreground">{getMessage(language, "dashboardUploadDocs")}</p>
-                  <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardUploadDocsDesc")}</p>
-                </div>
-              </CardContent>
-            </Card>
+          <DashboardWidgetTooltip content="Upload a filled-out MassHealth form (PDF or photo) and Compass will pre-fill your application from it.">
+            <UploadToApplicationDialog>
+              <div
+                className="h-full lg:col-span-4"
+                data-tour="dashboard-upload-documents"
+              >
+                <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
+                  <CardContent className="flex items-center gap-4 p-4">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-success/10">
+                      <Upload className="h-5 w-5 text-success" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-card-foreground">{getMessage(language, "dashboardUploadDocs")}</p>
+                      <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardUploadDocsDesc")}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </UploadToApplicationDialog>
           </DashboardWidgetTooltip>
           <DashboardWidgetTooltip content="Track draft and submitted applications, review status changes, and open any application that needs more work.">
             <Link href="/customer/status" data-tour="dashboard-track-status" className="h-full lg:col-span-4">

@@ -226,7 +226,7 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
           {step === 0 && (
             <>
               <h2 className="text-base font-semibold text-gray-900">{getMessage(language, "bsAboutYouTitle")}</h2>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="age" className="text-sm">{getMessage(language, "bsYourAge")}</Label>
                   <Input id="age" type="number" min={0} max={120} value={profile.age || ""} onChange={(e) => update("age", Number(e.target.value) || 0)} placeholder="e.g. 32" className="mt-1" />
