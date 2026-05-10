@@ -26,6 +26,7 @@ import { CITIZENSHIP_OPTIONS } from "@/lib/constants/form-options"
 import { GENDER_OPTIONS } from "@/lib/user-profile/constants"
 import { useAppSelector } from "@/lib/redux/hooks"
 import { cn } from "@/lib/utils"
+import { CUSTOMER_SUPPORT_MAILTO } from "@/lib/support/contact"
 import type { UserProfile, Gender } from "@/lib/user-profile/types"
 import type { CitizenshipStatus } from "@/lib/benefit-orchestration/types"
 
@@ -380,7 +381,11 @@ export function PersonalSection({ profile, onSaved }: Props) {
               {new Date(profile.dateOfBirth).toLocaleDateString("en-US", {
                 year: "numeric", month: "long", day: "numeric",
               })}
-              {" "}(read-only — contact support to correct)
+              {" "}(read-only -{" "}
+              <a href={CUSTOMER_SUPPORT_MAILTO} className="font-medium text-primary hover:underline">
+                email support
+              </a>{" "}
+              to correct)
             </span>
           </InfoBox>
         )}

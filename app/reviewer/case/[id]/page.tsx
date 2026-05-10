@@ -3,64 +3,204 @@
  * @email: blee@healthcompass.cloud
  */
 
-"use client"
-
-import { useState } from "react"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Textarea } from "@/components/ui/textarea"
-import { 
-  ArrowLeft, 
-  FileText, 
-  Clock, 
-  CheckCircle2, 
+import { notFound } from "next/navigation"
+import {
   AlertCircle,
   AlertTriangle,
-  User,
-  Users,
-  DollarSign,
-  Calendar,
-  MapPin,
-  Phone,
-  Mail,
+  ArrowLeft,
+  Brain,
+  CheckCircle2,
+  Clock,
   Download,
-  ZoomIn,
-  ZoomOut,
-  RotateCw,
-  Edit3,
+  FileText,
   History,
-  Send,
-  XCircle,
-  MessageSquare,
-  Shield,
-  Brain
 } from "lucide-react"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
-import { ShieldHeartIcon } from "@/lib/icons"
-import type { PageProps } from "./page.types"
-import { extractedData, validationWarnings, auditLog, documents } from "./page.constants"
 
-export default function CaseDetailPage({ params }: PageProps) {
-  const [selectedDoc, setSelectedDoc] = useState(0)
-  const [decision, setDecision] = useState<string | null>(null)
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { getReviewerCase, type ReviewerCaseDetail } from "@/lib/db/reviewer"
+import { ShieldHeartIcon } from "@/lib/icons"
+
+import {
+  ConfidenceBadge,
+  ReviewerStatusBadge,
+  formatApplicationType,
+  formatCurrency,
+  formatDate,
+  formatDateTime,
+  formatFileSize,
+} from "../../_components/reviewer-ui"
+import { requireReviewerPage } from "../../page-auth"
+import { CaseActions } from "./CaseActions"
+import type { PageProps } from "./page.types"
+
+interface ExtractedField {
+  field: string
+  value: string
+  source: string
+  confidence: number | null
+}
+
+interface WarningItem {
+  severity: "high" | "medium" | "low"
+  field: string
+  message: string
+}
+
+function getDraftValue(state: Record<string, unknown> | null, path: string[]): string | null {
+  let cursor: unknown = state
+  for (const segment of path) {
+    if (!cursor || typeof cursor !== "object" || !(segment in cursor)) return null
+    cursor = (cursor as Record<string, unknown>)[segment]
+  }
+  if (cursor === null || cursor === undefined) return null
+  const value = String(cursor).trim()
+  return value || null
+}
+
+function compactAddress(caseItem: ReviewerCaseDetail): string | null {
+  const { line1, line2, city, state, zip } = caseItem.applicantAddress
+  const street = [line1, line2].filter(Boolean).join(" ")
+  const locality = [city, state, zip].filter(Boolean).join(", ")
+  return [street, locality].filter(Boolean).join(" - ") || null
+}
+
+function buildExtractedFields(caseItem: ReviewerCaseDetail): ExtractedField[] {
+  const draftName = getDraftValue(caseItem.draftState, ["data", "contact", "p1_name"])
+  const address = compactAddress(caseItem)
+  const fields: Array<ExtractedField | null> = [
+    {
+      field: "Applicant",
+      value: draftName ?? caseItem.applicantName,
+      source: draftName ? "Application draft" : "Applicant profile",
+      confidence: caseItem.confidenceScore,
+    },
+    caseItem.applicantDob
+      ? { field: "Date of Birth", value: caseItem.applicantDob, source: "Applicant profile", confidence: null }
+      : null,
+    caseItem.applicantEmail
+      ? { field: "Email", value: caseItem.applicantEmail, source: "Applicant account", confidence: null }
+      : null,
+    caseItem.applicantPhone
+      ? { field: "Phone", value: caseItem.applicantPhone, source: "Applicant profile", confidence: null }
+      : null,
+    address ? { field: "Address", value: address, source: "Applicant profile", confidence: null } : null,
+    caseItem.householdSize !== null
+      ? {
+          field: "Household Size",
+          value: String(caseItem.householdSize),
+          source: "Application record",
+          confidence: caseItem.confidenceScore,
+        }
+      : null,
+    caseItem.totalMonthlyIncome !== null
+      ? {
+          field: "Monthly Income",
+          value: `${formatCurrency(caseItem.totalMonthlyIncome)}/mo`,
+          source: "Application record",
+          confidence: caseItem.confidenceScore,
+        }
+      : null,
+    caseItem.fplPercentage !== null
+      ? {
+          field: "FPL Level",
+          value: `${Math.round(caseItem.fplPercentage)}%`,
+          source: "Eligibility screening",
+          confidence: caseItem.confidenceScore,
+        }
+      : null,
+    caseItem.estimatedProgram
+      ? {
+          field: "Estimated Program",
+          value: caseItem.estimatedProgram,
+          source: "Eligibility screening",
+          confidence: caseItem.confidenceScore,
+        }
+      : null,
+    caseItem.citizenshipStatus
+      ? {
+          field: "Citizenship Status",
+          value: caseItem.citizenshipStatus,
+          source: "Applicant profile",
+          confidence: null,
+        }
+      : null,
+    ...caseItem.documents
+      .filter((document) => document.analysisDocumentType)
+      .map((document) => ({
+        field: "Document Classification",
+        value: document.analysisDocumentType as string,
+        source: document.fileName ?? document.requiredDocumentLabel ?? "Uploaded document",
+        confidence: document.extractionConfidence,
+      })),
+  ]
+
+  return fields.filter((field): field is ExtractedField => Boolean(field))
+}
+
+function buildWarnings(caseItem: ReviewerCaseDetail): WarningItem[] {
+  const warnings: WarningItem[] = caseItem.validationResults
+    .filter((result) => !result.resolved)
+    .map((result) => ({
+      severity: result.severity === "error" ? "high" : "medium",
+      field: result.ruleName ?? "Validation",
+      message: result.message,
+    }))
+
+  if (caseItem.documentCount === 0) {
+    warnings.push({
+      severity: "medium",
+      field: "Documents",
+      message: "No documents are attached to this application.",
+    })
+  }
+
+  if (caseItem.confidenceScore !== null && caseItem.confidenceScore < 75) {
+    warnings.push({
+      severity: "medium",
+      field: "Confidence",
+      message: "Overall confidence is below the reviewer threshold.",
+    })
+  }
+
+  if (caseItem.status === "rfi_requested") {
+    warnings.push({
+      severity: "low",
+      field: "RFI",
+      message: "A request for information is outstanding.",
+    })
+  }
+
+  return warnings
+}
+
+function warningClass(severity: WarningItem["severity"]): string {
+  if (severity === "high") return "border-destructive/50 bg-destructive/5"
+  if (severity === "medium") return "border-warning/50 bg-warning/5"
+  return "border-border bg-secondary/30"
+}
+
+export default async function CaseDetailPage({ params }: PageProps) {
+  const { id } = await params
+  await requireReviewerPage(`/reviewer/case/${id}`)
+  const caseItem = await getReviewerCase(id)
+  if (!caseItem) notFound()
+
+  const extractedFields = buildExtractedFields(caseItem)
+  const warnings = buildWarnings(caseItem)
+  const confidenceWidth = `${Math.max(0, Math.min(100, Math.round(caseItem.confidenceScore ?? 0)))}%`
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-sidebar">
         <div className="flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-4">
-            <Link href="/reviewer/dashboard" className="flex items-center gap-2 text-sidebar-foreground/70 hover:text-sidebar-foreground">
-              <ArrowLeft className="h-4 w-4" />
-              <span className="text-sm">Back to Dashboard</span>
-            </Link>
-          </div>
+          <Link href="/reviewer/cases" className="flex items-center gap-2 text-sidebar-foreground/70 hover:text-sidebar-foreground">
+            <ArrowLeft className="h-4 w-4" />
+            <span className="text-sm">Back to Cases</span>
+          </Link>
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary">
               <ShieldHeartIcon color="currentColor" className="h-4 w-4 text-sidebar-primary-foreground" />
@@ -73,100 +213,97 @@ export default function CaseDetailPage({ params }: PageProps) {
         </div>
       </header>
 
-      {/* Case Header */}
       <div className="border-b border-border bg-card px-4 py-4">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold text-foreground">MH-2024-ABC12</h1>
-              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                Under Review
-              </Badge>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-xl font-bold text-foreground">{caseItem.displayId}</h1>
+              <ReviewerStatusBadge status={caseItem.status} />
+              {caseItem.flags.map((flag) => (
+                <Badge key={flag} variant="outline" className="bg-secondary/50 text-xs">
+                  {flag}
+                </Badge>
+              ))}
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              New Application • Submitted Feb 15, 2024 • 3 days old
+              {formatApplicationType(caseItem.applicationType)} - Submitted {formatDate(caseItem.submittedAt)} - {caseItem.ageDays} days old
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <Link href="/reviewer/audit">
             <Button variant="outline" size="sm" className="gap-2">
               <History className="h-4 w-4" />
               Audit Log
             </Button>
-            <Button variant="outline" size="sm" className="gap-2">
-              <MessageSquare className="h-4 w-4" />
-              Contact
-            </Button>
-          </div>
+          </Link>
         </div>
       </div>
 
-      {/* Main Content - Split View */}
       <main className="flex flex-1 flex-col lg:flex-row">
-        {/* Left Panel - Document Viewer */}
-        <div className="flex w-full flex-col border-b border-border lg:w-1/2 lg:border-b-0 lg:border-r">
-          {/* Document Tabs */}
-          <div className="flex items-center gap-2 overflow-x-auto border-b border-border bg-secondary/30 p-2">
-            {documents.map((doc, index) => (
-              <button
-                key={index}
-                onClick={() => setSelectedDoc(index)}
-                className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
-                  selectedDoc === index
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:bg-card/50"
-                }`}
-              >
-                <FileText className="h-4 w-4" />
-                <span className="max-w-[120px] truncate">{doc.name}</span>
-                {doc.status === "verified" && (
-                  <CheckCircle2 className="h-3 w-3 text-success" />
-                )}
-                {doc.status === "warning" && (
-                  <AlertCircle className="h-3 w-3 text-warning" />
-                )}
-              </button>
-            ))}
+        <section className="flex w-full flex-col border-b border-border lg:w-1/2 lg:border-b-0 lg:border-r">
+          <div className="border-b border-border bg-secondary/30 p-4">
+            <h2 className="font-semibold text-foreground">Documents</h2>
+            <p className="text-sm text-muted-foreground">
+              {caseItem.documentCount} uploaded documents - {caseItem.pendingDocumentCount} pending review
+            </p>
           </div>
 
-          {/* Document Viewer */}
-          <div className="relative flex-1 bg-secondary/30">
-            {/* Toolbar */}
-            <div className="flex items-center justify-between border-b border-border bg-card px-4 py-2">
-              <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <ZoomOut className="h-4 w-4" />
-                </Button>
-                <span className="text-sm text-muted-foreground">100%</span>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <ZoomIn className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <RotateCw className="h-4 w-4" />
-                </Button>
+          <div className="flex-1 space-y-3 overflow-y-auto p-4">
+            {caseItem.documents.length === 0 ? (
+              <div className="flex min-h-[320px] items-center justify-center rounded-lg border border-dashed border-border bg-secondary/20 p-8 text-center">
+                <div>
+                  <FileText className="mx-auto h-12 w-12 text-muted-foreground/40" />
+                  <p className="mt-4 font-medium text-foreground">No documents uploaded</p>
+                  <p className="text-sm text-muted-foreground">Submitted evidence will appear here for reviewer validation.</p>
+                </div>
               </div>
-              <Button variant="ghost" size="sm" className="gap-2">
-                <Download className="h-4 w-4" />
-                Download
-              </Button>
-            </div>
-
-            {/* Document Preview Placeholder */}
-            <div className="flex h-[400px] items-center justify-center lg:h-[calc(100vh-280px)]">
-              <div className="text-center">
-                <FileText className="mx-auto h-16 w-16 text-muted-foreground/30" />
-                <p className="mt-4 text-muted-foreground">Document Preview</p>
-                <p className="text-sm text-muted-foreground/70">{documents[selectedDoc].name}</p>
-              </div>
-            </div>
+            ) : (
+              caseItem.documents.map((document) => (
+                <Card key={document.id} className="border-border bg-card">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <CardTitle className="truncate text-base">
+                          {document.fileName ?? document.requiredDocumentLabel ?? document.documentType ?? "Uploaded document"}
+                        </CardTitle>
+                        <CardDescription>
+                          Uploaded {formatDateTime(document.uploadedAt)} - {formatFileSize(document.fileSizeBytes)}
+                        </CardDescription>
+                      </div>
+                      {document.fileUrl ? (
+                        <Link href={document.fileUrl} target="_blank" rel="noreferrer">
+                          <Button variant="outline" size="sm" className="gap-2">
+                            <Download className="h-4 w-4" />
+                            Open
+                          </Button>
+                        </Link>
+                      ) : null}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm">
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="outline">{document.documentStatus}</Badge>
+                      <Badge variant="outline">{document.validationStatus}</Badge>
+                      {document.analysisDocumentType ? (
+                        <Badge variant="outline">{document.analysisDocumentType}</Badge>
+                      ) : null}
+                    </div>
+                    {document.validationError ? (
+                      <p className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-destructive">
+                        {document.validationError}
+                      </p>
+                    ) : null}
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
-        </div>
+        </section>
 
-        {/* Right Panel - Data & Actions */}
-        <div className="flex w-full flex-col lg:w-1/2">
+        <section className="flex w-full flex-col lg:w-1/2">
           <Tabs defaultValue="extracted" className="flex flex-1 flex-col">
             <TabsList className="mx-4 mt-4 grid grid-cols-4">
               <TabsTrigger value="extracted">Extracted</TabsTrigger>
-              <TabsTrigger value="ai-summary">AI Summary</TabsTrigger>
+              <TabsTrigger value="summary">Summary</TabsTrigger>
               <TabsTrigger value="warnings">Warnings</TabsTrigger>
               <TabsTrigger value="history">History</TabsTrigger>
             </TabsList>
@@ -176,113 +313,89 @@ export default function CaseDetailPage({ params }: PageProps) {
                 <Card className="border-border bg-card">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base text-card-foreground">Extracted Data</CardTitle>
-                    <CardDescription>Information extracted from uploaded documents</CardDescription>
+                    <CardDescription>Data currently available from the application and document analysis</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-3">
-                      {extractedData.map((item, index) => (
-                        <div
-                          key={index}
-                          className="flex items-start justify-between rounded-lg border border-border bg-secondary/30 p-3"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs text-muted-foreground">{item.field}</p>
-                            <p className="font-medium text-foreground">{item.value}</p>
-                            <p className="text-xs text-muted-foreground">Source: {item.source}</p>
+                    {extractedFields.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No extracted fields are available for this case.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {extractedFields.map((item) => (
+                          <div key={`${item.field}-${item.source}`} className="flex items-start justify-between gap-3 rounded-lg border border-border bg-secondary/30 p-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs text-muted-foreground">{item.field}</p>
+                              <p className="break-words font-medium text-foreground">{item.value}</p>
+                              <p className="text-xs text-muted-foreground">Source: {item.source}</p>
+                            </div>
+                            <ConfidenceBadge value={item.confidence} />
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                                item.confidence >= 90
-                                  ? "bg-success/10 text-success"
-                                  : item.confidence >= 75
-                                  ? "bg-warning/10 text-warning"
-                                  : "bg-destructive/10 text-destructive"
-                              }`}
-                            >
-                              {item.confidence}%
-                            </span>
-                            <Button variant="ghost" size="icon" className="h-7 w-7">
-                              <Edit3 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
 
-              <TabsContent value="ai-summary" className="mt-0">
+              <TabsContent value="summary" className="mt-0">
                 <Card className="border-border bg-card">
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">
                       <Brain className="h-5 w-5 text-primary" />
-                      <CardTitle className="text-base text-card-foreground">AI Analysis Summary</CardTitle>
+                      <CardTitle className="text-base text-card-foreground">Review Summary</CardTitle>
                     </div>
-                    <CardDescription>Automated assessment of the application</CardDescription>
+                    <CardDescription>Current deterministic case facts</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {/* Summary Box */}
-                    <div className="rounded-lg bg-primary/5 p-4">
-                      <div className="grid gap-3 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Applicant</span>
-                          <span className="font-medium text-foreground">John Michael Doe</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Household</span>
-                          <span className="font-medium text-foreground">3 members</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Monthly Income</span>
-                          <span className="font-medium text-foreground">$3,200</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">FPL Level</span>
-                          <span className="font-medium text-foreground">125%</span>
-                        </div>
-                        <div className="border-t border-border pt-3">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Preliminary Result</span>
-                            <span className="font-semibold text-accent">Likely Eligible for CarePlus</span>
-                          </div>
-                        </div>
+                    <div className="grid gap-3 text-sm">
+                      <div className="flex justify-between gap-4">
+                        <span className="text-muted-foreground">Applicant</span>
+                        <span className="text-right font-medium text-foreground">{caseItem.applicantName}</span>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <span className="text-muted-foreground">Household</span>
+                        <span className="font-medium text-foreground">{caseItem.householdSize ?? "Not provided"}</span>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <span className="text-muted-foreground">Monthly Income</span>
+                        <span className="font-medium text-foreground">{formatCurrency(caseItem.totalMonthlyIncome)}</span>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <span className="text-muted-foreground">FPL Level</span>
+                        <span className="font-medium text-foreground">
+                          {caseItem.fplPercentage !== null ? `${Math.round(caseItem.fplPercentage)}%` : "Not calculated"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between gap-4 border-t border-border pt-3">
+                        <span className="text-muted-foreground">Estimated Program</span>
+                        <span className="text-right font-semibold text-foreground">{caseItem.estimatedProgram ?? "Not assigned"}</span>
                       </div>
                     </div>
 
-                    {/* Confidence Meter */}
                     <div>
                       <div className="mb-2 flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Overall Confidence</span>
-                        <span className="font-medium text-foreground">89%</span>
+                        <ConfidenceBadge value={caseItem.confidenceScore} />
                       </div>
                       <div className="h-3 overflow-hidden rounded-full bg-secondary">
-                        <div className="h-full w-[89%] rounded-full bg-success" />
+                        <div className="h-full rounded-full bg-primary" style={{ width: confidenceWidth }} />
                       </div>
                     </div>
 
-                    {/* AI Notes */}
-                    <div className="rounded-lg border border-border p-4">
-                      <h4 className="mb-2 font-medium text-foreground">AI Notes</h4>
-                      <ul className="space-y-2 text-sm text-muted-foreground">
-                        <li className="flex items-start gap-2">
-                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
-                          Identity verification passed with high confidence
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
-                          Massachusetts residency confirmed
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-                          Income verification needs review - paystub dated 45+ days ago
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-                          Minor address discrepancy detected
-                        </li>
-                      </ul>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-lg border border-border p-3">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <FileText className="h-4 w-4" />
+                          Documents
+                        </div>
+                        <p className="mt-1 text-xl font-semibold text-foreground">{caseItem.documentCount}</p>
+                      </div>
+                      <div className="rounded-lg border border-border p-3">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <AlertTriangle className="h-4 w-4" />
+                          Open Validations
+                        </div>
+                        <p className="mt-1 text-xl font-semibold text-foreground">{caseItem.openValidationCount}</p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -295,42 +408,29 @@ export default function CaseDetailPage({ params }: PageProps) {
                       <AlertTriangle className="h-5 w-5 text-warning" />
                       <CardTitle className="text-base text-card-foreground">Validation Warnings</CardTitle>
                     </div>
-                    <CardDescription>Issues requiring your attention</CardDescription>
+                    <CardDescription>Issues requiring reviewer attention</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-3">
-                      {validationWarnings.map((warning, index) => (
-                        <div
-                          key={index}
-                          className={`rounded-lg border p-4 ${
-                            warning.severity === "high"
-                              ? "border-destructive/50 bg-destructive/5"
-                              : warning.severity === "medium"
-                              ? "border-warning/50 bg-warning/5"
-                              : "border-border bg-secondary/30"
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <AlertCircle
-                              className={`mt-0.5 h-5 w-5 shrink-0 ${
-                                warning.severity === "high"
-                                  ? "text-destructive"
-                                  : warning.severity === "medium"
-                                  ? "text-warning"
-                                  : "text-muted-foreground"
-                              }`}
-                            />
-                            <div>
-                              <p className="font-medium text-foreground">{warning.message}</p>
-                              <p className="text-sm text-muted-foreground">Field: {warning.field}</p>
-                              <Button variant="link" size="sm" className="h-auto p-0 text-primary">
-                                Jump to field
-                              </Button>
+                    {warnings.length === 0 ? (
+                      <div className="flex items-center gap-2 rounded-lg border border-border bg-secondary/30 p-4 text-sm text-muted-foreground">
+                        <CheckCircle2 className="h-4 w-4 text-success" />
+                        No open warnings for this case.
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {warnings.map((warning, index) => (
+                          <div key={`${warning.field}-${index}`} className={`rounded-lg border p-4 ${warningClass(warning.severity)}`}>
+                            <div className="flex items-start gap-3">
+                              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
+                              <div>
+                                <p className="font-medium text-foreground">{warning.message}</p>
+                                <p className="text-sm text-muted-foreground">Field: {warning.field}</p>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -342,198 +442,58 @@ export default function CaseDetailPage({ params }: PageProps) {
                       <History className="h-5 w-5 text-primary" />
                       <CardTitle className="text-base text-card-foreground">Audit Trail</CardTitle>
                     </div>
-                    <CardDescription>Complete history of case activity</CardDescription>
+                    <CardDescription>Case activity from application and audit tables</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      {auditLog.map((entry, index) => (
-                        <div key={index} className="flex gap-4">
-                          <div className="flex flex-col items-center">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-                              <Clock className="h-4 w-4 text-primary" />
+                    {caseItem.auditEvents.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No audit history is available for this case.</p>
+                    ) : (
+                      <div className="space-y-4">
+                        {caseItem.auditEvents.map((entry, index) => (
+                          <div key={entry.id} className="flex gap-4">
+                            <div className="flex flex-col items-center">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+                                <Clock className="h-4 w-4 text-primary" />
+                              </div>
+                              {index < caseItem.auditEvents.length - 1 ? (
+                                <div className="mt-2 h-full w-0.5 bg-border" />
+                              ) : null}
                             </div>
-                            {index < auditLog.length - 1 && (
-                              <div className="mt-2 h-full w-0.5 bg-border" />
-                            )}
+                            <div className="flex-1 pb-4">
+                              <p className="font-medium text-foreground">{entry.action}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {entry.actorEmail ?? entry.actorRole} - {formatDateTime(entry.occurredAt)}
+                              </p>
+                              <p className="text-sm text-muted-foreground">{entry.details}</p>
+                            </div>
                           </div>
-                          <div className="flex-1 pb-4">
-                            <p className="font-medium text-foreground">{entry.action}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {entry.user} • {entry.timestamp}
-                            </p>
-                            <p className="text-sm text-muted-foreground">{entry.details}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
             </div>
 
-            {/* Decision Panel - Fixed at bottom */}
             <div className="border-t border-border bg-card p-4">
               <Card className="border-border bg-secondary/30">
                 <CardHeader className="py-3">
                   <CardTitle className="text-base text-card-foreground">Decision</CardTitle>
+                  <CardDescription>Reviewer actions are recorded to review_actions and audit_logs.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {/* Approve */}
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button className="gap-2 bg-success text-success-foreground hover:bg-success/90">
-                          <CheckCircle2 className="h-4 w-4" />
-                          Approve
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Approve Application</DialogTitle>
-                          <DialogDescription>
-                            Confirm approval for MH-2024-ABC12
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                          <div className="space-y-2">
-                            <Label>Program Assignment</Label>
-                            <Select>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select program" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="careplus">MassHealth CarePlus</SelectItem>
-                                <SelectItem value="standard">MassHealth Standard</SelectItem>
-                                <SelectItem value="family">Family Assistance</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Notes (Optional)</Label>
-                            <Textarea placeholder="Add any notes..." />
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button variant="outline">Cancel</Button>
-                          <Button className="bg-success text-success-foreground hover:bg-success/90">
-                            Confirm Approval
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-
-                    {/* Deny */}
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" className="gap-2 border-destructive text-destructive hover:bg-destructive/10">
-                          <XCircle className="h-4 w-4" />
-                          Deny
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Deny Application</DialogTitle>
-                          <DialogDescription>
-                            Provide reason for denial
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                          <div className="space-y-2">
-                            <Label>Denial Reason</Label>
-                            <Select>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select reason" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="income">Income Over Limit</SelectItem>
-                                <SelectItem value="residency">Not MA Resident</SelectItem>
-                                <SelectItem value="citizenship">Citizenship Ineligible</SelectItem>
-                                <SelectItem value="other">Other</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Explanation</Label>
-                            <Textarea placeholder="Provide detailed explanation..." />
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button variant="outline">Cancel</Button>
-                          <Button variant="destructive">Confirm Denial</Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-
-                    {/* Request Info */}
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" className="gap-2">
-                          <Send className="h-4 w-4" />
-                          Request Info
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Request Additional Information</DialogTitle>
-                          <DialogDescription>
-                            Select documents or information needed
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                          <div className="space-y-3">
-                            <Label>Required Documents</Label>
-                            {[
-                              "Recent Paystub (within 30 days)",
-                              "Proof of Address",
-                              "Updated Tax Return",
-                              "Birth Certificate",
-                              "Immigration Documents",
-                            ].map((doc, index) => (
-                              <div key={index} className="flex items-center space-x-2">
-                                <Checkbox id={`doc-${index}`} />
-                                <Label htmlFor={`doc-${index}`} className="text-sm font-normal">
-                                  {doc}
-                                </Label>
-                              </div>
-                            ))}
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Additional Notes</Label>
-                            <Textarea placeholder="Explain what's needed..." />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Response Deadline</Label>
-                            <Select>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select deadline" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="7">7 days</SelectItem>
-                                <SelectItem value="14">14 days</SelectItem>
-                                <SelectItem value="30">30 days</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button variant="outline">Cancel</Button>
-                          <Button>Send Request</Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-
-                    {/* Escalate */}
-                    <Button variant="outline" className="gap-2">
-                      <Shield className="h-4 w-4" />
-                      Escalate
-                    </Button>
-                  </div>
+                <CardContent>
+                  <CaseActions
+                    applicationId={caseItem.id}
+                    status={caseItem.status}
+                    defaultProgram={caseItem.estimatedProgram}
+                  />
                 </CardContent>
               </Card>
             </div>
           </Tabs>
-        </div>
+        </section>
       </main>
+
     </div>
   )
 }

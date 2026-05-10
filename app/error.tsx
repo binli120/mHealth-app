@@ -8,6 +8,7 @@
 import { useEffect } from "react"
 import { AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { CUSTOMER_SUPPORT_EMAIL, CUSTOMER_SUPPORT_MAILTO } from "@/lib/support/contact"
 
 interface ErrorPageProps {
   error: Error & { digest?: string }
@@ -39,7 +40,11 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
       <div className="space-y-2">
         <h2 className="text-xl font-semibold">Something went wrong</h2>
         <p className="max-w-sm text-sm text-muted-foreground">
-          An unexpected error occurred. If the problem persists, please contact support.
+          An unexpected error occurred. If the problem persists, email{" "}
+          <a href={CUSTOMER_SUPPORT_MAILTO} className="font-medium text-foreground hover:underline">
+            {CUSTOMER_SUPPORT_EMAIL}
+          </a>
+          .
         </p>
         {error.digest && (
           <p className="font-mono text-xs text-muted-foreground/60">

@@ -22,10 +22,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { MASSHEALTH_PHONE, MASSHEALTH_TTY_DIRECT } from "@/lib/masshealth/constants"
 import { type ApplicationStatus } from "@/lib/application-status"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { toUserFacingError } from "@/lib/errors/user-facing"
+import { CUSTOMER_SUPPORT_EMAIL, CUSTOMER_SUPPORT_MAILTO } from "@/lib/support/contact"
 import { useAppSelector, useAppDispatch } from "@/lib/redux/hooks"
 import { resetProfile, setProfile } from "@/lib/redux/features/user-profile-slice"
 import type { UserProfile } from "@/lib/user-profile/types"
@@ -652,7 +652,7 @@ export default function CustomerDashboardPage() {
             </Card>
             </DashboardWidgetTooltip>
 
-            <DashboardWidgetTooltip content="Find official MassHealth phone and TTY support contact information." side="left">
+            <DashboardWidgetTooltip content="Find HealthCompass support contact information." side="left">
               <Card className="border-border bg-card" data-tour="dashboard-support">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base text-card-foreground">{getMessage(language, "dashboardNeedHelp")}</CardTitle>
@@ -662,8 +662,9 @@ export default function CustomerDashboardPage() {
                   {getMessage(language, "dashboardSupportHours")}
                 </p>
                 <div className="text-sm">
-                  <p className="font-medium text-foreground">{MASSHEALTH_PHONE}</p>
-                  <p className="text-muted-foreground">TTY: {MASSHEALTH_TTY_DIRECT}</p>
+                  <a href={CUSTOMER_SUPPORT_MAILTO} className="font-medium text-foreground hover:underline">
+                    {CUSTOMER_SUPPORT_EMAIL}
+                  </a>
                 </div>
               </CardContent>
             </Card>
