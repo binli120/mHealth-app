@@ -153,7 +153,7 @@ test.describe("Reviewer Case Management", () => {
       await denyButton.click()
       const denyDialog = page.locator('[data-slot="dialog-content"]').last()
       await expect(denyDialog.getByText(/deny application/i)).toBeVisible({ timeout: 8_000 })
-      await expect(denyDialog.getByText(/denial reason/i)).toBeVisible()
+      await expect(denyDialog.getByText(/denial reason/i).first()).toBeVisible()
       await page.keyboard.press("Escape")
       await expect(denyDialog).not.toBeVisible({ timeout: 5_000 })
     }

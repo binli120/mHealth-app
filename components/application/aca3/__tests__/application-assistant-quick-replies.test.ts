@@ -11,6 +11,7 @@ import {
   getNextMissingApplicationQuestion,
   getQuickRepliesForAssistantPrompt,
   hasDocumentUploadPrompt,
+  hasPersistableAssistantDraft,
   recoverImmediateFieldsFromMessages,
   sanitizeAssistantDraftMessages,
 } from "@/components/application/aca3/application-assistant"
@@ -168,6 +169,35 @@ describe("sanitizeAssistantDraftMessages", () => {
     expect(uploadPrompts).toHaveLength(1)
     expect(uploadPrompts[0].id).toBe("d2")
     expect(hasDocumentUploadPrompt(messages)).toBe(true)
+  })
+})
+
+describe("hasPersistableAssistantDraft", () => {
+  it("does not persist a greeting-only assistant transcript", () => {
+    expect(hasPersistableAssistantDraft(
+      {},
+      [{ id: "a1", type: "text", role: "assistant", content: "Let's start your application." }],
+      false,
+      false,
+    )).toBe(false)
+  })
+
+  it("persists once the applicant has answered a question", () => {
+    expect(hasPersistableAssistantDraft(
+      {},
+      [
+        { id: "a1", type: "text", role: "assistant", content: "What is your first name?" },
+        { id: "u1", type: "text", role: "user", content: "Maria" },
+      ],
+      false,
+      false,
+    )).toBe(true)
+  })
+
+  it("persists prefilled fields and section-completion flags", () => {
+    expect(hasPersistableAssistantDraft({ firstName: "Maria" }, [], false, false)).toBe(true)
+    expect(hasPersistableAssistantDraft({}, [], true, false)).toBe(true)
+    expect(hasPersistableAssistantDraft({}, [], false, true)).toBe(true)
   })
 })
 

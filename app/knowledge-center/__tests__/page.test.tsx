@@ -24,7 +24,10 @@ vi.mock("@/components/shared/LanguageSwitcher", () => ({
 }))
 
 vi.mock("next/image", () => ({
-  default: ({ alt = "", ...props }: React.ImgHTMLAttributes<HTMLImageElement>) => (
+  default: ({
+    alt = "",
+    ...props
+  }: React.ImgHTMLAttributes<HTMLImageElement>) => (
     // eslint-disable-next-line @next/next/no-img-element
     <img alt={alt} {...props} />
   ),
@@ -56,5 +59,24 @@ describe("KnowledgeCenterPage", () => {
     await waitFor(() => {
       expect(screen.getByRole("link", { name: /back/i })).toHaveAttribute("href", "/customer/dashboard")
     })
+  })
+
+  it("marks the first visible video thumbnail as eager for LCP", () => {
+    mockGetSafeSupabaseSession.mockResolvedValue({ session: null, error: null })
+
+    render(<KnowledgeCenterPage />)
+
+    const expectedSizes = "(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+    const thumbnails = screen.getAllByRole("img").filter((image) =>
+      image.getAttribute("sizes") === expectedSizes,
+    )
+    const firstThumbnail = thumbnails[0]
+
+    expect(firstThumbnail).toBeDefined()
+    expect(firstThumbnail).toHaveAttribute("loading", "eager")
+    expect(firstThumbnail).toHaveAttribute("sizes", expectedSizes)
+    expect(thumbnails[1]).toHaveAttribute("loading", "eager")
+    expect(thumbnails[2]).toHaveAttribute("loading", "eager")
+    expect(thumbnails[3]).toHaveAttribute("loading", "lazy")
   })
 })

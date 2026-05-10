@@ -8,15 +8,9 @@
  * @author: Bin Lee
  */
 
-export interface CategoryEntry {
-  code: string
-  label: string
-  description: string
-  notice_keywords: string[]
-  evidence_needed: string[]
-  argument_themes: string[]
-  missing_info_questions: string[]
-}
+import type { AppealCategoryEntry } from "@/lib/masshealth/appeal-categories"
+
+export type CategoryEntry = AppealCategoryEntry
 
 export interface MatchedCategory {
   code: string

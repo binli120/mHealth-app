@@ -114,7 +114,7 @@ export default function KnowledgeCenterPage() {
           ) : null}
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {videos.map((video) => {
+            {videos.map((video, index) => {
               const videoUrl = getYouTubeUrlForLanguage(video, selectedLanguage)
               return (
                 <Card key={video.id} className="overflow-hidden border-border bg-card">
@@ -123,6 +123,8 @@ export default function KnowledgeCenterPage() {
                     alt={video.title}
                     width={480}
                     height={270}
+                    loading={index < 3 ? "eager" : "lazy"}
+                    sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
                     className="h-44 w-full object-cover"
                   />
                   <CardHeader className="pb-2">
