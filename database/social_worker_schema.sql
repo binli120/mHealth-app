@@ -47,6 +47,8 @@ CREATE TABLE IF NOT EXISTS public.social_worker_profiles (
   status TEXT NOT NULL DEFAULT 'pending'
     CHECK (status IN ('pending', 'approved', 'rejected')),
   rejection_note TEXT,
+  -- Availability flag: when false the SW is hidden from patients
+  accepting_patients BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   approved_at TIMESTAMPTZ,
   approved_by UUID REFERENCES public.users(id)
@@ -69,6 +71,7 @@ CREATE INDEX IF NOT EXISTS idx_sw_profiles_user ON public.social_worker_profiles
 CREATE INDEX IF NOT EXISTS idx_sw_profiles_company ON public.social_worker_profiles(company_id);
 CREATE INDEX IF NOT EXISTS idx_sw_profiles_status ON public.social_worker_profiles(status);
 CREATE INDEX IF NOT EXISTS idx_sw_profiles_name ON public.social_worker_profiles(last_name, first_name);
+CREATE INDEX IF NOT EXISTS idx_sw_profiles_accepting ON public.social_worker_profiles(accepting_patients) WHERE accepting_patients = true;
 CREATE INDEX IF NOT EXISTS idx_sw_access_patient ON public.patient_social_worker_access(patient_user_id);
 CREATE INDEX IF NOT EXISTS idx_sw_access_sw ON public.patient_social_worker_access(social_worker_user_id);
 CREATE INDEX IF NOT EXISTS idx_sw_access_active ON public.patient_social_worker_access(is_active);
@@ -101,6 +104,12 @@ CREATE POLICY sw_profiles_update
   ON public.social_worker_profiles FOR UPDATE TO authenticated
   USING (public.is_staff())
   WITH CHECK (public.is_staff());
+
+-- SW can toggle their own accepting_patients flag
+CREATE POLICY sw_profiles_update_self_accepting
+  ON public.social_worker_profiles FOR UPDATE TO authenticated
+  USING (user_id = public.request_user_id())
+  WITH CHECK (user_id = public.request_user_id());
 
 -- Patient SW access: patient or SW can read; patient inserts/deletes own records
 CREATE POLICY sw_access_select

@@ -57,6 +57,7 @@ export interface SwProfile {
   job_title: string | null
   status: "pending" | "approved" | "rejected"
   rejection_note: string | null
+  accepting_patients: boolean
 }
 
 export async function getSwProfile(userId: string): Promise<SwProfile | null> {
@@ -66,7 +67,8 @@ export async function getSwProfile(userId: string): Promise<SwProfile | null> {
       SELECT
         swp.id, swp.user_id, swp.company_id, c.name AS company_name,
         swp.first_name, swp.last_name, swp.phone, swp.bio, swp.avatar_url,
-        swp.license_number, swp.job_title, swp.status, swp.rejection_note
+        swp.license_number, swp.job_title, swp.status, swp.rejection_note,
+        swp.accepting_patients
       FROM public.social_worker_profiles swp
       JOIN public.companies c ON c.id = swp.company_id
       WHERE swp.user_id = $1::uuid
@@ -259,6 +261,7 @@ export async function searchApprovedSocialWorkers(query: string): Promise<SwSear
         JOIN public.social_worker_profiles swp ON swp.user_id = u.id
         JOIN public.companies c ON c.id = swp.company_id
         WHERE swp.status = 'approved'
+          AND swp.accepting_patients = true
         ORDER BY c.name, swp.last_name NULLS LAST
         LIMIT 20
       `,
@@ -279,6 +282,7 @@ export async function searchApprovedSocialWorkers(query: string): Promise<SwSear
       JOIN public.social_worker_profiles swp ON swp.user_id = u.id
       JOIN public.companies c ON c.id = swp.company_id
       WHERE swp.status = 'approved'
+        AND swp.accepting_patients = true
         AND (
           u.email ILIKE $1
           OR swp.first_name ILIKE $1
@@ -324,6 +328,21 @@ export async function revokeSocialWorkerAccess(
         AND social_worker_user_id = $2::uuid
     `,
     [patientUserId, swUserId],
+  )
+}
+
+export async function setSwAcceptingPatients(
+  userId: string,
+  accepting: boolean,
+): Promise<void> {
+  const pool = getDbPool()
+  await pool.query(
+    `
+      UPDATE public.social_worker_profiles
+      SET accepting_patients = $2
+      WHERE user_id = $1::uuid
+    `,
+    [userId, accepting],
   )
 }
 

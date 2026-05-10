@@ -77,14 +77,19 @@ export function SwFinderPanel({ onOpenChat }: SwFinderPanelProps) {
   const [selectedSw, setSelectedSw] = useState<SwResult | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // ── Load existing requests on mount ────────────────────────────────────────
+  // ── Load existing requests + default SW list on mount ─────────────────────
 
   useEffect(() => {
     void (async () => {
       try {
-        const res = await authenticatedFetch("/api/patient/sw-request")
-        const data = await res.json()
-        if (data.ok) setRequests(data.requests ?? [])
+        const [reqRes, swRes] = await Promise.all([
+          authenticatedFetch("/api/patient/sw-request"),
+          authenticatedFetch("/api/social-worker/search?q="),
+        ])
+        const reqData = await reqRes.json()
+        if (reqData.ok) setRequests(reqData.requests ?? [])
+        const swData = await swRes.json()
+        if (swData.results) setResults(swData.results as SwResult[])
       } catch {
         // non-critical
       }
@@ -260,9 +265,14 @@ export function SwFinderPanel({ onOpenChat }: SwFinderPanelProps) {
         </div>
       </div>
 
-      {/* Results — only shown when user has typed a search string ─────────── */}
-      {query.trim().length > 0 && (
+      {/* Results — accepting SWs shown by default; filtered when searching ─── */}
+      {(results.length > 0 || searching || query.trim().length > 0) && (
         <ScrollArea className="min-h-0 flex-1 px-4 pb-4">
+          {!searching && (
+            <p className="pt-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              {query.trim().length > 0 ? "Search Results" : "Accepting New Patients"}
+            </p>
+          )}
           {searching ? (
             <div className="flex items-center justify-center py-8 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" />
