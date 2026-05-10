@@ -5,7 +5,7 @@
 
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import {
   Scale,
@@ -55,7 +55,7 @@ import {
   ACCEPTED_DOCUMENT_MIME_TYPES,
   MAX_DOCUMENT_UPLOAD_BYTES,
 } from "@/lib/appeals/constants"
-import { FALLBACK_APPEAL_CATEGORIES } from "@/lib/masshealth/appeal-categories"
+import { FALLBACK_APPEAL_CATEGORIES, type AppealCategoryEntry } from "@/lib/masshealth/appeal-categories"
 import {
   buildAppealDraftFilename,
   buildAppealDraftPrefill,
@@ -65,11 +65,11 @@ import {
 import type { UserProfile } from "@/lib/user-profile/types"
 import { LOGIN_PATH, PDF_MIME_TYPE, THIS_PATH } from "./page.constants"
 import type {
-  CategoryEntry,
   DraftResult,
   PageState,
   PrefilledAppealFields,
   ResearchResult,
+  TrustTier,
 } from "./page.types"
 import {
   AuthNeededError,
@@ -82,13 +82,13 @@ import {
 const ACCEPTED_MIME_STRING = [...ACCEPTED_DOCUMENT_MIME_TYPES].join(",")
 
 interface CategoriesPayload {
-  categories?: CategoryEntry[]
+  categories?: AppealCategoryEntry[]
   degraded?: boolean
   warning?: string
 }
 
 function readCategoriesPayload(payload: unknown): CategoriesPayload {
-  if (Array.isArray(payload)) return { categories: payload as CategoryEntry[], degraded: false }
+  if (Array.isArray(payload)) return { categories: payload as AppealCategoryEntry[], degraded: false }
   if (payload && typeof payload === "object") {
     const body = payload as CategoriesPayload
     return {
@@ -98,6 +98,28 @@ function readCategoriesPayload(payload: unknown): CategoriesPayload {
     }
   }
   return { categories: [] }
+}
+
+// ─── Page-level sub-components ────────────────────────────────────────────────
+
+function TrustTierBadge({ tier }: { tier: TrustTier }) {
+  return (
+    <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${getTrustTierBadgeClass(tier)}`}>
+      {tier.replace("_", " ")}
+    </span>
+  )
+}
+
+function FileUploadTrigger({ htmlFor, label }: { htmlFor: string; label: string }) {
+  return (
+    <Label
+      htmlFor={htmlFor}
+      className="flex cursor-pointer items-center gap-2 rounded-lg border-2 border-dashed border-gray-200 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+    >
+      <Paperclip className="h-4 w-4 shrink-0" />
+      {label}
+    </Label>
+  )
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -113,7 +135,7 @@ export default function MassHealthAppealsPage() {
   })
 
   // Step 1 — research form
-  const [categories, setCategories] = useState<CategoryEntry[]>([])
+  const [categories, setCategories] = useState<AppealCategoryEntry[]>([])
   const [categoriesDegradedMessage, setCategoriesDegradedMessage] = useState<string | null>(null)
   const [denialText, setDenialText] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("")
@@ -136,8 +158,8 @@ export default function MassHealthAppealsPage() {
   const [requestedRelief, setRequestedRelief] = useState("")
   const [denialLetterFile, setDenialLetterFile] = useState<File | null>(null)
   const [denialLetterError, setDenialLetterError] = useState<string | null>(null)
-  const [facts, setFacts] = useState<Array<{ key: string; value: string }>>([
-    { key: "", value: "" },
+  const [facts, setFacts] = useState<Array<{ id: string; key: string; value: string }>>([
+    { id: crypto.randomUUID(), key: "", value: "" },
   ])
 
   // Step 3 — draft result
@@ -229,9 +251,22 @@ export default function MassHealthAppealsPage() {
     })()
   }, [goToLogin])
 
+  // ── Auth helpers ─────────────────────────────────────────────────────────
+
+  const redirectIfUnauthorized = useCallback((res: Response): boolean => {
+    if (res.status === 401) { goToLogin(); return true }
+    return false
+  }, [goToLogin])
+
+  const handleAppealError = useCallback((e: unknown, fallback: string): void => {
+    if (e instanceof AuthNeededError) { goToLogin(); return }
+    setErrorMessage(toUserFacingError(e, { fallback, context: "ai" }))
+    setPageState("error")
+  }, [goToLogin])
+
   // ── Step 1 → research ────────────────────────────────────────────────────
 
-  async function handleResearch() {
+  const handleResearch = useCallback(async () => {
     if (denialText.trim().length < 20) return
     setPageState("researching")
     setErrorMessage(null)
@@ -246,7 +281,7 @@ export default function MassHealthAppealsPage() {
         }),
       })
 
-      if (res.status === 401) { goToLogin(); return }
+      if (redirectIfUnauthorized(res)) return
 
       if (!res.ok) {
         const err = (await res.json().catch(() => ({}))) as { detail?: string }
@@ -256,14 +291,9 @@ export default function MassHealthAppealsPage() {
       setResearchResult((await res.json()) as ResearchResult)
       setPageState("research_results")
     } catch (e) {
-      if (e instanceof AuthNeededError) { goToLogin(); return }
-      setErrorMessage(toUserFacingError(e, {
-        fallback: "Failed to analyze denial notice.",
-        context: "ai",
-      }))
-      setPageState("error")
+      handleAppealError(e, "Failed to analyze denial notice.")
     }
-  }
+  }, [denialText, selectedCategory, redirectIfUnauthorized, handleAppealError])
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -273,7 +303,7 @@ export default function MassHealthAppealsPage() {
 
   // ── Step 2 → draft ───────────────────────────────────────────────────────
 
-  async function handleDraft() {
+  const handleDraft = useCallback(async () => {
     if (!researchResult) return
     setPageState("drafting")
     setErrorMessage(null)
@@ -286,23 +316,23 @@ export default function MassHealthAppealsPage() {
       factsObj["Contact information"] = contactInformation.trim()
     }
 
-    const formData = new FormData()
-    if (denialLetterFile) formData.append("file", denialLetterFile, denialLetterFile.name)
-    if (denialText.trim()) formData.append("denial_notice_text", denialText.trim())
-    if (applicantName.trim()) formData.append("applicant_name", applicantName.trim())
-    if (applicantId.trim()) formData.append("applicant_id", applicantId.trim())
-    if (householdSummary.trim()) formData.append("household_summary", householdSummary.trim())
-    if (requestedRelief.trim()) formData.append("requested_relief", requestedRelief.trim())
-    if (Object.keys(factsObj).length > 0) formData.append("facts", JSON.stringify(factsObj))
-    formData.append("top_k", "5")
+    const payload = new FormData()
+    if (denialLetterFile) payload.append("file", denialLetterFile, denialLetterFile.name)
+    if (denialText.trim()) payload.append("denial_notice_text", denialText.trim())
+    if (applicantName.trim()) payload.append("applicant_name", applicantName.trim())
+    if (applicantId.trim()) payload.append("applicant_id", applicantId.trim())
+    if (householdSummary.trim()) payload.append("household_summary", householdSummary.trim())
+    if (requestedRelief.trim()) payload.append("requested_relief", requestedRelief.trim())
+    if (Object.keys(factsObj).length > 0) payload.append("facts", JSON.stringify(factsObj))
+    payload.append("top_k", "5")
 
     try {
       const res = await masshealthFetch("/api/masshealth/appeals/draft", {
         method: "POST",
-        body: formData,
+        body: payload,
       })
 
-      if (res.status === 401) { goToLogin(); return }
+      if (redirectIfUnauthorized(res)) return
 
       if (!res.ok) {
         const err = (await res.json().catch(() => ({}))) as {
@@ -317,14 +347,9 @@ export default function MassHealthAppealsPage() {
       setDraftResult(data)
       setPageState("draft_result")
     } catch (e) {
-      if (e instanceof AuthNeededError) { goToLogin(); return }
-      setErrorMessage(toUserFacingError(e, {
-        fallback: "Failed to generate appeal letter.",
-        context: "ai",
-      }))
-      setPageState("error")
+      handleAppealError(e, "Failed to generate appeal letter.")
     }
-  }
+  }, [researchResult, facts, contactInformation, denialLetterFile, denialText, applicantName, applicantId, householdSummary, requestedRelief, redirectIfUnauthorized, handleAppealError])
 
   // ── Utilities ────────────────────────────────────────────────────────────
 
@@ -343,7 +368,7 @@ export default function MassHealthAppealsPage() {
     setRequestedRelief("")
     setDenialLetterFile(null)
     setDenialLetterError(null)
-    setFacts([{ key: "", value: "" }])
+    setFacts([{ id: crypto.randomUUID(), key: "", value: "" }])
     setCopied(false)
   }
 
@@ -371,7 +396,7 @@ export default function MassHealthAppealsPage() {
   }
 
   function addFact() {
-    setFacts((prev) => [...prev, { key: "", value: "" }])
+    setFacts((prev) => [...prev, { id: crypto.randomUUID(), key: "", value: "" }])
   }
 
   function updateFact(index: number, field: "key" | "value", value: string) {
@@ -411,12 +436,12 @@ export default function MassHealthAppealsPage() {
     setDenialLetterError(null)
   }
 
-  const resolvedDraftText = draftResult
-    ? fillAppealDraftPlaceholders(draftResult.letter_text, {
-      applicantName,
-      contactInformation,
-    })
-    : ""
+  const resolvedDraftText = useMemo(
+    () => draftResult
+      ? fillAppealDraftPlaceholders(draftResult.letter_text, { applicantName, contactInformation })
+      : "",
+    [draftResult, applicantName, contactInformation],
+  )
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -480,13 +505,7 @@ export default function MassHealthAppealsPage() {
                       id="denial-notice-upload"
                       onChange={handleFileChange}
                     />
-                    <Label
-                      htmlFor="denial-notice-upload"
-                      className="flex cursor-pointer items-center gap-2 rounded-lg border-2 border-dashed border-gray-200 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-                    >
-                      <Paperclip className="h-4 w-4 shrink-0" />
-                      Upload denial notice PDF
-                    </Label>
+                    <FileUploadTrigger htmlFor="denial-notice-upload" label="Upload denial notice PDF" />
                   </div>
                 )}
 
@@ -726,9 +745,7 @@ export default function MassHealthAppealsPage() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="text-sm font-medium">{src.title}</span>
-                          <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${getTrustTierBadgeClass(src.trust_tier)}`}>
-                            {src.trust_tier.replace("_", " ")}
-                          </span>
+                          <TrustTierBadge tier={src.trust_tier} />
                         </div>
                         {src.url && (
                           <a
@@ -860,13 +877,7 @@ export default function MassHealthAppealsPage() {
                         className="sr-only"
                         onChange={handleDenialLetterFileChange}
                       />
-                      <Label
-                        htmlFor="denial-letter-pdf"
-                        className="flex cursor-pointer items-center gap-2 rounded-lg border-2 border-dashed border-gray-200 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-                      >
-                        <Paperclip className="h-4 w-4 shrink-0" />
-                        Attach denial letter PDF
-                      </Label>
+                      <FileUploadTrigger htmlFor="denial-letter-pdf" label="Attach denial letter PDF" />
                     </div>
                   )}
 
@@ -899,7 +910,7 @@ export default function MassHealthAppealsPage() {
                     Specific numbers the letter should mention — income, savings, etc.
                   </p>
                   {facts.map((fact, i) => (
-                    <div key={i} className="flex items-center gap-2">
+                    <div key={fact.id} className="flex items-center gap-2">
                       <Input
                         placeholder="Monthly income"
                         value={fact.key}
@@ -1020,9 +1031,7 @@ export default function MassHealthAppealsPage() {
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-medium">{cit.title}</span>
-                          <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${getTrustTierBadgeClass(cit.trust_tier)}`}>
-                            {cit.trust_tier.replace("_", " ")}
-                          </span>
+                          <TrustTierBadge tier={cit.trust_tier} />
                         </div>
                         <p className="mt-0.5 text-xs text-muted-foreground">
                           {cit.excerpt}

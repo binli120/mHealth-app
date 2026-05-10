@@ -127,7 +127,7 @@ test.describe("Authenticated UX regressions", () => {
 
     await expect(page.getByRole("heading", { name: /new application/i })).toBeVisible({ timeout: 15_000 })
     await expect(page.getByRole("tab", { name: /compass/i })).toBeVisible()
-    await page.waitForTimeout(1_500)
+    await page.waitForLoadState("networkidle")
 
     expect(draftRequests.filter((entry) => /^(GET|PUT) /.test(entry))).toEqual([])
   })

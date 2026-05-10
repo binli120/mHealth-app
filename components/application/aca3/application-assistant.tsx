@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import {
   createApplication,
+  initialApplicationFormData,
   setActiveApplication,
   patchNewApplicationForm,
 
@@ -734,6 +735,72 @@ export function hasPersistableAssistantDraft(
   )
 }
 
+async function validateAndPatchAddress(
+  flatFields: Partial<ApplicationFormData>,
+  currentFormData: ApplicationFormData,
+  applyFormPatch: (patch: Partial<ApplicationFormData>) => void,
+  appendMessage: (msg: AssistantMessage) => void,
+): Promise<void> {
+  const streetAddress = (flatFields.address ?? currentFormData.address ?? "").trim()
+  const city = (flatFields.city ?? currentFormData.city ?? "").trim()
+  const state = (flatFields.state ?? currentFormData.state ?? "MA").trim()
+  const zipCode = (flatFields.zip ?? currentFormData.zip ?? "").trim()
+
+  if (!streetAddress || !city) return
+
+  try {
+    const addrResp = await authenticatedFetch("/api/address/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ streetAddress, city, state: state || "MA", zipCode }),
+    })
+
+    if (!addrResp.ok) return
+
+    const addrData = await addrResp.json() as {
+      ok: boolean
+      valid: boolean
+      message: string
+      suggestion?: {
+        streetAddress: string
+        city: string
+        state: string
+        zipCode: string
+        county: string
+        displayName: string
+      }
+    }
+
+    if (addrData.ok && addrData.valid && addrData.suggestion) {
+      const s = addrData.suggestion
+      applyFormPatch({
+        address: s.streetAddress || streetAddress,
+        city: s.city || city,
+        state: s.state || state,
+        zip: s.zipCode || zipCode,
+        ...(s.county ? { county: s.county } : {}),
+      })
+      appendMessage({
+        id: createUuid(),
+        type: "text",
+        role: "assistant",
+        content: `✅ Address verified: **${s.displayName}**${s.county ? ` (${s.county})` : ""}`,
+      })
+    } else if (addrData.ok && !addrData.valid) {
+      appendMessage({
+        id: createUuid(),
+        type: "text",
+        role: "assistant",
+        content: addrData.suggestion
+          ? `⚠️ I couldn't fully verify that address. Did you mean **${addrData.suggestion.displayName}**? If so, just confirm and I'll update it.`
+          : `⚠️ I couldn't verify that address. Could you double-check the street, city, and ZIP?`,
+      })
+    }
+  } catch {
+    // Address validation is best-effort — silently skip on error
+  }
+}
+
 export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillFormData }: ApplicationAssistantProps) {
   const dispatch = useAppDispatch()
   const language = useAppSelector((state) => state.app.language) as SupportedLanguage
@@ -765,7 +832,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
 
   // Merged view: saved draft baseline + in-session updates
   const formData = useMemo<ApplicationFormData>(
-    () => ({ ...(savedFormData ?? {}), ...localFields } as ApplicationFormData),
+    () => ({ ...initialApplicationFormData, ...(savedFormData ?? {}), ...localFields }),
     [savedFormData, localFields],
   )
   const formDataRef = useRef<ApplicationFormData>(formData)
@@ -1018,11 +1085,6 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
 
   // ── Draft save ────────────────────────────────────────────────────────────
 
-  const scheduleDraftSave = useCallback(() => {
-    // Persistence is handled by the formData/messages effect below so every
-    // extracted field, edit, and chat turn is saved consistently.
-  }, [])
-
   useEffect(() => {
     if (!isAssistantDraftHydrated) return
     if (!hasPersistableAssistantDraft(localFields, messages, noHouseholdMembers, noIncome)) return
@@ -1058,8 +1120,22 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
   // ── Voice input ───────────────────────────────────────────────────────────
 
   const startListening = useCallback(() => {
-    const w = typeof window !== "undefined" ? (window as any) : undefined
-    const SpeechRecognitionAPI = w?.SpeechRecognition ?? w?.webkitSpeechRecognition
+    type SpeechRecognitionInstance = {
+      lang: string
+      continuous: boolean
+      interimResults: boolean
+      start(): void
+      stop(): void
+      onresult: ((event: { resultIndex: number; results: { [key: number]: { [key: number]: { transcript: string } } } }) => void) | null
+      onend: (() => void) | null
+      onerror: (() => void) | null
+    }
+    type SpeechRecognitionCtor = new () => SpeechRecognitionInstance
+    const win = window as Window & {
+      SpeechRecognition?: SpeechRecognitionCtor
+      webkitSpeechRecognition?: SpeechRecognitionCtor
+    }
+    const SpeechRecognitionAPI = win.SpeechRecognition ?? win.webkitSpeechRecognition
     if (!SpeechRecognitionAPI) return
 
     const recognition = new SpeechRecognitionAPI()
@@ -1314,81 +1390,15 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
           })
           dispatch(setActiveApplication(sessionApplicationId))
 
-          // ── Address validation ────────────────────────────────────────────
-          // Call /api/address/validate whenever the LLM extracted address fields.
-          // Merge with whatever is already stored so we always send a full address.
-          const addressChanged = flatFields.address || flatFields.city || flatFields.zip
-          if (addressChanged) {
-            const streetAddress = (flatFields.address ?? formDataRef.current.address ?? "").trim()
-            const city = (flatFields.city ?? formDataRef.current.city ?? "").trim()
-            const state = (flatFields.state ?? formDataRef.current.state ?? "MA").trim()
-            const zipCode = (flatFields.zip ?? formDataRef.current.zip ?? "").trim()
-
-            if (streetAddress && city) {
-              try {
-                const addrResp = await authenticatedFetch("/api/address/validate", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ streetAddress, city, state: state || "MA", zipCode }),
-                })
-
-                if (addrResp.ok) {
-                  const addrData = await addrResp.json() as {
-                    ok: boolean
-                    valid: boolean
-                    message: string
-                    suggestion?: {
-                      streetAddress: string
-                      city: string
-                      state: string
-                      zipCode: string
-                      county: string
-                      displayName: string
-                    }
-                  }
-
-                  if (addrData.ok && addrData.valid && addrData.suggestion) {
-                    // Apply the geocoder-normalised values (county, zip corrections, etc.)
-                    const s = addrData.suggestion
-                    const addrPatch = {
-                      address: s.streetAddress || streetAddress,
-                      city: s.city || city,
-                      state: s.state || state,
-                      zip: s.zipCode || zipCode,
-                      ...(s.county ? { county: s.county } : {}),
-                    }
-                    applyFormPatch(addrPatch)
-
-                    setMessages((prev) => [
-                      ...prev,
-                      {
-                        id: createUuid(),
-                        type: "text" as const,
-                        role: "assistant" as const,
-                        content: `✅ Address verified: **${s.displayName}**${s.county ? ` (${s.county})` : ""}`,
-                      },
-                    ])
-                  } else if (addrData.ok && !addrData.valid) {
-                    setMessages((prev) => [
-                      ...prev,
-                      {
-                        id: createUuid(),
-                        type: "text" as const,
-                        role: "assistant" as const,
-                        content: addrData.suggestion
-                          ? `⚠️ I couldn't fully verify that address. Did you mean **${addrData.suggestion.displayName}**? If so, just confirm and I'll update it.`
-                          : `⚠️ I couldn't verify that address. Could you double-check the street, city, and ZIP?`,
-                      },
-                    ])
-                  }
-                }
-              } catch {
-                // Address validation is best-effort — silently skip on error
-              }
-            }
+          if (flatFields.address || flatFields.city || flatFields.zip) {
+            await validateAndPatchAddress(
+              flatFields,
+              formDataRef.current,
+              applyFormPatch,
+              (msg) => setMessages((prev) => [...prev, msg]),
+            )
           }
 
-          scheduleDraftSave()
         }
 
         if (data.noHouseholdMembers) setNoHouseholdMembers(true)
@@ -1410,7 +1420,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
         setIsLoading(false)
       }
     },
-    [applyFormPatch, dispatch, input, isLoading, messages, language, scheduleDraftSave, sessionApplicationId, inputFieldType, profileFillMode, userProfile, noHouseholdMembers, noIncome, lastAssistantContent],
+    [applyFormPatch, dispatch, input, isLoading, messages, language, sessionApplicationId, inputFieldType, profileFillMode, userProfile, noHouseholdMembers, noIncome, lastAssistantContent],
   )
 
   const handleKeyDown = useCallback(
@@ -1499,7 +1509,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
           </div>
           {/* Language selector */}
           <div className="flex items-center gap-1">
-            {SUPPORTED_LANGUAGES.map(({ code, label: _label }) => (
+            {SUPPORTED_LANGUAGES.map(({ code }) => (
               <button
                 key={code}
                 onClick={() => dispatch(setLanguage(code))}

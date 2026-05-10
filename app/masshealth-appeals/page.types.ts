@@ -8,10 +8,6 @@
  * @author: Bin Lee
  */
 
-import type { AppealCategoryEntry } from "@/lib/masshealth/appeal-categories"
-
-export type CategoryEntry = AppealCategoryEntry
-
 export interface MatchedCategory {
   code: string
   label: string
@@ -45,7 +41,7 @@ export interface ResearchResult {
 export interface DraftCitation {
   source_id: string
   title: string
-  trust_tier: string
+  trust_tier: TrustTier
   excerpt: string
 }
 
@@ -54,7 +50,7 @@ export interface DraftResult {
   letter_text: string
   citations: DraftCitation[]
   model_used: string
-  error: string
+  error?: string | null
 }
 
 export type PageState =
