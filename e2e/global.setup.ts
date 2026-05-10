@@ -127,7 +127,7 @@ async function loginAndSaveState(
     await page.fill("#email",    user.email)
     await page.fill("#password", user.password)
     await page.click('button[type="submit"]')
-    await page.waitForURL(/\/(customer\/dashboard|admin|social-worker\/dashboard)/, { timeout: 20_000 })
+    await page.waitForURL(/\/(customer\/dashboard|admin|social-worker\/dashboard|reviewer\/dashboard)/, { timeout: 20_000 })
     await page.context().storageState({ path: filePath })
     console.log(`[setup] ✅ Auth state saved for ${user.email} → ${path.basename(filePath)}`)
     return true

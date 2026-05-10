@@ -19,10 +19,10 @@ import {
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { VISION_UPLOAD_ACCEPT, VISION_UPLOAD_FORMAT_LABEL } from "@/lib/uploads/accepted-types"
 import type { ParseApplicationErrorResponse, ParseApplicationResponse } from "@/app/api/documents/parse-application/route"
 import type { ApplicationFormData } from "@/lib/redux/features/application-slice"
 
-const ACCEPTED_TYPES = "application/pdf,image/jpeg,image/png,image/webp,image/heic,image/tiff"
 const MAX_BYTES = 10 * 1024 * 1024 // 10 MB
 const PREFILL_KEY_PREFIX = "form-doc-prefill-"
 
@@ -145,7 +145,7 @@ export function UploadToApplicationDialog({ children }: UploadToApplicationDialo
           <input
             ref={fileInputRef}
             type="file"
-            accept={ACCEPTED_TYPES}
+            accept={VISION_UPLOAD_ACCEPT}
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0]
@@ -176,7 +176,7 @@ export function UploadToApplicationDialog({ children }: UploadToApplicationDialo
                 Drop your file here, or click to browse
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                PDF, JPG, PNG, WebP, HEIC — max 10 MB
+                {VISION_UPLOAD_FORMAT_LABEL} - max 10 MB
               </p>
             </div>
           )}

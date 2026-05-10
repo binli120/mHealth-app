@@ -119,20 +119,37 @@ export class ApplicationPage {
       data: Record<string, unknown>
     },
   ) {
+    const wizardState = {
+      currentStep: payload.currentStep,
+      completedSteps: payload.completedSteps,
+      tabByStep: { 4: 0, 5: 0, 6: 0, 7: 0 },
+      errors: {},
+      dirty: false,
+      submitted: false,
+      persistedAt: new Date().toISOString(),
+      data: payload.data,
+    }
     const result = await this.authenticatedJsonFetch("PUT", `/api/applications/${applicationId}/draft`, {
       applicationType: "aca3",
-      wizardState: {
-        currentStep: payload.currentStep,
-        completedSteps: payload.completedSteps,
-        tabByStep: { 4: 0, 5: 0, 6: 0, 7: 0 },
-        errors: {},
-        dirty: false,
-        submitted: false,
-        persistedAt: new Date().toISOString(),
-        data: payload.data,
-      },
+      wizardState,
     })
     expect(result.ok, JSON.stringify(result.body)).toBeTruthy()
+
+    await this.page.evaluate(
+      ({ cacheKey, state }) => {
+        window.localStorage.setItem(
+          cacheKey,
+          JSON.stringify({
+            ...state,
+            persistedAt: new Date().toISOString(),
+          }),
+        )
+      },
+      {
+        cacheKey: `${WIZARD_CACHE_KEY_PREFIX}:${applicationId}`,
+        state: wizardState,
+      },
+    )
   }
 
   // Navigation

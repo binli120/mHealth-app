@@ -17,10 +17,12 @@ import { Label } from "@/components/ui/label"
 import { getSafeAuthNextPath, resolvePostAuthRedirect } from "@/lib/auth/navigation"
 import type { DevAutoConfirmResponse, DevRegisterResponse } from "@/lib/auth/types"
 import { getSupabaseClient } from "@/lib/supabase/client"
+import { clearSessionCookie, syncSessionCookie } from "@/lib/supabase/session-cookie"
 import { isLocalAuthHelperEnabled, normalizeAuthEmail } from "@/lib/auth/local-auth"
 import { toUserFacingError } from "@/lib/errors/user-facing"
 import { Eye, EyeOff, ArrowLeft, KeyRound } from "lucide-react"
 import { ShieldHeartIcon } from "@/lib/icons"
+import { CUSTOMER_SUPPORT_EMAIL, CUSTOMER_SUPPORT_MAILTO } from "@/lib/support/contact"
 
 const REMEMBER_EMAIL_STORAGE_KEY = "healthcompass.rememberedEmail"
 
@@ -96,6 +98,7 @@ function LoginPageContent() {
     try {
       const supabase = getSupabaseClient()
       await supabase.auth.signOut({ scope: "local" })
+      await clearSessionCookie()
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -182,6 +185,7 @@ function LoginPageContent() {
       // localStorage still holds a refresh token from a previous session that
       // is no longer valid server-side (e.g. after a DB reset or long inactivity).
       await supabase.auth.signOut({ scope: "local" })
+      await clearSessionCookie()
 
       const tryDevRepairAndSignIn = async (params: { email: string; password: string }) => {
         if (!localAuthHelperEnabled) {
@@ -222,7 +226,11 @@ function LoginPageContent() {
           }
         }
 
-        return { ok: true as const, accessToken: retry.data.session?.access_token ?? "" }
+        return {
+          ok: true as const,
+          accessToken: retry.data.session?.access_token ?? "",
+          session: retry.data.session,
+        }
       }
 
       const signIn = await supabase.auth.signInWithPassword({
@@ -250,6 +258,7 @@ function LoginPageContent() {
 
             if (!retry.error) {
               saveRememberedEmail(shouldRememberEmail, normalizedEmail)
+              await syncSessionCookie(retry.data.session)
               router.push(await resolvePostAuthRedirect(nextPath, retry.data.session?.access_token ?? ""))
               router.refresh()
               return
@@ -271,6 +280,7 @@ function LoginPageContent() {
 
           if (repaired.ok) {
             saveRememberedEmail(shouldRememberEmail, normalizedEmail)
+            await syncSessionCookie(repaired.session)
             router.push(await resolvePostAuthRedirect(nextPath, repaired.accessToken))
             router.refresh()
             return
@@ -295,6 +305,7 @@ function LoginPageContent() {
       }
 
       saveRememberedEmail(shouldRememberEmail, normalizedEmail)
+      await syncSessionCookie(signIn.data.session)
       router.push(await resolvePostAuthRedirect(nextPath, signIn.data.session?.access_token ?? ""))
       router.refresh()
     } catch (error) {
@@ -475,7 +486,10 @@ function LoginPageContent() {
 
           {/* Help Text */}
           <p className="mt-6 text-center text-xs text-muted-foreground">
-            Need help? Call <span className="font-medium text-foreground">1-800-841-2900</span>
+            Need help? Email{" "}
+            <a href={CUSTOMER_SUPPORT_MAILTO} className="font-medium text-foreground hover:underline">
+              {CUSTOMER_SUPPORT_EMAIL}
+            </a>
           </p>
         </div>
       </main>

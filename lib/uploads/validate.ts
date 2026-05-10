@@ -11,6 +11,8 @@
  * @email: blee@healthcompass.cloud
  */
 
+import { VISION_UPLOAD_FORMAT_LABEL, VISION_UPLOAD_MIME_TYPES } from "./accepted-types"
+
 // ── Category definitions ──────────────────────────────────────────────────────
 
 export type UploadCategory =
@@ -44,8 +46,8 @@ const CATEGORY_CONFIG: Record<UploadCategory, CategoryConfig> = {
   },
   vision: {
     maxBytes: 10 * MB,
-    allowed: new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]),
-    label: "JPEG, PNG, WebP, or PDF",
+    allowed: new Set(VISION_UPLOAD_MIME_TYPES),
+    label: VISION_UPLOAD_FORMAT_LABEL,
   },
   pdf: {
     maxBytes: 10 * MB,

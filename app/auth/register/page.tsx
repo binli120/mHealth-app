@@ -17,6 +17,7 @@ import { getSupabaseClient } from "@/lib/supabase/client"
 import { isLocalAuthHelperEnabled, normalizeAuthEmail } from "@/lib/auth/local-auth"
 import { toUserFacingError } from "@/lib/errors/user-facing"
 import { formatPhoneNumber } from "@/lib/utils/input-format"
+import { CUSTOMER_SUPPORT_EMAIL, CUSTOMER_SUPPORT_MAILTO } from "@/lib/support/contact"
 import {
   Eye, EyeOff, ArrowLeft, CheckCircle2,
   UserRound, UserCheck, Search, Building2, Loader2,
@@ -688,7 +689,10 @@ function RegisterPageContent() {
           )}
 
           <p className="mt-6 text-center text-xs text-muted-foreground">
-            Need help? Call <span className="font-medium text-foreground">1-800-841-2900</span>
+            Need help? Email{" "}
+            <a href={CUSTOMER_SUPPORT_MAILTO} className="font-medium text-foreground hover:underline">
+              {CUSTOMER_SUPPORT_EMAIL}
+            </a>
           </p>
         </div>
       </main>

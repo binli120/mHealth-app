@@ -710,15 +710,13 @@ function readAssistantDraftState(raw: unknown): AssistantDraftState | null {
   }
 }
 
-export function ApplicationAssistant({ applicationId, prefillFormData, onSwitchToWizard }: ApplicationAssistantProps) {
+export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillFormData }: ApplicationAssistantProps) {
   const dispatch = useAppDispatch()
   const language = useAppSelector((state) => state.app.language) as SupportedLanguage
   const userProfile = useAppSelector((state) => state.userProfile.profile)
 
-  // Stable ID for this chat session — either the provided applicationId or a fresh UUID.
-  // When prefillFormData is provided (document upload flow) we always start a NEW
-  // application so that the draft loader never finds a stale draft for a previous
-  // session and overwrites the pre-filled fields.
+  // When prefill data arrives from an upload, generate a fresh UUID so we don't
+  // accidentally load a stale draft that would overwrite the extracted fields.
   const [sessionApplicationId] = useState<string>(() => {
     if (prefillFormData && !applicationId) {
       const next = createUuid()
@@ -771,8 +769,8 @@ export function ApplicationAssistant({ applicationId, prefillFormData, onSwitchT
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const assistantDraftSaveTimerRef = useRef<number | null>(null)
-  const prefillAppliedRef = useRef(false)
   const hydratedAssistantDraftRef = useRef(false)
+  const prefillAppliedRef = useRef(false)
 
   useEffect(() => {
     formDataRef.current = formData
@@ -887,7 +885,7 @@ export function ApplicationAssistant({ applicationId, prefillFormData, onSwitchT
     let greeting: string
 
     if (prefillFormData && !prefillAppliedRef.current) {
-      // Apply structured fields from uploaded document immediately.
+      // Document upload flow — apply extracted fields then ask about the first missing one.
       prefillAppliedRef.current = true
       const nonEmpty = Object.fromEntries(
         Object.entries(prefillFormData).filter(([, v]) => v !== "" && v !== undefined && v !== null),
@@ -897,9 +895,9 @@ export function ApplicationAssistant({ applicationId, prefillFormData, onSwitchT
         const mergedData = { ...formDataRef.current, ...nonEmpty }
         const firstQuestion = getNextMissingApplicationQuestion(mergedData)
         const fieldCount = Object.keys(nonEmpty).length
-        greeting = `I pre-filled ${fieldCount} field${fieldCount === 1 ? "" : "s"} from your uploaded document. Let's confirm the details and fill in anything that's missing. ${firstQuestion}`
+        greeting = `I pre-filled ${fieldCount} field${fieldCount === 1 ? "" : "s"} from your uploaded document. ${firstQuestion ?? "Everything looks complete — let's review your application."}`
       } else {
-        greeting = "I read your uploaded document but couldn't extract specific fields. Let's fill in the application together. What's your first name?"
+        greeting = getFormAssistantGreeting(language)
       }
       setProfileFillMode("declined")
     } else if (userProfile?.firstName) {
@@ -932,9 +930,8 @@ export function ApplicationAssistant({ applicationId, prefillFormData, onSwitchT
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [language]) // intentionally omit userProfile/prefillFormData — greeting is set once on mount/language change
 
-  // ── Re-apply prefill after draft hydration (safety net) ──────────────────
-  // If draft loading somehow replaces localFields before the greeting effect
-  // applies them, re-apply prefill once hydration is confirmed complete.
+  // Safety net: if the draft loader fires after the greeting (race condition),
+  // re-apply prefill so the draft doesn't silently overwrite extracted fields.
   useEffect(() => {
     if (!isAssistantDraftHydrated || !prefillFormData || prefillAppliedRef.current) return
     prefillAppliedRef.current = true
@@ -944,8 +941,7 @@ export function ApplicationAssistant({ applicationId, prefillFormData, onSwitchT
     if (Object.keys(nonEmpty).length > 0) {
       applyFormPatch(nonEmpty)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAssistantDraftHydrated]) // run once when hydration completes
+  }, [isAssistantDraftHydrated, prefillFormData, applyFormPatch])
 
   // ── Trigger document upload prompts when reaching documents section ────────
 

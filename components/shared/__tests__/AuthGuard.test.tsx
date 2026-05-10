@@ -19,6 +19,11 @@ vi.mock("@/lib/supabase/client", () => ({
   getSafeSupabaseSession: mockGetSafeSupabaseSession,
 }))
 
+vi.mock("@/lib/supabase/session-cookie", () => ({
+  syncSessionCookie: vi.fn().mockResolvedValue(undefined),
+  clearSessionCookie: vi.fn().mockResolvedValue(undefined),
+}))
+
 vi.mock("@/components/shared/IdleTimeoutGuard", () => ({
   IdleTimeoutGuard: () => <div data-testid="idle-timeout-guard" />,
 }))

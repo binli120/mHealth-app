@@ -19,6 +19,7 @@ import { ArrowLeft, ChevronRight, Filter, Search } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ShieldHeartIcon } from "@/lib/icons"
 import { useAppSelector } from "@/lib/redux/hooks"
+import { CUSTOMER_SUPPORT_MAILTO } from "@/lib/support/contact"
 import type { ApplicationListApiResponse, StatusFilter } from "./page.types"
 import {
   getLocalizedApplicationTypeLabel,
@@ -216,7 +217,9 @@ export default function StatusListPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="outline">{getMessage(language, "statusListContactSupport")}</Button>
+            <Button asChild variant="outline">
+              <a href={CUSTOMER_SUPPORT_MAILTO}>{getMessage(language, "statusListContactSupport")}</a>
+            </Button>
           </CardContent>
         </Card>
       </main>

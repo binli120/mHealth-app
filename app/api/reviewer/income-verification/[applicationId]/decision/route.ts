@@ -20,7 +20,7 @@
  */
 
 import { NextResponse } from "next/server"
-import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
+import { requireReviewer } from "@/lib/auth/require-reviewer"
 import { logServerError } from "@/lib/server/logger"
 import {
   upsertVerificationDecision,
@@ -46,7 +46,7 @@ interface RouteContext {
 
 export async function POST(request: Request, context: RouteContext) {
   try {
-    const authResult = await requireAuthenticatedUser(request)
+    const authResult = await requireReviewer(request)
     if (!authResult.ok) return authResult.response
 
     const { applicationId } = await context.params

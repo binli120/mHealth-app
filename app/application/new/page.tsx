@@ -24,9 +24,7 @@ function readPrefillFromSessionStorage(key: string | null): Partial<ApplicationF
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
       return parsed as Partial<ApplicationFormData>
     }
-  } catch {
-    // sessionStorage unavailable or corrupt — proceed without prefill
-  }
+  } catch { /* ignore parse errors */ }
   return undefined
 }
 
@@ -37,12 +35,14 @@ function NewApplicationPageContent() {
   const prefillKey = searchParams.get("prefillKey")
   // When a social worker opens the form on behalf of a patient
   const actingForPatientId = searchParams.get("patientId")?.trim() || undefined
-  const [entryMode, setEntryMode] = useState<ApplicationEntryMode>(
-    requestedMode === "wizard" ? "wizard" : "chat",
-  )
-  // Lazy initializer reads + clears sessionStorage exactly once on mount.
+
+  // Consumed once from sessionStorage on mount — shared across both tabs
   const [prefillFormData] = useState<Partial<ApplicationFormData> | undefined>(
     () => readPrefillFromSessionStorage(prefillKey),
+  )
+
+  const [entryMode, setEntryMode] = useState<ApplicationEntryMode>(
+    requestedMode === "wizard" ? "wizard" : "chat",
   )
 
   return (
@@ -81,6 +81,7 @@ function NewApplicationPageContent() {
           <FormWizard
             applicationId={queryApplicationId || undefined}
             actingForPatientId={actingForPatientId}
+            prefillFormData={prefillFormData}
           />
         </TabsContent>
       </Tabs>
