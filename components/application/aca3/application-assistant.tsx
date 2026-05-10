@@ -612,6 +612,7 @@ function computeProgress(
 interface ApplicationAssistantProps {
   applicationId?: string
   onSwitchToWizard?: () => void
+  prefillFormData?: Partial<ApplicationFormData>
 }
 
 /** Maps a saved UserProfile into ApplicationFormData fields that can be pre-filled. */
@@ -706,16 +707,23 @@ function readAssistantDraftState(raw: unknown): AssistantDraftState | null {
   }
 }
 
-export function ApplicationAssistant({ applicationId, onSwitchToWizard }: ApplicationAssistantProps) {
+export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillFormData }: ApplicationAssistantProps) {
   const dispatch = useAppDispatch()
   const language = useAppSelector((state) => state.app.language) as SupportedLanguage
   const userProfile = useAppSelector((state) => state.userProfile.profile)
 
-  // Stable ID for this chat session — either the provided applicationId or a fresh UUID.
-  // Using useState guarantees it never changes across re-renders.
-  const [sessionApplicationId] = useState<string>(
-    () => resolveInitialAssistantApplicationId(applicationId),
-  )
+  // When prefill data arrives from an upload, generate a fresh UUID so we don't
+  // accidentally load a stale draft that would overwrite the extracted fields.
+  const [sessionApplicationId] = useState<string>(() => {
+    if (prefillFormData && !applicationId) {
+      const next = createUuid()
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(ACTIVE_ASSISTANT_APPLICATION_KEY, next)
+      }
+      return next
+    }
+    return resolveInitialAssistantApplicationId(applicationId)
+  })
 
   // ── Local field mirror ────────────────────────────────────────────────────
   // localFields is updated immediately when extraction returns, so the sidebar
@@ -759,6 +767,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const assistantDraftSaveTimerRef = useRef<number | null>(null)
   const hydratedAssistantDraftRef = useRef(false)
+  const prefillAppliedRef = useRef(false)
 
   useEffect(() => {
     formDataRef.current = formData
@@ -872,7 +881,23 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
     if (hydratedAssistantDraftRef.current) return
     let greeting: string
 
-    if (userProfile?.firstName) {
+    if (prefillFormData && !prefillAppliedRef.current) {
+      // Document upload flow — apply extracted fields then ask about the first missing one.
+      prefillAppliedRef.current = true
+      const nonEmpty = Object.fromEntries(
+        Object.entries(prefillFormData).filter(([, v]) => v !== "" && v !== undefined && v !== null),
+      ) as Partial<ApplicationFormData>
+      if (Object.keys(nonEmpty).length > 0) {
+        applyFormPatch(nonEmpty)
+        const mergedData = { ...formDataRef.current, ...nonEmpty }
+        const firstQuestion = getNextMissingApplicationQuestion(mergedData)
+        const fieldCount = Object.keys(nonEmpty).length
+        greeting = `I pre-filled ${fieldCount} field${fieldCount === 1 ? "" : "s"} from your uploaded document. ${firstQuestion ?? "Everything looks complete — let's review your application."}`
+      } else {
+        greeting = getFormAssistantGreeting(language)
+      }
+      setProfileFillMode("declined")
+    } else if (userProfile?.firstName) {
       // We have a profile — offer to pre-fill.
       const summary: ProfilePreFillSummary = {
         firstName: userProfile.firstName,
@@ -900,7 +925,20 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard }: Applic
     // Focus textarea so user can start typing immediately
     textareaRef.current?.focus()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [language]) // intentionally omit userProfile — greeting is set once on mount/language change
+  }, [language]) // intentionally omit userProfile/prefillFormData — greeting is set once on mount/language change
+
+  // Safety net: if the draft loader fires after the greeting (race condition),
+  // re-apply prefill so the draft doesn't silently overwrite extracted fields.
+  useEffect(() => {
+    if (!isAssistantDraftHydrated || !prefillFormData || prefillAppliedRef.current) return
+    prefillAppliedRef.current = true
+    const nonEmpty = Object.fromEntries(
+      Object.entries(prefillFormData).filter(([, v]) => v !== "" && v !== undefined && v !== null),
+    ) as Partial<ApplicationFormData>
+    if (Object.keys(nonEmpty).length > 0) {
+      applyFormPatch(nonEmpty)
+    }
+  }, [isAssistantDraftHydrated, prefillFormData, applyFormPatch])
 
   // ── Trigger document upload prompts when reaching documents section ────────
 
