@@ -29,6 +29,33 @@ import {
 } from "@/lib/masshealth/knowledge-center"
 import { ARTICLE_PREVIEW_COUNT, VIDEO_PREVIEW_COUNT } from "./page.constants"
 
+function ShowMoreButton({
+  total,
+  previewCount,
+  expanded,
+  noun,
+  onToggle,
+}: {
+  total: number
+  previewCount: number
+  expanded: boolean
+  noun: string
+  onToggle: () => void
+}) {
+  if (total <= previewCount) return null
+  return (
+    <div className="flex justify-center pt-2">
+      <Button variant="outline" size="sm" onClick={onToggle} className="gap-2">
+        {expanded ? (
+          <>Show less <ChevronUp className="h-4 w-4" /></>
+        ) : (
+          <>Show {total - previewCount} more {noun} <ChevronDown className="h-4 w-4" /></>
+        )}
+      </Button>
+    </div>
+  )
+}
+
 export default function KnowledgeCenterPage() {
   const selectedLanguage = useAppSelector((state) => state.app.language)
   const copy = getKnowledgeCenterCopy(selectedLanguage)
@@ -54,7 +81,7 @@ export default function KnowledgeCenterPage() {
   }, [])
 
   const allVideos = useMemo(() => getVideosForLanguage(selectedLanguage), [selectedLanguage])
-  const allArticles = useMemo(() => KNOWLEDGE_ARTICLES, [])
+  const allArticles = KNOWLEDGE_ARTICLES
 
   const videos = videosExpanded ? allVideos : allVideos.slice(0, VIDEO_PREVIEW_COUNT)
   const articles = articlesExpanded ? allArticles : allArticles.slice(0, ARTICLE_PREVIEW_COUNT)
@@ -109,9 +136,9 @@ export default function KnowledgeCenterPage() {
             </Link>
           </div>
 
-          {isNonEnglish ? (
+          {isNonEnglish && (
             <p className="text-xs text-muted-foreground">{copy.showingEnglish}</p>
-          ) : null}
+          )}
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {videos.map((video, index) => {
@@ -149,22 +176,13 @@ export default function KnowledgeCenterPage() {
             })}
           </div>
 
-          {allVideos.length > VIDEO_PREVIEW_COUNT && (
-            <div className="flex justify-center pt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setVideosExpanded((v) => !v)}
-                className="gap-2"
-              >
-                {videosExpanded ? (
-                  <>Show less <ChevronUp className="h-4 w-4" /></>
-                ) : (
-                  <>Show {allVideos.length - VIDEO_PREVIEW_COUNT} more videos <ChevronDown className="h-4 w-4" /></>
-                )}
-              </Button>
-            </div>
-          )}
+          <ShowMoreButton
+            total={allVideos.length}
+            previewCount={VIDEO_PREVIEW_COUNT}
+            expanded={videosExpanded}
+            noun="videos"
+            onToggle={() => setVideosExpanded((v) => !v)}
+          />
         </section>
 
         {/* ── Articles ── */}
@@ -182,9 +200,9 @@ export default function KnowledgeCenterPage() {
             </Link>
           </div>
 
-          {isNonEnglish ? (
+          {isNonEnglish && (
             <p className="text-xs text-muted-foreground">{copy.translatedViaGoogle}</p>
-          ) : null}
+          )}
 
           <div className="grid gap-4 md:grid-cols-2">
             {articles.map((article) => {
@@ -215,22 +233,13 @@ export default function KnowledgeCenterPage() {
             })}
           </div>
 
-          {allArticles.length > ARTICLE_PREVIEW_COUNT && (
-            <div className="flex justify-center pt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setArticlesExpanded((v) => !v)}
-                className="gap-2"
-              >
-                {articlesExpanded ? (
-                  <>Show less <ChevronUp className="h-4 w-4" /></>
-                ) : (
-                  <>Show {allArticles.length - ARTICLE_PREVIEW_COUNT} more articles <ChevronDown className="h-4 w-4" /></>
-                )}
-              </Button>
-            </div>
-          )}
+          <ShowMoreButton
+            total={allArticles.length}
+            previewCount={ARTICLE_PREVIEW_COUNT}
+            expanded={articlesExpanded}
+            noun="articles"
+            onToggle={() => setArticlesExpanded((v) => !v)}
+          />
         </section>
 
         {/* ── Documents ── */}
