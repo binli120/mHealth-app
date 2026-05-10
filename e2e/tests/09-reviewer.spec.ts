@@ -79,31 +79,27 @@ test.describe("Reviewer Case Management", () => {
     await reviewer.gotoCases()
     await expect(page).toHaveURL(/\/reviewer\/cases/)
 
-    const firstCaseEntry = page.locator('a[href^="/reviewer/case/"]').first()
+    const casesContent = page.getByRole("main")
+    await expect(casesContent).toContainText(/showing \d+ of \d+ cases|no cases match this view/i, {
+      timeout: 15_000,
+    })
 
-    if (await firstCaseEntry.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      const urlBefore = page.url()
+    const caseLinks = casesContent.locator('a[href^="/reviewer/case/"]')
+    const caseLinkCount = await caseLinks.count()
+
+    if (caseLinkCount > 0) {
+      const firstCaseEntry = caseLinks.first()
+      const targetHref = await firstCaseEntry.getAttribute("href")
+
+      expect(targetHref).toMatch(/^\/reviewer\/case\/[0-9a-f-]+$/i)
+      await firstCaseEntry.scrollIntoViewIfNeeded()
       await firstCaseEntry.click()
-      // Give the UI time to respond — navigation or side-panel open
-      await page.waitForTimeout(1_500)
-
-      const navigated = page.url() !== urlBefore
-      // If no URL change, a drawer/panel should have opened with decision actions
-      const panelOpened = await page
-        .getByRole("button", { name: /approve|deny|request.*info|rfi/i })
-        .or(page.getByText(/case.*detail|review.*this.*application/i).first())
-        .isVisible({ timeout: 5_000 })
-        .catch(() => false)
-
-      expect(
-        navigated || panelOpened,
-        `Expected case detail after click — URL: ${page.url()}`,
-      ).toBeTruthy()
+      await expect(page).toHaveURL(/\/reviewer\/case\/[0-9a-f-]+/)
+      await expect(page.getByRole("main")).toContainText(/documents|extracted data|decision/i, {
+        timeout: 15_000,
+      })
     } else {
-      // No submitted cases yet — valid before MassHealth API integration
-      await expect(
-        page.getByText(/no.*case|no.*application|empty|nothing.*review/i).first(),
-      ).toBeVisible({ timeout: 10_000 })
+      await expect(casesContent).toContainText(/no cases match this view|no.*application|empty|nothing.*review/i)
     }
   })
 
