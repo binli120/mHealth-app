@@ -26,6 +26,7 @@ import { EducationSection } from "@/components/user-profile/EducationSection"
 import { BankSection } from "@/components/user-profile/BankSection"
 import { AppSettingsSection } from "@/components/user-profile/AppSettingsSection"
 import { NotificationsSection } from "@/components/user-profile/NotificationsSection"
+import { SecuritySection } from "@/components/user-profile/SecuritySection"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { useAppDispatch } from "@/lib/redux/hooks"
 import { setProfile } from "@/lib/redux/features/user-profile-slice"
@@ -195,6 +196,9 @@ export default function CustomerProfilePage() {
               )}
               {activeSection === "notifications" && (
                 <NotificationsSection profile={profile} onSaved={handleSectionSave} />
+              )}
+              {activeSection === "security" && (
+                <SecuritySection />
               )}
             </main>
 

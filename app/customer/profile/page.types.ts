@@ -11,7 +11,7 @@
 import type { ElementType } from "react"
 import type { UserProfile } from "@/lib/user-profile/types"
 
-export type SectionId = "personal" | "family" | "education" | "bank" | "settings" | "notifications"
+export type SectionId = "personal" | "family" | "education" | "bank" | "settings" | "notifications" | "security"
 
 export interface ProfileNavItem {
   id: SectionId
