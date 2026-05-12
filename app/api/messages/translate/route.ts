@@ -10,8 +10,9 @@
  */
 
 import { NextResponse } from "next/server"
+import { generateText } from "ai"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
-import { callOllama } from "@/lib/masshealth/ollama-client"
+import { getOllamaModel } from "@/lib/masshealth/ollama-provider"
 import { logServerError } from "@/lib/server/logger"
 
 export const runtime = "nodejs"
@@ -29,11 +30,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "text is required." }, { status: 400 })
     }
 
-    const translation = await callOllama({
-      model: "llama3.2",
-      temperature: 0.1,
-      timeoutMs: 30_000,
-      systemPrompt:
+    const { text: translation } = await generateText({
+      model: getOllamaModel(),
+      system:
         "You are a professional translator. Translate the given text to English. " +
         "Output ONLY the translated text — no explanations, no quotes, no extra words.",
       messages: [
@@ -44,6 +43,9 @@ export async function POST(request: Request) {
             : `Translate the following text to English:\n\n${text}`,
         },
       ],
+      temperature: 0.1,
+      maxOutputTokens: 512,
+      abortSignal: AbortSignal.timeout(30_000),
     })
 
     return NextResponse.json({ ok: true, translation: translation.trim() })

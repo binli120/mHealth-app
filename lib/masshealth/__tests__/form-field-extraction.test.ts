@@ -7,10 +7,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { ChatMessage } from "@/lib/masshealth/types"
 import { extractFormFields } from "@/lib/masshealth/form-field-extraction"
-import { callOllama } from "@/lib/masshealth/ollama-client"
+import { generateText } from "ai"
 
-vi.mock("@/lib/masshealth/ollama-client", () => ({
-  callOllama: vi.fn(),
+vi.mock("ai", () => ({
+  generateText: vi.fn(),
 }))
 
 vi.mock("@/lib/server/counters", () => ({
@@ -28,9 +28,9 @@ describe("extractFormFields", () => {
   })
 
   it("splits a full address returned as one extracted address field", async () => {
-    vi.mocked(callOllama).mockResolvedValue(JSON.stringify({
+    vi.mocked(generateText).mockResolvedValue({ text: JSON.stringify({
       address: "290 Congress St, Boston, MA 02210",
-    }))
+    }) } as Awaited<ReturnType<typeof generateText>>)
 
     const result = await extractFormFields(messages, "", "contact", [], [], "en")
 
@@ -43,7 +43,7 @@ describe("extractFormFields", () => {
   })
 
   it("extracts full address deterministically when Ollama is unavailable", async () => {
-    vi.mocked(callOllama).mockRejectedValue(new Error("Ollama not running"))
+    vi.mocked(generateText).mockRejectedValue(new Error("AI service not running"))
 
     const result = await extractFormFields(messages, "", "contact", [], [], "en")
 
