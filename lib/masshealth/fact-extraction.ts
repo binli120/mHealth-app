@@ -5,18 +5,18 @@
 
 import "server-only"
 
+import { generateText } from "ai"
+import type { ModelMessage } from "ai"
 import type { CitizenshipStatus, ScreenerData } from "@/lib/eligibility-engine"
 import type { SupportedLanguage } from "@/lib/i18n/languages"
-import { DEFAULT_OLLAMA_BASE_URL, OLLAMA_CHAT_ENDPOINT } from "@/lib/rag/constants"
-import type { ChatMessage, OllamaResponse } from "./types"
+import type { ChatMessage } from "./types"
 import {
   EXTRACT_TEMPERATURE,
   EXTRACT_TIMEOUT_MS,
   EXTRACT_MESSAGE_WINDOW,
 } from "./constants"
 import { incrementCounter } from "@/lib/server/counters"
-
-const EXTRACT_MODEL = process.env.OLLAMA_MODEL ?? "llama3.2"
+import { getOllamaModel } from "./ollama-provider"
 
 // ── Prompt ────────────────────────────────────────────────────────────────────
 
@@ -51,35 +51,18 @@ function buildFactExtractionPrompt(): string {
   ].join("\n")
 }
 
-// ── Ollama call ───────────────────────────────────────────────────────────────
-
-function getOllamaBaseUrl(): string {
-  return (process.env.OLLAMA_BASE_URL || DEFAULT_OLLAMA_BASE_URL).replace(/\/+$/, "")
-}
+// ── LLM call ──────────────────────────────────────────────────────────────────
 
 async function callOllamaForJson(messages: ChatMessage[]): Promise<string> {
-  const response = await fetch(`${getOllamaBaseUrl()}${OLLAMA_CHAT_ENDPOINT}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    cache: "no-store",
-    signal: AbortSignal.timeout(EXTRACT_TIMEOUT_MS),
-    body: JSON.stringify({
-      model: EXTRACT_MODEL,
-      stream: false,
-      options: { temperature: EXTRACT_TEMPERATURE },
-      messages: [
-        { role: "system", content: buildFactExtractionPrompt() },
-        ...messages.slice(-EXTRACT_MESSAGE_WINDOW),
-      ],
-    }),
+  const { text } = await generateText({
+    model: getOllamaModel(),
+    system: buildFactExtractionPrompt(),
+    messages: messages.slice(-EXTRACT_MESSAGE_WINDOW) as ModelMessage[],
+    temperature: EXTRACT_TEMPERATURE,
+    maxOutputTokens: 512,
+    abortSignal: AbortSignal.timeout(EXTRACT_TIMEOUT_MS),
   })
-
-  if (!response.ok) {
-    throw new Error(`Ollama fact extraction failed: HTTP ${response.status}`)
-  }
-
-  const data = (await response.json()) as OllamaResponse
-  return data.message?.content?.trim() ?? ""
+  return text.trim()
 }
 
 // ── JSON parsing with safety ──────────────────────────────────────────────────

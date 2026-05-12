@@ -14,7 +14,9 @@ import {
   EXTRACT_MESSAGE_WINDOW,
 } from "./constants"
 import type { FormSection } from "./form-sections"
-import { callOllama } from "./ollama-client"
+import { generateText } from "ai"
+import type { ModelMessage } from "ai"
+import { getOllamaModel } from "./ollama-provider"
 import { incrementCounter } from "@/lib/server/counters"
 import { parsePastedUsAddress } from "@/lib/utils/address-parse"
 
@@ -22,7 +24,6 @@ import { parsePastedUsAddress } from "@/lib/utils/address-parse"
 export type { FormSection }
 export { summarizeCollectedFields, detectCurrentSection } from "./form-sections"
 
-const EXTRACT_MODEL = process.env.OLLAMA_MODEL ?? "llama3.2"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -93,14 +94,15 @@ function buildFormFieldExtractionPrompt(collectedSummary: string, currentSection
 // ── Ollama call ───────────────────────────────────────────────────────────────
 
 async function callOllamaForFormJson(systemPrompt: string, messages: ChatMessage[]): Promise<string> {
-  return callOllama({
-    model: EXTRACT_MODEL,
+  const { text } = await generateText({
+    model: getOllamaModel(),
+    system: systemPrompt,
+    messages: messages.slice(-EXTRACT_MESSAGE_WINDOW) as ModelMessage[],
     temperature: EXTRACT_TEMPERATURE,
-    timeoutMs: EXTRACT_TIMEOUT_MS,
-    systemPrompt,
-    messages,
-    messageWindowSize: EXTRACT_MESSAGE_WINDOW,
+    maxOutputTokens: 512,
+    abortSignal: AbortSignal.timeout(EXTRACT_TIMEOUT_MS),
   })
+  return text.trim()
 }
 
 // ── Parsing ───────────────────────────────────────────────────────────────────
