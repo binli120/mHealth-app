@@ -49,6 +49,7 @@
     "stack": "pnpm clean && pnpm lint && pnpm test && pnpm run build-storybook && pnpm dev"
   },
   "dependencies": {
+    "@ai-sdk/groq": "^3.0.39",
     "@ai-sdk/openai": "^3.0.52",
     "@fontsource/caveat": "^5.2.8",
     "@hookform/resolvers": "^3.9.1",
