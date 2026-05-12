@@ -34,6 +34,7 @@ export const OLLAMA_CHAT_ENDPOINT = "/api/chat"
 export const DEFAULT_OLLAMA_MODEL = "llama3.2"
 export const OLLAMA_TIMEOUT_MS = 45_000
 export const OLLAMA_TEMPERATURE = 0.2
+export const OLLAMA_MAX_OUTPUT_TOKENS = 1024
 
 // RAG + Benefit Advisor constants
 export const OLLAMA_EMBED_MODEL = "nomic-embed-text"

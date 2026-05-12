@@ -178,7 +178,7 @@ describe("MassHealthChatWidget", () => {
     })
 
     // Greeting and placeholder should switch to Spanish
-    expect(screen.getByText(/soy su asesor de beneficios de masshealth/i)).toBeInTheDocument()
+    expect(screen.getByText(/soy mia, su asesora de beneficios de masshealth/i)).toBeInTheDocument()
     expect(screen.getByPlaceholderText(/dígame su edad/i)).toBeInTheDocument()
   })
 })

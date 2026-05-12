@@ -79,12 +79,12 @@ const CHAT_GREETING_BY_LANGUAGE: Record<SupportedLanguage, string> = {
 }
 
 const BENEFIT_ADVISOR_GREETING_BY_LANGUAGE: Record<SupportedLanguage, string> = {
-  en: "Hi! I'm your MassHealth Benefit Advisor. Tell me about yourself, your household size, and your approximate income, and I'll check which programs you may qualify for.",
-  "zh-CN": "您好！我是您的 MassHealth 福利顾问。请告诉我您的基本情况、家庭人数和大致收入，我会帮您查看您可能符合哪些项目。",
-  ht: "Bonjou! Mwen se konseye benefis MassHealth ou. Di m kèk detay sou ou menm, kantite moun nan kay la, ak revni apeprè ou, epi m ap verifye ki pwogram ou ka kalifye pou yo.",
-  "pt-BR": "Olá! Sou seu consultor de benefícios do MassHealth. Fale sobre você, o tamanho da sua família e sua renda aproximada, e eu vou verificar para quais programas você pode se qualificar.",
-  es: "Hola. Soy su asesor de beneficios de MassHealth. Cuénteme sobre usted, el tamaño de su hogar y su ingreso aproximado, y revisaré para qué programas podría calificar.",
-  vi: "Xin chào. Tôi là cố vấn phúc lợi MassHealth của bạn. Hãy cho tôi biết về bạn, số người trong hộ gia đình và thu nhập ước tính, rồi tôi sẽ kiểm tra những chương trình bạn có thể đủ điều kiện nhận.",
+  en: "Hi! I'm Mia, your MassHealth Benefit Advisor. Tell me about yourself, your household size, and your approximate income, and I'll check which programs you may qualify for.",
+  "zh-CN": "您好！我是 Mia，您的 MassHealth 福利顾问。请告诉我您的基本情况、家庭人数和大致收入，我会帮您查看您可能符合哪些项目。",
+  ht: "Bonjou! Mwen rele Mia, konseye benefis MassHealth ou. Di m kèk detay sou ou menm, kantite moun nan kay la, ak revni apeprè ou, epi m ap verifye ki pwogram ou ka kalifye pou yo.",
+  "pt-BR": "Olá! Sou Mia, sua consultora de benefícios do MassHealth. Fale sobre você, o tamanho da sua família e sua renda aproximada, e eu vou verificar para quais programas você pode se qualificar.",
+  es: "Hola. Soy Mia, su asesora de beneficios de MassHealth. Cuénteme sobre usted, el tamaño de su hogar y su ingreso aproximado, y revisaré para qué programas podría calificar.",
+  vi: "Xin chào. Tôi là Mia, cố vấn phúc lợi MassHealth của bạn. Hãy cho tôi biết về bạn, số người trong hộ gia đình và thu nhập ước tính, rồi tôi sẽ kiểm tra những chương trình bạn có thể đủ điều kiện nhận.",
 }
 
 const LANGUAGE_RESPONSE_HINT: Record<SupportedLanguage, string> = {

@@ -342,7 +342,10 @@ export function MassHealthChatWidget() {
   }
 
   const activeMessages = isAdvisorView ? advisorMessages : messages
-  const chatPlaceholder = isAdvisorView ? copy.advisorPlaceholder : copy.chatPlaceholder
+  const advisorHasConversation = advisorMessages.length > 1
+  const chatPlaceholder = isAdvisorView
+    ? (advisorHasConversation ? copy.advisorFollowUpPlaceholder : copy.advisorPlaceholder)
+    : copy.chatPlaceholder
 
   // ── Guest popup — shown instead of the full panel when not signed in ─────────
   const guestPopup = open && authStatus === "guest" ? (

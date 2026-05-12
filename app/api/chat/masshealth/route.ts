@@ -54,6 +54,7 @@ import {
   FORM_ASSISTANT_SECTIONS,
   MASSHEALTH_CONVERSATION_RECENT_USER_MESSAGES,
   OLLAMA_MESSAGES_CONTEXT_LIMIT,
+  OLLAMA_MAX_OUTPUT_TOKENS,
   OLLAMA_TEMPERATURE,
   OLLAMA_TIMEOUT_MS,
   RAG_TOP_K,
@@ -154,20 +155,18 @@ async function handleBenefitAdvisor(
   lastUserMessage: ChatMessage,
   language: SupportedLanguage,
 ): Promise<Response> {
-  // Pre-processing (blocking — completes before streaming opens)
-  const facts = await extractEligibilityFacts(payload.messages, language)
+  // Fact extraction and RAG retrieval run in parallel — RAG starts immediately
+  // with the user's message while the LLM extracts structured facts.
+  const [facts, ragChunks] = await Promise.all([
+    extractEligibilityFacts(payload.messages, language),
+    retrieveRelevantChunks(lastUserMessage.content, RAG_TOP_K_ADVISOR).catch(() => []),
+  ])
 
   let eligibilityReport = null
-  let ragQuery = lastUserMessage.content
-
   if (isSufficientForEvaluation(facts)) {
     const screenerData = applyFactDefaults(facts)
     eligibilityReport = runEligibilityCheck(screenerData)
-    const topPrograms = eligibilityReport.results.slice(0, 3).map((r) => r.program).join(", ")
-    ragQuery = topPrograms || lastUserMessage.content
   }
-
-  const ragChunks = await retrieveRelevantChunks(ragQuery, RAG_TOP_K_ADVISOR).catch(() => [])
   const ragContext = formatChunksForPrompt(ragChunks)
   const systemPrompt = buildBenefitAdvisorSystemPrompt(language, facts, eligibilityReport, ragContext)
 
@@ -202,6 +201,7 @@ async function handleBenefitAdvisor(
           system: systemPrompt,
           messages: buildContextMessages(payload.messages),
           temperature: OLLAMA_TEMPERATURE,
+          maxOutputTokens: OLLAMA_MAX_OUTPUT_TOKENS,
           abortSignal: AbortSignal.timeout(OLLAMA_TIMEOUT_MS),
         })
         writer.merge(result.toUIMessageStream())
@@ -271,6 +271,7 @@ async function handleFormAssistant(
           system: systemPrompt,
           messages: buildContextMessages(payload.messages),
           temperature: OLLAMA_TEMPERATURE,
+          maxOutputTokens: OLLAMA_MAX_OUTPUT_TOKENS,
           abortSignal: AbortSignal.timeout(OLLAMA_TIMEOUT_MS),
         })
         writer.merge(result.toUIMessageStream())
@@ -356,6 +357,7 @@ async function handleAssistantOrIntake(
           system: fullSystem,
           messages: buildContextMessages(payload.messages),
           temperature: OLLAMA_TEMPERATURE,
+          maxOutputTokens: OLLAMA_MAX_OUTPUT_TOKENS,
           abortSignal: AbortSignal.timeout(OLLAMA_TIMEOUT_MS),
         })
         writer.merge(result.toUIMessageStream())

@@ -72,8 +72,9 @@ const EN_CHAT_WIDGET = {
   thinking:            "Thinking…",
 
   // Input placeholders
-  advisorPlaceholder: "Tell me your age, household size, and income…",
-  chatPlaceholder:    "Ask a MassHealth question…",
+  advisorPlaceholder:          "Tell me your age, household size, and income…",
+  advisorFollowUpPlaceholder:  "Ask a follow-up question…",
+  chatPlaceholder:             "Ask a MassHealth question…",
   send:               "Send",
 
   // Out-of-scope footer hint
@@ -110,8 +111,9 @@ const ZH_CN_CHAT_WIDGET: Partial<ChatWidgetCopy> = {
   advisorDisclaimer:   "资格由规则引擎判定，LLM 只负责解释，不负责决定。",
   checkingEligibility: "正在检查资格…",
   thinking:            "正在思考…",
-  advisorPlaceholder:  "请输入您的年龄、家庭人数和收入…",
-  chatPlaceholder:     "请输入一个 MassHealth 问题…",
+  advisorPlaceholder:         "请输入您的年龄、家庭人数和收入…",
+  advisorFollowUpPlaceholder: "请输入后续问题…",
+  chatPlaceholder:            "请输入一个 MassHealth 问题…",
   send:                "发送",
   outOfTopicLabel:     "超出范围的问题将得到：",
   fallbackReply:       "我无法完成该请求。请重试，或致电 MassHealth：(800) 841-2900。",
@@ -138,8 +140,9 @@ const HT_CHAT_WIDGET: Partial<ChatWidgetCopy> = {
   advisorDisclaimer:   "Motè règ la detèmine kalifikasyon an; LLM nan sèlman esplike li.",
   checkingEligibility: "Ap verifye kalifikasyon…",
   thinking:            "Ap reflechi…",
-  advisorPlaceholder:  "Di m laj ou, kantite moun nan kay la, ak revni ou…",
-  chatPlaceholder:     "Poze yon kestyon sou MassHealth…",
+  advisorPlaceholder:         "Di m laj ou, kantite moun nan kay la, ak revni ou…",
+  advisorFollowUpPlaceholder: "Poze yon lòt kestyon…",
+  chatPlaceholder:            "Poze yon kestyon sou MassHealth…",
   send:                "Voye",
   outOfTopicLabel:     "Pou kestyon ki pa nan sijè a, repons lan se:",
   fallbackReply:
@@ -167,8 +170,9 @@ const PT_BR_CHAT_WIDGET: Partial<ChatWidgetCopy> = {
   advisorDisclaimer:   "A elegibilidade é determinada pelo motor de regras; o LLM apenas explica.",
   checkingEligibility: "Verificando elegibilidade…",
   thinking:            "Pensando…",
-  advisorPlaceholder:  "Informe sua idade, o tamanho da família e a renda…",
-  chatPlaceholder:     "Faça uma pergunta sobre o MassHealth…",
+  advisorPlaceholder:         "Informe sua idade, o tamanho da família e a renda…",
+  advisorFollowUpPlaceholder: "Faça uma pergunta de acompanhamento…",
+  chatPlaceholder:            "Faça uma pergunta sobre o MassHealth…",
   send:                "Enviar",
   outOfTopicLabel:     "Perguntas fora do tema recebem:",
   fallbackReply:
@@ -197,8 +201,9 @@ const ES_CHAT_WIDGET: Partial<ChatWidgetCopy> = {
   advisorDisclaimer:   "La elegibilidad la determina el motor de reglas; el LLM solo la explica.",
   checkingEligibility: "Revisando elegibilidad…",
   thinking:            "Pensando…",
-  advisorPlaceholder:  "Dígame su edad, el tamaño de su hogar y sus ingresos…",
-  chatPlaceholder:     "Haga una pregunta sobre MassHealth…",
+  advisorPlaceholder:         "Dígame su edad, el tamaño de su hogar y sus ingresos…",
+  advisorFollowUpPlaceholder: "Haga una pregunta de seguimiento…",
+  chatPlaceholder:            "Haga una pregunta sobre MassHealth…",
   send:                "Enviar",
   outOfTopicLabel:     "Las preguntas fuera del tema reciben:",
   fallbackReply:
@@ -227,8 +232,9 @@ const VI_CHAT_WIDGET: Partial<ChatWidgetCopy> = {
   advisorDisclaimer:   "Điều kiện do bộ quy tắc xác định; LLM chỉ giải thích, không quyết định.",
   checkingEligibility: "Đang kiểm tra điều kiện…",
   thinking:            "Đang suy nghĩ…",
-  advisorPlaceholder:  "Hãy cho tôi biết tuổi, số người trong hộ và thu nhập của bạn…",
-  chatPlaceholder:     "Đặt câu hỏi về MassHealth…",
+  advisorPlaceholder:         "Hãy cho tôi biết tuổi, số người trong hộ và thu nhập của bạn…",
+  advisorFollowUpPlaceholder: "Đặt câu hỏi tiếp theo…",
+  chatPlaceholder:            "Đặt câu hỏi về MassHealth…",
   send:                "Gửi",
   outOfTopicLabel:     "Câu hỏi ngoài phạm vi sẽ nhận:",
   fallbackReply:
