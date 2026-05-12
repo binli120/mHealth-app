@@ -5,11 +5,13 @@
 
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import { generateText } from "ai"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 import { retrieveRelevantChunks, formatChunksForPrompt } from "@/lib/rag/retrieve"
 import { logServerError } from "@/lib/server/logger"
 import { buildAppealSystemPrompt } from "@/lib/appeals/prompts"
 import { reviewAppealLetterQuality } from "@/lib/agents/reflection/quality-gate"
+import { getOllamaModel } from "@/lib/masshealth/ollama-provider"
 import {
   APPEAL_DENIAL_REASONS,
   APPEAL_DENIAL_REASON_IDS,
@@ -21,9 +23,7 @@ import {
 } from "@/lib/appeals/constants"
 import type { AppealAnalysis } from "@/lib/appeals/types"
 import {
-  DEFAULT_OLLAMA_BASE_URL,
-  DEFAULT_OLLAMA_MODEL,
-  OLLAMA_CHAT_ENDPOINT,
+  OLLAMA_MAX_OUTPUT_TOKENS,
   OLLAMA_TEMPERATURE,
   OLLAMA_TIMEOUT_MS,
 } from "@/app/api/chat/masshealth/constants"
@@ -35,15 +35,6 @@ const requestSchema = z.object({
   denialDetails: z.string().trim().max(APPEAL_DETAILS_MAX_LENGTH).default(""),
   documentText: z.string().trim().max(8000).optional(),
 })
-
-interface OllamaResponsePayload {
-  message?: { role?: string; content?: string }
-}
-
-function getOllamaBaseUrl(): string {
-  const baseUrl = process.env.OLLAMA_BASE_URL || DEFAULT_OLLAMA_BASE_URL
-  return baseUrl.replace(/\/+$/, "")
-}
 
 function parseAppealAnalysis(raw: string): AppealAnalysis | null {
   // Strip markdown fences if the model wrapped the JSON
@@ -92,31 +83,16 @@ export async function POST(request: Request) {
 
     const systemPrompt = buildAppealSystemPrompt(denialReason, denialDetails, ragContext, documentText)
 
-    const ollamaResponse = await fetch(
-      `${getOllamaBaseUrl()}${OLLAMA_CHAT_ENDPOINT}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: AbortSignal.timeout(OLLAMA_TIMEOUT_MS),
-        body: JSON.stringify({
-          model: process.env.OLLAMA_MODEL || DEFAULT_OLLAMA_MODEL,
-          stream: false,
-          options: { temperature: OLLAMA_TEMPERATURE },
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: "Generate the appeal analysis." },
-          ],
-        }),
-      },
-    )
+    const { text: rawContent } = await generateText({
+      model: getOllamaModel(),
+      system: systemPrompt,
+      messages: [{ role: "user", content: "Generate the appeal analysis." }],
+      temperature: OLLAMA_TEMPERATURE,
+      maxOutputTokens: OLLAMA_MAX_OUTPUT_TOKENS,
+      abortSignal: AbortSignal.timeout(OLLAMA_TIMEOUT_MS),
+    })
 
-    if (!ollamaResponse.ok) {
-      return NextResponse.json({ ok: false, error: ERROR_APPEAL_OLLAMA_FAILED }, { status: 502 })
-    }
-
-    const ollamaData = (await ollamaResponse.json()) as OllamaResponsePayload
-    const rawContent = ollamaData.message?.content?.trim() ?? ""
-    if (!rawContent) {
+    if (!rawContent.trim()) {
       return NextResponse.json({ ok: false, error: ERROR_APPEAL_OLLAMA_FAILED }, { status: 502 })
     }
 

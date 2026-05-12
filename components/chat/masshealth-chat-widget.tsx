@@ -199,7 +199,12 @@ export function MassHealthChatWidget() {
 
   const [draft, setDraft] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
   const bottomAnchorRef = useAutoScroll([messages, advisorMessages, isLoading, open, view])
+
+  useEffect(() => {
+    if (!isLoading) inputRef.current?.focus()
+  }, [isLoading])
 
   // Listen for programmatic open-to-SW-chat requests (from dashboard card, notifications, etc.)
   useEffect(() => {
@@ -605,6 +610,7 @@ export function MassHealthChatWidget() {
                 <form onSubmit={handleSubmit} className="border-t p-4">
                   <div className="flex items-center gap-2">
                     <Input
+                      ref={inputRef}
                       value={draft}
                       onChange={(event) => setDraft(event.target.value)}
                       placeholder={chatPlaceholder}
