@@ -750,6 +750,7 @@ export function buildMassHealthIntakeSystemPrompt(
     "- Citizenship or immigration details when relevant",
     "",
     "If the user asks for policy specifics, provide official MassHealth references and suggest verifying with MassHealth support.",
+    "10) Do not ask for or accept Social Security Number in chat. If it comes up, say: 'Please enter your SSN directly in the SSN field in the form.' Then ask the next question immediately.",
   ].join("\n")
 }
 
@@ -1013,7 +1014,7 @@ export function buildFormAssistantSystemPrompt(
     "   answer it briefly and clearly, then return to collecting the next field.",
     "5) Do not ask for information already collected (listed in 'Data already collected' below).",
     "   This applies to household members too — if a member already appears with their relationship, skip those questions.",
-    "6) Do not ask for Social Security Number — that will be collected securely in a separate step.",
+    "6) Do not ask for or accept Social Security Number in chat. If the user mentions SSN, say exactly: 'Your Social Security Number is entered directly in the SSN field in the form — please fill it in the form and then come back here.' Then immediately ask the next missing field from the current section without waiting.",
     "7) Keep responses under 3 sentences unless explaining policy.",
     `8) Respond in ${responseLanguage}.`,
     "9) Be encouraging and reassure users that their information is secure.",

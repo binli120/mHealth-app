@@ -37,7 +37,7 @@ describe("buildIntakeAgentSystemPrompt", () => {
   it("mentions never asking for SSN", () => {
     const prompt = buildIntakeAgentSystemPrompt("en")
     expect(prompt.toLowerCase()).toContain("ssn")
-    expect(prompt.toLowerCase()).toContain("never ask for ssn")
+    expect(prompt.toLowerCase()).toContain("never ask for or accept ssn")
   })
 
   it("uses the correct language label for Vietnamese", () => {

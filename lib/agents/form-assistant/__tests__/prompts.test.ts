@@ -49,7 +49,7 @@ describe("buildFormAssistantAgentSystemPrompt", () => {
   it("instructs the agent never to ask for SSN", () => {
     const prompt = buildFormAssistantAgentSystemPrompt("en", "personal", "")
     expect(prompt.toLowerCase()).toContain("ssn")
-    expect(prompt.toLowerCase()).toContain("never ask for ssn")
+    expect(prompt.toLowerCase()).toContain("never ask for or accept ssn")
   })
 
   it("uses the correct language label for Portuguese", () => {
