@@ -861,6 +861,8 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const assistantDraftSaveTimerRef = useRef<number | null>(null)
+  // Stable ref so startListening's onend can call handleSubmit without a forward-reference
+  const handleSubmitRef = useRef<() => void>(() => {})
 
   // ── Text-to-speech ─────────────────────────────────────────────────────────
   const { speak, stop: stopSpeaking, speaking, supported: ttsSupported } = useSpeechSynthesis()
@@ -1155,16 +1157,20 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
 
   // ── Voice input ───────────────────────────────────────────────────────────
 
-  const startListening = useCallback(() => {
+  const startListening = useCallback(async () => {
+    type SpeechRecognitionResultList = {
+      readonly length: number
+      [index: number]: { [index: number]: { transcript: string }; isFinal: boolean }
+    }
     type SpeechRecognitionInstance = {
       lang: string
       continuous: boolean
       interimResults: boolean
       start(): void
       stop(): void
-      onresult: ((event: { resultIndex: number; results: { [key: number]: { [key: number]: { transcript: string } } } }) => void) | null
+      onresult: ((event: { resultIndex: number; results: SpeechRecognitionResultList }) => void) | null
       onend: (() => void) | null
-      onerror: (() => void) | null
+      onerror: ((event: { error: string }) => void) | null
     }
     type SpeechRecognitionCtor = new () => SpeechRecognitionInstance
     const win = window as Window & {
@@ -1172,16 +1178,33 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
       webkitSpeechRecognition?: SpeechRecognitionCtor
     }
     const SpeechRecognitionAPI = win.SpeechRecognition ?? win.webkitSpeechRecognition
-    if (!SpeechRecognitionAPI) return
+    if (!SpeechRecognitionAPI) {
+      setInputError("Voice input is not supported in this browser. Try Chrome.")
+      return
+    }
 
+    // Explicitly request mic permission first — this triggers the browser dialog.
+    // Without this, browsers that previously saw a denial skip the dialog silently.
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      // Permission granted — release the stream immediately; SpeechRecognition
+      // will open its own handle.
+      stream.getTracks().forEach((track) => track.stop())
+    } catch {
+      setInputError("Microphone access was denied. Click the 🔒 icon in the address bar to allow it.")
+      return
+    }
+
+    setInputError("")
     const recognition = new SpeechRecognitionAPI()
     recognition.lang = SPEECH_LANG[language] ?? "en-US"
     recognition.continuous = false
     recognition.interimResults = true
 
-    recognition.onresult = (event: { resultIndex: number; results: { [key: number]: { [key: number]: { transcript: string } } } }) => {
+    recognition.onresult = (event) => {
       let transcript = ""
-      for (let i = event.resultIndex; i < Object.keys(event.results).length; i++) {
+      // Use event.results.length (a DOM list property) — NOT Object.keys() which returns 0
+      for (let i = event.resultIndex; i < event.results.length; i++) {
         transcript += event.results[i][0].transcript
       }
       setInput(transcript)
@@ -1190,13 +1213,16 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
     recognition.onend = () => {
       setIsListening(false)
       recognitionRef.current = null
-      // Auto-submit if there's text
-      textareaRef.current?.focus()
+      // Auto-submit whatever was transcribed
+      handleSubmitRef.current()
     }
 
-    recognition.onerror = () => {
+    recognition.onerror = (event) => {
       setIsListening(false)
       recognitionRef.current = null
+      if (event.error !== "no-speech") {
+        setInputError("Voice input error. Please try again.")
+      }
     }
 
     recognitionRef.current = recognition
@@ -1459,6 +1485,11 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
     [applyFormPatch, dispatch, input, isLoading, messages, language, sessionApplicationId, inputFieldType, profileFillMode, userProfile, noHouseholdMembers, noIncome, lastAssistantContent],
   )
 
+  // Keep the ref in sync so startListening's onend always calls the latest version
+  useEffect(() => {
+    handleSubmitRef.current = () => void handleSubmit()
+  }, [handleSubmit])
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key === "Enter" && !e.shiftKey) {
@@ -1686,7 +1717,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
                 variant={isListening ? "destructive" : "outline"}
                 size="icon"
                 className="h-9 w-9 shrink-0"
-                onClick={isListening ? stopListening : startListening}
+                onClick={isListening ? stopListening : () => void startListening()}
                 title={isListening ? "Stop listening" : "Start voice input"}
               >
                 {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
