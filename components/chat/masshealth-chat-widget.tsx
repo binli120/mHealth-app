@@ -6,7 +6,7 @@
 "use client"
 
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react"
-import { ExternalLink, ListChecks, Loader2, LogIn, MessageCircle, RotateCcw, SendHorizontal, ShieldCheck, UserSearch, X } from "lucide-react"
+import { ExternalLink, ListChecks, Loader2, LogIn, MessageCircle, RotateCcw, SendHorizontal, ShieldCheck, UserSearch, Volume2, VolumeX, X } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -20,6 +20,7 @@ import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { readChatStream, type ChatStreamAnnotation } from "@/lib/chat/read-stream"
 import { useAutoScroll } from "@/hooks/use-auto-scroll"
+import { useSpeechSynthesis } from "@/hooks/use-speech-synthesis"
 import {
   getBenefitAdvisorGreeting,
   getMassHealthCommonQuestions,
@@ -128,14 +129,22 @@ function EligibilityResultsBadges({
   )
 }
 
-function MessageBubble({ message }: { message: WidgetMessage }) {
+function MessageBubble({
+  message,
+  onSpeak,
+  isSpeaking,
+}: {
+  message: WidgetMessage
+  onSpeak?: (text: string) => void
+  isSpeaking?: boolean
+}) {
   const isUser = message.role === "user"
 
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"} group`}>
       <div
         className={[
-          "max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm",
+          "relative max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm",
           isUser
             ? "bg-primary text-primary-foreground"
             : "bg-secondary text-secondary-foreground",
@@ -144,6 +153,18 @@ function MessageBubble({ message }: { message: WidgetMessage }) {
         {message.content}
         {!isUser && message.eligibilityResults && (
           <EligibilityResultsBadges results={message.eligibilityResults} />
+        )}
+        {!isUser && onSpeak && message.content && (
+          <button
+            type="button"
+            aria-label={isSpeaking ? "Stop reading" : "Read aloud"}
+            onClick={() => onSpeak(message.content)}
+            className="absolute -bottom-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-background border shadow-sm text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
+          >
+            {isSpeaking
+              ? <VolumeX className="h-3 w-3" />
+              : <Volume2 className="h-3 w-3" />}
+          </button>
         )}
       </div>
     </div>
@@ -201,6 +222,39 @@ export function MassHealthChatWidget() {
   const [isLoading, setIsLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const bottomAnchorRef = useAutoScroll([messages, advisorMessages, isLoading, open, view])
+  const { speak, stop, speaking, supported: ttsSupported } = useSpeechSynthesis()
+  // Track which message is currently being read aloud
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null)
+
+  const handleSpeak = (messageId: string, text: string) => {
+    if (speakingMessageId === messageId) {
+      stop()
+      setSpeakingMessageId(null)
+    } else {
+      setSpeakingMessageId(messageId)
+      speak(text, selectedLanguage)
+    }
+  }
+
+  // Clear speakingMessageId when synthesis ends naturally
+  useEffect(() => {
+    if (!speaking) setSpeakingMessageId(null)
+  }, [speaking])
+
+  // Auto-read the assistant's reply once streaming finishes
+  const prevLoadingRef = useRef(false)
+  useEffect(() => {
+    const justFinished = prevLoadingRef.current && !isLoading
+    prevLoadingRef.current = isLoading
+    if (!justFinished || !ttsSupported) return
+
+    const activeList = view === "advisor" ? advisorMessages : messages
+    const last = activeList[activeList.length - 1]
+    if (last?.role === "assistant" && last.content) {
+      setSpeakingMessageId(last.id)
+      speak(last.content, selectedLanguage)
+    }
+  }, [isLoading, view, advisorMessages, messages, speak, selectedLanguage, ttsSupported])
 
   useEffect(() => {
     if (!isLoading) inputRef.current?.focus()
@@ -594,7 +648,12 @@ export function MassHealthChatWidget() {
                 <ScrollArea className="min-h-0 flex-1 px-4">
                   <div className="space-y-3 py-4">
                     {activeMessages.map((message) => (
-                      <MessageBubble key={message.id} message={message} />
+                      <MessageBubble
+                        key={message.id}
+                        message={message}
+                        onSpeak={ttsSupported ? (text) => handleSpeak(message.id, text) : undefined}
+                        isSpeaking={speakingMessageId === message.id}
+                      />
                     ))}
                     {isLoading ? (
                       <div className="flex justify-start">

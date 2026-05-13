@@ -14,7 +14,7 @@ import {
   useRef,
   useState,
 } from "react"
-import { Mic, MicOff, Send, CheckCircle2, Circle, ChevronDown, ChevronUp, ArrowRight, Loader2, User, UserRound, Volume2, CalendarDays, Pencil, Check, X } from "lucide-react"
+import { Mic, MicOff, Send, CheckCircle2, Circle, ChevronDown, ChevronUp, ArrowRight, Loader2, User, UserRound, Volume2, VolumeX, CalendarDays, Pencil, Check, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Progress } from "@/components/ui/progress"
@@ -37,6 +37,7 @@ import { setLanguage } from "@/lib/redux/features/app-slice"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { readChatStream } from "@/lib/chat/read-stream"
 import { isSupportedLanguage, SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/lib/i18n/languages"
+import { useSpeechSynthesis } from "@/hooks/use-speech-synthesis"
 import { createUuid } from "@/lib/utils/random-id"
 import {
   getFormAssistantGreeting,
@@ -860,6 +861,41 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const assistantDraftSaveTimerRef = useRef<number | null>(null)
+
+  // ── Text-to-speech ─────────────────────────────────────────────────────────
+  const { speak, stop: stopSpeaking, speaking, supported: ttsSupported } = useSpeechSynthesis()
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null)
+
+  const handleSpeak = useCallback(
+    (messageId: string, text: string) => {
+      if (speakingMessageId === messageId) {
+        stopSpeaking()
+        setSpeakingMessageId(null)
+      } else {
+        setSpeakingMessageId(messageId)
+        speak(text, language)
+      }
+    },
+    [speakingMessageId, stopSpeaking, speak, language],
+  )
+
+  // Clear speaking indicator when synthesis ends naturally
+  useEffect(() => {
+    if (!speaking) setSpeakingMessageId(null)
+  }, [speaking])
+
+  // Auto-read the assistant reply once streaming finishes
+  const prevLoadingRef = useRef(false)
+  useEffect(() => {
+    const justFinished = prevLoadingRef.current && !isLoading
+    prevLoadingRef.current = isLoading
+    if (!justFinished || !ttsSupported) return
+    const last = messages[messages.length - 1]
+    if (last?.role === "assistant" && last.content) {
+      setSpeakingMessageId(last.id)
+      speak(last.content, language)
+    }
+  }, [isLoading, messages, speak, language, ttsSupported])
   const hydratedAssistantDraftRef = useRef(false)
   const prefillAppliedRef = useRef(false)
 
@@ -1533,6 +1569,8 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
               key={message.id}
               message={message}
               applicationId={sessionApplicationId}
+              onSpeak={ttsSupported ? (text) => handleSpeak(message.id, text) : undefined}
+              isSpeaking={speakingMessageId === message.id}
             />
           ))}
           {isLoading && (
@@ -1841,9 +1879,13 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
 function MessageBubble({
   message,
   applicationId,
+  onSpeak,
+  isSpeaking,
 }: {
   message: AssistantMessage
   applicationId: string
+  onSpeak?: (text: string) => void
+  isSpeaking?: boolean
 }) {
   const isUser = message.role === "user"
 
@@ -1889,12 +1931,24 @@ function MessageBubble({
 
   // Standard assistant text message
   return (
-    <div className="flex items-start gap-2">
+    <div className="group flex items-start gap-2">
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
         <CompassIcon className="h-4 w-4 text-muted-foreground" />
       </div>
-      <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-muted px-4 py-2.5 text-sm leading-relaxed">
+      <div className="relative max-w-[85%] rounded-2xl rounded-tl-sm bg-muted px-4 py-2.5 text-sm leading-relaxed">
         {message.content}
+        {onSpeak && message.content && (
+          <button
+            type="button"
+            aria-label={isSpeaking ? "Stop reading" : "Read aloud"}
+            onClick={() => onSpeak(message.content)}
+            className="absolute -bottom-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
+          >
+            {isSpeaking
+              ? <VolumeX className="h-3 w-3" />
+              : <Volume2 className="h-3 w-3" />}
+          </button>
+        )}
       </div>
     </div>
   )
