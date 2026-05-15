@@ -3,10 +3,15 @@
  * @email: blee@healthcompass.cloud
  */
 
-import { describe, expect, it } from "vitest"
+import React from "react"
+import { configureStore } from "@reduxjs/toolkit"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { Provider } from "react-redux"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
   ASSISTANT_CONNECTION_FAILURE_MESSAGE,
+  ApplicationAssistant,
   getImmediateFieldPatchFromAnswer,
   getNextMissingApplicationQuestion,
   getQuickRepliesForAssistantPrompt,
@@ -15,7 +20,75 @@ import {
   recoverImmediateFieldsFromMessages,
   sanitizeAssistantDraftMessages,
 } from "@/components/application/aca3/application-assistant"
+import { appReducer } from "@/lib/redux/features/app-slice"
 import { initialApplicationFormData } from "@/lib/redux/features/application-slice"
+import { applicationReducer } from "@/lib/redux/features/application-slice"
+import { userProfileReducer } from "@/lib/redux/features/user-profile-slice"
+import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+
+vi.mock("@/lib/supabase/authenticated-fetch", () => ({
+  authenticatedFetch: vi.fn(),
+}))
+
+interface ApplicationAssistantTestProps {
+  applicationId?: string
+  actingForPatientId?: string
+  onSwitchToWizard?: () => void
+}
+
+function makeStore() {
+  return configureStore({
+    reducer: {
+      app: appReducer,
+      application: applicationReducer,
+      userProfile: userProfileReducer,
+    },
+  })
+}
+
+function renderApplicationAssistant(props: ApplicationAssistantTestProps = {}) {
+  const TestComponent = ApplicationAssistant as React.ComponentType<ApplicationAssistantTestProps>
+  return render(
+    React.createElement(
+      Provider,
+      { store: makeStore() },
+      React.createElement(TestComponent, props),
+    ),
+  )
+}
+
+function getChatCalls() {
+  return vi
+    .mocked(authenticatedFetch)
+    .mock.calls
+    .filter(([input]) => input === "/api/chat/masshealth")
+}
+
+function submitAssistantInput(value: string) {
+  const textbox = screen.getByPlaceholderText(/type your answer/i)
+  fireEvent.change(textbox, { target: { value } })
+  fireEvent.keyDown(textbox, { key: "Enter", code: "Enter" })
+}
+
+function makeChatStreamResponse(annotation: Record<string, unknown>, text: string): Response {
+  const chunks = [
+    `data: ${JSON.stringify({ type: "data-masshealth", data: annotation })}\n\n`,
+    `data: ${JSON.stringify({ type: "text-delta", id: "0", delta: text })}\n\n`,
+  ]
+  return new Response(chunks.join(""), { status: 200, headers: { "Content-Type": "text/event-stream" } })
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  window.localStorage.clear()
+  Element.prototype.scrollIntoView = vi.fn()
+  vi.mocked(authenticatedFetch).mockImplementation(async (input) => {
+    if (typeof input === "string" && input.includes("/draft")) {
+      return new Response(JSON.stringify({ ok: false }), { status: 404 })
+    }
+    return makeChatStreamResponse({ ok: true }, "Okay.")
+  })
+})
 
 describe("getQuickRepliesForAssistantPrompt", () => {
   it("returns explicit profile pre-fill quick replies while pending", () => {
@@ -115,6 +188,108 @@ describe("getImmediateFieldPatchFromAnswer", () => {
     )
 
     expect(result.noHouseholdMembers).toBe(true)
+  })
+})
+
+describe("ApplicationAssistant chat request contract", () => {
+  it("builds the form-assistant prompt context from immediate client-side patches", async () => {
+    renderApplicationAssistant()
+
+    await screen.findByText(/what's your first name/i)
+    submitAssistantInput("John")
+
+    await waitFor(() => expect(getChatCalls()).toHaveLength(1))
+    const init = getChatCalls()[0]?.[1] as RequestInit
+    const body = JSON.parse(String(init.body)) as { currentFields?: string }
+
+    expect(body.currentFields).toContain("First name: John")
+  })
+
+  it("keeps SSN-like input out of the model request", async () => {
+    renderApplicationAssistant()
+
+    await screen.findByText(/what's your first name/i)
+    submitAssistantInput("123-45-6789")
+
+    await screen.findByText(/please enter your ssn directly in the form/i)
+    expect(getChatCalls()).toHaveLength(0)
+  })
+
+  it("includes the acting-for patient header when loading a social-worker draft", async () => {
+    const applicationId = "11111111-1111-4111-8111-111111111111"
+    const actingForPatientId = "22222222-2222-4222-8222-222222222222"
+
+    renderApplicationAssistant({ applicationId, actingForPatientId })
+
+    await waitFor(() => {
+      expect(vi.mocked(authenticatedFetch)).toHaveBeenCalledWith(
+        `/api/applications/${applicationId}/draft`,
+        expect.objectContaining({ method: "GET" }),
+      )
+    })
+
+    const draftCall = vi
+      .mocked(authenticatedFetch)
+      .mock.calls
+      .find(([input]) => input === `/api/applications/${applicationId}/draft`)
+    const init = draftCall?.[1] as RequestInit
+
+    expect(init.headers).toMatchObject({
+      "X-Acting-For-Patient": actingForPatientId,
+    })
+  })
+
+  it("validates newly extracted address fields before comparing against patched state", async () => {
+    vi.mocked(authenticatedFetch).mockImplementation(async (input) => {
+      if (typeof input === "string" && input.includes("/draft")) {
+        return new Response(JSON.stringify({ ok: false }), { status: 404 })
+      }
+      if (input === "/api/chat/masshealth") {
+        return makeChatStreamResponse(
+          {
+            ok: true,
+            extractedFields: {
+              address: "1 Main St",
+              city: "Boston",
+              state: "MA",
+              zip: "02108",
+            },
+          },
+          "Thanks, I saved that address.",
+        )
+      }
+      if (input === "/api/address/validate") {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            valid: true,
+            message: "valid",
+            suggestion: {
+              streetAddress: "1 Main St",
+              city: "Boston",
+              state: "MA",
+              zipCode: "02108",
+              county: "Suffolk",
+              displayName: "1 Main St, Boston, MA 02108",
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        )
+      }
+      return new Response("", { status: 200 })
+    })
+
+    renderApplicationAssistant()
+
+    await screen.findByText(/what's your first name/i)
+    submitAssistantInput("John")
+
+    await waitFor(() => {
+      expect(vi.mocked(authenticatedFetch)).toHaveBeenCalledWith(
+        "/api/address/validate",
+        expect.objectContaining({ method: "POST" }),
+      )
+    })
   })
 })
 

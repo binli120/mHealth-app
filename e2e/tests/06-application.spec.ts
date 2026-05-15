@@ -143,6 +143,7 @@ test.describe("Application Flow", () => {
       await route.continue()
     })
 
+    // Seed the ApplicationAssistant draft in localStorage (keyed by applicationId).
     await page.evaluate(({ key, draft }) => {
       window.localStorage.setItem(key, JSON.stringify(draft))
     }, {
@@ -171,7 +172,15 @@ test.describe("Application Flow", () => {
       },
     })
 
-    await page.reload()
+    // Put a dummy prefill payload in sessionStorage so the page renders ApplicationAssistant
+    // (which restores the localStorage draft above) instead of IntakeChat.
+    await page.evaluate(() => {
+      sessionStorage.setItem("doc-upload-prefill", JSON.stringify({ firstName: "Test" }))
+    })
+
+    // Navigate with prefillKey — NewApplicationPageContent reads sessionStorage on mount,
+    // finds the prefill data, and renders ApplicationAssistant which restores the draft.
+    await page.goto(`/application/new?applicationId=${applicationId}&prefillKey=doc-upload-prefill`)
     await expect(page.getByRole("heading", { name: "Passport" })).toBeVisible({ timeout: 15_000 })
 
     const fileChooserPromise = page.waitForEvent("filechooser")

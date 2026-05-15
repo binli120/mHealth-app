@@ -64,7 +64,7 @@ export function IntakeMessageBubble({
     <ConversationBubble
       align={isUser ? "end" : "start"}
       tone={isUser ? "primary" : "secondary"}
-      bubbleClassName="max-w-[90%] leading-6"
+      bubbleClassName="max-w-[90%] leading-6 whitespace-pre-line"
       footer={footer}
     >
       {isUser || !question ? (

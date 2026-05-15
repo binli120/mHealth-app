@@ -52,7 +52,7 @@ vi.mock("ai", () => {
 
 import { POST } from "@/app/api/agents/intake/route"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
-import { createUIMessageStreamResponse } from "ai"
+import { createUIMessageStreamResponse, streamText } from "ai"
 import { buildIntakeTools } from "@/lib/agents/intake/tools"
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -166,5 +166,19 @@ describe("POST /api/agents/intake — happy path", () => {
     const { buildIntakeAgentSystemPrompt } = await import("@/lib/agents/intake/prompts")
     await POST(makeRequest({ messages: ONE_USER_MESSAGE, language: "pt-BR" }))
     expect(buildIntakeAgentSystemPrompt).toHaveBeenCalledWith("pt-BR", undefined)
+  })
+})
+
+describe("POST /api/agents/intake — SSN handoff", () => {
+  it("returns the SSN handoff without sending SSN-like content to the model or tools", async () => {
+    const response = await POST(
+      makeRequest({
+        messages: [{ role: "user", content: "My SSN is 123-45-6789" }],
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    expect(streamText).not.toHaveBeenCalled()
+    expect(buildIntakeTools).not.toHaveBeenCalled()
   })
 })

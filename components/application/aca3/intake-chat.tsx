@@ -23,11 +23,12 @@ import {
   PERSON_SECTION_MAP,
   SSN_PATTERN,
 } from "@/lib/constant"
+import { useRouter } from "next/navigation"
 import { isSupportedLanguage, SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/lib/i18n/languages"
 import { MASSHEALTH_APPLICATION_TYPES } from "@/lib/masshealth/application-types"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { setLanguage } from "@/lib/redux/features/app-slice"
-import { setApplicationWizardState } from "@/lib/redux/features/application-slice"
+import { setApplicationWizardState, DEFAULT_APPLICATION_ID } from "@/lib/redux/features/application-slice"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { hasFirstAndLastName } from "@/lib/utils/person-name"
 import { formatCurrency, formatPhoneNumber, formatSsn, parseCurrency } from "@/lib/utils/input-format"
@@ -36,6 +37,7 @@ import { normalizeNumberInput, parseDate, validateDobBounds } from "@/lib/utils/
 import { parsePastedUsAddress } from "@/lib/utils/address-parse"
 import { countHouseholdRelationshipMentions } from "@/lib/masshealth/household-relationships"
 import { evaluateConditionalRule } from "@/hooks/use-conditional"
+import { type WidgetSpec, } from "@/components/application/aca3/intake-question-widget"
 import type {
   AddressValidationResponse,
   FieldValue,
@@ -55,8 +57,39 @@ interface ChatApiResponse {
 
 interface IntakeChatProps {
   applicationId?: string
+  actingForPatientId?: string
   onSwitchToWizard: () => void
+  onSaveAndExit?: () => void
 }
+
+interface RepeatableCountQuestion {
+  kind: "repeatable_count"
+  parentField: SchemaField
+}
+
+interface RepeatableFieldQuestion {
+  kind: "repeatable_field"
+  parentField: SchemaField
+  rowIndex: number
+}
+
+interface ChecklistSelectionQuestion {
+  kind: "checklist_selection"
+  parentField: SchemaField
+}
+
+interface ChecklistItemFieldQuestion {
+  kind: "checklist_item_field"
+  parentField: SchemaField
+  itemId: string
+  valueKey: string
+}
+
+type IntakeQuestionComplex =
+  | RepeatableCountQuestion
+  | RepeatableFieldQuestion
+  | ChecklistSelectionQuestion
+  | ChecklistItemFieldQuestion
 
 interface IntakeQuestion {
   id: string
@@ -64,13 +97,23 @@ interface IntakeQuestion {
   scope: "preApp" | "contact" | "assister" | "person"
   sectionKey?: PersonSectionKey
   personIndex?: number
+  complex?: IntakeQuestionComplex
 }
 
-const UNSUPPORTED_FIELD_TYPES = new Set<SchemaField["type"]>([
-  "repeatable_group",
-  "income_checklist",
-  "deduction_checklist",
-])
+const SPOKEN_LANGUAGE_TO_CODE: Record<string, SupportedLanguage> = {
+  chinese: "zh-CN",
+  mandarin: "zh-CN",
+  cantonese: "zh-CN",
+  "simplified chinese": "zh-CN",
+  "traditional chinese": "zh-CN",
+  spanish: "es",
+  español: "es",
+  portuguese: "pt-BR",
+  "haitian creole": "ht",
+  haitian: "ht",
+  creole: "ht",
+  vietnamese: "vi",
+}
 
 const OPTIONAL_FIELDS_TO_SKIP_IN_CHAT = new Set<string>([
   "p1_home_apt",
@@ -79,7 +122,11 @@ const OPTIONAL_FIELDS_TO_SKIP_IN_CHAT = new Set<string>([
   "p1_mail_county",
   "sep_apt",
   "sep_county",
+  "p1_language_written",
 ])
+
+// Fields in person_schema.ss_identity that duplicate contact fields for person 0.
+const PERSON0_IDENTITY_SKIP_FIELDS = new Set<string>(["name", "dob"])
 
 const FRIENDLY_QUESTION_OVERRIDES: Record<string, string> = {
   p1_name: "Let's start with your full name (first and last).",
@@ -102,7 +149,7 @@ const FRIENDLY_QUESTION_OVERRIDES: Record<string, string> = {
   gender_identity: "How do you describe your current gender identity?",
   sexual_orientation: "How do you describe your sexual orientation?",
   race: "How do you identify your race? You may list multiple values separated by commas.",
-  ethnicity: "What is your ethnicity?",
+  ethnicity: "What is your ethnicity?\n1. Hispanic or Latino\n2. Not Hispanic or Latino\n3. Choose not to answer\nEnter a number or type your answer.",
   has_income: "Do you currently have any income?",
   total_income_current_year: "What is your total expected income for this calendar year?",
   total_income_next_year: "What is your total expected income for next calendar year, if different?",
@@ -491,6 +538,24 @@ function seedFieldDefaults(fields: SchemaField[], target: FormRecord): void {
   }
 }
 
+function getRepeatableRowDefault(groupSchema: SchemaField[]): Record<string, unknown> {
+  const row: Record<string, unknown> = {}
+
+  for (const field of groupSchema) {
+    row[field.id] = normalizeScalarFieldValue(field)
+
+    if (field.sub_fields) {
+      for (const subFields of Object.values(field.sub_fields)) {
+        for (const subField of subFields) {
+          row[subField.id] = normalizeScalarFieldValue(subField)
+        }
+      }
+    }
+  }
+
+  return row
+}
+
 function makeDefaultPersonState(index: number): PersonState {
   const state: PersonState = {
     identity: {},
@@ -581,11 +646,11 @@ function createInitialData(): WizardData {
   }
 }
 
-function createDraftWizardState(data: WizardData): WizardState {
+function createDraftWizardState(data: WizardData, currentStep = 1): WizardState {
   return {
     data,
-    currentStep: 1,
-    completedSteps: [],
+    currentStep,
+    completedSteps: Array.from({ length: Math.max(0, currentStep - 1) }, (_, i) => i + 1),
     tabByStep: { 4: 0, 5: 0, 6: 0, 7: 0 },
     errors: {},
     dirty: true,
@@ -638,6 +703,47 @@ function normalizeYesNo(input: string): boolean | null {
   return null
 }
 
+// Maps common natural-language relationship phrases to canonical option values.
+const RELATIONSHIP_SYNONYMS: Record<string, string> = {
+  wife: "Spouse",
+  husband: "Spouse",
+  spouse: "Spouse",
+  partner: "Domestic Partner",
+  "domestic partner": "Domestic Partner",
+  boyfriend: "Domestic Partner",
+  girlfriend: "Domestic Partner",
+  son: "Child",
+  daughter: "Child",
+  kid: "Child",
+  child: "Child",
+  stepson: "Stepchild",
+  stepdaughter: "Stepchild",
+  stepchild: "Stepchild",
+  dad: "Parent",
+  father: "Parent",
+  mom: "Parent",
+  mother: "Parent",
+  parent: "Parent",
+  stepdad: "Stepparent",
+  stepfather: "Stepparent",
+  stepmom: "Stepparent",
+  stepmother: "Stepparent",
+  stepparent: "Stepparent",
+  brother: "Sibling",
+  sister: "Sibling",
+  sibling: "Sibling",
+  grandson: "Grandchild",
+  granddaughter: "Grandchild",
+  grandchild: "Grandchild",
+  grandfather: "Grandparent",
+  grandmother: "Grandparent",
+  grandparent: "Grandparent",
+  uncle: "Aunt/Uncle",
+  aunt: "Aunt/Uncle",
+  nephew: "Niece/Nephew",
+  niece: "Niece/Nephew",
+}
+
 function normalizeOptionValue(input: string, options: string[] | undefined): string {
   const source = input.trim()
 
@@ -665,6 +771,22 @@ function normalizeOptionValue(input: string, options: string[] | undefined): str
     return exact
   }
 
+  // Expand relationship synonyms before partial matching.
+  for (const [phrase, canonical] of Object.entries(RELATIONSHIP_SYNONYMS)) {
+    if (lower === phrase || lower.includes(`my ${phrase}`) || lower.startsWith(`${phrase} `)) {
+      const matched = options.find((o) => o.toLowerCase() === canonical.toLowerCase())
+      if (matched) return matched
+    }
+  }
+
+  // Match options that start with the user's input word-for-word (e.g. "Straight" → "Straight or heterosexual").
+  const prefixMatch = options.find((option) => {
+    const optLower = option.toLowerCase()
+    if (!optLower.startsWith(lower)) return false
+    return optLower.length === lower.length || !/[a-z0-9]/i.test(option[lower.length])
+  })
+  if (prefixMatch) return prefixMatch
+
   const partial = options.find((option) => lower.includes(option.toLowerCase()))
   if (partial) {
     return partial
@@ -674,6 +796,28 @@ function normalizeOptionValue(input: string, options: string[] | undefined): str
 }
 
 function parseCheckboxGroupValues(input: string, options: string[] | undefined): string[] {
+  const source = input.trim()
+
+  // Handle numeric selections: "1", "2, 3", "1 and 3".
+  if (options && options.length > 0) {
+    const parts = source.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean)
+    if (parts.length > 0 && parts.every((p) => /^\d+$/.test(p))) {
+      const selected: string[] = []
+      for (const part of parts) {
+        const idx = Number.parseInt(part, 10) - 1
+        if (idx >= 0 && idx < options.length) {
+          selected.push(options[idx])
+        }
+      }
+      if (selected.length > 0) return selected
+    }
+  }
+
+  if (options && options.length > 0) {
+    const exact = options.find((option) => option.toLowerCase() === source.toLowerCase())
+    if (exact) return [exact]
+  }
+
   const chunks = input
     .split(/[;,]/)
     .map((item) => item.trim())
@@ -696,13 +840,25 @@ function formatQuestionPrompt(question: IntakeQuestion): string {
   const personPrefix = question.scope === "person" ? `Person ${Number(question.personIndex ?? 0) + 1}: ` : ""
   const baseLabel = FRIENDLY_QUESTION_OVERRIDES[field.id] ?? field.label
 
+  if (question.complex?.kind === "repeatable_count") {
+    const maxEntries = question.complex.parentField.max_entries ?? 2
+    return `${personPrefix}${question.complex.parentField.label}: how many entries do you want to add? Enter 0 if none, up to ${maxEntries}.`
+  }
+
+  if (question.complex?.kind === "checklist_selection") {
+    const numbered = (field.options ?? []).map((opt, i) => `${i + 1}. ${opt}`).join("\n")
+    const hint = numbered ? `\n${numbered}\nEnter number(s) separated by commas, or type "None".` : ' Type "None" if none apply.'
+    return `${personPrefix}${field.label}${hint}`
+  }
+
   if (field.type === "checkbox") {
     return `${personPrefix}${baseLabel} Please answer Yes or No?`
   }
 
   if (field.type === "checkbox_group") {
-    const options = field.options?.length ? ` Options: ${field.options.join(", ")}.` : ""
-    return `${personPrefix}${baseLabel}${options} You can choose multiple values separated by commas. What are your selections?`
+    const numbered = (field.options ?? []).map((opt, i) => `${i + 1}. ${opt}`).join("\n")
+    const hint = numbered ? `\n${numbered}\nEnter number(s) separated by commas, or type your answer.` : " What are your selections?"
+    return `${personPrefix}${baseLabel}${hint}`
   }
 
   if (field.options && field.options.length > 0) {
@@ -749,59 +905,54 @@ function toSpeakableQuestionText(text: string): string {
     .trim()
 }
 
-function readValue(data: WizardData, question: IntakeQuestion): unknown {
+function getQuestionRecord(data: WizardData, question: IntakeQuestion): FormRecord | null {
   if (question.scope === "preApp") {
-    return data.preApp[question.field.id]
+    return data.preApp
   }
 
   if (question.scope === "contact") {
-    return data.contact[question.field.id]
+    return data.contact
   }
 
   if (question.scope === "assister") {
-    return data.assister[question.field.id]
+    return data.assister
   }
 
   if (question.scope === "person" && question.sectionKey !== undefined && question.personIndex !== undefined) {
     const person = data.persons[question.personIndex]
     if (!person) {
-      return undefined
+      return null
     }
 
-    return person[question.sectionKey][question.field.id]
+    return person[question.sectionKey]
   }
 
-  return undefined
+  return null
 }
 
-function writeValue(data: WizardData, question: IntakeQuestion, value: FieldValue): WizardData {
+function updateQuestionRecord(
+  data: WizardData,
+  question: IntakeQuestion,
+  update: (record: FormRecord) => FormRecord,
+): WizardData {
   if (question.scope === "preApp") {
     return {
       ...data,
-      preApp: {
-        ...data.preApp,
-        [question.field.id]: value,
-      },
+      preApp: update(data.preApp),
     }
   }
 
   if (question.scope === "contact") {
     return {
       ...data,
-      contact: {
-        ...data.contact,
-        [question.field.id]: value,
-      },
+      contact: update(data.contact),
     }
   }
 
   if (question.scope === "assister") {
     return {
       ...data,
-      assister: {
-        ...data.assister,
-        [question.field.id]: value,
-      },
+      assister: update(data.assister),
     }
   }
 
@@ -815,10 +966,7 @@ function writeValue(data: WizardData, question: IntakeQuestion, value: FieldValu
 
     nextPeople[question.personIndex] = {
       ...person,
-      [question.sectionKey]: {
-        ...person[question.sectionKey],
-        [question.field.id]: value,
-      },
+      [question.sectionKey]: update(person[question.sectionKey]),
     }
 
     return {
@@ -828,6 +976,142 @@ function writeValue(data: WizardData, question: IntakeQuestion, value: FieldValu
   }
 
   return data
+}
+
+function getChecklistSelectedLabels(record: FormRecord, question: IntakeQuestion): string[] {
+  const complex = question.complex
+  if (complex?.kind !== "checklist_selection") {
+    return []
+  }
+
+  const checklistValue = (record[complex.parentField.id] as Record<string, Record<string, unknown>> | undefined) ?? {}
+  const selectedLabels = (complex.parentField.items ?? [])
+    .filter((item) => Boolean(checklistValue[item.id]?.selected))
+    .map((item) => item.label)
+
+  return record[`${complex.parentField.id}__none_selected`] === true && selectedLabels.length === 0
+    ? ["None"]
+    : selectedLabels
+}
+
+function readValue(data: WizardData, question: IntakeQuestion): unknown {
+  const record = getQuestionRecord(data, question)
+  if (!record) return undefined
+
+  const complex = question.complex
+  if (!complex) {
+    return record[question.field.id]
+  }
+
+  if (complex.kind === "repeatable_count") {
+    return record[`${complex.parentField.id}__count`]
+  }
+
+  if (complex.kind === "repeatable_field") {
+    const rows = Array.isArray(record[complex.parentField.id])
+      ? record[complex.parentField.id] as Array<Record<string, unknown>>
+      : []
+    return rows[complex.rowIndex]?.[question.field.id]
+  }
+
+  if (complex.kind === "checklist_selection") {
+    return getChecklistSelectedLabels(record, question)
+  }
+
+  const checklistValue = (record[complex.parentField.id] as Record<string, Record<string, unknown>> | undefined) ?? {}
+  return checklistValue[complex.itemId]?.[complex.valueKey]
+}
+
+function writeValue(data: WizardData, question: IntakeQuestion, value: FieldValue): WizardData {
+  const complex = question.complex
+
+  if (!complex) {
+    return updateQuestionRecord(data, question, (record) => ({
+      ...record,
+      [question.field.id]: value,
+    }))
+  }
+
+  if (complex.kind === "repeatable_count") {
+    const maxEntries = complex.parentField.max_entries ?? 2
+    const nextCount = Math.min(maxEntries, Math.max(0, Number.parseInt(String(value || "0"), 10) || 0))
+    return updateQuestionRecord(data, question, (record) => {
+      const existingRows = Array.isArray(record[complex.parentField.id])
+        ? record[complex.parentField.id] as Array<Record<string, unknown>>
+        : []
+      const nextRows = existingRows.slice(0, nextCount)
+      while (nextRows.length < nextCount) {
+        nextRows.push(getRepeatableRowDefault(complex.parentField.group_schema ?? []))
+      }
+
+      return {
+        ...record,
+        [`${complex.parentField.id}__count`]: String(nextCount),
+        [complex.parentField.id]: nextRows,
+      }
+    })
+  }
+
+  if (complex.kind === "repeatable_field") {
+    return updateQuestionRecord(data, question, (record) => {
+      const rows = Array.isArray(record[complex.parentField.id])
+        ? [...record[complex.parentField.id] as Array<Record<string, unknown>>]
+        : []
+      while (rows.length <= complex.rowIndex) {
+        rows.push(getRepeatableRowDefault(complex.parentField.group_schema ?? []))
+      }
+
+      rows[complex.rowIndex] = {
+        ...(rows[complex.rowIndex] ?? {}),
+        [question.field.id]: value,
+      }
+
+      return {
+        ...record,
+        [complex.parentField.id]: rows,
+      }
+    })
+  }
+
+  if (complex.kind === "checklist_selection") {
+    const selectedLabels = Array.isArray(value) ? value.map((item) => String(item)) : [String(value)]
+    const selectedSet = new Set(selectedLabels.map((item) => item.toLowerCase()))
+    const noneSelected = selectedSet.has("none")
+
+    return updateQuestionRecord(data, question, (record) => {
+      const currentChecklist = (record[complex.parentField.id] as Record<string, Record<string, unknown>> | undefined) ?? {}
+      const nextChecklist: Record<string, Record<string, unknown>> = {}
+
+      for (const item of complex.parentField.items ?? []) {
+        const selected = !noneSelected && selectedSet.has(item.label.toLowerCase())
+        nextChecklist[item.id] = {
+          ...(currentChecklist[item.id] ?? {}),
+          selected,
+        }
+      }
+
+      return {
+        ...record,
+        [`${complex.parentField.id}__none_selected`]: noneSelected,
+        [complex.parentField.id]: nextChecklist,
+      }
+    })
+  }
+
+  return updateQuestionRecord(data, question, (record) => {
+    const currentChecklist = (record[complex.parentField.id] as Record<string, Record<string, unknown>> | undefined) ?? {}
+    return {
+      ...record,
+      [complex.parentField.id]: {
+        ...currentChecklist,
+        [complex.itemId]: {
+          ...(currentChecklist[complex.itemId] ?? {}),
+          selected: true,
+          [complex.valueKey]: value,
+        },
+      },
+    }
+  })
 }
 
 interface AddressSiblingFieldIds {
@@ -988,14 +1272,150 @@ async function applyAddressAutofillFromAnswer(
   }
 }
 
+function getComplexQuestionPrefix(
+  target: Pick<IntakeQuestion, "scope" | "sectionKey" | "personIndex">,
+  parentFieldId: string,
+): string {
+  if (target.scope === "person") {
+    return `complex:person:${target.personIndex ?? 0}:${target.sectionKey ?? ""}:${parentFieldId}`
+  }
+
+  return `complex:${target.scope}:${parentFieldId}`
+}
+
+function createRepeatableCountQuestion(
+  field: SchemaField,
+  target: Pick<IntakeQuestion, "scope" | "sectionKey" | "personIndex">,
+): IntakeQuestion {
+  const maxEntries = field.max_entries ?? 2
+  return {
+    id: `${getComplexQuestionPrefix(target, field.id)}:count`,
+    field: {
+      id: `${field.id}__count`,
+      label: field.label,
+      type: "number",
+      required: false,
+      validation: { min: 0, max: maxEntries },
+    },
+    ...target,
+    complex: {
+      kind: "repeatable_count",
+      parentField: field,
+    },
+  }
+}
+
+function createChecklistSelectionQuestion(
+  field: SchemaField,
+  target: Pick<IntakeQuestion, "scope" | "sectionKey" | "personIndex">,
+): IntakeQuestion {
+  const itemLabels = (field.items ?? []).map((item) => item.label)
+  const hasNoneOption = itemLabels.some((label) => label.toLowerCase() === "none")
+
+  return {
+    id: `${getComplexQuestionPrefix(target, field.id)}:selected`,
+    field: {
+      id: `${field.id}__selected`,
+      label: field.label,
+      hint: field.hint,
+      type: "checkbox_group",
+      required: false,
+      options: hasNoneOption ? itemLabels : [...itemLabels, "None"],
+    },
+    ...target,
+    complex: {
+      kind: "checklist_selection",
+      parentField: field,
+    },
+  }
+}
+
+function createChecklistItemField(itemLabel: string, valueKey: string): SchemaField {
+  if (valueKey === "amount") {
+    return { id: valueKey, label: `${itemLabel}: amount`, type: "currency", required: true }
+  }
+
+  if (valueKey === "yearly_amount") {
+    return { id: valueKey, label: `${itemLabel}: yearly amount`, type: "currency", required: true }
+  }
+
+  if (valueKey === "frequency") {
+    return {
+      id: valueKey,
+      label: `${itemLabel}: frequency`,
+      type: "select",
+      required: true,
+      options: ["One time only", "Weekly", "Every two weeks", "Twice a month", "Monthly", "Yearly"],
+    }
+  }
+
+  if (valueKey === "profit_or_loss") {
+    return { id: valueKey, label: `${itemLabel}: profit or loss`, type: "radio", required: true, options: ["Profit", "Loss"] }
+  }
+
+  if (valueKey === "hours_per_week") {
+    return { id: valueKey, label: `${itemLabel}: hours per week`, type: "number", required: true }
+  }
+
+  if (valueKey === "effective_date") {
+    return { id: valueKey, label: `${itemLabel}: effective date`, type: "date", required: true }
+  }
+
+  return { id: valueKey, label: `${itemLabel}: ${valueKey.replaceAll("_", " ")}`, type: "text", required: true }
+}
+
+function collectChecklistQuestions(params: {
+  field: SchemaField
+  data: WizardData
+  target: Pick<IntakeQuestion, "scope" | "sectionKey" | "personIndex">
+  result: IntakeQuestion[]
+}) {
+  const { field, data, target, result } = params
+  const selectionQuestion = createChecklistSelectionQuestion(field, target)
+  result.push(selectionQuestion)
+
+  const record = getQuestionRecord(data, selectionQuestion)
+  if (!record) return
+
+  const selectedLabels = new Set(getChecklistSelectedLabels(record, selectionQuestion))
+  if (selectedLabels.size === 0 || selectedLabels.has("None")) return
+
+  for (const item of field.items ?? []) {
+    if (!selectedLabels.has(item.label)) continue
+    if (field.type === "deduction_checklist" && item.id === "ded_none") continue
+
+    const valueKeys = field.type === "deduction_checklist"
+      ? ["yearly_amount"]
+      : ["amount", "frequency", ...(item.extra_fields ?? []).filter((key) => key !== "frequency")]
+
+    for (const valueKey of valueKeys) {
+      result.push({
+        id: `${getComplexQuestionPrefix(target, field.id)}:${item.id}:${valueKey}`,
+        field: createChecklistItemField(item.label, valueKey),
+        ...target,
+        complex: {
+          kind: "checklist_item_field",
+          parentField: field,
+          itemId: item.id,
+          valueKey,
+        },
+      })
+    }
+  }
+}
+
 function collectQuestionsFromFields(params: {
   fields: SchemaField[]
   contextValues: Record<string, unknown>
   data: WizardData
   target: Pick<IntakeQuestion, "scope" | "sectionKey" | "personIndex">
   result: IntakeQuestion[]
+  repeatableContext?: {
+    parentField: SchemaField
+    rowIndex: number
+  }
 }) {
-  const { fields, contextValues, data, target, result } = params
+  const { fields, contextValues, data, target, result, repeatableContext } = params
 
   for (const field of fields) {
     const personNumber = target.scope === "person" ? Number(target.personIndex ?? 0) + 1 : 1
@@ -1008,6 +1428,42 @@ function collectQuestionsFromFields(params: {
       continue
     }
 
+    if (field.type === "repeatable_group") {
+      const countQuestion = createRepeatableCountQuestion(field, target)
+      result.push(countQuestion)
+
+      const record = getQuestionRecord(data, countQuestion)
+      const countAnswered = record?.[`${field.id}__count`]
+      const rows = Array.isArray(record?.[field.id])
+        ? record[field.id] as Array<Record<string, unknown>>
+        : []
+
+      if (isFilledValue(countAnswered)) {
+        rows.forEach((row, rowIndex) => {
+          collectQuestionsFromFields({
+            fields: field.group_schema ?? [],
+            contextValues: {
+              ...contextValues,
+              ...row,
+            },
+            data,
+            target,
+            result,
+            repeatableContext: {
+              parentField: field,
+              rowIndex,
+            },
+          })
+        })
+      }
+      continue
+    }
+
+    if (field.type === "income_checklist" || field.type === "deduction_checklist") {
+      collectChecklistQuestions({ field, data, target, result })
+      continue
+    }
+
     if (field.type === "address_group" && field.fields) {
       collectQuestionsFromFields({
         fields: Object.values(field.fields),
@@ -1015,23 +1471,32 @@ function collectQuestionsFromFields(params: {
         data,
         target,
         result,
+        repeatableContext,
       })
       continue
     }
 
-    if (!UNSUPPORTED_FIELD_TYPES.has(field.type)) {
-      const question: IntakeQuestion = {
-        id:
-          target.scope === "person"
-            ? `person:${target.personIndex ?? 0}:${target.sectionKey ?? ""}:${field.id}`
-            : `${target.scope}:${field.id}`,
-        field,
-        scope: target.scope,
-        sectionKey: target.sectionKey,
-        personIndex: target.personIndex,
-      }
-      result.push(question)
+    const question: IntakeQuestion = {
+      id: repeatableContext
+        ? `${getComplexQuestionPrefix(target, repeatableContext.parentField.id)}:${repeatableContext.rowIndex}:${field.id}`
+        : target.scope === "person"
+          ? `person:${target.personIndex ?? 0}:${target.sectionKey ?? ""}:${field.id}`
+          : `${target.scope}:${field.id}`,
+      field,
+      scope: target.scope,
+      sectionKey: target.sectionKey,
+      personIndex: target.personIndex,
+      ...(repeatableContext
+        ? {
+            complex: {
+              kind: "repeatable_field" as const,
+              parentField: repeatableContext.parentField,
+              rowIndex: repeatableContext.rowIndex,
+            },
+          }
+        : {}),
     }
+    result.push(question)
 
     const currentValue = (() => {
       const syntheticQuestion: IntakeQuestion = {
@@ -1040,6 +1505,7 @@ function collectQuestionsFromFields(params: {
         scope: target.scope,
         sectionKey: target.sectionKey,
         personIndex: target.personIndex,
+        complex: question.complex,
       }
       return readValue(data, syntheticQuestion)
     })()
@@ -1057,6 +1523,7 @@ function collectQuestionsFromFields(params: {
         data,
         target,
         result,
+        repeatableContext,
       })
     }
   }
@@ -1193,11 +1660,18 @@ function parseAnswerValue(field: SchemaField, input: string): FieldValue {
         return ""
       }
       return normalizeNumberInput(raw)
-    default:
+    default: {
       if (isNoValueResponse) {
         return ""
       }
+      // Resolve numeric shorthand for fields with a hardcoded numbered prompt.
+      if (field.id === "ethnicity" && /^\d+$/.test(raw)) {
+        const ETHNICITY_OPTIONS = ["Hispanic or Latino", "Not Hispanic or Latino", "Choose not to answer"]
+        const idx = Number.parseInt(raw, 10) - 1
+        if (idx >= 0 && idx < ETHNICITY_OPTIONS.length) return ETHNICITY_OPTIONS[idx]
+      }
       return raw
+    }
   }
 }
 
@@ -1328,6 +1802,24 @@ function applyInitialMemoExtraction(data: WizardData, memo: string): WizardData 
   const targetCount = clampPersonCount(nextData.contact.p1_num_people || nextData.persons.length || 1)
   nextData = ensurePersonCount(nextData, targetCount)
 
+  // Mirror contact name/dob into person 0 identity to keep them in sync.
+  if (nextData.persons[0] && nextContact.p1_name) {
+    nextData = {
+      ...nextData,
+      persons: nextData.persons.map((p, i) =>
+        i === 0 ? { ...p, identity: { ...p.identity, name: nextContact.p1_name } } : p,
+      ),
+    }
+  }
+  if (nextData.persons[0] && nextContact.p1_dob) {
+    nextData = {
+      ...nextData,
+      persons: nextData.persons.map((p, i) =>
+        i === 0 ? { ...p, identity: { ...p.identity, dob: nextContact.p1_dob } } : p,
+      ),
+    }
+  }
+
   return nextData
 }
 
@@ -1376,6 +1868,16 @@ function shouldSkipQuestionInChat(question: IntakeQuestion, data: WizardData): b
     return true
   }
 
+  // Skip name/dob in person 0 identity section — they duplicate p1_name/p1_dob from contact.
+  if (
+    question.scope === "person" &&
+    question.personIndex === 0 &&
+    question.sectionKey === "identity" &&
+    PERSON0_IDENTITY_SKIP_FIELDS.has(question.field.id)
+  ) {
+    return true
+  }
+
   return false
 }
 
@@ -1404,17 +1906,123 @@ function findNextPendingQuestion(
   return null
 }
 
-export function IntakeChat({ applicationId, onSwitchToWizard }: IntakeChatProps) {
+/**
+ * On resume, any unanswered optional question that precedes the last answered
+ * question was clearly seen and skipped in a prior session.  Mark it skipped so
+ * the user doesn't get sent back to it.  This handles legacy sessions that were
+ * saved before chatSkippedIds persistence was added.
+ */
+function deriveSkippedFromLastAnswered(
+  questions: IntakeQuestion[],
+  answeredIds: Set<string>,
+  data: WizardData,
+  baseSkipped: Set<string>,
+): Set<string> {
+  let lastAnsweredIndex = -1
+  for (let i = questions.length - 1; i >= 0; i--) {
+    if (answeredIds.has(questions[i].id)) {
+      lastAnsweredIndex = i
+      break
+    }
+  }
+  if (lastAnsweredIndex < 0) return new Set(baseSkipped)
+
+  const result = new Set(baseSkipped)
+  for (let i = 0; i < lastAnsweredIndex; i++) {
+    const q = questions[i]
+    if (answeredIds.has(q.id) || result.has(q.id) || shouldSkipQuestionInChat(q, data)) continue
+    const contextValues = buildContextValuesForQuestion(data, q)
+    if (!isRequiredInCurrentContext(q.field, contextValues)) {
+      result.add(q.id)
+    }
+  }
+  return result
+}
+
+export const createInitialIntakeData = createInitialData
+export const buildIntakeQuestions = buildQuestions
+export const computeAnsweredIntakeQuestionIds = computeAnsweredQuestionIds
+export const findNextPendingIntakeQuestion = findNextPendingQuestion
+export const parseIntakeAnswerValue = parseAnswerValue
+export const writeIntakeQuestionValue = writeValue
+
+function formatDisplayValue(value: unknown): string {
+  if (value === undefined || value === null || value === "") return ""
+  if (typeof value === "boolean") return value ? "Yes" : "No"
+  if (Array.isArray(value)) {
+    const items = (value as unknown[])
+      .filter((v) => v !== undefined && v !== null && v !== "")
+      .map(String)
+    return items.join(", ")
+  }
+  if (typeof value === "object") return ""
+  return String(value).trim()
+}
+
+function restoreWizardDataFromRaw(raw: unknown): WizardData | null {
+  if (!raw || typeof raw !== "object") return null
+  const obj = raw as Record<string, unknown>
+  const data = obj.data
+  if (!data || typeof data !== "object") return null
+  const d = data as Partial<WizardData>
+  if (!d.contact) return null
+  const initial = createInitialData()
+  const contact = { ...initial.contact, ...(d.contact ?? {}) }
+  const restoredPersons = Array.isArray(d.persons)
+    ? d.persons.map((p, i) => {
+        const base = makeDefaultPersonState(i)
+        const sp = (p ?? {}) as Partial<PersonState>
+        return {
+          ...base, ...sp,
+          identity: { ...base.identity, ...(sp.identity ?? {}) },
+          demographics: { ...base.demographics, ...(sp.demographics ?? {}) },
+          ssn: { ...base.ssn, ...(sp.ssn ?? {}) },
+          tax: { ...base.tax, ...(sp.tax ?? {}) },
+          coverage: { ...base.coverage, ...(sp.coverage ?? {}) },
+          income: { ...base.income, ...(sp.income ?? {}) },
+          skippedOptional: { ...base.skippedOptional, ...(sp.skippedOptional ?? {}) },
+        }
+      })
+    : initial.persons
+
+  // Ensure person 0 identity mirrors contact name/dob from existing saved data.
+  if (restoredPersons[0] && contact.p1_name && !restoredPersons[0].identity.name) {
+    restoredPersons[0] = { ...restoredPersons[0], identity: { ...restoredPersons[0].identity, name: contact.p1_name } }
+  }
+  if (restoredPersons[0] && contact.p1_dob && !restoredPersons[0].identity.dob) {
+    restoredPersons[0] = { ...restoredPersons[0], identity: { ...restoredPersons[0].identity, dob: contact.p1_dob } }
+  }
+
+  const restored: WizardData = {
+    ...initial,
+    ...d,
+    preApp: { ...initial.preApp, ...(d.preApp ?? {}) },
+    contact,
+    assister: { ...initial.assister, ...(d.assister ?? {}) },
+    persons: restoredPersons,
+    attestation: Boolean(d.attestation),
+    assisterEnabled: Boolean(d.assisterEnabled),
+  }
+  return restored
+}
+
+export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard, onSaveAndExit }: IntakeChatProps) {
+  const router = useRouter()
   const dispatch = useAppDispatch()
   const selectedLanguage = useAppSelector((state) => state.app.language)
   const activeApplicationId = useAppSelector((state) => state.application.activeApplicationId)
-  const resolvedApplicationId = applicationId ?? activeApplicationId ?? undefined
+  const resolvedApplicationId = applicationId ?? (activeApplicationId !== DEFAULT_APPLICATION_ID ? activeApplicationId ?? undefined : undefined)
   const selectedApplicationType = useAppSelector((state) => {
     if (!resolvedApplicationId) {
       return ""
     }
 
     return state.application.applicationsById[resolvedApplicationId]?.newApplicationForm.applicationType ?? ""
+  })
+
+  const savedAca3Wizard = useAppSelector((state) => {
+    if (!resolvedApplicationId) return null
+    return state.application.applicationsById[resolvedApplicationId]?.aca3Wizard ?? null
   })
 
   const copy = UI_COPY[selectedLanguage]
@@ -1429,15 +2037,98 @@ export function IntakeChat({ applicationId, onSwitchToWizard }: IntakeChatProps)
   const [answeredQuestionIds, setAnsweredQuestionIds] = useState<Set<string>>(() => new Set())
   const [skippedQuestionIds, setSkippedQuestionIds] = useState<Set<string>>(() => new Set())
   const [intakeStarted, setIntakeStarted] = useState(false)
+  const [hydrationPending, setHydrationPending] = useState(true)
   const [currentQuestionId, setCurrentQuestionId] = useState<string | null>(null)
   const [messages, setMessages] = useState<IntakeMessage[]>([])
   const [draft, setDraft] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [autoSpeak, setAutoSpeak] = useState(true)
+  const [autoSpeak, setAutoSpeak] = useState(false)
   const bottomAnchorRef = useRef<HTMLDivElement | null>(null)
   const translationCacheRef = useRef<Map<string, string>>(new Map())
   const lastSpokenMessageIdRef = useRef<string | null>(null)
   const draftSaveBackoffUntilRef = useRef(0)
+  const hydratedRef = useRef(false)
+
+  // Restore previous session data from Redux cache or server draft on mount.
+  useEffect(() => {
+    if (hydratedRef.current) {
+      setHydrationPending(false)
+      return
+    }
+
+    const applyRestoredData = (raw: unknown) => {
+      const restored = restoreWizardDataFromRaw(raw)
+      if (!restored) return false
+      const restoredQuestions = buildQuestions(restored)
+      const restoredAnswered = computeAnsweredQuestionIds(restoredQuestions, restored)
+      if (restoredAnswered.size === 0) return false
+
+      // Restore explicitly persisted skipped IDs (new sessions).
+      const rawObj = raw as Record<string, unknown>
+      const persistedSkipped = new Set<string>()
+      if (Array.isArray(rawObj.chatSkippedIds)) {
+        for (const id of rawObj.chatSkippedIds) {
+          if (typeof id === "string") persistedSkipped.add(id)
+        }
+      }
+
+      // Derive skipped IDs from the last-answered checkpoint (covers legacy sessions
+      // saved before chatSkippedIds was persisted, and acts as a safety net for new ones).
+      const restoredSkipped = deriveSkippedFromLastAnswered(
+        restoredQuestions, restoredAnswered, restored, persistedSkipped,
+      )
+
+      setWizardData(restored)
+      setAnsweredQuestionIds(restoredAnswered)
+      setSkippedQuestionIds(restoredSkipped)
+      setIntakeStarted(true)
+      const nextQ = findNextPendingQuestion(restoredQuestions, restoredAnswered, restored, restoredSkipped)
+      setCurrentQuestionId(nextQ?.id ?? null)
+      return true
+    }
+
+    // Try Redux cache first (fast, synchronous).
+    if (savedAca3Wizard && applyRestoredData(savedAca3Wizard)) {
+      hydratedRef.current = true
+      setHydrationPending(false)
+      return
+    }
+
+    // Fall back to server draft.
+    if (!resolvedApplicationId) {
+      setHydrationPending(false)
+      return
+    }
+    let cancelled = false
+    const loadFromServer = async () => {
+      try {
+        const headers = actingForPatientId
+          ? { "X-Acting-For-Patient": actingForPatientId }
+          : undefined
+        const response = await authenticatedFetch(
+          `/api/applications/${encodeURIComponent(resolvedApplicationId)}/draft`,
+          { method: "GET", cache: "no-store", ...(headers ? { headers } : {}) },
+        )
+        if (!response.ok || cancelled) {
+          if (!cancelled) setHydrationPending(false)
+          return
+        }
+        const payload = (await response.json()) as { draftState?: unknown }
+        if (!cancelled) {
+          if (applyRestoredData(payload.draftState)) {
+            hydratedRef.current = true
+          }
+          setHydrationPending(false)
+        }
+      } catch {
+        // Draft load is best-effort; fresh session is fine.
+        if (!cancelled) setHydrationPending(false)
+      }
+    }
+    void loadFromServer()
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actingForPatientId, resolvedApplicationId])
 
   const applicationTypeLabel = useMemo(() => {
     return (
@@ -1447,6 +2138,48 @@ export function IntakeChat({ applicationId, onSwitchToWizard }: IntakeChatProps)
   }, [selectedApplicationType])
 
   const questions = useMemo(() => buildQuestions(wizardData), [wizardData])
+
+  const collectedSections = useMemo(() => {
+    const sectionMap = new Map<string, { title: string; items: { label: string; value: string; questionId: string }[] }>()
+    // Track label+value pairs already shown to prevent cross-section duplicates.
+    const globalDedupeSet = new Set<string>()
+
+    for (const question of questions) {
+      if (!answeredQuestionIds.has(question.id)) continue
+      const value = readValue(wizardData, question)
+      const displayValue = formatDisplayValue(value)
+      if (!displayValue) continue
+
+      const dedupeKey = `${question.field.label.trim().toLowerCase()}::${displayValue}`
+      if (globalDedupeSet.has(dedupeKey)) continue
+      globalDedupeSet.add(dedupeKey)
+
+      const sectionKey =
+        question.scope === "person" ? `person:${question.personIndex ?? 0}` : question.scope
+
+      let section = sectionMap.get(sectionKey)
+      if (!section) {
+        let title: string
+        if (question.scope === "person") {
+          title = `Person ${(question.personIndex ?? 0) + 1}`
+        } else if (question.scope === "contact") {
+          title = "Personal Info"
+        } else if (question.scope === "preApp") {
+          title = "Pre-Application"
+        } else if (question.scope === "assister") {
+          title = "Assister Info"
+        } else {
+          title = question.scope
+        }
+        section = { title, items: [] }
+        sectionMap.set(sectionKey, section)
+      }
+
+      section.items.push({ label: question.field.label, value: displayValue, questionId: question.id })
+    }
+
+    return Array.from(sectionMap.values()).filter((s) => s.items.length > 0)
+  }, [questions, answeredQuestionIds, wizardData])
 
   const currentQuestion = useMemo(() => {
     if (!currentQuestionId) {
@@ -1527,7 +2260,10 @@ export function IntakeChat({ applicationId, onSwitchToWizard }: IntakeChatProps)
   )
 
   const persistWizardData = useCallback(
-    async (data: WizardData) => {
+    async (
+      data: WizardData,
+      opts?: { skippedIds?: Set<string>; answeredCount?: number; totalCount?: number },
+    ) => {
       if (!resolvedApplicationId) {
         return
       }
@@ -1535,7 +2271,17 @@ export function IntakeChat({ applicationId, onSwitchToWizard }: IntakeChatProps)
         return
       }
 
-      const wizardState = createDraftWizardState(data)
+      // Map answered/total to wizard step 1-9 so the dashboard progress bar reflects
+      // actual chat completion rather than always showing step 1.
+      const chatStep =
+        opts?.answeredCount !== undefined && opts.totalCount && opts.totalCount > 0
+          ? Math.max(1, Math.min(9, Math.round((opts.answeredCount / opts.totalCount) * 9)))
+          : 1
+
+      const wizardState = {
+        ...createDraftWizardState(data, chatStep),
+        chatSkippedIds: opts?.skippedIds ? [...opts.skippedIds] : [],
+      }
       dispatch(
         setApplicationWizardState({
           applicationId: resolvedApplicationId,
@@ -1544,11 +2290,16 @@ export function IntakeChat({ applicationId, onSwitchToWizard }: IntakeChatProps)
       )
 
       try {
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        }
+        if (actingForPatientId) {
+          headers["X-Acting-For-Patient"] = actingForPatientId
+        }
+
         const response = await authenticatedFetch(`/api/applications/${encodeURIComponent(resolvedApplicationId)}/draft`, {
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers,
           body: JSON.stringify({
             applicationType: selectedApplicationType || undefined,
             wizardState,
@@ -1568,7 +2319,7 @@ export function IntakeChat({ applicationId, onSwitchToWizard }: IntakeChatProps)
         // Non-blocking: local redux state remains up to date.
       }
     },
-    [dispatch, resolvedApplicationId, selectedApplicationType],
+    [actingForPatientId, dispatch, resolvedApplicationId, selectedApplicationType],
   )
 
   const appendAssistantQuestion = useCallback(
@@ -1608,7 +2359,15 @@ export function IntakeChat({ applicationId, onSwitchToWizard }: IntakeChatProps)
 
   useEffect(() => {
     const initialize = async () => {
-      if (messages.length > 0) {
+      // Wait until the hydration attempt (Redux cache or server fetch) has resolved.
+      if (hydrationPending) return
+      if (messages.length > 0) return
+
+      // If we restored a previous session, jump straight to the next pending question.
+      if (hydratedRef.current) {
+        const restoredQuestions = buildQuestions(wizardData)
+        const nextQ = findNextPendingQuestion(restoredQuestions, answeredQuestionIds, wizardData, skippedQuestionIds)
+        await appendAssistantQuestion(`${copy.savedPrefix}, let's continue where we left off.`, nextQ)
         return
       }
 
@@ -1631,7 +2390,8 @@ export function IntakeChat({ applicationId, onSwitchToWizard }: IntakeChatProps)
     }
 
     void initialize()
-  }, [applicationTypeLabel, copy.openingMemoPrompt, copy.savedPrefix, copy.subtitle, messages.length])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrationPending, applicationTypeLabel, copy.openingMemoPrompt, copy.savedPrefix, copy.subtitle, messages.length])
 
   useEffect(() => {
     if (!autoSpeak) {
@@ -1652,41 +2412,196 @@ export function IntakeChat({ applicationId, onSwitchToWizard }: IntakeChatProps)
     speakText(question)
   }, [autoSpeak, messages, speakText])
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-
-    if (!draft.trim() || isLoading) {
-      return
-    }
-
-    const answer = draft.trim()
-    setDraft("")
+  const handleAnswer = useCallback(async (answer: string) => {
     setIsLoading(true)
 
-    setMessages((previous) => [
-      ...previous,
-      {
-        id: createMessageId(),
-        role: "user",
-        content: answer,
-      },
-    ])
+    try {
+      setMessages((previous) => [
+        ...previous,
+        {
+          id: createMessageId(),
+          role: "user",
+          content: answer,
+        },
+      ])
 
-    if (!intakeStarted) {
-      const extractedData = applyInitialMemoExtraction(wizardData, answer)
-      const refreshedQuestions = buildQuestions(extractedData)
-      const refreshedAnswered = computeAnsweredQuestionIds(refreshedQuestions, extractedData)
-      const nextQuestion = findNextPendingQuestion(
-        refreshedQuestions,
-        refreshedAnswered,
-        extractedData,
-        skippedQuestionIds,
+      if (!intakeStarted) {
+        const extractedData = applyInitialMemoExtraction(wizardData, answer)
+        const refreshedQuestions = buildQuestions(extractedData)
+        const refreshedAnswered = computeAnsweredQuestionIds(refreshedQuestions, extractedData)
+        const nextQuestion = findNextPendingQuestion(
+          refreshedQuestions,
+          refreshedAnswered,
+          extractedData,
+          skippedQuestionIds,
+        )
+
+        setWizardData(extractedData)
+        setAnsweredQuestionIds(refreshedAnswered)
+        setIntakeStarted(true)
+        await persistWizardData(extractedData, {
+          skippedIds: skippedQuestionIds,
+          answeredCount: refreshedAnswered.size,
+          totalCount: refreshedQuestions.length,
+        })
+
+        if (!nextQuestion) {
+          setCurrentQuestionId(null)
+          setMessages((previous) => [
+            ...previous,
+            {
+              id: createMessageId(),
+              role: "assistant",
+              content: copy.complete,
+            },
+          ])
+          return
+        }
+
+        await appendAssistantQuestion(buildAcknowledgementPrefix(copy.savedPrefix, extractedData), nextQuestion)
+        return
+      }
+
+      if (!currentQuestion) {
+        return
+      }
+
+      let nextData = writeValue(wizardData, currentQuestion, parseAnswerValue(currentQuestion.field, answer))
+      const mergedContextValues = buildContextValuesForQuestion(nextData, currentQuestion)
+
+      const parsedValue = readValue(nextData, currentQuestion) as FieldValue
+      const validationError = validateParsedFieldValue(
+        currentQuestion.field,
+        parsedValue,
+        mergedContextValues,
       )
 
-      setWizardData(extractedData)
-      setAnsweredQuestionIds(refreshedAnswered)
-      setIntakeStarted(true)
-      await persistWizardData(extractedData)
+      if (validationError) {
+        const prompt = await localizeQuestion(formatQuestionPrompt(currentQuestion))
+        setMessages((previous) => [
+          ...previous,
+          {
+            id: createMessageId(),
+            role: "assistant",
+            content: `${validationError} ${prompt}`,
+          },
+        ])
+        return
+      }
+
+      if (currentQuestion.field.id === "p1_language_spoken") {
+        const detectedLang = SPOKEN_LANGUAGE_TO_CODE[answer.trim().toLowerCase()]
+        if (detectedLang) {
+          dispatch(setLanguage(detectedLang))
+        }
+        // Mirror spoken language to written language so it isn't asked again.
+        nextData = writeFieldById(nextData, currentQuestion, "p1_language_written", parsedValue)
+      }
+
+      // Sync contact name/dob into person 0 identity to avoid duplicate questions.
+      if (currentQuestion.scope === "contact" && currentQuestion.field.id === "p1_name") {
+        const identityQuestion: IntakeQuestion = {
+          id: "person:0:identity:name",
+          field: { id: "name", label: "name", type: "text" },
+          scope: "person",
+          sectionKey: "identity",
+          personIndex: 0,
+        }
+        nextData = writeValue(nextData, identityQuestion, parsedValue)
+      }
+      if (currentQuestion.scope === "contact" && currentQuestion.field.id === "p1_dob") {
+        const identityQuestion: IntakeQuestion = {
+          id: "person:0:identity:dob",
+          field: { id: "dob", label: "dob", type: "date" },
+          scope: "person",
+          sectionKey: "identity",
+          personIndex: 0,
+        }
+        nextData = writeValue(nextData, identityQuestion, parsedValue)
+      }
+
+      const addressAutofill = await applyAddressAutofillFromAnswer(nextData, currentQuestion, answer)
+      nextData = addressAutofill.data
+
+      const validationErrorMessage = addressAutofill.validationError
+      if (typeof validationErrorMessage === "string" && validationErrorMessage.length > 0) {
+        setMessages((previous) => [
+          ...previous,
+          {
+            id: createMessageId(),
+            role: "assistant",
+            content: validationErrorMessage,
+          },
+        ])
+        return
+      }
+
+      const validationNoteMessage = addressAutofill.validationNote
+      if (typeof validationNoteMessage === "string" && validationNoteMessage.length > 0) {
+        setMessages((previous) => [
+          ...previous,
+          {
+            id: createMessageId(),
+            role: "assistant",
+            content: validationNoteMessage,
+          },
+        ])
+      }
+
+      if (currentQuestion.scope === "contact" && currentQuestion.field.id === "p1_num_people") {
+        const parsedCount = clampPersonCount(nextData.contact.p1_num_people)
+        nextData = ensurePersonCount(nextData, parsedCount)
+      }
+
+      const refreshedQuestions = buildQuestions(nextData)
+      const nextAnswered = computeAnsweredQuestionIds(refreshedQuestions, nextData)
+      const nextSkipped = new Set(skippedQuestionIds)
+      const isRequired = isRequiredInCurrentContext(currentQuestion.field, mergedContextValues)
+
+      if (!isRequired && isDeclineAnswer(answer) && !isFilledValue(parsedValue)) {
+        nextSkipped.add(currentQuestion.id)
+      } else if (isFilledValue(parsedValue)) {
+        nextSkipped.delete(currentQuestion.id)
+      }
+
+      setWizardData(nextData)
+      setAnsweredQuestionIds(nextAnswered)
+      setSkippedQuestionIds(nextSkipped)
+      await persistWizardData(nextData, {
+        skippedIds: nextSkipped,
+        answeredCount: nextAnswered.size,
+        totalCount: refreshedQuestions.length,
+      })
+
+      let nextQuestion = findNextPendingQuestion(refreshedQuestions, nextAnswered, nextData, nextSkipped)
+
+      if (currentQuestion.field.id === "p1_no_home_address") {
+        const noHomeAddress = nextData.contact.p1_no_home_address === true
+
+        if (noHomeAddress) {
+          const mailingStreetQuestion = refreshedQuestions.find(
+            (question) =>
+              question.scope === "contact" &&
+              question.field.id === "p1_mail_street" &&
+              !nextAnswered.has(question.id),
+          )
+
+          if (mailingStreetQuestion) {
+            nextQuestion = mailingStreetQuestion
+          }
+        } else {
+          const homeStreetQuestion = refreshedQuestions.find(
+            (question) =>
+              question.scope === "contact" &&
+              question.field.id === "p1_home_street" &&
+              !nextAnswered.has(question.id),
+          )
+
+          if (homeStreetQuestion) {
+            nextQuestion = homeStreetQuestion
+          }
+        }
+      }
 
       if (!nextQuestion) {
         setCurrentQuestionId(null)
@@ -1698,141 +2613,49 @@ export function IntakeChat({ applicationId, onSwitchToWizard }: IntakeChatProps)
             content: copy.complete,
           },
         ])
-        setIsLoading(false)
         return
       }
 
-      await appendAssistantQuestion(buildAcknowledgementPrefix(copy.savedPrefix, extractedData), nextQuestion)
-      setIsLoading(false)
-      return
-    }
-
-    if (!currentQuestion) {
-      setIsLoading(false)
-      return
-    }
-
-    let nextData = writeValue(wizardData, currentQuestion, parseAnswerValue(currentQuestion.field, answer))
-    const mergedContextValues = buildContextValuesForQuestion(nextData, currentQuestion)
-
-    const parsedValue = readValue(nextData, currentQuestion) as FieldValue
-    const validationError = validateParsedFieldValue(
-      currentQuestion.field,
-      parsedValue,
-      mergedContextValues,
-    )
-
-    if (validationError) {
-      const prompt = await localizeQuestion(formatQuestionPrompt(currentQuestion))
+      await appendAssistantQuestion(buildAcknowledgementPrefix(copy.savedPrefix, nextData), nextQuestion)
+    } catch (error) {
+      console.error("Intake submit error:", error)
       setMessages((previous) => [
         ...previous,
         {
           id: createMessageId(),
           role: "assistant",
-          content: `${validationError} ${prompt}`,
+          content: "Something went wrong processing your answer. Please try again.",
         },
       ])
+    } finally {
       setIsLoading(false)
-      return
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [intakeStarted, currentQuestion, wizardData, skippedQuestionIds, copy, applicationTypeLabel, dispatch, persistWizardData, appendAssistantQuestion, localizeQuestion])
 
-    const addressAutofill = await applyAddressAutofillFromAnswer(nextData, currentQuestion, answer)
-    nextData = addressAutofill.data
-
-    const validationErrorMessage = addressAutofill.validationError
-    if (typeof validationErrorMessage === "string" && validationErrorMessage.length > 0) {
-      setMessages((previous) => [
-        ...previous,
-        {
-          id: createMessageId(),
-          role: "assistant",
-          content: validationErrorMessage,
-        },
-      ])
-      setIsLoading(false)
-      return
-    }
-
-    const validationNoteMessage = addressAutofill.validationNote
-    if (typeof validationNoteMessage === "string" && validationNoteMessage.length > 0) {
-      setMessages((previous) => [
-        ...previous,
-        {
-          id: createMessageId(),
-          role: "assistant",
-          content: validationNoteMessage,
-        },
-      ])
-    }
-
-    if (currentQuestion.scope === "contact" && currentQuestion.field.id === "p1_num_people") {
-      const parsedCount = clampPersonCount(nextData.contact.p1_num_people)
-      nextData = ensurePersonCount(nextData, parsedCount)
-    }
-
-    const refreshedQuestions = buildQuestions(nextData)
-    const nextAnswered = computeAnsweredQuestionIds(refreshedQuestions, nextData)
-    const nextSkipped = new Set(skippedQuestionIds)
-    const isRequired = isRequiredInCurrentContext(currentQuestion.field, mergedContextValues)
-
-    if (!isRequired && isDeclineAnswer(answer) && !isFilledValue(parsedValue)) {
-      nextSkipped.add(currentQuestion.id)
-    } else if (isFilledValue(parsedValue)) {
-      nextSkipped.delete(currentQuestion.id)
-    }
-
-    setWizardData(nextData)
-    setAnsweredQuestionIds(nextAnswered)
-    setSkippedQuestionIds(nextSkipped)
-    await persistWizardData(nextData)
-
-    let nextQuestion = findNextPendingQuestion(refreshedQuestions, nextAnswered, nextData, nextSkipped)
-
-    if (currentQuestion.field.id === "p1_no_home_address") {
-      const noHomeAddress = nextData.contact.p1_no_home_address === true
-
-      if (noHomeAddress) {
-        const mailingStreetQuestion = refreshedQuestions.find(
-          (question) =>
-            question.scope === "contact" &&
-            question.field.id === "p1_mail_street" &&
-            !nextAnswered.has(question.id),
-        )
-
-        if (mailingStreetQuestion) {
-          nextQuestion = mailingStreetQuestion
-        }
-      } else {
-        const homeStreetQuestion = refreshedQuestions.find(
-          (question) =>
-            question.scope === "contact" &&
-            question.field.id === "p1_home_street" &&
-            !nextAnswered.has(question.id),
-        )
-
-        if (homeStreetQuestion) {
-          nextQuestion = homeStreetQuestion
-        }
-      }
-    }
-
-    if (!nextQuestion) {
-      setCurrentQuestionId(null)
-      setMessages((previous) => [
-        ...previous,
-        {
-          id: createMessageId(),
-          role: "assistant",
-          content: copy.complete,
-        },
-      ])
-      setIsLoading(false)
-      return
-    }
-
-    await appendAssistantQuestion(buildAcknowledgementPrefix(copy.savedPrefix, nextData), nextQuestion)
-    setIsLoading(false)
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!draft.trim() || isLoading) return
+    const answer = draft.trim()
+    setDraft("")
+    await handleAnswer(answer)
   }
+
+  const handleWidgetAnswer = useCallback(async (value: string) => {
+    if (!value.trim() || isLoading) return
+    setDraft("")
+    await handleAnswer(value)
+  }, [isLoading, handleAnswer])
+
+  const handleEditAnswer = useCallback(
+    async (questionId: string) => {
+      const question = questions.find((q) => q.id === questionId)
+      if (!question) return
+      setCurrentQuestionId(questionId)
+      await appendAssistantQuestion("Let me re-ask:", question)
+    },
+    [appendAssistantQuestion, questions],
+  )
 
   const handleResetChat = () => {
     const resetData = createInitialData()
@@ -1846,9 +2669,38 @@ export function IntakeChat({ applicationId, onSwitchToWizard }: IntakeChatProps)
     translationCacheRef.current.clear()
   }
 
+  const completionPercent = useMemo(() => {
+    const total = questions.length
+    if (total === 0) return 0
+    return Math.round((answeredQuestionIds.size / total) * 100)
+  }, [answeredQuestionIds.size, questions.length])
+
+  const widgetSpec = useMemo((): WidgetSpec | null => {
+    if (!currentQuestion || !intakeStarted) return null
+    const { field } = currentQuestion
+    if (field.type === "checkbox") return { kind: "yes_no" }
+    if (field.type === "date") return { kind: "date" }
+    if (field.type === "phone") return { kind: "phone" }
+    if (field.type === "ssn") return { kind: "ssn" }
+    if (field.type === "checkbox_group" && field.options?.length) {
+      return { kind: "multi_select", options: field.options }
+    }
+    if ((field.type === "radio" || field.type === "select") && field.options?.length) {
+      return { kind: "single_select", options: field.options }
+    }
+    if (field.id === "ethnicity") {
+      return {
+        kind: "single_select",
+        options: ["Hispanic or Latino", "Not Hispanic or Latino", "Choose not to answer"],
+      }
+    }
+    return null
+  }, [currentQuestion, intakeStarted])
+
   return (
     <IntakeChatPanel
       copy={copy}
+      onSaveAndExit={onSaveAndExit ?? (() => router.back())}
       onSwitchToWizard={onSwitchToWizard}
       autoSpeak={autoSpeak}
       onAutoSpeakChange={setAutoSpeak}
@@ -1856,6 +2708,7 @@ export function IntakeChat({ applicationId, onSwitchToWizard }: IntakeChatProps)
       onLanguageChange={handleLanguageChange}
       messages={messages}
       isLoading={isLoading}
+      completionPercent={completionPercent}
       onSpeakQuestion={speakText}
       bottomAnchorRef={bottomAnchorRef}
       draft={draft}
@@ -1864,6 +2717,11 @@ export function IntakeChat({ applicationId, onSwitchToWizard }: IntakeChatProps)
       disableInput={isLoading || (intakeStarted && !currentQuestion)}
       disableSubmit={isLoading || !draft.trim() || (intakeStarted && !currentQuestion)}
       onResetChat={handleResetChat}
+      collectedSections={collectedSections}
+      onEditAnswer={handleEditAnswer}
+      widgetSpec={widgetSpec}
+      onWidgetAnswer={handleWidgetAnswer}
+      widgetKey={currentQuestionId ?? undefined}
     />
   )
 }

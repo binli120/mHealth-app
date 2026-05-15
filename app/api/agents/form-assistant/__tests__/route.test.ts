@@ -52,7 +52,7 @@ vi.mock("ai", () => {
 
 import { POST } from "@/app/api/agents/form-assistant/route"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
-import { createUIMessageStreamResponse } from "ai"
+import { createUIMessageStreamResponse, streamText } from "ai"
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -198,6 +198,20 @@ describe("POST /api/agents/form-assistant — SSN scrubbing", () => {
   it("works correctly when existingMembers is omitted", async () => {
     const response = await POST(makeRequest({ messages: ONE_USER_MESSAGE }))
     expect(response.status).toBe(200)
+  })
+
+  it("returns the SSN handoff without sending SSN-like content to the model or tools", async () => {
+    const { buildFormAssistantTools } = await import("@/lib/agents/form-assistant/tools")
+
+    const response = await POST(
+      makeRequest({
+        messages: [{ role: "user", content: "My SSN is 123-45-6789" }],
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    expect(streamText).not.toHaveBeenCalled()
+    expect(buildFormAssistantTools).not.toHaveBeenCalled()
   })
 })
 

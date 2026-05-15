@@ -14,8 +14,8 @@
 
 import { useState } from "react"
 import { useParams } from "next/navigation"
-import { ApplicationAssistant } from "@/components/application/aca3/application-assistant"
 import { FormWizard } from "@/components/application/aca3/form-wizard"
+import { IntakeChat } from "@/components/application/aca3/intake-chat"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { ApplicationEntryMode } from "@/lib/applications/types"
 import { UserRound } from "lucide-react"
@@ -49,8 +49,9 @@ export default function SWEditApplicationPage() {
         </div>
 
         <TabsContent value="chat" className="mt-4">
-          <ApplicationAssistant
+          <IntakeChat
             applicationId={applicationId}
+            actingForPatientId={patientId}
             onSwitchToWizard={() => setEntryMode("wizard")}
           />
         </TabsContent>

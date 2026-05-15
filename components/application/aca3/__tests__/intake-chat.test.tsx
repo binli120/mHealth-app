@@ -56,7 +56,7 @@ describe("IntakeChat", () => {
 
   it("renders the language selector", () => {
     renderChat()
-    expect(screen.getByRole("combobox")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "EN" })).toBeInTheDocument()
   })
 
   it("renders the Reset button", () => {

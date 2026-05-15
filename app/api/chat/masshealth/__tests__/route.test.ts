@@ -337,6 +337,22 @@ describe("POST /api/chat/masshealth — SSN scrubbing (form_assistant mode)", ()
     expect(membersArg[0]?.id).toBe("m1")
     expect(membersArg[0]?.ssn).toBe("")
   })
+
+  it("returns the SSN handoff without sending SSN-like content to extraction or generation", async () => {
+    const { extractFormFields } = await import("@/lib/masshealth/form-field-extraction")
+    const { streamText } = await import("ai")
+
+    const response = await POST(
+      makeRequest({
+        messages: [{ role: "user", content: "My SSN is 123-45-6789" }],
+        mode: "form_assistant",
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    expect(extractFormFields).not.toHaveBeenCalled()
+    expect(streamText).not.toHaveBeenCalled()
+  })
 })
 
 // ── Language handling ─────────────────────────────────────────────────────────

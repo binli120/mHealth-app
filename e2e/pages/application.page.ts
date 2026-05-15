@@ -200,25 +200,17 @@ export class ApplicationPage {
     await expect(this.page.getByRole("tab", { name: /compass/i })).toBeVisible()
     // Heading inside the chat panel is "Compass"
     await expect(this.page.getByText(/compass/i).first()).toBeVisible({ timeout: 10_000 })
-    await expect(this.page.locator("textarea").first()).toBeVisible()
+    // IntakeChat renders <Input> (as <input>), not <textarea>
+    await expect(this.page.getByPlaceholder(/type your answer/i)).toBeVisible()
   }
 
   async startFreshInChat() {
-    const prefillPrompt = this.page.getByText(/pre-fill|saved info|start fresh/i).first()
-    if (!(await prefillPrompt.isVisible({ timeout: 2_000 }).catch(() => false))) {
-      await expect(this.page.locator("textarea").first()).toBeEnabled()
-      return
-    }
-
-    const chatInput = this.page.locator("textarea").first()
-    await chatInput.fill("No")
-    await chatInput.press("Enter")
-    // Textarea clears once the message is accepted
-    await expect(chatInput).toHaveValue("", { timeout: 10_000 })
+    // IntakeChat shows the first question directly — no pre-fill prompt
+    await expect(this.page.getByPlaceholder(/type your answer/i)).toBeEnabled({ timeout: 10_000 })
   }
 
   async switchChatToWizard() {
-    const reviewButton = this.page.getByRole("button", { name: /review in form wizard/i })
+    const reviewButton = this.page.getByRole("button", { name: /switch to form wizard|review in form wizard/i })
     await expect(reviewButton).toBeVisible({ timeout: 10_000 })
     await reviewButton.click()
     await this.assertWizardModeVisible()

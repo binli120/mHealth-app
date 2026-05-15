@@ -22,6 +22,7 @@ import { isSupportedLanguage } from "@/lib/i18n/languages"
 import { logServerError, logServerInfo } from "@/lib/server/logger"
 import { buildIntakeTools } from "@/lib/agents/intake/tools"
 import { buildIntakeAgentSystemPrompt } from "@/lib/agents/intake/prompts"
+import { containsSsnLikeContent, SSN_CHAT_HANDOFF_MESSAGE } from "@/lib/agents/sensitive-input"
 import type { ChatMessage } from "@/lib/masshealth/types"
 
 export const runtime = "nodejs"
@@ -59,6 +60,22 @@ export async function POST(request: Request) {
 
     // Provide the last user message to the tools so hint extraction is focused.
     const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content ?? ""
+    if (containsSsnLikeContent(lastUserMessage)) {
+      return createUIMessageStreamResponse({
+        stream: createUIMessageStream({
+          execute({ writer }) {
+            writer.write({
+              type: "data-masshealth" as `data-${string}`,
+              data: {
+                ok: true,
+                outOfScope: false,
+                reply: SSN_CHAT_HANDOFF_MESSAGE,
+              },
+            })
+          },
+        }),
+      })
+    }
 
     const requestStart = Date.now()
     logServerInfo(`${AGENT}.request`, {

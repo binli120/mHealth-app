@@ -32,6 +32,7 @@ import { getOllamaModel } from "@/lib/masshealth/ollama-provider"
 import { runEligibilityCheck } from "@/lib/eligibility-engine"
 import { retrieveRelevantChunks, formatChunksForPrompt } from "@/lib/rag/retrieve"
 import { extractHouseholdRelationshipHints } from "@/lib/masshealth/household-relationships"
+import { containsSsnLikeContent, SSN_CHAT_HANDOFF_MESSAGE } from "@/lib/agents/sensitive-input"
 import { logServerError } from "@/lib/server/logger"
 import { logChatRequest } from "@/lib/db/admin-analytics"
 import { isSupportedLanguage, type SupportedLanguage } from "@/lib/i18n/languages"
@@ -388,6 +389,20 @@ export async function POST(request: Request) {
 
     if (!lastUserMessage) {
       return NextResponse.json({ ok: false, error: "At least one user message is required." }, { status: 400 })
+    }
+
+    if (containsSsnLikeContent(lastUserMessage.content)) {
+      return createUIMessageStreamResponse({
+        stream: createUIMessageStream({
+          execute({ writer }) {
+            writeData(writer, {
+              ok: true,
+              outOfScope: false,
+              reply: SSN_CHAT_HANDOFF_MESSAGE,
+            })
+          },
+        }),
+      })
     }
 
     const mode = payload.mode

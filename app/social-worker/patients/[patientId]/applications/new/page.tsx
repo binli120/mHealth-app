@@ -13,15 +13,16 @@
 "use client"
 
 import { useState } from "react"
-import { useParams } from "next/navigation"
-import { ApplicationAssistant } from "@/components/application/aca3/application-assistant"
+import { useParams, useRouter } from "next/navigation"
 import { FormWizard } from "@/components/application/aca3/form-wizard"
+import { IntakeChat } from "@/components/application/aca3/intake-chat"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { ApplicationEntryMode } from "@/lib/applications/types"
 import { UserRound } from "lucide-react"
 
 export default function SWNewApplicationPage() {
   const params = useParams()
+  const router = useRouter()
   const patientId = params.patientId as string
   const [entryMode, setEntryMode] = useState<ApplicationEntryMode>("wizard")
 
@@ -48,8 +49,10 @@ export default function SWNewApplicationPage() {
         </div>
 
         <TabsContent value="chat" className="mt-4">
-          <ApplicationAssistant
+          <IntakeChat
+            actingForPatientId={patientId}
             onSwitchToWizard={() => setEntryMode("wizard")}
+            onSaveAndExit={() => router.push(`/social-worker/patients/${patientId}/applications`)}
           />
         </TabsContent>
 

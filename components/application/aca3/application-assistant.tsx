@@ -54,6 +54,7 @@ import {
   type FormSection,
 } from "@/lib/masshealth/form-sections"
 import { DocumentUploader } from "@/components/application/document-uploader"
+import { containsSsnLikeContent, SSN_CHAT_HANDOFF_MESSAGE } from "@/lib/agents/sensitive-input"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -433,6 +434,19 @@ export function getImmediateFieldPatchFromAnswer(
     return { fields: {}, noIncome: true }
   }
 
+  // Explicit field-keyword checks take priority over input-type heuristics,
+  // preventing "last name" answers from being misrouted to dob when the AI
+  // message mentions "date of birth" alongside the actual question.
+  if (/\bfirst name\b/.test(prompt) && !formData.firstName) {
+    fields.firstName = trimmed
+    return { fields }
+  }
+
+  if (/\blast name\b/.test(prompt) && !formData.lastName) {
+    fields.lastName = trimmed
+    return { fields }
+  }
+
   if (inputFieldType === "email" || /\bemail\b|e-mail/.test(prompt)) {
     if (isValidEmail(trimmed)) fields.email = trimmed.toLowerCase()
     return { fields }
@@ -448,11 +462,7 @@ export function getImmediateFieldPatchFromAnswer(
     return { fields }
   }
 
-  if (/\bfirst name\b/.test(prompt) && !formData.firstName) {
-    fields.firstName = trimmed
-  } else if (/\blast name\b/.test(prompt) && !formData.lastName) {
-    fields.lastName = trimmed
-  } else if (/\b(city|town)\b/.test(prompt) && !formData.city) {
+  if (/\b(city|town)\b/.test(prompt) && !formData.city) {
     fields.city = trimmed
   } else if (/\b(zip|postal)\b/.test(prompt) && !formData.zip) {
     const zip = trimmed.match(/\d{5}/)?.[0]
@@ -462,6 +472,7 @@ export function getImmediateFieldPatchFromAnswer(
   } else if (currentSection === "personal") {
     if (!formData.firstName) fields.firstName = trimmed
     else if (!formData.lastName) fields.lastName = trimmed
+    // dob is handled above via the date keyword/inputFieldType check
   } else if (currentSection === "contact") {
     if (!formData.email && isValidEmail(trimmed)) fields.email = trimmed.toLowerCase()
     else if (!formData.phone && /\d{10,}/.test(trimmed.replace(/\D/g, ""))) fields.phone = formatPhone(trimmed)
@@ -613,6 +624,7 @@ function computeProgress(
 
 interface ApplicationAssistantProps {
   applicationId?: string
+  actingForPatientId?: string
   /** Structured form data pre-parsed from an uploaded document. When provided
    *  these fields are applied directly to the Redux store and the assistant
    *  skips to asking only about missing or uncertain fields. */
@@ -802,7 +814,12 @@ async function validateAndPatchAddress(
   }
 }
 
-export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillFormData }: ApplicationAssistantProps) {
+export function ApplicationAssistant({
+  applicationId,
+  actingForPatientId,
+  onSwitchToWizard,
+  prefillFormData,
+}: ApplicationAssistantProps) {
   const dispatch = useAppDispatch()
   const language = useAppSelector((state) => state.app.language) as SupportedLanguage
   const userProfile = useAppSelector((state) => state.userProfile.profile)
@@ -979,9 +996,10 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
       }
 
       try {
+        const headers = actingForPatientId ? { "X-Acting-For-Patient": actingForPatientId } : undefined
         const response = await authenticatedFetch(
           `/api/applications/${encodeURIComponent(sessionApplicationId)}/draft`,
-          { method: "GET", cache: "no-store" },
+          { method: "GET", cache: "no-store", ...(headers ? { headers } : {}) },
         )
         if (!response.ok) return
         const payload = (await response.json()) as { draftState?: unknown }
@@ -999,7 +1017,7 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
     return () => {
       cancelled = true
     }
-  }, [applicationId, dispatch, sessionApplicationId])
+  }, [actingForPatientId, applicationId, dispatch, sessionApplicationId])
 
   // Compute current section from form data
   const currentSection = useMemo(
@@ -1136,9 +1154,12 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
     }
 
     assistantDraftSaveTimerRef.current = window.setTimeout(() => {
+      const headers: Record<string, string> = { "Content-Type": "application/json" }
+      if (actingForPatientId) headers["X-Acting-For-Patient"] = actingForPatientId
+
       void authenticatedFetch(`/api/applications/${encodeURIComponent(sessionApplicationId)}/draft`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           wizardState: { formAssistant: draft },
           applicationType: formData.applicationType || undefined,
@@ -1153,7 +1174,16 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
         window.clearTimeout(assistantDraftSaveTimerRef.current)
       }
     }
-  }, [formData, isAssistantDraftHydrated, localFields, messages, noHouseholdMembers, noIncome, sessionApplicationId])
+  }, [
+    actingForPatientId,
+    formData,
+    isAssistantDraftHydrated,
+    localFields,
+    messages,
+    noHouseholdMembers,
+    noIncome,
+    sessionApplicationId,
+  ])
 
   // ── Voice input ───────────────────────────────────────────────────────────
 
@@ -1270,6 +1300,23 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
       let trimmed = (quickReplyValue ?? input).trim()
       if (!trimmed || isLoading) return
 
+      if (containsSsnLikeContent(trimmed)) {
+        setInput("")
+        setInputError("")
+        setHasAssistantConnectionError(false)
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: createUuid(),
+            type: "text",
+            role: "assistant",
+            content: SSN_CHAT_HANDOFF_MESSAGE,
+          },
+        ])
+        textareaRef.current?.focus()
+        return
+      }
+
       // ── Profile pre-fill yes/no intercept ──────────────────────────────
       // This fires only once — while the greeting is awaiting the user's answer.
       if (profileFillMode === "pending") {
@@ -1347,7 +1394,9 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
       apiMessages.push({ role: "user", content: trimmed })
 
       const liveFormData = formDataRef.current
-      const collectedSummary = summarizeCollectedFields(liveFormData)
+      let requestFormData = liveFormData
+      let requestNoHouseholdMembers = noHouseholdMembers
+      let requestNoIncome = noIncome
       const immediatePatch = getImmediateFieldPatchFromAnswer(
         trimmed,
         lastAssistantContent,
@@ -1361,11 +1410,20 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
         immediatePatch.noIncome
       ) {
         if (Object.keys(immediatePatch.fields).length > 0) {
+          requestFormData = { ...requestFormData, ...immediatePatch.fields }
           applyFormPatch(immediatePatch.fields)
         }
-        if (immediatePatch.noHouseholdMembers) setNoHouseholdMembers(true)
-        if (immediatePatch.noIncome) setNoIncome(true)
+        if (immediatePatch.noHouseholdMembers) {
+          requestNoHouseholdMembers = true
+          setNoHouseholdMembers(true)
+        }
+        if (immediatePatch.noIncome) {
+          requestNoIncome = true
+          setNoIncome(true)
+        }
       }
+      const collectedSummary = summarizeCollectedFields(requestFormData)
+      const requestSection = detectCurrentSection(requestFormData, requestNoHouseholdMembers, requestNoIncome)
 
       try {
         const response = await authenticatedFetch("/api/chat/masshealth", {
@@ -1376,9 +1434,9 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
             language,
             mode: "form_assistant",
             currentFields: collectedSummary,
-            currentSection: detectCurrentSection(formDataRef.current, noHouseholdMembers, noIncome),
-            existingMembers: formDataRef.current.householdMembers,
-            existingSources: formDataRef.current.incomeSources,
+            currentSection: requestSection,
+            existingMembers: requestFormData.householdMembers,
+            existingSources: requestFormData.incomeSources,
           }),
         })
 
@@ -1422,27 +1480,33 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
         // Apply extracted fields — update localFields immediately for instant UI
         // feedback, then also persist to Redux for cross-tab/draft continuity.
         if (data.extractedFields && Object.keys(data.extractedFields).length > 0) {
+          const previousFormData = formDataRef.current
           const { householdMembers, incomeSources, ...flatFields } = data.extractedFields
 
           // ── 1. Merge new household members ─────────────────────────────────
           let mergedMembers: HouseholdMember[] | undefined
           if (Array.isArray(householdMembers) && householdMembers.length > 0) {
-            const existingIds = new Set(formDataRef.current.householdMembers.map((m) => m.id))
+            const existingIds = new Set(previousFormData.householdMembers.map((m) => m.id))
             const newMembers = householdMembers.filter((m) => !existingIds.has(m.id))
             if (newMembers.length > 0) {
-              mergedMembers = [...formDataRef.current.householdMembers, ...newMembers]
+              mergedMembers = [...previousFormData.householdMembers, ...newMembers]
             }
           }
 
           // ── 2. Merge new income sources ─────────────────────────────────────
           let mergedSources: IncomeSource[] | undefined
           if (Array.isArray(incomeSources) && incomeSources.length > 0) {
-            const existingIds = new Set(formDataRef.current.incomeSources.map((s) => s.id))
+            const existingIds = new Set(previousFormData.incomeSources.map((s) => s.id))
             const newSources = incomeSources.filter((s) => !existingIds.has(s.id))
             if (newSources.length > 0) {
-              mergedSources = [...formDataRef.current.incomeSources, ...newSources]
+              mergedSources = [...previousFormData.incomeSources, ...newSources]
             }
           }
+
+          const addressChanged =
+            (flatFields.address !== undefined && flatFields.address !== previousFormData.address) ||
+            (flatFields.city !== undefined && flatFields.city !== previousFormData.city) ||
+            (flatFields.zip !== undefined && flatFields.zip !== previousFormData.zip)
 
           // ── 3. Update local state immediately (drives sidebar + progress) ───
           applyFormPatch({
@@ -1452,10 +1516,12 @@ export function ApplicationAssistant({ applicationId, onSwitchToWizard, prefillF
           })
           dispatch(setActiveApplication(sessionApplicationId))
 
-          if (flatFields.address || flatFields.city || flatFields.zip) {
+          // Only re-validate when address fields actually changed — re-extracting
+          // previously-known address data from history must not retrigger validation.
+          if (addressChanged) {
             await validateAndPatchAddress(
               flatFields,
-              formDataRef.current,
+              previousFormData,
               applyFormPatch,
               (msg) => setMessages((prev) => [...prev, msg]),
             )

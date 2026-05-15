@@ -124,6 +124,6 @@ describe("IntakeChatPanel", () => {
 
   it("renders the language selector", () => {
     renderPanel()
-    expect(screen.getByRole("combobox")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "EN" })).toBeInTheDocument()
   })
 })

@@ -157,7 +157,6 @@ function LoginPageContent() {
 
       saveRememberedEmail(shouldRememberEmail, normalizedEmail)
       router.push(verifyPayload.redirectTo || "/admin")
-      router.refresh()
     } catch (error) {
       setErrorMessage(toUserFacingError(error, { fallback: "Unable to sign in with passkey.", context: "auth" }))
     } finally {
@@ -260,7 +259,6 @@ function LoginPageContent() {
               saveRememberedEmail(shouldRememberEmail, normalizedEmail)
               await syncSessionCookie(retry.data.session)
               router.push(await resolvePostAuthRedirect(nextPath, retry.data.session?.access_token ?? ""))
-              router.refresh()
               return
             }
 
@@ -282,7 +280,6 @@ function LoginPageContent() {
             saveRememberedEmail(shouldRememberEmail, normalizedEmail)
             await syncSessionCookie(repaired.session)
             router.push(await resolvePostAuthRedirect(nextPath, repaired.accessToken))
-            router.refresh()
             return
           }
 
@@ -300,14 +297,12 @@ function LoginPageContent() {
         const resolvedPath = await resolvePostAuthRedirect(nextPath, signIn.data.session?.access_token ?? "")
         saveRememberedEmail(shouldRememberEmail, normalizedEmail)
         router.push(`/auth/mfa?next=${encodeURIComponent(resolvedPath)}`)
-        router.refresh()
         return
       }
 
       saveRememberedEmail(shouldRememberEmail, normalizedEmail)
       await syncSessionCookie(signIn.data.session)
       router.push(await resolvePostAuthRedirect(nextPath, signIn.data.session?.access_token ?? ""))
-      router.refresh()
     } catch (error) {
       setErrorMessage(toUserFacingError(error, { fallback: "Unable to sign in.", context: "auth" }))
     } finally {

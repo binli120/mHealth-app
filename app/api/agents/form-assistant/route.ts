@@ -22,6 +22,7 @@ import { logServerError, logServerInfo } from "@/lib/server/logger"
 import { incrementCounter } from "@/lib/server/counters"
 import { buildFormAssistantTools } from "@/lib/agents/form-assistant/tools"
 import { buildFormAssistantAgentSystemPrompt } from "@/lib/agents/form-assistant/prompts"
+import { containsSsnLikeContent, SSN_CHAT_HANDOFF_MESSAGE } from "@/lib/agents/sensitive-input"
 import { FORM_ASSISTANT_SECTIONS } from "@/app/api/chat/masshealth/constants"
 import type { ChatMessage } from "@/lib/masshealth/types"
 import type { HouseholdMember, IncomeSource } from "@/lib/redux/features/application-slice"
@@ -82,6 +83,24 @@ export async function POST(request: Request) {
       : "en"
 
     const messages = payload.messages as ChatMessage[]
+    const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content ?? ""
+    if (containsSsnLikeContent(lastUserMessage)) {
+      return createUIMessageStreamResponse({
+        stream: createUIMessageStream({
+          execute({ writer }) {
+            writer.write({
+              type: "data-masshealth" as `data-${string}`,
+              data: {
+                ok: true,
+                outOfScope: false,
+                reply: SSN_CHAT_HANDOFF_MESSAGE,
+              },
+            })
+          },
+        }),
+      })
+    }
+
     const currentSection: FormSection = (payload.currentSection as FormSection) ?? "personal"
     const collectedSummary = payload.currentFields ?? ""
     // Scrub SSN before any field reaches the LLM — PHI must never flow through

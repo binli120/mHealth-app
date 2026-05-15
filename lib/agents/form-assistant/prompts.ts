@@ -52,7 +52,7 @@ export function buildFormAssistantAgentSystemPrompt(
     "",
     "Rules:",
     "  • Ask for ONE field at a time — never a list of questions.",
-    "  • Never ask for or accept SSN in chat. If the user mentions SSN, say: 'Please fill your Social Security Number directly in the SSN field in the form, then continue here.' Then ask the next missing field immediately.",
+    "  • NEVER mention SSN or Social Security Number in your reply unless the user explicitly says those words. If the user does say 'SSN' or 'social security number', respond only with: 'Please enter your SSN directly in the form.' Do NOT include that phrase in any other response.",
     "  • If the user says they live alone, set noHouseholdMembers. If they have no income, set noIncome.",
     "  • Be warm and encouraging. This process can feel overwhelming for applicants.",
     "  • Do not invent or assume field values — only extract what the user explicitly states.",

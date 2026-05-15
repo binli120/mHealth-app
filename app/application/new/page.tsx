@@ -6,12 +6,15 @@
 "use client"
 
 import { Suspense, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ApplicationAssistant } from "@/components/application/aca3/application-assistant"
 import { FormWizard } from "@/components/application/aca3/form-wizard"
+import { IntakeChat } from "@/components/application/aca3/intake-chat"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { ApplicationEntryMode } from "@/lib/applications/types"
 import type { ApplicationFormData } from "@/lib/redux/features/application-slice"
+import { useAppSelector } from "@/lib/redux/hooks"
+import { getApplicationTypeLabel } from "@/lib/masshealth/application-types"
 import { UserRound } from "lucide-react"
 
 function readPrefillFromSessionStorage(key: string | null): Partial<ApplicationFormData> | undefined {
@@ -29,6 +32,7 @@ function readPrefillFromSessionStorage(key: string | null): Partial<ApplicationF
 }
 
 function NewApplicationPageContent() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const queryApplicationId = searchParams.get("applicationId")?.trim()
   const requestedMode = searchParams.get("mode")
@@ -45,6 +49,16 @@ function NewApplicationPageContent() {
     requestedMode === "wizard" ? "wizard" : "chat",
   )
 
+  const savedApplicationType = useAppSelector((state) => {
+    if (!queryApplicationId) return ""
+    return state.application.applicationsById[queryApplicationId]?.newApplicationForm.applicationType ?? ""
+  })
+  const typeLabel = getApplicationTypeLabel(savedApplicationType || null)
+  const isResuming = Boolean(queryApplicationId)
+  const pageTitle = isResuming
+    ? `Continue ${savedApplicationType ? typeLabel + " " : ""}Application`
+    : "New Application"
+
   return (
     <div className="container mx-auto space-y-4 px-4 py-6">
       <Tabs
@@ -53,11 +67,13 @@ function NewApplicationPageContent() {
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold text-foreground">New Application</h1>
+            <h1 className="text-xl font-semibold text-foreground">{pageTitle}</h1>
             <p className="text-sm text-muted-foreground">
               {actingForPatientId
                 ? "Filling this application on behalf of your patient."
-                : "Use Compass to complete your application through conversation, or switch to the form wizard."}
+                : isResuming
+                  ? "Pick up where you left off — your answers are saved."
+                  : "Use Compass to complete your application through conversation, or switch to the form wizard."}
             </p>
           </div>
           <TabsList>
@@ -70,11 +86,21 @@ function NewApplicationPageContent() {
         </div>
 
         <TabsContent value="chat" className="mt-4">
-          <ApplicationAssistant
-            applicationId={queryApplicationId || undefined}
-            prefillFormData={prefillFormData}
-            onSwitchToWizard={() => setEntryMode("wizard")}
-          />
+          {prefillFormData ? (
+            <ApplicationAssistant
+              applicationId={queryApplicationId || undefined}
+              actingForPatientId={actingForPatientId}
+              prefillFormData={prefillFormData}
+              onSwitchToWizard={() => setEntryMode("wizard")}
+            />
+          ) : (
+            <IntakeChat
+              applicationId={queryApplicationId || undefined}
+              actingForPatientId={actingForPatientId}
+              onSwitchToWizard={() => setEntryMode("wizard")}
+              onSaveAndExit={() => router.push("/customer/dashboard")}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="wizard" className="mt-4">

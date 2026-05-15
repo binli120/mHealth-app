@@ -59,6 +59,7 @@ import { ShieldHeartIcon } from "@/lib/icons"
 import { UserAvatar } from "@/components/shared/UserAvatar"
 import { ThemeToggle } from "@/components/shared/ThemeToggle"
 import { formatDate } from "@/lib/utils/format"
+import { Progress } from "@/components/ui/progress"
 import type { ApplicationListApiResponse } from "./page.types"
 import { STATUS_META } from "./page.constants"
 import { buildDashboardGreeting, getApplicationTypeLabel } from "./page.utils"
@@ -555,33 +556,44 @@ export default function CustomerDashboardPage() {
                           app.status === "draft"
                             ? `/application/new?applicationId=${app.id}`
                             : `/customer/status/${app.id}`
+                        // Wizard has 9 steps; use draftStep for a rough completion %.
+                        const stepProgress = app.draftStep != null
+                          ? Math.min(100, Math.round((app.draftStep / 9) * 100))
+                          : null
 
                         return (
                           <Link key={app.id} href={itemHref}>
-                            <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 p-4 transition-colors hover:bg-secondary/50">
-                              <div className="flex items-center gap-4">
-                                <div
-                                  className={`flex h-10 w-10 items-center justify-center rounded-lg ${status.color}`}
-                                >
-                                  <StatusIcon className="h-5 w-5" />
+                            <div className="rounded-lg border border-border bg-secondary/30 p-4 transition-colors hover:bg-secondary/50">
+                              <div className="flex items-center justify-between gap-4">
+                                <div className="flex items-center gap-3">
+                                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${status.color}`}>
+                                    <StatusIcon className="h-5 w-5" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="font-medium text-foreground">
+                                      {getApplicationTypeLabel(app.applicationType)} Application
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Started {formatDate(app.createdAt)}
+                                      {app.lastSavedAt ? ` · Saved ${formatDate(app.lastSavedAt)}` : ""}
+                                    </p>
+                                  </div>
                                 </div>
-                                <div>
-                                  <p className="font-medium text-foreground">
-                                    {getApplicationTypeLabel(app.applicationType)}
-                                  </p>
-                                  <p className="text-sm text-muted-foreground">ID: {app.id}</p>
+                                <div className="shrink-0 text-right">
+                                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${status.color}`}>
+                                    {status.label}
+                                  </span>
                                 </div>
                               </div>
-                              <div className="text-right">
-                                <span
-                                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${status.color}`}
-                                >
-                                  {status.label}
-                                </span>
-                                <p className="mt-1 text-xs text-muted-foreground">
-                                  {getMessage(language, "dashboardUpdated")} {formatDate(app.lastSavedAt ?? app.updatedAt)}
-                                </p>
-                              </div>
+                              {stepProgress !== null && stepProgress > 0 && (
+                                <div className="mt-3 space-y-1">
+                                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                    <span>Wizard progress</span>
+                                    <span>{stepProgress}%</span>
+                                  </div>
+                                  <Progress value={stepProgress} className="h-1.5" />
+                                </div>
+                              )}
                             </div>
                           </Link>
                         )
