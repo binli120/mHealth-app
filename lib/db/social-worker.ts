@@ -95,14 +95,6 @@ export async function getSwPatients(swUserId: string): Promise<SwPatient[]> {
     city_encrypted: string | null
     state_encrypted: string | null
     zip_encrypted: string | null
-    // Legacy plaintext fallback
-    first_name: string | null
-    last_name: string | null
-    dob: string | null
-    phone: string | null
-    city: string | null
-    state: string | null
-    zip: string | null
     // Non-PHI
     citizenship_status: string | null
     granted_at: string
@@ -144,13 +136,13 @@ export async function getSwPatients(swUserId: string): Promise<SwPatient[]> {
     access_id: row.access_id,
     patient_user_id: row.patient_user_id,
     email: row.email,
-    first_name:        decryptOrPlain(row.first_name_encrypted,  row.first_name),
-    last_name:         decryptOrPlain(row.last_name_encrypted,   row.last_name),
-    dob:               decryptOrPlain(row.dob_encrypted,         row.dob),
-    phone:             decryptOrPlain(row.phone_encrypted,       row.phone),
-    city:              decryptOrPlain(row.city_encrypted,        row.city),
-    state:             decryptOrPlain(row.state_encrypted,       row.state),
-    zip:               decryptOrPlain(row.zip_encrypted,         row.zip),
+    first_name:        decryptOrPlain(row.first_name_encrypted),
+    last_name:         decryptOrPlain(row.last_name_encrypted),
+    dob:               decryptOrPlain(row.dob_encrypted),
+    phone:             decryptOrPlain(row.phone_encrypted),
+    city:              decryptOrPlain(row.city_encrypted),
+    state:             decryptOrPlain(row.state_encrypted),
+    zip:               decryptOrPlain(row.zip_encrypted),
     citizenship_status:    row.citizenship_status,
     granted_at:            row.granted_at,
     application_count:     row.application_count,
@@ -193,9 +185,7 @@ export async function getPatientApplications(
     household_size: number | null
     total_monthly_income: number | null
     first_name_encrypted: string | null
-    first_name: string | null
     last_name_encrypted: string | null
-    last_name: string | null
     created_at: string
     updated_at: string
     submitted_at: string | null
@@ -204,8 +194,7 @@ export async function getPatientApplications(
       SELECT
         a.id, a.status, a.application_type, a.draft_step,
         a.household_size, a.total_monthly_income,
-        ap.first_name_encrypted, ap.first_name,
-        ap.last_name_encrypted,  ap.last_name,
+        ap.first_name_encrypted, ap.last_name_encrypted,
         a.created_at, a.updated_at, a.submitted_at
       FROM public.applications a
       JOIN public.applicants ap ON ap.id = a.applicant_id
@@ -222,10 +211,7 @@ export async function getPatientApplications(
     draft_step:           row.draft_step,
     household_size:       row.household_size,
     total_monthly_income: row.total_monthly_income,
-    applicant_name:       decryptDisplayName(
-      row.first_name_encrypted, row.first_name,
-      row.last_name_encrypted,  row.last_name,
-    ),
+    applicant_name:       decryptDisplayName(row.first_name_encrypted, row.last_name_encrypted),
     created_at:   row.created_at,
     updated_at:   row.updated_at,
     submitted_at: row.submitted_at,

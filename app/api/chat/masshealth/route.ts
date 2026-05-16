@@ -288,9 +288,10 @@ async function handleFormAssistant(
 function buildIntakeHouseholdHintsMessage(message: string): string | null {
   const hints = extractHouseholdRelationshipHints(message)
   if (hints.length === 0) return null
+  // memberName is PHI — send only relationship to the model, not the actual name.
   const lines = hints.map((hint) =>
     hint.memberName
-      ? `- Household member provided: ${hint.memberName}; relationship to applicant is ${hint.relationship}.`
+      ? `- Household member provided: [name withheld]; relationship to applicant is ${hint.relationship}.`
       : `- Household relationship already provided: ${hint.relationship}.`,
   )
   return [

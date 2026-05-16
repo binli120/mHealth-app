@@ -24,7 +24,7 @@ export default function SWNewApplicationPage() {
   const params = useParams()
   const router = useRouter()
   const patientId = params.patientId as string
-  const [entryMode, setEntryMode] = useState<ApplicationEntryMode>("wizard")
+  const [entryMode, setEntryMode] = useState<ApplicationEntryMode>("chat")
 
   return (
     <div className="container mx-auto space-y-4 px-4 py-6">

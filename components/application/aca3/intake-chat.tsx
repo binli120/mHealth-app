@@ -38,6 +38,8 @@ import { parsePastedUsAddress } from "@/lib/utils/address-parse"
 import { countHouseholdRelationshipMentions } from "@/lib/masshealth/household-relationships"
 import { evaluateConditionalRule } from "@/hooks/use-conditional"
 import { type WidgetSpec, } from "@/components/application/aca3/intake-question-widget"
+import { splitWizardState } from "@/lib/phi-token/token"
+import { PhiSaveExitDialog } from "@/components/application/phi-save-exit-dialog"
 import type {
   AddressValidationResponse,
   FieldValue,
@@ -2043,11 +2045,25 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
   const [draft, setDraft] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [autoSpeak, setAutoSpeak] = useState(false)
+  const [saveExitDialogOpen, setSaveExitDialogOpen] = useState(false)
   const bottomAnchorRef = useRef<HTMLDivElement | null>(null)
   const translationCacheRef = useRef<Map<string, string>>(new Map())
   const lastSpokenMessageIdRef = useRef<string | null>(null)
   const draftSaveBackoffUntilRef = useRef(0)
   const hydratedRef = useRef(false)
+
+  // Intercept browser back button once the chat has started so users don't
+  // accidentally leave without saving.
+  useEffect(() => {
+    if (!intakeStarted) return
+    window.history.pushState(null, "", window.location.href)
+    const onPopState = () => {
+      window.history.pushState(null, "", window.location.href)
+      setSaveExitDialogOpen(true)
+    }
+    window.addEventListener("popstate", onPopState)
+    return () => window.removeEventListener("popstate", onPopState)
+  }, [intakeStarted])
 
   // Restore previous session data from Redux cache or server draft on mount.
   useEffect(() => {
@@ -2271,6 +2287,14 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
         return
       }
 
+      // Don't save at all if no questions have been answered yet. An
+      // answeredCount of 0 means the chat just initialised / resumed and
+      // hasn't collected real data — saving would stomp any existing
+      // wizard draft_step with step 1.
+      if ((opts?.answeredCount ?? 0) === 0) {
+        return
+      }
+
       // Map answered/total to wizard step 1-9 so the dashboard progress bar reflects
       // actual chat completion rather than always showing step 1.
       const chatStep =
@@ -2297,12 +2321,13 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
           headers["X-Acting-For-Patient"] = actingForPatientId
         }
 
+        const { safeState } = splitWizardState(wizardState as Record<string, unknown>)
         const response = await authenticatedFetch(`/api/applications/${encodeURIComponent(resolvedApplicationId)}/draft`, {
           method: "PUT",
           headers,
           body: JSON.stringify({
             applicationType: selectedApplicationType || undefined,
-            wizardState,
+            wizardState: safeState,
           }),
         })
 
@@ -2697,10 +2722,20 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
     return null
   }, [currentQuestion, intakeStarted])
 
+  const currentWizardStateForDialog = useMemo<WizardState>(
+    () => createDraftWizardState(wizardData),
+    [wizardData],
+  )
+
+  const handleSaveAndExitClick = useCallback(() => {
+    setSaveExitDialogOpen(true)
+  }, [])
+
   return (
+    <>
     <IntakeChatPanel
       copy={copy}
-      onSaveAndExit={onSaveAndExit ?? (() => router.back())}
+      onSaveAndExit={handleSaveAndExitClick}
       onSwitchToWizard={onSwitchToWizard}
       autoSpeak={autoSpeak}
       onAutoSpeakChange={setAutoSpeak}
@@ -2723,5 +2758,23 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
       onWidgetAnswer={handleWidgetAnswer}
       widgetKey={currentQuestionId ?? undefined}
     />
+    {resolvedApplicationId && (
+      <PhiSaveExitDialog
+        open={saveExitDialogOpen}
+        applicationId={resolvedApplicationId}
+        wizardState={currentWizardStateForDialog}
+        actingForPatientId={actingForPatientId}
+        onExit={() => {
+          setSaveExitDialogOpen(false)
+          if (onSaveAndExit) {
+            onSaveAndExit()
+          } else {
+            router.back()
+          }
+        }}
+        onCancel={() => setSaveExitDialogOpen(false)}
+      />
+    )}
+    </>
   )
 }

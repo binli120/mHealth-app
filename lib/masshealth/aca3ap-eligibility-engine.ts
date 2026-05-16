@@ -314,7 +314,7 @@ export function evaluateAca3ApEligibility(
     findings.push({
       code: "RULES_PASS",
       level: "success",
-      message: "All rules passed. Additional person qualifies to be added to the household case.",
+      message: "Pre-screening passed. This person appears eligible to be added to the household case. Final determination is made by MassHealth.",
     })
   }
   ruleResults.push({

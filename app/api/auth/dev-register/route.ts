@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server"
 import { getDbPool } from "@/lib/db/server"
 import { isLocalAuthHelperEnabled, normalizeAuthEmail } from "@/lib/auth/local-auth"
+import { encryptApplicantField } from "@/lib/db/applicant-fields"
 
 interface DevRegisterRequestBody {
   email?: string
@@ -288,25 +289,30 @@ export async function POST(request: Request) {
       `
         INSERT INTO public.applicants (
           user_id,
-          first_name,
-          last_name,
-          phone,
+          first_name_encrypted,
+          last_name_encrypted,
+          phone_encrypted,
           created_at
         )
         VALUES (
           $1::uuid,
-          NULLIF($2, ''),
-          NULLIF($3, ''),
-          NULLIF($4, ''),
+          $2,
+          $3,
+          $4,
           now()
         )
         ON CONFLICT (user_id) DO UPDATE
         SET
-          first_name = COALESCE(EXCLUDED.first_name, public.applicants.first_name),
-          last_name = COALESCE(EXCLUDED.last_name, public.applicants.last_name),
-          phone = COALESCE(EXCLUDED.phone, public.applicants.phone)
+          first_name_encrypted = COALESCE(EXCLUDED.first_name_encrypted, public.applicants.first_name_encrypted),
+          last_name_encrypted  = COALESCE(EXCLUDED.last_name_encrypted,  public.applicants.last_name_encrypted),
+          phone_encrypted      = COALESCE(EXCLUDED.phone_encrypted,      public.applicants.phone_encrypted)
       `,
-      [resolvedUserId, firstName ?? "", lastName ?? "", phone ?? ""],
+      [
+        resolvedUserId,
+        encryptApplicantField(firstName ?? ""),
+        encryptApplicantField(lastName ?? ""),
+        encryptApplicantField(phone ?? ""),
+      ],
     )
 
     // Auto-assign admin role for the configured admin email

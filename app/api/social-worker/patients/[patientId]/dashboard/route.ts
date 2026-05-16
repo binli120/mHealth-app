@@ -9,6 +9,7 @@
 import { NextResponse } from "next/server"
 import { requireApprovedSocialWorker } from "@/lib/auth/require-social-worker"
 import { getDbPool } from "@/lib/db/server"
+import { decryptOrPlain, decryptDisplayName } from "@/lib/db/applicant-fields"
 
 export const runtime = "nodejs"
 
@@ -44,7 +45,8 @@ export async function GET(
     submitted_at: string | null
     created_at: string
     updated_at: string
-    applicant_name: string | null
+    first_name_encrypted: string | null
+    last_name_encrypted: string | null
     household_size: number | null
   }>(
     `SELECT
@@ -56,7 +58,8 @@ export async function GET(
        a.submitted_at,
        a.created_at,
        a.updated_at,
-       NULLIF(TRIM(CONCAT(ap.first_name, ' ', ap.last_name)), '') AS applicant_name,
+       ap.first_name_encrypted,
+       ap.last_name_encrypted,
        a.household_size
      FROM public.applications a
      JOIN public.applicants ap ON ap.id = a.applicant_id
@@ -68,14 +71,17 @@ export async function GET(
   // Patient profile
   const profileResult = await pool.query<{
     email: string
-    first_name: string | null
-    last_name: string | null
-    dob: string | null
-    phone: string | null
-    city: string | null
-    state: string | null
+    first_name_encrypted: string | null
+    last_name_encrypted: string | null
+    dob_encrypted: string | null
+    phone_encrypted: string | null
+    city_encrypted: string | null
+    state_encrypted: string | null
   }>(
-    `SELECT u.email, ap.first_name, ap.last_name, ap.dob, ap.phone, ap.city, ap.state
+    `SELECT u.email,
+            ap.first_name_encrypted, ap.last_name_encrypted,
+            ap.dob_encrypted, ap.phone_encrypted,
+            ap.city_encrypted, ap.state_encrypted
      FROM public.users u
      LEFT JOIN public.applicants ap ON ap.user_id = u.id
      WHERE u.id = $1::uuid
@@ -93,7 +99,7 @@ export async function GET(
     submittedAt: r.submitted_at,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
-    applicantName: r.applicant_name,
+    applicantName: decryptDisplayName(r.first_name_encrypted, r.last_name_encrypted),
     householdSize: r.household_size,
   }))
 
@@ -104,12 +110,12 @@ export async function GET(
     patient: p
       ? {
           email: p.email,
-          firstName: p.first_name,
-          lastName: p.last_name,
-          dob: p.dob,
-          phone: p.phone,
-          city: p.city,
-          state: p.state,
+          firstName: decryptOrPlain(p.first_name_encrypted),
+          lastName: decryptOrPlain(p.last_name_encrypted),
+          dob: decryptOrPlain(p.dob_encrypted),
+          phone: decryptOrPlain(p.phone_encrypted),
+          city: decryptOrPlain(p.city_encrypted),
+          state: decryptOrPlain(p.state_encrypted),
         }
       : null,
   })

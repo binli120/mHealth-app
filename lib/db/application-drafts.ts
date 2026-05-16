@@ -10,6 +10,33 @@ import { APPLICATION_STATUS_SET } from "@/lib/application-status"
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
+/**
+ * Defense-in-depth: remove PHI keys from wizardState before any DB write.
+ * The client is responsible for keeping PHI in the encrypted resume token,
+ * but this guard ensures PHI is never persisted even if a client bug slips
+ * through. Mirrors the keys in lib/phi-token/phi-fields.ts (server-side copy
+ * avoids importing a browser-crypto module from server-only code).
+ */
+const SERVER_PHI_DATA_KEYS = new Set(["contact", "preApp", "persons"])
+
+function stripPhiFromWizardState(
+  wizardState: Record<string, unknown>,
+): Record<string, unknown> {
+  const data = wizardState.data
+  if (!data || typeof data !== "object") {
+    return wizardState
+  }
+
+  const safeData: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+    if (!SERVER_PHI_DATA_KEYS.has(key)) {
+      safeData[key] = value
+    }
+  }
+
+  return { ...wizardState, data: safeData }
+}
+
 export interface ApplicationDraftRecord {
   id: string
   status: string
@@ -20,6 +47,10 @@ export interface ApplicationDraftRecord {
   submittedAt: string | null
   createdAt: string
   updatedAt: string
+  /** UUID used as Supabase Storage lookup key for the encrypted PHI blob. Null if no blob saved. */
+  phiDraftResumeId: string | null
+  /** Server-encrypted AES key for the PHI blob. Non-null when the user opted to store the key server-side. */
+  phiDraftKeyEnc: string | null
 }
 
 export interface ApplicationDraftSummary {
@@ -33,6 +64,8 @@ export interface ApplicationDraftSummary {
   updatedAt: string
   applicantName: string | null
   householdSize: number | null
+  /** True when an encrypted PHI blob exists for this draft. */
+  phiDraftLocked: boolean
 }
 
 export interface ApplicationDraftListResult {
@@ -179,12 +212,13 @@ function toRecord(row: Record<string, unknown>): ApplicationDraftRecord {
     status: String(row.status),
     applicationType: (row.application_type as string | null) ?? null,
     draftState: (row.draft_state as Record<string, unknown> | null) ?? null,
-    draftStep:
-      parseIntOrNull(row.draft_step),
+    draftStep: parseIntOrNull(row.draft_step),
     lastSavedAt: (row.last_saved_at as string | null) ?? null,
     submittedAt: (row.submitted_at as string | null) ?? null,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
+    phiDraftResumeId: (row.phi_draft_resume_id as string | null) ?? null,
+    phiDraftKeyEnc: (row.phi_draft_key_enc as string | null) ?? null,
   }
 }
 
@@ -200,6 +234,7 @@ function toSummary(row: Record<string, unknown>): ApplicationDraftSummary {
     updatedAt: String(row.updated_at),
     applicantName: (row.applicant_name as string | null) ?? null,
     householdSize: parseIntOrNull(row.household_size),
+    phiDraftLocked: Boolean(row.phi_draft_locked),
   }
 }
 
@@ -278,7 +313,9 @@ export async function getApplicationDraft(
         last_saved_at,
         submitted_at,
         created_at,
-        updated_at
+        updated_at,
+        phi_draft_resume_id,
+        phi_draft_key_enc
       FROM public.applications
       WHERE id = $1::uuid
         AND applicant_id = $2::uuid
@@ -325,6 +362,7 @@ export async function listApplicationDrafts(
         updated_at,
         NULLIF(TRIM(COALESCE(draft_state #>> '{data,contact,p1_name}', '')), '') AS applicant_name,
         NULLIF(TRIM(COALESCE(draft_state #>> '{data,contact,p1_num_people}', '')), '') AS household_size,
+        (phi_draft_resume_id IS NOT NULL AND phi_draft_key_enc IS NOT NULL) AS phi_draft_locked,
         COUNT(*) OVER() AS total_count
       FROM public.applications
       WHERE applicant_id = $1::uuid
@@ -368,7 +406,8 @@ export async function upsertApplicationDraft(params: {
     ? await resolveApplicantIdWithSwAccess(params.userId, params.actingForUserId)
     : await requireApplicantIdForUser(params.userId)
   const pool = getDbPool()
-  const currentStepRaw = params.wizardState.currentStep
+  const safeWizardState = stripPhiFromWizardState(params.wizardState)
+  const currentStepRaw = safeWizardState.currentStep
   const currentStep =
     typeof currentStepRaw === "number"
       ? currentStepRaw
@@ -379,7 +418,7 @@ export async function upsertApplicationDraft(params: {
     currentStep <= MAX_APPLICATION_DRAFT_STEP
       ? currentStep
       : null
-  const submitted = Boolean(params.wizardState.submitted)
+  const submitted = Boolean(safeWizardState.submitted)
   const nextStatus = submitted ? "submitted" : "draft"
 
   const { rows } = await pool.query(
@@ -412,8 +451,13 @@ export async function upsertApplicationDraft(params: {
           ELSE 'draft'::application_status
         END,
         application_type = COALESCE(NULLIF($4::text, ''), public.applications.application_type),
-        draft_state = $5::jsonb,
-        draft_step = $6::int,
+        -- Only advance draft_state / draft_step; never let a low-step save
+        -- (e.g. intake-chat initialising at step 1) overwrite higher wizard progress.
+        draft_state = CASE
+          WHEN COALESCE(public.applications.draft_step, 0) <= $6::int THEN $5::jsonb
+          ELSE public.applications.draft_state
+        END,
+        draft_step = GREATEST(COALESCE(public.applications.draft_step, 0), $6::int),
         last_saved_at = now(),
         submitted_at = CASE
           WHEN $3::application_status = 'submitted'
@@ -430,14 +474,15 @@ export async function upsertApplicationDraft(params: {
         last_saved_at,
         submitted_at,
         created_at,
-        updated_at
+        updated_at,
+        phi_draft_resume_id
     `,
     [
       params.applicationId,
       applicantId,
       nextStatus,
       params.applicationType ?? null,
-      JSON.stringify(params.wizardState),
+      JSON.stringify(safeWizardState),
       normalizedStep,
     ],
   )
@@ -447,4 +492,138 @@ export async function upsertApplicationDraft(params: {
   }
 
   return toRecord(rows[0] as Record<string, unknown>)
+}
+
+/**
+ * Atomically set phi_draft_resume_id and return the previous value (for
+ * cleaning up the old Supabase Storage blob before uploading a new one).
+ */
+export async function swapPhiDraftResumeId(params: {
+  userId: string
+  applicationId: string
+  newResumeId: string
+  /** Server-encrypted AES key to store alongside the resume ID. */
+  keyEnc?: string | null
+  actingForUserId?: string
+}): Promise<{ previousResumeId: string | null }> {
+  assertUuid(params.applicationId)
+  assertUuid(params.newResumeId)
+  const applicantId = params.actingForUserId
+    ? await resolveApplicantIdWithSwAccess(params.userId, params.actingForUserId)
+    : await requireApplicantIdForUser(params.userId)
+  const pool = getDbPool()
+
+  const { rows } = await pool.query<{ old_id: string | null }>(
+    `
+      UPDATE public.applications
+      SET
+        phi_draft_resume_id = $1::uuid,
+        phi_draft_key_enc   = $4
+      WHERE id = $2::uuid
+        AND applicant_id = $3::uuid
+      RETURNING (
+        SELECT phi_draft_resume_id
+        FROM public.applications
+        WHERE id = $2::uuid
+      ) AS old_id
+    `,
+    [params.newResumeId, params.applicationId, applicantId, params.keyEnc ?? null],
+  )
+
+  if (rows.length === 0) {
+    throw new ApplicationDraftAccessError()
+  }
+
+  return { previousResumeId: rows[0]?.old_id ?? null }
+}
+
+/**
+ * Verify that the given resumeId matches what is stored on the application row.
+ * Used by the phi-draft download route to gate access to the storage blob.
+ */
+export async function verifyPhiDraftResumeId(params: {
+  userId: string
+  applicationId: string
+  resumeId: string
+  actingForUserId?: string
+}): Promise<boolean> {
+  assertUuid(params.applicationId)
+  const applicantId = params.actingForUserId
+    ? await resolveApplicantIdWithSwAccess(params.userId, params.actingForUserId).catch(() => null)
+    : await findApplicantIdForUser(params.userId)
+  if (!applicantId) return false
+  const pool = getDbPool()
+
+  const { rows } = await pool.query<{ match: boolean }>(
+    `
+      SELECT phi_draft_resume_id = $1::uuid AS match
+      FROM public.applications
+      WHERE id = $2::uuid
+        AND applicant_id = $3::uuid
+      LIMIT 1
+    `,
+    [params.resumeId, params.applicationId, applicantId],
+  )
+
+  return Boolean(rows[0]?.match)
+}
+
+const DELETABLE_STATUSES = new Set(["draft", "submitted", "ai_extracted", "needs_review", "rfi_requested"])
+
+/**
+ * Hard-delete an application record owned by the user.
+ * Only allowed when the application is not in a terminal state (approved/denied).
+ * Returns true if a row was deleted, false if not found or status is not deletable.
+ */
+export async function deleteApplicationDraft(params: {
+  userId: string
+  applicationId: string
+  actingForUserId?: string
+}): Promise<{ deleted: boolean; reason?: string }> {
+  assertUuid(params.applicationId)
+  const applicantId = params.actingForUserId
+    ? await resolveApplicantIdWithSwAccess(params.userId, params.actingForUserId)
+    : await requireApplicantIdForUser(params.userId)
+  const pool = getDbPool()
+
+  const check = await pool.query<{ status: string }>(
+    `SELECT status FROM public.applications WHERE id = $1::uuid AND applicant_id = $2::uuid`,
+    [params.applicationId, applicantId],
+  )
+
+  if (check.rows.length === 0) return { deleted: false, reason: "not_found" }
+  if (!DELETABLE_STATUSES.has(check.rows[0].status)) {
+    return { deleted: false, reason: "status_not_deletable" }
+  }
+
+  await pool.query(
+    `DELETE FROM public.applications WHERE id = $1::uuid AND applicant_id = $2::uuid`,
+    [params.applicationId, applicantId],
+  )
+
+  return { deleted: true }
+}
+
+/** Clear phi_draft_resume_id (called after the blob is deleted from storage). */
+export async function clearPhiDraftResumeId(params: {
+  userId: string
+  applicationId: string
+  actingForUserId?: string
+}): Promise<void> {
+  assertUuid(params.applicationId)
+  const applicantId = params.actingForUserId
+    ? await resolveApplicantIdWithSwAccess(params.userId, params.actingForUserId)
+    : await requireApplicantIdForUser(params.userId)
+  const pool = getDbPool()
+
+  await pool.query(
+    `
+      UPDATE public.applications
+      SET phi_draft_resume_id = NULL,
+          phi_draft_key_enc   = NULL
+      WHERE id = $1::uuid
+        AND applicant_id = $2::uuid
+    `,
+    [params.applicationId, applicantId],
+  )
 }

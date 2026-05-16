@@ -31,6 +31,16 @@ vi.mock("@/lib/server/logger", () => ({
   logServerError: vi.fn(),
 }))
 
+vi.mock("@/lib/db/applicant-fields", () => ({
+  decryptOrPlain: vi.fn((encrypted: string | null | undefined) => {
+    if (!encrypted) return null
+    if (encrypted.startsWith("ENC(") && encrypted.endsWith(")")) {
+      return encrypted.slice(4, -1)
+    }
+    return null
+  }),
+}))
+
 // Email template components — we only care that they are called; render is mocked above
 vi.mock("@/lib/notifications/email-templates", () => ({
   StatusChangeEmail:    vi.fn().mockReturnValue(null),
@@ -82,8 +92,15 @@ const DEFAULT_PREFS: NotificationPrefs = {
 }
 
 function mockUserFound(email = "patient@example.com", name = "Jane Patient", prefs: NotificationPrefs = DEFAULT_PREFS) {
+  const [firstName, ...lastParts] = name.split(" ")
+  const lastName = lastParts.join(" ")
   mockDbQuery.mockResolvedValue({
-    rows: [{ email, first_name: name.split(" ")[0], last_name: name.split(" ")[1] ?? "", profile_data: { notifications: prefs } }],
+    rows: [{
+      email,
+      first_name_encrypted: firstName ? `ENC(${firstName})` : null,
+      last_name_encrypted: lastName ? `ENC(${lastName})` : null,
+      profile_data: { notifications: prefs },
+    }],
   })
 }
 

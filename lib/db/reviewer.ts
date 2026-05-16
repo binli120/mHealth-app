@@ -176,9 +176,7 @@ function fallbackApplicantName(row: Record<string, unknown>): string {
   return (
     decryptDisplayName(
       row.first_name_encrypted as string | null,
-      row.first_name as string | null,
       row.last_name_encrypted as string | null,
-      row.last_name as string | null,
     ) ??
     ((row.applicant_email as string | null) || null) ??
     "Unknown applicant"
@@ -220,7 +218,7 @@ function toCaseSummary(row: Record<string, unknown>): ReviewerCaseSummary {
     displayId: displayId(id),
     applicantName: fallbackApplicantName(row),
     applicantEmail: (row.applicant_email as string | null) ?? null,
-    applicantPhone: decryptOrPlain(row.phone_encrypted as string | null, row.phone as string | null),
+    applicantPhone: decryptOrPlain(row.phone_encrypted as string | null),
     applicationType: (row.application_type as string | null) ?? null,
     status,
     householdSize: toNumber(row.household_size),
@@ -275,8 +273,6 @@ export async function listReviewerCases(filters: ReviewerCaseFilters = {}): Prom
       a.id::text ILIKE '%' || ${placeholder}::text || '%'
       OR COALESCE(a.application_type, '') ILIKE '%' || ${placeholder}::text || '%'
       OR COALESCE(u.email, '') ILIKE '%' || ${placeholder}::text || '%'
-      OR COALESCE(ap.first_name, '') ILIKE '%' || ${placeholder}::text || '%'
-      OR COALESCE(ap.last_name, '') ILIKE '%' || ${placeholder}::text || '%'
       OR COALESCE(a.draft_state #>> '{data,contact,p1_name}', '') ILIKE '%' || ${placeholder}::text || '%'
     )`)
   }
@@ -718,7 +714,6 @@ export async function getReviewerCase(applicationId: string): Promise<ReviewerCa
         COALESCE(a.submitted_at, a.last_saved_at, a.updated_at, a.created_at) AS last_activity_at,
         u.email AS applicant_email,
         ${APPLICANT_PHI_SELECT("ap")},
-        ap.citizenship_status,
         es.fpl_percentage,
         es.estimated_program,
         COALESCE(dc.document_count, 0)::int AS document_count,
@@ -756,15 +751,15 @@ export async function getReviewerCase(applicationId: string): Promise<ReviewerCa
 
   return {
     ...summary,
-    applicantDob: decryptOrPlain(row.dob_encrypted as string | null, row.dob as string | null),
+    applicantDob: decryptOrPlain(row.dob_encrypted as string | null),
     applicantAddress: {
-      line1: decryptOrPlain(row.address_line1_encrypted as string | null, row.address_line1 as string | null),
-      line2: decryptOrPlain(row.address_line2_encrypted as string | null, row.address_line2 as string | null),
-      city: decryptOrPlain(row.city_encrypted as string | null, row.city as string | null),
-      state: decryptOrPlain(row.state_encrypted as string | null, row.state as string | null),
-      zip: decryptOrPlain(row.zip_encrypted as string | null, row.zip as string | null),
+      line1: decryptOrPlain(row.address_line1_encrypted as string | null),
+      line2: decryptOrPlain(row.address_line2_encrypted as string | null),
+      city: decryptOrPlain(row.city_encrypted as string | null),
+      state: decryptOrPlain(row.state_encrypted as string | null),
+      zip: decryptOrPlain(row.zip_encrypted as string | null),
     },
-    citizenshipStatus: (row.citizenship_status as string | null) ?? null,
+    citizenshipStatus: null,
     draftState: (row.draft_state as Record<string, unknown> | null) ?? null,
     documents,
     validationResults,

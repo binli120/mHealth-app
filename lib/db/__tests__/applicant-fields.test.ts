@@ -66,98 +66,70 @@ describe("encryptApplicantField", () => {
 
 describe("decryptOrPlain", () => {
   it("decrypts when encrypted value is present", () => {
-    expect(decryptOrPlain("ENC(Alice)", "Alice")).toBe("Alice")
+    expect(decryptOrPlain("ENC(Alice)")).toBe("Alice")
   })
 
-  it("falls back to plaintext when encrypted is null", () => {
-    expect(decryptOrPlain(null, "Bob")).toBe("Bob")
+  it("returns null when encrypted is null", () => {
+    expect(decryptOrPlain(null)).toBeNull()
   })
 
-  it("falls back to plaintext when encrypted is undefined", () => {
-    expect(decryptOrPlain(undefined, "Carol")).toBe("Carol")
+  it("returns null when encrypted is undefined", () => {
+    expect(decryptOrPlain(undefined)).toBeNull()
   })
 
-  it("returns null when both inputs are null", () => {
-    expect(decryptOrPlain(null, null)).toBeNull()
-  })
-
-  it("returns null when both inputs are undefined", () => {
-    expect(decryptOrPlain(undefined, undefined)).toBeNull()
-  })
-
-  it("returns null when plaintext is null and encrypted is null", () => {
-    expect(decryptOrPlain(null, null)).toBeNull()
-  })
-
-  it("prefers decrypted over plaintext (encrypted takes priority)", () => {
-    // encrypted present → decrypted result wins, legacy plain is ignored
-    expect(decryptOrPlain("ENC(NewValue)", "OldPlain")).toBe("NewValue")
-  })
-
-  it("falls back to plaintext when encrypted value cannot be decrypted", () => {
-    expect(decryptOrPlain("bad-ciphertext", "LegacyPlain")).toBe("LegacyPlain")
-  })
-
-  it("throws decrypt errors when no plaintext fallback exists", () => {
-    expect(() => decryptOrPlain("bad-ciphertext", null)).toThrow(/unexpected input/)
+  it("returns null when encrypted value cannot be decrypted", () => {
+    expect(decryptOrPlain("bad-ciphertext")).toBeNull()
   })
 })
+
 
 // ── decryptDisplayName ────────────────────────────────────────────────────────
 
 describe("decryptDisplayName", () => {
   it("builds first + last name from encrypted columns", () => {
-    expect(decryptDisplayName("ENC(Alice)", null, "ENC(Smith)", null)).toBe("Alice Smith")
-  })
-
-  it("builds name from legacy plaintext fallback", () => {
-    expect(decryptDisplayName(null, "Bob", null, "Jones")).toBe("Bob Jones")
+    expect(decryptDisplayName("ENC(Alice)", "ENC(Smith)")).toBe("Alice Smith")
   })
 
   it("returns first name only when last name is absent", () => {
-    expect(decryptDisplayName("ENC(Alice)", null, null, null)).toBe("Alice")
+    expect(decryptDisplayName("ENC(Alice)", null)).toBe("Alice")
   })
 
   it("returns last name only when first name is absent", () => {
-    expect(decryptDisplayName(null, null, "ENC(Smith)", null)).toBe("Smith")
+    expect(decryptDisplayName(null, "ENC(Smith)")).toBe("Smith")
   })
 
   it("returns null when all inputs are null", () => {
-    expect(decryptDisplayName(null, null, null, null)).toBeNull()
+    expect(decryptDisplayName(null, null)).toBeNull()
   })
 
   it("trims whitespace from assembled name", () => {
     // Both decrypt to empty-ish strings via the mock would only happen if
     // plaintext is empty — but with real values it should trim correctly.
-    expect(decryptDisplayName("ENC(Alice)", null, "ENC(Smith)", null)).toBe("Alice Smith")
-  })
-
-  it("mixed encrypted first + plaintext last", () => {
-    expect(decryptDisplayName("ENC(Alice)", "IgnoredLegacy", null, "Jones")).toBe("Alice Jones")
+    expect(decryptDisplayName("ENC(Alice)", "ENC(Smith)")).toBe("Alice Smith")
   })
 })
 
 // ── SQL fragment helpers ──────────────────────────────────────────────────────
 
 describe("APPLICANT_PHI_SELECT", () => {
-  it("includes both encrypted and legacy plaintext columns for the alias", () => {
+  it("includes encrypted PHI columns for the alias", () => {
     const fragment = APPLICANT_PHI_SELECT("a")
     expect(fragment).toContain("a.first_name_encrypted")
-    expect(fragment).toContain("a.first_name")
     expect(fragment).toContain("a.last_name_encrypted")
-    expect(fragment).toContain("a.last_name")
     expect(fragment).toContain("a.dob_encrypted")
     expect(fragment).toContain("a.phone_encrypted")
-    expect(fragment).toContain("a.phone")
     expect(fragment).toContain("a.address_line1_encrypted")
     expect(fragment).toContain("a.city_encrypted")
     expect(fragment).toContain("a.state_encrypted")
     expect(fragment).toContain("a.zip_encrypted")
   })
 
-  it("casts legacy dob column to text", () => {
+  it("does not select dropped legacy plaintext columns", () => {
     const fragment = APPLICANT_PHI_SELECT("a")
-    expect(fragment).toContain("a.dob::text AS dob")
+    expect(fragment).not.toContain("a.first_name,")
+    expect(fragment).not.toContain("a.last_name,")
+    expect(fragment).not.toContain("a.dob::text AS dob")
+    expect(fragment).not.toContain("a.phone,")
   })
 
   it("respects the table alias", () => {
@@ -168,12 +140,10 @@ describe("APPLICANT_PHI_SELECT", () => {
 })
 
 describe("APPLICANT_PHI_GROUP_BY", () => {
-  it("includes both encrypted and legacy plaintext columns", () => {
+  it("includes encrypted PHI columns", () => {
     const fragment = APPLICANT_PHI_GROUP_BY("a")
     expect(fragment).toContain("a.first_name_encrypted")
-    expect(fragment).toContain("a.first_name")
     expect(fragment).toContain("a.dob_encrypted")
-    expect(fragment).toContain("a.dob")
   })
 
   it("does NOT alias dob with ::text (GROUP BY does not use aliases)", () => {
@@ -192,9 +162,7 @@ describe("APPLICANT_NAME_SELECT", () => {
   it("includes only first/last name columns (not address, dob, etc.)", () => {
     const fragment = APPLICANT_NAME_SELECT("a")
     expect(fragment).toContain("a.first_name_encrypted")
-    expect(fragment).toContain("a.first_name")
     expect(fragment).toContain("a.last_name_encrypted")
-    expect(fragment).toContain("a.last_name")
     expect(fragment).not.toContain("dob")
     expect(fragment).not.toContain("phone")
     expect(fragment).not.toContain("address")
@@ -213,9 +181,7 @@ describe("APPLICANT_NAME_GROUP_BY", () => {
   it("includes only first/last name columns", () => {
     const fragment = APPLICANT_NAME_GROUP_BY("a")
     expect(fragment).toContain("a.first_name_encrypted")
-    expect(fragment).toContain("a.first_name")
     expect(fragment).toContain("a.last_name_encrypted")
-    expect(fragment).toContain("a.last_name")
     expect(fragment).not.toContain("dob")
     expect(fragment).not.toContain("phone")
   })

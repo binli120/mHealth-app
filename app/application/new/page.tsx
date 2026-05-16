@@ -5,7 +5,7 @@
 
 "use client"
 
-import { Suspense, useState } from "react"
+import { Suspense, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ApplicationAssistant } from "@/components/application/aca3/application-assistant"
 import { FormWizard } from "@/components/application/aca3/form-wizard"
@@ -31,6 +31,26 @@ function readPrefillFromSessionStorage(key: string | null): Partial<ApplicationF
   return undefined
 }
 
+function resolveEntryMode({
+  requestedMode,
+  prefillKey,
+  applicationId,
+}: {
+  requestedMode: string | null
+  prefillKey: string | null
+  applicationId: string | undefined
+}): ApplicationEntryMode {
+  if (requestedMode === "wizard" || requestedMode === "chat") {
+    return requestedMode
+  }
+
+  if (prefillKey) {
+    return "chat"
+  }
+
+  return "chat"
+}
+
 function NewApplicationPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -45,9 +65,15 @@ function NewApplicationPageContent() {
     () => readPrefillFromSessionStorage(prefillKey),
   )
 
-  const [entryMode, setEntryMode] = useState<ApplicationEntryMode>(
-    requestedMode === "wizard" ? "wizard" : "chat",
+  const urlEntryMode = useMemo(
+    () => resolveEntryMode({ requestedMode, prefillKey, applicationId: queryApplicationId }),
+    [requestedMode, prefillKey, queryApplicationId],
   )
+  const [entryMode, setEntryMode] = useState<ApplicationEntryMode>(urlEntryMode)
+
+  useEffect(() => {
+    setEntryMode(urlEntryMode)
+  }, [urlEntryMode])
 
   const savedApplicationType = useAppSelector((state) => {
     if (!queryApplicationId) return ""

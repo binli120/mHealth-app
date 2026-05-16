@@ -202,7 +202,7 @@ describe("ApplicationAssistant chat request contract", () => {
     const init = getChatCalls()[0]?.[1] as RequestInit
     const body = JSON.parse(String(init.body)) as { currentFields?: string }
 
-    expect(body.currentFields).toContain("First name: John")
+    expect(body.currentFields).toContain("First name: [provided]")
   })
 
   it("keeps SSN-like input out of the model request", async () => {

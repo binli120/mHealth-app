@@ -40,10 +40,12 @@ import {
   Clock,
   FileText,
   HelpCircle,
+  Lock,
   LogOut,
   MessageCircle,
   Scale,
   FileSearch,
+  Trash2,
   Upload,
   UserCheck,
   Plus,
@@ -59,6 +61,7 @@ import { ShieldHeartIcon } from "@/lib/icons"
 import { UserAvatar } from "@/components/shared/UserAvatar"
 import { ThemeToggle } from "@/components/shared/ThemeToggle"
 import { formatDate } from "@/lib/utils/format"
+import { buildApplicationContinueHref } from "@/lib/applications/navigation"
 import { Progress } from "@/components/ui/progress"
 import type { ApplicationListApiResponse } from "./page.types"
 import { STATUS_META } from "./page.constants"
@@ -111,6 +114,9 @@ export default function CustomerDashboardPage() {
   const [swSearchError, setSwSearchError] = useState("")
   const [swGranting, setSwGranting] = useState(false)
   const [swRevokeTarget, setSwRevokeTarget] = useState<{ swUserId: string; name: string } | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState("")
 
   // Fetch the user profile on mount if Redux doesn't already have it.
   // This ensures the navbar avatar always shows even when the user lands
@@ -185,6 +191,29 @@ export default function CustomerDashboardPage() {
       void loadSocialWorkers()
     } catch {
       // non-fatal
+    }
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return
+    setIsDeleting(true)
+    setDeleteError("")
+    try {
+      const res = await authenticatedFetch(
+        `/api/applications/${encodeURIComponent(deleteTarget.id)}/draft`,
+        { method: "DELETE" },
+      )
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) {
+        setDeleteError(data.error || "Failed to delete application.")
+        return
+      }
+      setDeleteTarget(null)
+      void loadApplications()
+    } catch {
+      setDeleteError("Failed to delete application.")
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -554,48 +583,71 @@ export default function CustomerDashboardPage() {
                         const StatusIcon = status.icon
                         const itemHref =
                           app.status === "draft"
-                            ? `/application/new?applicationId=${app.id}`
+                            ? buildApplicationContinueHref(app.id)
                             : `/customer/status/${app.id}`
                         // Wizard has 9 steps; use draftStep for a rough completion %.
                         const stepProgress = app.draftStep != null
                           ? Math.min(100, Math.round((app.draftStep / 9) * 100))
                           : null
 
+                        const isDeletable = app.status !== "approved" && app.status !== "denied"
+
                         return (
-                          <Link key={app.id} href={itemHref}>
-                            <div className="rounded-lg border border-border bg-secondary/30 p-4 transition-colors hover:bg-secondary/50">
-                              <div className="flex items-center justify-between gap-4">
-                                <div className="flex items-center gap-3">
-                                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${status.color}`}>
-                                    <StatusIcon className="h-5 w-5" />
+                          <div key={app.id} className="relative group">
+                            <Link href={itemHref} className="block">
+                              <div className="rounded-lg border border-border bg-secondary/30 p-4 transition-colors hover:bg-secondary/50">
+                                <div className="flex items-center justify-between gap-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${status.color}`}>
+                                      <StatusIcon className="h-5 w-5" />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="font-medium text-foreground">
+                                        {getApplicationTypeLabel(app.applicationType)} Application
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        Started {formatDate(app.createdAt)}
+                                        {app.lastSavedAt ? ` · Saved ${formatDate(app.lastSavedAt)}` : ""}
+                                      </p>
+                                    </div>
                                   </div>
-                                  <div className="min-w-0">
-                                    <p className="font-medium text-foreground">
-                                      {getApplicationTypeLabel(app.applicationType)} Application
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      Started {formatDate(app.createdAt)}
-                                      {app.lastSavedAt ? ` · Saved ${formatDate(app.lastSavedAt)}` : ""}
-                                    </p>
+                                  <div className="shrink-0 flex items-center gap-2 pr-7">
+                                    {app.phiDraftLocked && (
+                                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700" title="Personal information saved securely">
+                                        <Lock className="h-3 w-3" />
+                                        Secured
+                                      </span>
+                                    )}
+                                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${status.color}`}>
+                                      {status.label}
+                                    </span>
                                   </div>
                                 </div>
-                                <div className="shrink-0 text-right">
-                                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${status.color}`}>
-                                    {status.label}
-                                  </span>
-                                </div>
+                                {stepProgress !== null && stepProgress > 0 && (
+                                  <div className="mt-3 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span>Wizard progress</span>
+                                      <span>{stepProgress}%</span>
+                                    </div>
+                                    <Progress value={stepProgress} className="h-1.5" />
+                                  </div>
+                                )}
                               </div>
-                              {stepProgress !== null && stepProgress > 0 && (
-                                <div className="mt-3 space-y-1">
-                                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                    <span>Wizard progress</span>
-                                    <span>{stepProgress}%</span>
-                                  </div>
-                                  <Progress value={stepProgress} className="h-1.5" />
-                                </div>
-                              )}
-                            </div>
-                          </Link>
+                            </Link>
+                            {isDeletable && (
+                              <button
+                                type="button"
+                                aria-label="Delete application"
+                                onClick={() => setDeleteTarget({
+                                  id: app.id,
+                                  label: `${getApplicationTypeLabel(app.applicationType)} Application`,
+                                })}
+                                className="absolute top-3 right-3 flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
                         )
                       })}
                     </div>
@@ -830,6 +882,35 @@ export default function CustomerDashboardPage() {
               }}
             >
               Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o && !isDeleting) { setDeleteTarget(null); setDeleteError("") } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete application?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget && (
+                <>
+                  This will permanently delete your <strong>{deleteTarget.label}</strong> and all saved progress. This cannot be undone.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {deleteError && (
+            <p className="text-sm text-destructive px-1">{deleteError}</p>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting} onClick={() => { setDeleteTarget(null); setDeleteError("") }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              onClick={() => void handleDeleteConfirm()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

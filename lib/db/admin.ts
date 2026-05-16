@@ -113,11 +113,8 @@ export async function listUsers(opts: {
     is_active: boolean
     created_at: string
     roles: string
-    // Dual name columns (encrypted + legacy plaintext)
     first_name_encrypted: string | null
-    first_name: string | null
     last_name_encrypted: string | null
-    last_name: string | null
     company_id: string | null
     company_name: string | null
   }>(
@@ -128,9 +125,7 @@ export async function listUsers(opts: {
         u.is_active,
         u.created_at,
         ap.first_name_encrypted,
-        ap.first_name,
         ap.last_name_encrypted,
-        ap.last_name,
         u.company_id,
         c.name AS company_name,
         COALESCE(
@@ -144,8 +139,7 @@ export async function listUsers(opts: {
       LEFT JOIN public.roles r ON r.id = ur.role_id
       WHERE ${whereClause}
       GROUP BY u.id, u.email, u.is_active, u.created_at,
-               ap.first_name_encrypted, ap.first_name,
-               ap.last_name_encrypted,  ap.last_name,
+               ap.first_name_encrypted, ap.last_name_encrypted,
                u.company_id, c.name
       ORDER BY u.created_at DESC
       LIMIT $${paramIdx} OFFSET $${paramIdx + 1}
@@ -160,8 +154,8 @@ export async function listUsers(opts: {
       is_active:    row.is_active,
       created_at:   row.created_at,
       roles:        row.roles ? row.roles.split(",") : [],
-      first_name:   decryptOrPlain(row.first_name_encrypted, row.first_name),
-      last_name:    decryptOrPlain(row.last_name_encrypted,  row.last_name),
+      first_name:   decryptOrPlain(row.first_name_encrypted),
+      last_name:    decryptOrPlain(row.last_name_encrypted),
       company_id:   row.company_id,
       company_name: row.company_name,
     })),
@@ -410,8 +404,8 @@ export async function listSocialWorkers(opts: {
       id:             row.id,
       user_id:        row.user_id,
       email:          row.email,
-      first_name:     decryptOrPlain(row.first_name_encrypted, row.first_name),
-      last_name:      decryptOrPlain(row.last_name_encrypted,  row.last_name),
+      first_name:     decryptOrPlain(row.first_name_encrypted),
+      last_name:      decryptOrPlain(row.last_name_encrypted),
       company_id:     row.company_id,
       company_name:   row.company_name,
       license_number: row.license_number,

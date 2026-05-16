@@ -29,6 +29,7 @@ function makeApplication(overrides: Partial<ApplicationListRecord> = {}): Applic
     updatedAt: "2026-05-01T12:00:00.000Z",
     applicantName: "Jane Patient",
     householdSize: 1,
+    phiDraftLocked: false,
     ...overrides,
   }
 }
@@ -166,7 +167,7 @@ describe("buildDashboardGreeting", () => {
 
     expect(greeting.heading).toBe("Good afternoon, John. Want to continue your unfinished application?")
     expect(greeting.message).toContain("ACA-3-AP was last saved")
-    expect(greeting.cta).toEqual({ href: "/application/new?applicationId=latest-draft", label: "Continue application" })
+    expect(greeting.cta).toEqual({ href: "/application/new?applicationId=latest-draft&mode=wizard", label: "Continue application" })
   })
 
   it("welcomes a user with no applications", () => {

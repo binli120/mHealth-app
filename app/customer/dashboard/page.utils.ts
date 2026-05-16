@@ -10,6 +10,7 @@
 
 import { getApplicationTypeLabel as libGetApplicationTypeLabel } from "@/lib/masshealth/application-types"
 import type { ApplicationListRecord } from "@/lib/applications/types"
+import { buildApplicationContinueHref } from "@/lib/applications/navigation"
 import { formatDate } from "@/lib/utils/format"
 
 export interface DashboardGreeting {
@@ -90,7 +91,7 @@ export function buildDashboardGreeting({
       heading: `${timeGreeting}, ${firstNameForGreeting}. Want to continue your unfinished application?`,
       message: `${getApplicationTypeLabel(draftApplication.applicationType)} was last saved ${formatDate(draftApplication.lastSavedAt ?? draftApplication.updatedAt)}.`,
       cta: {
-        href: `/application/new?applicationId=${draftApplication.id}`,
+        href: buildApplicationContinueHref(draftApplication.id),
         label: "Continue application",
       },
     }

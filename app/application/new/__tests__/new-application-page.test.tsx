@@ -56,11 +56,40 @@ describe("new application page", () => {
     mocks.useSearchParams.mockReturnValue(new URLSearchParams())
   })
 
-  it("uses the schema-backed intake chat for the normal Compass flow", async () => {
+  it("uses the schema-backed intake chat for a new Compass flow", async () => {
+    mocks.useSearchParams.mockReturnValue(new URLSearchParams())
+
+    renderPage()
+
+    await waitFor(() => expect(mocks.intakeChat).toHaveBeenCalled())
+    expect(mocks.formWizard).not.toHaveBeenCalled()
+    expect(mocks.applicationAssistant).not.toHaveBeenCalled()
+  })
+
+  it("opens the form wizard when continue mode is explicit", async () => {
     mocks.useSearchParams.mockReturnValue(
       new URLSearchParams({
         applicationId: "app-123",
         patientId: "patient-456",
+        mode: "wizard",
+      }),
+    )
+
+    renderPage()
+
+    await waitFor(() => expect(mocks.formWizard).toHaveBeenCalled())
+    expect(mocks.formWizard.mock.calls.at(-1)?.[0]).toMatchObject({
+      applicationId: "app-123",
+      actingForPatientId: "patient-456",
+    })
+    expect(mocks.intakeChat).not.toHaveBeenCalled()
+    expect(mocks.applicationAssistant).not.toHaveBeenCalled()
+  })
+
+  it("defaults to chat when an application id is present without continue mode", async () => {
+    mocks.useSearchParams.mockReturnValue(
+      new URLSearchParams({
+        applicationId: "app-123",
       }),
     )
 
@@ -69,9 +98,8 @@ describe("new application page", () => {
     await waitFor(() => expect(mocks.intakeChat).toHaveBeenCalled())
     expect(mocks.intakeChat.mock.calls.at(-1)?.[0]).toMatchObject({
       applicationId: "app-123",
-      actingForPatientId: "patient-456",
     })
-    expect(mocks.applicationAssistant).not.toHaveBeenCalled()
+    expect(mocks.formWizard).not.toHaveBeenCalled()
   })
 
   it("keeps the legacy assistant for document-prefill handoff", async () => {
@@ -94,5 +122,43 @@ describe("new application page", () => {
     })
     expect(mocks.intakeChat).not.toHaveBeenCalled()
     expect(sessionStorage.getItem("prefill-key")).toBeNull()
+  })
+
+  it("honors explicit chat mode even when an application id is present", async () => {
+    mocks.useSearchParams.mockReturnValue(
+      new URLSearchParams({
+        applicationId: "app-123",
+        mode: "chat",
+      }),
+    )
+
+    renderPage()
+
+    await waitFor(() => expect(mocks.intakeChat).toHaveBeenCalled())
+    expect(mocks.formWizard).not.toHaveBeenCalled()
+  })
+
+  it("updates from chat to wizard when client navigation adds continue mode", async () => {
+    let searchParams = new URLSearchParams()
+    mocks.useSearchParams.mockImplementation(() => searchParams)
+
+    const { rerender } = renderPage()
+
+    await waitFor(() => expect(mocks.intakeChat).toHaveBeenCalled())
+    expect(mocks.formWizard).not.toHaveBeenCalled()
+
+    mocks.intakeChat.mockClear()
+    searchParams = new URLSearchParams({ applicationId: "app-123", mode: "wizard" })
+
+    rerender(
+      <Provider store={makeStore()}>
+        <NewApplicationPage />
+      </Provider>,
+    )
+
+    await waitFor(() => expect(mocks.formWizard).toHaveBeenCalled())
+    expect(mocks.formWizard.mock.calls.at(-1)?.[0]).toMatchObject({
+      applicationId: "app-123",
+    })
   })
 })

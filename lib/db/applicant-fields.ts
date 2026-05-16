@@ -3,24 +3,9 @@
  * @email: blee@healthcompass.cloud
  *
  * Shared helpers for reading and writing encrypted PHI columns on the
- * applicants table.
- *
- * Every PHI field (name, DOB, phone, address) is stored twice during the
- * migration window:
- *
- *   • Legacy plaintext column (first_name, last_name, …)
- *     Existing rows until the backfill script is run.
- *
- *   • Encrypted column (first_name_encrypted, last_name_encrypted, …)
- *     All new writes go here immediately after this migration.
- *
- * The `decryptOrPlain` helper implements the dual-read priority:
- *   encrypted column → decrypted value      (new rows / post-backfill)
- *   plaintext column → returned as-is       (pre-backfill legacy rows)
- *   both null        → null
- *
- * After the backfill is verified, a follow-up cleanup migration will NULL
- * and DROP the legacy plaintext columns (see the TODO in the SQL migration).
+ * applicants table.  All PHI is stored exclusively in *_encrypted columns
+ * (AES-256-GCM).  Plaintext legacy columns were dropped in the May 2026
+ * PHI remediation migration.
  */
 
 import "server-only"
@@ -42,44 +27,30 @@ export function encryptApplicantField(plain: string | null | undefined): string 
 // ── Read helpers ──────────────────────────────────────────────────────────────
 
 /**
- * Decrypt an encrypted PHI column value, falling back to the legacy plaintext
- * column when the encrypted value is absent (pre-backfill rows).
- *
- * Priority: encrypted → plaintext → null
- *
- * During the migration window, some rows can contain encrypted values written
- * with an old or local-only key while legacy plaintext is still present. In
- * that case, fall back to plaintext so read paths stay available. If there is
- * no plaintext fallback, propagate the decrypt error so data integrity issues
- * are still visible.
+ * Decrypt an encrypted PHI column value.  Returns null when the column is
+ * null (field not yet provided by the applicant).
  */
 export function decryptOrPlain(
   encrypted: string | null | undefined,
-  plain: string | null | undefined,
 ): string | null {
-  if (encrypted) {
-    try {
-      return decryptField(encrypted)
-    } catch (error) {
-      if (plain !== null && plain !== undefined) return plain
-      throw error
-    }
+  if (!encrypted) return null
+  try {
+    return decryptField(encrypted)
+  } catch {
+    return null
   }
-  return plain ?? null
 }
 
 /**
- * Produce a display name from encrypted (or plaintext fallback) first/last
- * name columns.  Returns null when both fields are empty.
+ * Produce a display name from encrypted first/last name columns.
+ * Returns null when both fields are empty.
  */
 export function decryptDisplayName(
   firstEnc: string | null | undefined,
-  firstPlain: string | null | undefined,
   lastEnc: string | null | undefined,
-  lastPlain: string | null | undefined,
 ): string | null {
-  const first = decryptOrPlain(firstEnc, firstPlain)
-  const last = decryptOrPlain(lastEnc, lastPlain)
+  const first = decryptOrPlain(firstEnc)
+  const last = decryptOrPlain(lastEnc)
   const name = [first, last].filter(Boolean).join(" ").trim()
   return name || null
 }
@@ -97,56 +68,42 @@ export function decryptDisplayName(
  */
 export function APPLICANT_PHI_SELECT(alias: string): string {
   return [
-    `${alias}.first_name_encrypted`, `${alias}.first_name`,
-    `${alias}.last_name_encrypted`,  `${alias}.last_name`,
-    `${alias}.dob_encrypted`,        `${alias}.dob::text AS dob`,
-    `${alias}.phone_encrypted`,      `${alias}.phone`,
-    `${alias}.address_line1_encrypted`, `${alias}.address_line1`,
-    `${alias}.address_line2_encrypted`, `${alias}.address_line2`,
-    `${alias}.city_encrypted`,       `${alias}.city`,
-    `${alias}.state_encrypted`,      `${alias}.state`,
-    `${alias}.zip_encrypted`,        `${alias}.zip`,
+    `${alias}.first_name_encrypted`,
+    `${alias}.last_name_encrypted`,
+    `${alias}.dob_encrypted`,
+    `${alias}.phone_encrypted`,
+    `${alias}.address_line1_encrypted`,
+    `${alias}.address_line2_encrypted`,
+    `${alias}.city_encrypted`,
+    `${alias}.state_encrypted`,
+    `${alias}.zip_encrypted`,
   ].join(",\n       ")
 }
 
-/**
- * SQL fragment for GROUP BY that includes both encrypted and legacy columns
- * so GROUP BY remains consistent with SELECT.
- *
- * Usage:
- *   GROUP BY … ${APPLICANT_PHI_GROUP_BY("a")}
- */
 export function APPLICANT_PHI_GROUP_BY(alias: string): string {
   return [
-    `${alias}.first_name_encrypted`, `${alias}.first_name`,
-    `${alias}.last_name_encrypted`,  `${alias}.last_name`,
-    `${alias}.dob_encrypted`,        `${alias}.dob`,
-    `${alias}.phone_encrypted`,      `${alias}.phone`,
-    `${alias}.address_line1_encrypted`, `${alias}.address_line1`,
-    `${alias}.address_line2_encrypted`, `${alias}.address_line2`,
-    `${alias}.city_encrypted`,       `${alias}.city`,
-    `${alias}.state_encrypted`,      `${alias}.state`,
-    `${alias}.zip_encrypted`,        `${alias}.zip`,
+    `${alias}.first_name_encrypted`,
+    `${alias}.last_name_encrypted`,
+    `${alias}.dob_encrypted`,
+    `${alias}.phone_encrypted`,
+    `${alias}.address_line1_encrypted`,
+    `${alias}.address_line2_encrypted`,
+    `${alias}.city_encrypted`,
+    `${alias}.state_encrypted`,
+    `${alias}.zip_encrypted`,
   ].join(", ")
 }
 
-/**
- * SQL fragment for SELECTing only the name columns for a given alias —
- * used by queries that only need a display name (messaging, notifications).
- */
 export function APPLICANT_NAME_SELECT(alias: string): string {
   return [
-    `${alias}.first_name_encrypted`, `${alias}.first_name`,
-    `${alias}.last_name_encrypted`,  `${alias}.last_name`,
+    `${alias}.first_name_encrypted`,
+    `${alias}.last_name_encrypted`,
   ].join(", ")
 }
 
-/**
- * SQL fragment for GROUP BY of only the name columns.
- */
 export function APPLICANT_NAME_GROUP_BY(alias: string): string {
   return [
-    `${alias}.first_name_encrypted`, `${alias}.first_name`,
-    `${alias}.last_name_encrypted`,  `${alias}.last_name`,
+    `${alias}.first_name_encrypted`,
+    `${alias}.last_name_encrypted`,
   ].join(", ")
 }

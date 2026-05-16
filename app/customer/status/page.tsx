@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { buildApplicationContinueHref } from "@/lib/applications/navigation"
 import { ArrowLeft, ChevronRight, Filter, Search } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ShieldHeartIcon } from "@/lib/icons"
@@ -154,7 +155,7 @@ export default function StatusListPage() {
               const needsAction = app.status === "rfi_requested"
               const detailHref =
                 app.status === "draft"
-                  ? `/application/new?applicationId=${app.id}`
+                  ? buildApplicationContinueHref(app.id)
                   : `/customer/status/${app.id}`
 
               return (

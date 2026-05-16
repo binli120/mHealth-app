@@ -8,6 +8,7 @@
 import { NextResponse } from "next/server"
 import { getDbPool } from "@/lib/db/server"
 import { claimInvitationByToken, getInvitationByToken } from "@/lib/db/invitations"
+import { encryptApplicantField } from "@/lib/db/applicant-fields"
 import { toUserFacingError } from "@/lib/errors/user-facing"
 import {
   checkRateLimit,
@@ -206,13 +207,13 @@ export async function POST(
     // Upsert public.applicants (name)
     await client.query(
       `
-        INSERT INTO public.applicants (user_id, first_name, last_name, created_at)
+        INSERT INTO public.applicants (user_id, first_name_encrypted, last_name_encrypted, created_at)
         VALUES ($1::uuid, $2, $3, now())
         ON CONFLICT (user_id) DO UPDATE
-          SET first_name = COALESCE(EXCLUDED.first_name, public.applicants.first_name),
-              last_name  = COALESCE(EXCLUDED.last_name,  public.applicants.last_name)
+          SET first_name_encrypted = COALESCE(EXCLUDED.first_name_encrypted, public.applicants.first_name_encrypted),
+              last_name_encrypted  = COALESCE(EXCLUDED.last_name_encrypted,  public.applicants.last_name_encrypted)
       `,
-      [resolvedUserId, firstName, lastName],
+      [resolvedUserId, encryptApplicantField(firstName), encryptApplicantField(lastName)],
     )
 
     // Assign the role from the invitation

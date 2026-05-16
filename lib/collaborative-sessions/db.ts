@@ -24,17 +24,11 @@ import type {
 interface SessionQueryRow {
   id: string
   sw_user_id: string
-  // SW name columns (applicants table — PHI encrypted)
   sw_first_enc: string | null
-  sw_first: string | null
   sw_last_enc: string | null
-  sw_last: string | null
   patient_user_id: string
-  // Patient name columns (applicants table — PHI encrypted)
   pt_first_enc: string | null
-  pt_first: string | null
   pt_last_enc: string | null
-  pt_last: string | null
   status: string
   scheduled_at: Date | null
   started_at: Date | null
@@ -47,11 +41,8 @@ interface MessageQueryRow {
   id: string
   session_id: string
   sender_id: string
-  // Sender name — dual-column (encrypted + legacy plaintext)
   sender_first_enc: string | null
-  sender_first: string | null
   sender_last_enc: string | null
-  sender_last: string | null
   type: string
   content: string | null
   storage_path: string | null
@@ -65,9 +56,9 @@ function rowToSummary(row: SessionQueryRow): SessionSummary {
   return {
     id: row.id,
     swUserId: row.sw_user_id,
-    swName: decryptDisplayName(row.sw_first_enc, row.sw_first, row.sw_last_enc, row.sw_last) ?? "Social Worker",
+    swName: decryptDisplayName(row.sw_first_enc, row.sw_last_enc) ?? "Social Worker",
     patientUserId: row.patient_user_id,
-    patientName: decryptDisplayName(row.pt_first_enc, row.pt_first, row.pt_last_enc, row.pt_last) ?? "Patient",
+    patientName: decryptDisplayName(row.pt_first_enc, row.pt_last_enc) ?? "Patient",
     status: row.status as SessionSummary["status"],
     scheduledAt: row.scheduled_at?.toISOString() ?? null,
     startedAt: row.started_at?.toISOString() ?? null,
@@ -83,7 +74,7 @@ function rowToMessage(row: MessageQueryRow): SessionMessage {
     sessionId: row.session_id,
     senderId: row.sender_id,
     senderName:
-      decryptDisplayName(row.sender_first_enc, row.sender_first, row.sender_last_enc, row.sender_last) ?? "User",
+      decryptDisplayName(row.sender_first_enc, row.sender_last_enc) ?? "User",
     type: row.type as SessionMessage["type"],
     content: row.content,
     storagePath: row.storage_path,
@@ -106,13 +97,9 @@ const NAME_JOIN = `
 
 const NAME_SELECT = `
   sw_a.first_name_encrypted AS sw_first_enc,
-  sw_a.first_name           AS sw_first,
   sw_a.last_name_encrypted  AS sw_last_enc,
-  sw_a.last_name            AS sw_last,
   pt_a.first_name_encrypted AS pt_first_enc,
-  pt_a.first_name           AS pt_first,
-  pt_a.last_name_encrypted  AS pt_last_enc,
-  pt_a.last_name            AS pt_last
+  pt_a.last_name_encrypted  AS pt_last_enc
 `
 
 // ── Session CRUD ─────────────────────────────────────────────────────────────
@@ -233,9 +220,7 @@ export async function createMessage(input: CreateMessageInput): Promise<SessionM
      SELECT
        ins.*,
        a.first_name_encrypted AS sender_first_enc,
-       a.first_name           AS sender_first,
-       a.last_name_encrypted  AS sender_last_enc,
-       a.last_name            AS sender_last
+       a.last_name_encrypted  AS sender_last_enc
      FROM ins
      LEFT JOIN applicants a ON a.user_id = ins.sender_id`,
     [
@@ -268,9 +253,7 @@ export async function listMessages(
     `SELECT
        sm.*,
        a.first_name_encrypted AS sender_first_enc,
-       a.first_name           AS sender_first,
-       a.last_name_encrypted  AS sender_last_enc,
-       a.last_name            AS sender_last
+       a.last_name_encrypted  AS sender_last_enc
      FROM session_messages sm
      LEFT JOIN applicants a ON a.user_id = sm.sender_id
      WHERE sm.session_id = $1

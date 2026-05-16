@@ -144,12 +144,26 @@ export interface FormContextValue {
   state: WizardState
   dispatch: Dispatch<WizardAction>
   applicationId: string
+  actingForPatientId?: string
   saveDraftNow: (overrideState?: WizardState) => Promise<boolean>
+  /**
+   * Encrypt PHI from the current wizard state into a downloadable token and
+   * show the export dialog. Returns false if encryption fails.
+   */
+  exportPhiToken: () => Promise<boolean>
   /**
    * True only when ALL required income sources have been verified by evidence
    * rules via the income verification API.  Never inferred from form fields.
    */
   apiIncomeVerified: boolean
+  /** Set when the server draft has an encrypted PHI blob awaiting restoration. */
+  pendingPhiResumeId: string | null
+  /** True when the server also holds the encrypted AES key (user can auto-restore without a token). */
+  pendingPhiHasServerKey: boolean
+  /** Server state snapshot (PHI-free) used as the base for PHI restoration. */
+  serverStateForResume: Record<string, unknown> | null
+  dismissPhiResume: () => void
+  onPhiRestored: (mergedState: Record<string, unknown>) => void
 }
 
 export interface DependentEntry {

@@ -35,17 +35,13 @@ async function getUserEmailAndPrefs(
   const { rows } = await pool.query<{
     email: string
     first_name_encrypted: string | null
-    first_name: string | null
     last_name_encrypted: string | null
-    last_name: string | null
     profile_data: { notifications?: NotificationPrefs } | null
   }>(
     `SELECT
        u.email,
        a.first_name_encrypted,
-       a.first_name,
        a.last_name_encrypted,
-       a.last_name,
        up.profile_data
      FROM auth.users u
      LEFT JOIN applicants a ON a.user_id = u.id
@@ -66,8 +62,8 @@ async function getUserEmailAndPrefs(
     reminderLeadDays: 14,
   }
 
-  const firstName = decryptOrPlain(row.first_name_encrypted, row.first_name)
-  const lastName  = decryptOrPlain(row.last_name_encrypted,  row.last_name)
+  const firstName = decryptOrPlain(row.first_name_encrypted)
+  const lastName  = decryptOrPlain(row.last_name_encrypted)
 
   return {
     email: row.email,

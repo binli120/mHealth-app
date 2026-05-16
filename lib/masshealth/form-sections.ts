@@ -20,28 +20,24 @@ export const FORM_SECTION_ORDER: FormSection[] = [
 ]
 
 /**
- * Build a human-readable summary of what's been collected so far.
- * Sent to the API on each request so the LLM knows what to skip.
+ * Build a field-presence summary for the LLM — indicates which fields are
+ * filled without including actual values.  Actual values (name, DOB, address,
+ * income amounts) are PHI and must never be sent to a third-party AI provider.
  */
 export function summarizeCollectedFields(formData: Partial<ApplicationFormData>): string {
   const lines: string[] = []
 
-  // Emit each personal field individually so partial pre-fills (e.g. firstName
-  // from a profile but no lastName yet) are still visible to the LLM and it
-  // doesn't re-ask for fields that are already collected.
   const personalParts = [
-    formData.firstName ? `First name: ${formData.firstName}` : null,
-    formData.lastName  ? `Last name: ${formData.lastName}`   : null,
-    formData.dob       ? `DOB: ${formData.dob}`              : null,
+    formData.firstName ? "First name: [provided]" : null,
+    formData.lastName  ? "Last name: [provided]"  : null,
+    formData.dob       ? "DOB: [provided]"         : null,
   ].filter(Boolean)
   if (personalParts.length > 0) lines.push(`Personal: ${personalParts.join(", ")}`)
 
   const contactParts = [
-    formData.email   ? `Email: ${formData.email}`   : null,
-    formData.phone   ? `Phone: ${formData.phone}`   : null,
-    formData.address
-      ? `Address: ${[formData.address, formData.apartment, formData.city, formData.state, formData.zip].filter(Boolean).join(" ")}`
-      : null,
+    formData.email   ? "Email: [provided]"   : null,
+    formData.phone   ? "Phone: [provided]"   : null,
+    formData.address ? "Address: [provided]" : null,
   ].filter(Boolean)
   if (contactParts.length > 0) lines.push(`Contact: ${contactParts.join(" | ")}`)
 
@@ -50,9 +46,9 @@ export function summarizeCollectedFields(formData: Partial<ApplicationFormData>)
   if (formData.householdMembers && formData.householdMembers.length > 0) {
     const memberSummary = formData.householdMembers
       .map((m) => {
-        const parts = [`${m.firstName} ${m.lastName}`.trim()]
+        const parts = ["name: [provided]"]
         if (m.relationship) parts.push(`relationship: ${m.relationship}`)
-        if (m.dob) parts.push(`DOB: ${m.dob}`)
+        if (m.dob) parts.push("DOB: [provided]")
         return parts.join(", ")
       })
       .join(" | ")
@@ -61,7 +57,7 @@ export function summarizeCollectedFields(formData: Partial<ApplicationFormData>)
 
   if (formData.incomeSources && formData.incomeSources.length > 0) {
     const incomeSummary = formData.incomeSources
-      .map((s) => `${s.type} $${s.amount}/${s.frequency}`)
+      .map((s) => `${s.type} [amount provided]/${s.frequency}`)
       .join(", ")
     lines.push(`Income: ${incomeSummary}`)
   }

@@ -3,7 +3,7 @@
  * @email: blee@healthcompass.cloud
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@/lib/db/invitations", () => ({
   claimInvitationByToken: vi.fn(),
@@ -27,6 +27,7 @@ import { POST } from "@/app/api/auth/invite/[token]/route"
 import { claimInvitationByToken, getInvitationByToken } from "@/lib/db/invitations"
 
 const TOKEN = "test-token"
+const TEST_KEY_HEX = "0".repeat(64)
 const INVITATION = {
   id: "inv-1",
   email: "invitee@example.com",
@@ -54,7 +55,12 @@ function makeParams() {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.stubEnv("PROFILE_ENCRYPTION_KEY", TEST_KEY_HEX)
   queryMock.mockResolvedValue({ rows: [] })
+})
+
+afterEach(() => {
+  vi.unstubAllEnvs()
 })
 
 describe("POST /api/auth/invite/[token]", () => {

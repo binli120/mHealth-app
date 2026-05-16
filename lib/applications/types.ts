@@ -23,6 +23,8 @@ export interface ApplicationListRecord {
   updatedAt: string
   applicantName: string | null
   householdSize: number | null
+  /** True when an encrypted PHI blob + server-stored key exist for this draft. */
+  phiDraftLocked: boolean
 }
 
 export interface ApplicationListApiResponse {

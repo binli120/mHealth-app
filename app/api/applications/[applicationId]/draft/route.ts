@@ -10,6 +10,7 @@ import {
   ApplicationDraftAccessError,
   getApplicationDraft,
   upsertApplicationDraft,
+  deleteApplicationDraft,
 } from "@/lib/db/application-drafts"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 import { notifyStatusChange } from "@/lib/notifications/service"
@@ -190,6 +191,49 @@ export async function PUT(request: Request, context: RouteContext) {
             ? STATUS_FORBIDDEN
             : STATUS_INTERNAL_SERVER_ERROR,
       },
+    )
+  }
+}
+
+// ── DELETE: remove an application ────────────────────────────────────────────
+
+export async function DELETE(request: Request, context: RouteContext) {
+  try {
+    const authResult = await requireAuthenticatedUser(request)
+    if (!authResult.ok) return authResult.response
+
+    const { applicationId } = await context.params
+    if (!UUID_PATTERN.test(applicationId)) {
+      return NextResponse.json({ ok: false, error: "Invalid applicationId." }, { status: STATUS_BAD_REQUEST })
+    }
+
+    const actingFor = request.headers.get("X-Acting-For-Patient") ?? undefined
+
+    const result = await deleteApplicationDraft({
+      userId: authResult.userId,
+      applicationId,
+      actingForUserId: actingFor,
+    })
+
+    if (!result.deleted) {
+      if (result.reason === "not_found") {
+        return NextResponse.json({ ok: false, error: "Application not found." }, { status: STATUS_NOT_FOUND })
+      }
+      return NextResponse.json(
+        { ok: false, error: "This application cannot be deleted." },
+        { status: STATUS_BAD_REQUEST },
+      )
+    }
+
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    const isAccessError = isApplicationDraftAccessError(error)
+    logServerError("Failed to delete application draft", error, {
+      module: "api/applications/draft",
+    })
+    return NextResponse.json(
+      { ok: false, error: "Failed to delete application." },
+      { status: isAccessError ? STATUS_FORBIDDEN : STATUS_INTERNAL_SERVER_ERROR },
     )
   }
 }

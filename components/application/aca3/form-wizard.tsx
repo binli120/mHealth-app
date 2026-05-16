@@ -17,7 +17,7 @@ import {
   type ReactNode,
 } from "react"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, CalendarIcon, CheckCircle2, ChevronDown, CircleCheck, FileCheck2 } from "lucide-react"
+import { AlertTriangle, CalendarIcon, CheckCircle2, ChevronDown, CircleCheck, Download, FileCheck2 } from "lucide-react"
 import { WizardLayout } from "@/components/application/wizard-layout"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -79,6 +79,12 @@ import { useField } from "@/hooks/use-field"
 import { parsePastedUsAddress } from "@/lib/utils/address-parse"
 import type { MassHealthAcaPayload } from "@/lib/pdf/masshealth-aca-payload"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { buildPhiToken, splitWizardState } from "@/lib/phi-token/token"
+import { PHI_DATA_KEYS } from "@/lib/phi-token/phi-fields"
+import { restorePhiDraftState } from "@/lib/phi-token/restore"
+import { PhiTokenExportDialog } from "@/components/application/phi-token-manager"
+import { PhiSaveExitDialog, PhiResumePrompt } from "@/components/application/phi-save-exit-dialog"
+import type { PhiToken } from "@/lib/phi-token/token"
 import {
   createApplication,
   DEFAULT_APPLICATION_ID,
@@ -832,6 +838,13 @@ function buildPersistedStateSnapshot(sourceState: WizardState): Record<string, u
   }
 }
 
+/** PHI-free snapshot sent to the server. PHI stays in the client-side token. */
+function buildSafeServerSnapshot(sourceState: WizardState): Record<string, unknown> {
+  const full = buildPersistedStateSnapshot(sourceState)
+  const { safeState } = splitWizardState(full)
+  return safeState
+}
+
 function getPersistedAt(raw: unknown): number {
   if (!raw || typeof raw !== "object" || !("persistedAt" in raw)) {
     return 0
@@ -871,6 +884,74 @@ function choosePreferredHydratedRaw(
   return valid[0]?.raw ?? null
 }
 
+function hasMeaningfulPhiValue(value: unknown): boolean {
+  if (typeof value === "string") {
+    return value.trim().length > 0
+  }
+
+  if (typeof value === "number") {
+    return Number.isFinite(value)
+  }
+
+  if (value === true) {
+    return true
+  }
+
+  if (Array.isArray(value)) {
+    return value.some(hasMeaningfulPhiValue)
+  }
+
+  if (value && typeof value === "object") {
+    return Object.values(value as Record<string, unknown>).some(hasMeaningfulPhiValue)
+  }
+
+  return false
+}
+
+function hasMeaningfulPhiData(raw: unknown): boolean {
+  if (!raw || typeof raw !== "object") {
+    return false
+  }
+
+  const data = (raw as { data?: unknown }).data
+  if (!data || typeof data !== "object") {
+    return false
+  }
+
+  const record = data as Record<string, unknown>
+  return PHI_DATA_KEYS.some((key) => hasMeaningfulPhiValue(record[key]))
+}
+
+function toHydrationRecord(raw: unknown): Record<string, unknown> {
+  return raw && typeof raw === "object" ? raw as Record<string, unknown> : {}
+}
+
+function mergePhiDataFromRaw(baseRaw: unknown, phiRaw: unknown): Record<string, unknown> {
+  const base = toHydrationRecord(baseRaw)
+  const baseData = base.data && typeof base.data === "object"
+    ? base.data as Record<string, unknown>
+    : {}
+  const phiDataSource = toHydrationRecord(phiRaw).data
+  const phiData = phiDataSource && typeof phiDataSource === "object"
+    ? phiDataSource as Record<string, unknown>
+    : {}
+  const nextPhiData: Record<string, unknown> = {}
+
+  for (const key of PHI_DATA_KEYS) {
+    if (key in phiData) {
+      nextPhiData[key] = phiData[key]
+    }
+  }
+
+  return {
+    ...base,
+    data: {
+      ...baseData,
+      ...nextPhiData,
+    },
+  }
+}
+
 function FormProvider({
   children,
   applicationId,
@@ -897,6 +978,57 @@ function FormProvider({
   const hydratedApplicationRef = useRef<string | null>(null)
   const saveTimeoutRef = useRef<number | null>(null)
   const saveFailureBackoffUntilRef = useRef(0)
+
+  // ── PHI token export ──────────────────────────────────────────────────────
+  const [pendingPhiToken, setPendingPhiToken] = useState<PhiToken | null>(null)
+
+  // ── PHI resume prompt ─────────────────────────────────────────────────────
+  const [pendingPhiResumeId, setPendingPhiResumeId] = useState<string | null>(null)
+  const [pendingPhiHasServerKey, setPendingPhiHasServerKey] = useState(false)
+  const [serverStateForResume, setServerStateForResume] = useState<Record<string, unknown> | null>(null)
+
+  const dismissPhiResume = useCallback(() => {
+    setPendingPhiResumeId(null)
+    setPendingPhiHasServerKey(false)
+    setServerStateForResume(null)
+  }, [])
+
+  const onPhiRestored = useCallback(
+    (mergedState: Record<string, unknown>) => {
+      // Extract only the PHI keys from the decrypted blob and merge them into
+      // the current form state, which may have newer step/completedSteps data
+      // than the server-side snapshot used inside PhiResumePrompt.
+      const restoredData = (mergedState.data ?? {}) as Record<string, unknown>
+      const phiData: Record<string, unknown> = {}
+      for (const key of ["contact", "preApp", "persons"] as const) {
+        if (key in restoredData) phiData[key] = restoredData[key]
+      }
+      const mergedWithCurrent = {
+        ...(state as unknown as Record<string, unknown>),
+        data: { ...(state.data as unknown as Record<string, unknown>), ...phiData },
+      }
+      const normalized = normalizeHydratedState(mergedWithCurrent)
+      if (normalized) {
+        dispatch({ type: "hydrate", payload: normalized })
+      }
+      setPendingPhiResumeId(null)
+      setPendingPhiHasServerKey(false)
+      setServerStateForResume(null)
+    },
+    [dispatch, state],
+  )
+
+  const exportPhiToken = useCallback(async (): Promise<boolean> => {
+    try {
+      const full = buildPersistedStateSnapshot(state)
+      const { phiPayload } = splitWizardState(full)
+      const token = await buildPhiToken(resolvedApplicationId, phiPayload)
+      setPendingPhiToken(token)
+      return true
+    } catch {
+      return false
+    }
+  }, [state, resolvedApplicationId])
 
   // ── Income verification: API-backed flag ──────────────────────────────────
   // Fetched from the income verification case; never inferred from form fields.
@@ -946,7 +1078,8 @@ function FormProvider({
       }
 
       const sourceState = overrideState ?? state
-      const persistedState = buildPersistedStateSnapshot(sourceState)
+      // Full snapshot goes to localStorage; PHI-free snapshot goes to the server.
+      const safeServerState = buildSafeServerSnapshot(sourceState)
 
       try {
         const putHeaders: Record<string, string> = { "Content-Type": "application/json" }
@@ -957,7 +1090,7 @@ function FormProvider({
             method: "PUT",
             headers: putHeaders,
             body: JSON.stringify({
-              wizardState: persistedState,
+              wizardState: safeServerState,
               applicationType:
                 typeof sourceState.data.contact.application_type === "string"
                   ? sourceState.data.contact.application_type
@@ -1003,6 +1136,10 @@ function FormProvider({
     }
 
     const hydrateFromServerThenCache = async () => {
+      setPendingPhiResumeId(null)
+      setPendingPhiHasServerKey(false)
+      setServerStateForResume(null)
+
       const cacheKey = getFormCacheKey(resolvedApplicationId)
       let localRaw: unknown = null
 
@@ -1014,22 +1151,14 @@ function FormProvider({
       }
 
       const fromReduxRaw = applicationRecord?.aca3Wizard ?? null
-      const preferredReduxOrLocal = choosePreferredHydratedRaw(
-        [
-          { source: "redux", raw: fromReduxRaw },
-          { source: "local", raw: localRaw },
-        ],
-      )
 
-      if (preferredReduxOrLocal) {
-        const normalized = normalizeHydratedState(preferredReduxOrLocal)
-        if (normalized) {
-          applyHydratedState(normalized)
-          return
-        }
-      }
-
+      // Always fetch the server draft to check for a pending PHI resume blob,
+      // even when local/redux state exists. Local cache only holds non-PHI fields
+      // (PHI is stripped before saving), so we must prompt the user to restore
+      // their PHI from the encrypted blob regardless of cache presence.
       let serverRaw: unknown = null
+      let serverPhiResumeId: string | null = null
+      let serverPhiHasKey = false
       try {
         const getHeaders: Record<string, string> = {}
         if (actingForPatientId) getHeaders["X-Acting-For-Patient"] = actingForPatientId
@@ -1044,20 +1173,57 @@ function FormProvider({
 
         if (response.ok) {
           const payload = (await response.json()) as {
+            record?: { phiDraftResumeId?: string | null; phiDraftKeyEnc?: string | null }
             draftState?: unknown
           }
           serverRaw = payload.draftState ?? null
+
+          serverPhiResumeId = payload.record?.phiDraftResumeId ?? null
+          serverPhiHasKey = Boolean(payload.record?.phiDraftKeyEnc)
         }
       } catch {
         serverRaw = null
       }
 
-      const preferredRaw = choosePreferredHydratedRaw(
-        [
-          { source: "server", raw: serverRaw },
-          { source: "local", raw: localRaw },
-        ],
-      )
+      const hasServerDraft = Boolean(normalizeHydratedState(serverRaw))
+      let preferredRaw = hasServerDraft
+        ? serverRaw
+        : choosePreferredHydratedRaw(
+          [
+            { source: "local", raw: localRaw },
+            { source: "redux", raw: fromReduxRaw },
+          ],
+        )
+
+      const localPhiSource = [localRaw, fromReduxRaw].find(hasMeaningfulPhiData)
+      if (!hasMeaningfulPhiData(preferredRaw) && localPhiSource) {
+        preferredRaw = mergePhiDataFromRaw(preferredRaw, localPhiSource)
+      }
+
+      if (serverPhiResumeId && !hasMeaningfulPhiData(preferredRaw)) {
+        const resumeBaseState = toHydrationRecord(preferredRaw ?? serverRaw)
+
+        if (serverPhiHasKey) {
+          try {
+            preferredRaw = await restorePhiDraftState({
+              applicationId: resolvedApplicationId,
+              resumeId: serverPhiResumeId,
+              serverState: resumeBaseState,
+              actingForPatientId,
+            })
+          } catch {
+            if (!cancelled) {
+              setPendingPhiResumeId(serverPhiResumeId)
+              setPendingPhiHasServerKey(serverPhiHasKey)
+              setServerStateForResume(resumeBaseState)
+            }
+          }
+        } else if (!cancelled) {
+          setPendingPhiResumeId(serverPhiResumeId)
+          setPendingPhiHasServerKey(false)
+          setServerStateForResume(resumeBaseState)
+        }
+      }
 
       const normalized = normalizeHydratedState(preferredRaw)
       applyHydratedState(normalized ?? createInitialState())
@@ -1155,10 +1321,29 @@ function FormProvider({
       state,
       dispatch,
       applicationId: resolvedApplicationId,
+      actingForPatientId,
       saveDraftNow,
+      exportPhiToken,
       apiIncomeVerified,
+      pendingPhiResumeId,
+      pendingPhiHasServerKey,
+      serverStateForResume,
+      dismissPhiResume,
+      onPhiRestored,
     }),
-    [resolvedApplicationId, saveDraftNow, state, apiIncomeVerified],
+    [
+      resolvedApplicationId,
+      actingForPatientId,
+      saveDraftNow,
+      exportPhiToken,
+      state,
+      apiIncomeVerified,
+      pendingPhiResumeId,
+      pendingPhiHasServerKey,
+      serverStateForResume,
+      dismissPhiResume,
+      onPhiRestored,
+    ],
   )
 
   return (
@@ -1169,6 +1354,13 @@ function FormProvider({
         <div className="rounded-md border border-border bg-card p-6 text-sm text-muted-foreground">
           Loading saved application...
         </div>
+      )}
+      {pendingPhiToken && (
+        <PhiTokenExportDialog
+          token={pendingPhiToken}
+          applicationId={resolvedApplicationId}
+          onDismiss={() => setPendingPhiToken(null)}
+        />
       )}
     </FormContext.Provider>
   )
@@ -3937,7 +4129,10 @@ function StepContent({
 }
 
 function FormWizardBody() {
-  const { state, dispatch, saveDraftNow, apiIncomeVerified } = useFormContext()
+  const {
+    state, dispatch, applicationId, actingForPatientId, saveDraftNow, exportPhiToken, apiIncomeVerified,
+    pendingPhiResumeId, pendingPhiHasServerKey, serverStateForResume, dismissPhiResume, onPhiRestored,
+  } = useFormContext()
   const router = useRouter()
   const validateStep = useStepValidation()
   const firstErrorRef = useRef<HTMLDivElement | null>(null)
@@ -3949,8 +4144,7 @@ function FormWizardBody() {
   const [pdfError, setPdfError] = useState<string | null>(null)
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
   const [lastGeneratedDataHash, setLastGeneratedDataHash] = useState("")
-  const [isSavingExit, setIsSavingExit] = useState(false)
-  const [saveExitError, setSaveExitError] = useState<string | null>(null)
+  const [saveExitDialogOpen, setSaveExitDialogOpen] = useState(false)
   const formDataHash = useMemo(() => JSON.stringify(state.data), [state.data])
   const pdfStale = Boolean(pdfUrl) && lastGeneratedDataHash !== formDataHash
 
@@ -3977,6 +4171,18 @@ function FormWizardBody() {
       }
     }
   }, [pdfUrl])
+
+  // Intercept browser back button when the form has unsaved changes.
+  useEffect(() => {
+    if (!state.dirty) return
+    window.history.pushState(null, "", window.location.href)
+    const onPopState = () => {
+      window.history.pushState(null, "", window.location.href)
+      setSaveExitDialogOpen(true)
+    }
+    window.addEventListener("popstate", onPopState)
+    return () => window.removeEventListener("popstate", onPopState)
+  }, [state.dirty])
 
   const generatePdfPreview = useCallback(async () => {
     setIsGeneratingPdf(true)
@@ -4100,34 +4306,32 @@ function FormWizardBody() {
     moveToStep(Math.min(9, state.currentStep + 1))
   }
 
-  const handleSaveAndExit = useCallback(async () => {
-    setIsSavingExit(true)
-    setSaveExitError(null)
-
-    const snapshot: WizardState = {
-      ...state,
-      errors: {},
-      dirty: false,
-    }
-    const saved = await saveDraftNow(snapshot)
-    if (!saved) {
-      setSaveExitError("Unable to save to database. Please try again.")
-      setIsSavingExit(false)
-      return
-    }
-
-    dispatch({ type: "set_dirty", payload: false })
-    router.push("/customer/dashboard")
-  }, [dispatch, router, saveDraftNow, state])
+  const handleSaveAndExit = useCallback(() => {
+    setSaveExitDialogOpen(true)
+  }, [])
 
   return (
+    <>
     <WizardLayout
       steps={steps}
       currentStep={state.currentStep}
       title={STEP_METADATA[state.currentStep - 1]?.title ?? "ACA-03 Wizard"}
       contentClassName="max-w-5xl"
+      onSaveAndExit={handleSaveAndExit}
     >
       <div className="space-y-6">
+        {pendingPhiResumeId && serverStateForResume && (
+          <PhiResumePrompt
+            applicationId={applicationId}
+            resumeId={pendingPhiResumeId}
+            hasServerKey={pendingPhiHasServerKey}
+            actingForPatientId={actingForPatientId}
+            serverState={serverStateForResume}
+            onRestored={onPhiRestored}
+            onSkip={dismissPhiResume}
+          />
+        )}
+
         <StepContent
           step={state.currentStep}
           reviewMode={reviewMode}
@@ -4157,15 +4361,12 @@ function FormWizardBody() {
           )}
 
           <div className="flex items-center gap-2">
-            <Button type="button" variant="outline" onClick={() => void handleSaveAndExit()} disabled={isSavingExit}>
-              {isSavingExit ? (
-                <span className="inline-flex items-center gap-2">
-                  <Spinner className="size-4" />
-                  Saving...
-                </span>
-              ) : (
-                "Save & Exit"
-              )}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSaveAndExit}
+            >
+              Save &amp; Exit
             </Button>
 
             {showGlobalNext && !isLastStep ? (
@@ -4176,13 +4377,26 @@ function FormWizardBody() {
           </div>
         </div>
 
-        {saveExitError ? (
-          <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-            {saveExitError}
-          </div>
-        ) : null}
       </div>
     </WizardLayout>
+    <PhiSaveExitDialog
+      open={saveExitDialogOpen}
+      applicationId={applicationId}
+      wizardState={state}
+      actingForPatientId={actingForPatientId}
+      onBeforeSecureSave={() => saveDraftNow({ ...state, errors: {}, dirty: false })}
+      onExit={() => {
+        setSaveExitDialogOpen(false)
+        dispatch({ type: "set_dirty", payload: false })
+        router.push(
+          actingForPatientId
+            ? `/social-worker/patients/${encodeURIComponent(actingForPatientId)}/applications`
+            : "/customer/dashboard",
+        )
+      }}
+      onCancel={() => setSaveExitDialogOpen(false)}
+    />
+    </>
   )
 }
 
