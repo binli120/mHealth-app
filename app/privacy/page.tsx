@@ -39,7 +39,7 @@ export default async function PrivacyPage() {
             ← Back to HealthCompass
           </Link>
           <span className="text-xs text-muted-foreground">
-            Last updated: {content.frontmatter.effectiveDate} · v{content.frontmatter.version}
+            Effective {content.frontmatter.effectiveDate} · v{content.frontmatter.version}
           </span>
         </div>
       </header>
@@ -54,8 +54,7 @@ export default async function PrivacyPage() {
           </h1>
           <p className="mt-2 text-muted-foreground">
             Effective {content.frontmatter.effectiveDate} · Version{" "}
-            {content.frontmatter.version} · Jurisdictions:{" "}
-            {content.frontmatter.jurisdictionsCovered.join(", ")}
+            {content.frontmatter.version}
           </p>
         </div>
 
