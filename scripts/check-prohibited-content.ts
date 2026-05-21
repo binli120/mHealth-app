@@ -34,13 +34,9 @@ const ALLOWLIST = [
   "out-of-scope",
   "extend CCPA",
   "CCPA-style",
-  "CCPA / CPRA",
-  "CCPA / CPRA definition",
-  "California Consumer Privacy Act / CPRA",
   "does NOT collect genetic",
   "not collect, process, or store genetic",
   "Consumer Rights Posture",
-  "durable as HealthCompass expands",
 ]
 
 let failed = false
