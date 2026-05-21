@@ -3,24 +3,18 @@ import { visit } from "unist-util-visit"
 
 const HEADING_ID_MAP: Record<string, string> = {
   "Overview": "overview",
-  "Who Uses the Platform": "who-uses-the-platform",
   "Data We Collect": "data-we-collect",
   "How We Use Data": "how-we-use-data",
-  "AI Use, Boundaries, and Limitations": "ai-use",
-  "HIPAA Compliance": "hipaa",
-  "Eligibility and Plan Recommendation Boundaries": "eligibility-boundaries",
-  "HIX/IES System Interaction Boundaries": "hix-ies-boundaries",
-  "Conflict of Interest": "conflict-of-interest",
-  "Language Access": "language-access",
-  "Data Retention": "data-retention",
-  "Security": "security",
-  "Massachusetts Law": "massachusetts",
   "Sharing & Disclosure": "sharing-and-disclosure",
   "Sharing &amp; Disclosure": "sharing-and-disclosure",
-  "Changes to This Statement": "changes",
+  "HIPAA Compliance": "hipaa",
+  "Massachusetts Law": "massachusetts",
   "Your Rights": "your-rights",
-  "Service Region": "service-region",
+  "Security": "security",
+  "Age Eligibility": "age-eligibility",
+  "Changes to This Policy": "changes",
   "Contact": "contact",
+  "Service Region": "service-region",
 }
 
 function getTextContent(node: Element): string {
