@@ -5,6 +5,7 @@
 
 import "server-only"
 import { getDbPool } from "@/lib/db/server"
+import { decryptOrPlain } from "@/lib/db/applicant-fields"
 import type { Pool } from "pg"
 
 // ── Shared chart types ────────────────────────────────────────────────────────
@@ -307,9 +308,20 @@ const APP_COLS: DrillDownColumn[] = [
   { key: "created_at",        label: "Filed",    format: "date" },
 ]
 
+function safeDecryptField(enc: string | null | undefined, plain: string | null | undefined): string | null {
+  try { return decryptOrPlain(enc, plain) } catch { return null }
+}
+
+function buildAppName(row: Record<string, unknown>): string {
+  const first = safeDecryptField(row.first_name_enc as string | null, null)
+  const last  = safeDecryptField(row.last_name_enc  as string | null, null)
+  return [first, last].filter(Boolean).join(" ") || (row.email as string | null) || ""
+}
+
 const APP_SELECT = `
   SELECT
-    CONCAT(ap.first_name, ' ', ap.last_name) AS name,
+    ap.first_name_encrypted AS first_name_enc,
+    ap.last_name_encrypted  AS last_name_enc,
     u.email,
     a.status,
     a.household_size,
@@ -328,6 +340,10 @@ const APP_SELECT = `
   ) es ON true
 `
 
+function mapAppRows(rows: Record<string, unknown>[]): Record<string, unknown>[] {
+  return rows.map((r) => ({ ...r, name: buildAppName(r) }))
+}
+
 async function drillAppsMonth(pool: Pool, value: string, limit: number, offset: number): Promise<DrillDownResult> {
   const [yr, mo] = value.split("-").map(Number)
   const from = new Date(yr, mo - 1, 1).toISOString()
@@ -343,7 +359,7 @@ async function drillAppsMonth(pool: Pool, value: string, limit: number, offset: 
       [from, to, limit, offset],
     ),
   ])
-  return { total: parseInt(cnt.rows[0]?.count ?? "0", 10), rows: rows.rows, columns: APP_COLS }
+  return { total: parseInt(cnt.rows[0]?.count ?? "0", 10), rows: mapAppRows(rows.rows), columns: APP_COLS }
 }
 
 async function drillAppsStatus(pool: Pool, value: string, limit: number, offset: number): Promise<DrillDownResult> {
@@ -357,7 +373,7 @@ async function drillAppsStatus(pool: Pool, value: string, limit: number, offset:
       [value, limit, offset],
     ),
   ])
-  return { total: parseInt(cnt.rows[0]?.count ?? "0", 10), rows: rows.rows, columns: APP_COLS }
+  return { total: parseInt(cnt.rows[0]?.count ?? "0", 10), rows: mapAppRows(rows.rows), columns: APP_COLS }
 }
 
 async function drillUsersMonth(pool: Pool, value: string, limit: number, offset: number): Promise<DrillDownResult> {
@@ -381,7 +397,8 @@ async function drillUsersMonth(pool: Pool, value: string, limit: number, offset:
     LEFT JOIN public.user_roles ur ON ur.user_id = u.id
     LEFT JOIN public.roles r       ON r.id = ur.role_id
     WHERE u.created_at >= $1 AND u.created_at < $2
-    GROUP BY u.id, u.email, u.is_active, u.created_at, ap.first_name, ap.last_name, c.name
+    GROUP BY u.id, u.email, u.is_active, u.created_at,
+             ap.first_name_encrypted, ap.last_name_encrypted, c.name
   `
 
   const [cnt, rows] = await Promise.all([
@@ -391,7 +408,8 @@ async function drillUsersMonth(pool: Pool, value: string, limit: number, offset:
     ),
     pool.query<Record<string, unknown>>(`
       SELECT
-        CONCAT(ap.first_name, ' ', ap.last_name) AS name,
+        ap.first_name_encrypted AS first_name_enc,
+        ap.last_name_encrypted  AS last_name_enc,
         u.email,
         u.is_active,
         u.created_at,
@@ -401,7 +419,8 @@ async function drillUsersMonth(pool: Pool, value: string, limit: number, offset:
       ORDER BY u.created_at DESC LIMIT $3 OFFSET $4
     `, [from, to, limit, offset]),
   ])
-  return { total: parseInt(cnt.rows[0]?.count ?? "0", 10), rows: rows.rows, columns: COLS }
+  const mappedRows = rows.rows.map((r) => ({ ...r, name: buildAppName(r) }))
+  return { total: parseInt(cnt.rows[0]?.count ?? "0", 10), rows: mappedRows, columns: COLS }
 }
 
 async function drillAiMonth(pool: Pool, value: string, limit: number, offset: number): Promise<DrillDownResult> {
@@ -472,11 +491,14 @@ export async function getApplicationsForExport(opts: {
   if (opts.from)   { conditions.push(`a.created_at >= $${p++}`);      params.push(opts.from) }
   if (opts.to)     { conditions.push(`a.created_at <= $${p++}`);      params.push(opts.to) }
 
-  const result = await pool.query<ApplicationExportRow>(
+  const result = await pool.query<Omit<ApplicationExportRow, "first_name" | "last_name"> & {
+    first_name_encrypted: string | null
+    last_name_encrypted: string | null
+  }>(
     `
     SELECT a.id, a.status, a.household_size, a.total_monthly_income, a.confidence_score,
            a.created_at, a.submitted_at, a.decided_at,
-           ap.first_name, ap.last_name, u.email,
+           ap.first_name_encrypted, ap.last_name_encrypted, u.email,
            es.estimated_program, es.fpl_percentage
     FROM public.applications a
     JOIN public.applicants ap ON ap.id = a.applicant_id
@@ -492,22 +514,34 @@ export async function getApplicationsForExport(opts: {
     `,
     params,
   )
-  return result.rows
+  return result.rows.map((r) => ({
+    ...r,
+    first_name: safeDecryptField(r.first_name_encrypted, null),
+    last_name:  safeDecryptField(r.last_name_encrypted,  null),
+  }))
 }
 
 export async function getUsersForExport(): Promise<UserExportRow[]> {
   const pool = getDbPool()
-  const result = await pool.query<UserExportRow>(`
+  const result = await pool.query<Omit<UserExportRow, "first_name" | "last_name"> & {
+    first_name_encrypted: string | null
+    last_name_encrypted: string | null
+  }>(`
     SELECT u.id, u.email, u.is_active, u.created_at,
-           ap.first_name, ap.last_name, c.name AS company_name,
+           ap.first_name_encrypted, ap.last_name_encrypted, c.name AS company_name,
            COALESCE(string_agg(DISTINCT r.name, ', ' ORDER BY r.name), '') AS roles
     FROM public.users u
     LEFT JOIN public.applicants ap ON ap.user_id = u.id
     LEFT JOIN public.companies c   ON c.id = u.company_id
     LEFT JOIN public.user_roles ur ON ur.user_id = u.id
     LEFT JOIN public.roles r       ON r.id = ur.role_id
-    GROUP BY u.id, u.email, u.is_active, u.created_at, ap.first_name, ap.last_name, c.name
+    GROUP BY u.id, u.email, u.is_active, u.created_at,
+             ap.first_name_encrypted, ap.last_name_encrypted, c.name
     ORDER BY u.created_at DESC LIMIT 10000
   `)
-  return result.rows
+  return result.rows.map((r) => ({
+    ...r,
+    first_name: safeDecryptField(r.first_name_encrypted, null),
+    last_name:  safeDecryptField(r.last_name_encrypted,  null),
+  }))
 }

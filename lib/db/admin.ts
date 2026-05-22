@@ -128,9 +128,9 @@ export async function listUsers(opts: {
         u.is_active,
         u.created_at,
         ap.first_name_encrypted,
-        ap.first_name,
+        NULL::text AS first_name,
         ap.last_name_encrypted,
-        ap.last_name,
+        NULL::text AS last_name,
         u.company_id,
         c.name AS company_name,
         COALESCE(
@@ -144,8 +144,8 @@ export async function listUsers(opts: {
       LEFT JOIN public.roles r ON r.id = ur.role_id
       WHERE ${whereClause}
       GROUP BY u.id, u.email, u.is_active, u.created_at,
-               ap.first_name_encrypted, ap.first_name,
-               ap.last_name_encrypted,  ap.last_name,
+               ap.first_name_encrypted,
+               ap.last_name_encrypted,
                u.company_id, c.name
       ORDER BY u.created_at DESC
       LIMIT $${paramIdx} OFFSET $${paramIdx + 1}

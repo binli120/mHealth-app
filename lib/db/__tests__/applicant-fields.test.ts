@@ -140,24 +140,28 @@ describe("decryptDisplayName", () => {
 // ── SQL fragment helpers ──────────────────────────────────────────────────────
 
 describe("APPLICANT_PHI_SELECT", () => {
-  it("includes both encrypted and legacy plaintext columns for the alias", () => {
+  it("includes encrypted columns with NULL aliases for dropped plaintext columns", () => {
     const fragment = APPLICANT_PHI_SELECT("a")
     expect(fragment).toContain("a.first_name_encrypted")
-    expect(fragment).toContain("a.first_name")
+    expect(fragment).toContain("NULL::text AS first_name")
     expect(fragment).toContain("a.last_name_encrypted")
-    expect(fragment).toContain("a.last_name")
+    expect(fragment).toContain("NULL::text AS last_name")
     expect(fragment).toContain("a.dob_encrypted")
+    expect(fragment).toContain("NULL::text AS dob")
     expect(fragment).toContain("a.phone_encrypted")
-    expect(fragment).toContain("a.phone")
+    expect(fragment).toContain("NULL::text AS phone")
     expect(fragment).toContain("a.address_line1_encrypted")
     expect(fragment).toContain("a.city_encrypted")
     expect(fragment).toContain("a.state_encrypted")
     expect(fragment).toContain("a.zip_encrypted")
   })
 
-  it("casts legacy dob column to text", () => {
+  it("does not reference dropped plaintext columns directly", () => {
     const fragment = APPLICANT_PHI_SELECT("a")
-    expect(fragment).toContain("a.dob::text AS dob")
+    expect(fragment).not.toContain("a.first_name")
+    expect(fragment).not.toContain("a.last_name")
+    expect(fragment).not.toContain("a.dob::text")
+    expect(fragment).not.toContain("a.phone,")
   })
 
   it("respects the table alias", () => {
@@ -168,17 +172,20 @@ describe("APPLICANT_PHI_SELECT", () => {
 })
 
 describe("APPLICANT_PHI_GROUP_BY", () => {
-  it("includes both encrypted and legacy plaintext columns", () => {
+  it("includes only encrypted columns (plaintext columns were dropped)", () => {
     const fragment = APPLICANT_PHI_GROUP_BY("a")
     expect(fragment).toContain("a.first_name_encrypted")
-    expect(fragment).toContain("a.first_name")
+    expect(fragment).not.toContain("a.first_name,")
+    expect(fragment).not.toContain("a.first_name ")
     expect(fragment).toContain("a.dob_encrypted")
-    expect(fragment).toContain("a.dob")
+    expect(fragment).not.toContain("a.dob,")
+    expect(fragment).not.toContain("a.dob ")
   })
 
-  it("does NOT alias dob with ::text (GROUP BY does not use aliases)", () => {
+  it("does not include NULL aliases (GROUP BY only references columns)", () => {
     const fragment = APPLICANT_PHI_GROUP_BY("a")
-    expect(fragment).not.toContain("::text AS dob")
+    expect(fragment).not.toContain("NULL")
+    expect(fragment).not.toContain("::text AS")
   })
 
   it("respects the table alias", () => {
@@ -189,18 +196,24 @@ describe("APPLICANT_PHI_GROUP_BY", () => {
 })
 
 describe("APPLICANT_NAME_SELECT", () => {
-  it("includes only first/last name columns (not address, dob, etc.)", () => {
+  it("includes only encrypted name columns with NULL aliases", () => {
     const fragment = APPLICANT_NAME_SELECT("a")
     expect(fragment).toContain("a.first_name_encrypted")
-    expect(fragment).toContain("a.first_name")
+    expect(fragment).toContain("NULL::text AS first_name")
     expect(fragment).toContain("a.last_name_encrypted")
-    expect(fragment).toContain("a.last_name")
+    expect(fragment).toContain("NULL::text AS last_name")
     expect(fragment).not.toContain("dob")
     expect(fragment).not.toContain("phone")
     expect(fragment).not.toContain("address")
     expect(fragment).not.toContain("city")
     expect(fragment).not.toContain("state")
     expect(fragment).not.toContain("zip")
+  })
+
+  it("does not reference dropped plaintext name columns directly", () => {
+    const fragment = APPLICANT_NAME_SELECT("a")
+    expect(fragment).not.toContain("a.first_name,")
+    expect(fragment).not.toContain("a.last_name,")
   })
 
   it("respects the table alias", () => {
@@ -210,12 +223,14 @@ describe("APPLICANT_NAME_SELECT", () => {
 })
 
 describe("APPLICANT_NAME_GROUP_BY", () => {
-  it("includes only first/last name columns", () => {
+  it("includes only encrypted name columns (plaintext columns were dropped)", () => {
     const fragment = APPLICANT_NAME_GROUP_BY("a")
     expect(fragment).toContain("a.first_name_encrypted")
-    expect(fragment).toContain("a.first_name")
+    expect(fragment).not.toContain("a.first_name,")
+    expect(fragment).not.toContain("a.first_name ")
     expect(fragment).toContain("a.last_name_encrypted")
-    expect(fragment).toContain("a.last_name")
+    expect(fragment).not.toContain("a.last_name,")
+    expect(fragment).not.toContain("a.last_name ")
     expect(fragment).not.toContain("dob")
     expect(fragment).not.toContain("phone")
   })

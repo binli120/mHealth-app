@@ -65,7 +65,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
   // PHI columns are selected in dual form (encrypted + legacy plaintext) via
   // APPLICANT_PHI_SELECT so that pre-backfill rows still resolve correctly.
   const result = await pool.query<{
-    // Encrypted columns (new rows / post-backfill)
+    // Encrypted columns
     first_name_encrypted: string | null
     last_name_encrypted: string | null
     dob_encrypted: string | null
@@ -75,7 +75,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     city_encrypted: string | null
     state_encrypted: string | null
     zip_encrypted: string | null
-    // Legacy plaintext fallback (pre-backfill rows)
+    // NULL aliases for dropped plaintext columns (kept for decryptOrPlain compatibility)
     first_name: string | null
     last_name: string | null
     dob: string | null
@@ -93,7 +93,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
   }>(
     `SELECT
        ${APPLICANT_PHI_SELECT("a")},
-       a.citizenship_status,
+       NULL::text AS citizenship_status,
        up.profile_data,
        up.bank_data,
        up.avatar_url

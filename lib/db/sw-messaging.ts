@@ -133,9 +133,9 @@ const REQUEST_SELECT = `
     er.created_at,
     er.updated_at,
     pa.first_name_encrypted AS patient_first_encrypted,
-    pa.first_name           AS patient_first,
+    NULL::text              AS patient_first,
     pa.last_name_encrypted  AS patient_last_encrypted,
-    pa.last_name            AS patient_last,
+    NULL::text              AS patient_last,
     pu.email                AS patient_email,
     swp.first_name          AS sw_first,
     swp.last_name           AS sw_last,
@@ -470,9 +470,9 @@ export async function getDirectMessages(input: {
        swp_s.first_name              AS sw_sender_first,
        swp_s.last_name               AS sw_sender_last,
        ap_s.first_name_encrypted     AS ap_sender_first_enc,
-       ap_s.first_name               AS ap_sender_first,
+       NULL::text                    AS ap_sender_first,
        ap_s.last_name_encrypted      AS ap_sender_last_enc,
-       ap_s.last_name                AS ap_sender_last,
+       NULL::text                    AS ap_sender_last,
        dm.message_type, dm.content, dm.storage_path,
        dm.duration_sec, dm.transcription, dm.transcription_lang, dm.read_at, dm.created_at
      FROM public.sw_direct_messages dm
@@ -536,9 +536,9 @@ export async function getSwMessageThreads(swUserId: string): Promise<DirectMessa
        c.name                      AS company_name,
        dm.patient_user_id,
        pa.first_name_encrypted     AS patient_first_encrypted,
-       pa.first_name               AS patient_first,
+       NULL::text                  AS patient_first,
        pa.last_name_encrypted      AS patient_last_encrypted,
-       pa.last_name                AS patient_last,
+       NULL::text                  AS patient_last,
        pu.email                    AS patient_email,
        MAX(dm.created_at)          AS last_message_at,
        (
@@ -557,8 +557,8 @@ export async function getSwMessageThreads(swUserId: string): Promise<DirectMessa
      WHERE dm.sw_user_id = $1::uuid
      GROUP BY dm.sw_user_id, dm.patient_user_id,
               swp.first_name, swp.last_name, su.email, c.name,
-              pa.first_name_encrypted, pa.first_name,
-              pa.last_name_encrypted,  pa.last_name,
+              pa.first_name_encrypted,
+              pa.last_name_encrypted,
               pu.email
      ORDER BY last_message_at DESC NULLS LAST`,
     [swUserId],
@@ -569,10 +569,7 @@ export async function getSwMessageThreads(swUserId: string): Promise<DirectMessa
     swEmail: r.sw_email,
     companyName: r.company_name,
     patientUserId: r.patient_user_id,
-    patientName: decryptDisplayName(
-      r.patient_first_encrypted, r.patient_first,
-      r.patient_last_encrypted,  r.patient_last,
-    ),
+    patientName: (() => { try { return decryptDisplayName(r.patient_first_encrypted, r.patient_first, r.patient_last_encrypted, r.patient_last) } catch { return null } })(),
     patientEmail: r.patient_email,
     lastMessageAt: r.last_message_at ? r.last_message_at.toISOString() : null,
     lastMessageContent: r.last_message_content,
@@ -610,9 +607,9 @@ export async function getPatientMessageThreads(
        c.name                      AS company_name,
        psa.patient_user_id,
        pa.first_name_encrypted     AS patient_first_encrypted,
-       pa.first_name               AS patient_first,
+       NULL::text                  AS patient_first,
        pa.last_name_encrypted      AS patient_last_encrypted,
-       pa.last_name                AS patient_last,
+       NULL::text                  AS patient_last,
        pu.email                    AS patient_email,
        MAX(dm.created_at)          AS last_message_at,
        (
@@ -634,8 +631,8 @@ export async function getPatientMessageThreads(
      WHERE psa.patient_user_id = $1::uuid AND psa.is_active = true
      GROUP BY psa.social_worker_user_id, psa.patient_user_id,
               swp.first_name, swp.last_name, su.email, c.name,
-              pa.first_name_encrypted, pa.first_name,
-              pa.last_name_encrypted,  pa.last_name,
+              pa.first_name_encrypted,
+              pa.last_name_encrypted,
               pu.email
      ORDER BY last_message_at DESC NULLS LAST`,
     [patientUserId],
@@ -646,10 +643,7 @@ export async function getPatientMessageThreads(
     swEmail: r.sw_email,
     companyName: r.company_name,
     patientUserId: r.patient_user_id,
-    patientName: decryptDisplayName(
-      r.patient_first_encrypted, r.patient_first,
-      r.patient_last_encrypted,  r.patient_last,
-    ),
+    patientName: (() => { try { return decryptDisplayName(r.patient_first_encrypted, r.patient_first, r.patient_last_encrypted, r.patient_last) } catch { return null } })(),
     patientEmail: r.patient_email,
     lastMessageAt: r.last_message_at ? r.last_message_at.toISOString() : null,
     lastMessageContent: r.last_message_content,

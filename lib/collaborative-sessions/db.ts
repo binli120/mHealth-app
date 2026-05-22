@@ -106,13 +106,13 @@ const NAME_JOIN = `
 
 const NAME_SELECT = `
   sw_a.first_name_encrypted AS sw_first_enc,
-  sw_a.first_name           AS sw_first,
+  NULL::text                AS sw_first,
   sw_a.last_name_encrypted  AS sw_last_enc,
-  sw_a.last_name            AS sw_last,
+  NULL::text                AS sw_last,
   pt_a.first_name_encrypted AS pt_first_enc,
-  pt_a.first_name           AS pt_first,
+  NULL::text                AS pt_first,
   pt_a.last_name_encrypted  AS pt_last_enc,
-  pt_a.last_name            AS pt_last
+  NULL::text                AS pt_last
 `
 
 // ── Session CRUD ─────────────────────────────────────────────────────────────
