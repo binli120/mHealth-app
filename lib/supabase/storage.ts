@@ -6,17 +6,19 @@
 import 'server-only';
 
 // ---------------------------------------------------------------------------
-// Supabase Storage — direct REST API client
+// Supabase Storage — SDK-backed client
 //
-// We use the Supabase Storage REST API directly (plain fetch) instead of
-// the @supabase/supabase-js SDK because the SDK v2.57 does not reliably
-// forward the service-role JWT to storage operations from server-side code.
-// The REST API has been verified to work with the same JWT key.
+// We use the @supabase/supabase-js admin client for all storage operations.
+// This handles both JWT-format and sb_secret_* opaque service-role keys,
+// which the raw Storage REST API cannot accept in its Authorization header.
 //
 // Bucket layout (single "masshealth-dev" bucket):
 //   {userId}/avatar/avatar.{ext}                          ← profile picture
 //   {userId}/{applicationId}/{documentId}/{fileName}      ← application docs
+//   phi-drafts/{applicationId}/{resumeId}.enc             ← encrypted PHI drafts
 // ---------------------------------------------------------------------------
+
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 export const STORAGE_BUCKET = 'masshealth-dev';
 
@@ -31,79 +33,40 @@ type SignedUrlCacheEntry = {
   expiresAt: number;
 };
 
-type GlobalWithSignedUrlCache = typeof globalThis & {
+type GlobalWithCache = typeof globalThis & {
   __mhealthSignedUrlCache?: Map<string, SignedUrlCacheEntry>;
+  __mhealthStorageAdminClient?: SupabaseClient;
 };
 
-const globalForSignedUrls = globalThis as GlobalWithSignedUrlCache;
+const g = globalThis as GlobalWithCache;
 
 // ---------------------------------------------------------------------------
-// Internal helpers
+// Admin client — cached per process
 // ---------------------------------------------------------------------------
 
-function getStorageBaseUrl(): string {
-  const preferLocal = process.env.NODE_ENV !== 'production';
-  const supabaseUrl = preferLocal
-    ? process.env.NEXT_PUBLIC_SUPABASE_URL_LOCAL ||
-      process.env.NEXT_PUBLIC_SUPABASE_URL
-    : process.env.NEXT_PUBLIC_SUPABASE_URL;
+function getStorageAdminClient(): SupabaseClient {
+  if (g.__mhealthStorageAdminClient) return g.__mhealthStorageAdminClient;
 
-  if (!supabaseUrl)
-    throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL env var.');
-  return `${supabaseUrl}/storage/v1`;
-}
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Standard Supabase local-dev service-role JWT.
-// Signed with the well-known secret "super-secret-jwt-token-with-at-least-32-characters-long".
-// Not sensitive — every local Supabase instance uses these identical demo credentials.
-// Used as a fallback when SUPABASE_SERVICE_ROLE_KEY is missing or is the new sb_secret_* opaque
-// format (which the Storage REST API cannot verify directly).
-const LOCAL_DEV_SERVICE_ROLE_JWT =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9' +
-  '.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0' +
-  '.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU';
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error(
+      'Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.',
+    );
+  }
 
-/** Returns the best available authorization key for server-side storage calls. */
-function getServerKey(): string {
-  // Local dev: always use the well-known Supabase demo JWT directly from source.
-  // Avoids Turbopack compile-time env-var inlining issues (sb_secret_* tokens
-  // and stale cached values both cause "signature verification failed").
-  if (process.env.NODE_ENV !== 'production') return LOCAL_DEV_SERVICE_ROLE_JWT;
-
-  // Production: require a real service-role JWT in SUPABASE_SERVICE_ROLE_KEY.
-  const envKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (envKey) return envKey;
-
-  throw new Error(
-    'Set SUPABASE_SERVICE_ROLE_KEY to a valid JWT in production.',
-  );
-}
-
-/** Auth headers required by every Storage REST call.
- *
- * Key priority:
- *   1. SUPABASE_SERVICE_ROLE_KEY — bypasses bucket RLS (preferred for server-side)
- *   2. overrideToken             — user JWT, only used when service-role key is absent
- *   3. anon key fallback         — last resort (only works on public buckets)
- */
-function authHeaders(overrideToken?: string): Record<string, string> {
-  // Route all key selection through getServerKey() so the JWT-format validation
-  // and local-dev fallback always apply. The old code read SUPABASE_SERVICE_ROLE_KEY
-  // directly here, which bypassed getServerKey() and caused "signature verification
-  // failed" when the env var held an sb_secret_* opaque token instead of a JWT.
-  const key = overrideToken ?? getServerKey();
-  return {
-    Authorization: `Bearer ${key}`,
-    apikey: key,
-  };
+  g.__mhealthStorageAdminClient = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  return g.__mhealthStorageAdminClient;
 }
 
 function getSignedUrlCache(): Map<string, SignedUrlCacheEntry> {
-  if (!globalForSignedUrls.__mhealthSignedUrlCache) {
-    globalForSignedUrls.__mhealthSignedUrlCache = new Map();
+  if (!g.__mhealthSignedUrlCache) {
+    g.__mhealthSignedUrlCache = new Map();
   }
-
-  return globalForSignedUrls.__mhealthSignedUrlCache;
+  return g.__mhealthSignedUrlCache;
 }
 
 function getSignedUrlCacheKey(storagePath: string, expiresInSeconds: number): string {
@@ -154,7 +117,7 @@ export function buildAvatarStoragePath(userId: string, ext: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Storage operations — direct REST API
+// Storage operations — Supabase JS SDK
 // ---------------------------------------------------------------------------
 
 /**
@@ -168,28 +131,16 @@ export async function uploadToStorage(params: {
   storagePath: string;
   upsert?: boolean;
 }): Promise<{ path: string }> {
-  const base = getStorageBaseUrl();
-  const url = `${base}/object/${STORAGE_BUCKET}/${params.storagePath}`;
+  const supabase = getStorageAdminClient();
+  const { data, error } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .upload(params.storagePath, params.fileBuffer, {
+      contentType: params.mimeType,
+      upsert: params.upsert ?? false,
+    });
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      ...authHeaders(params.accessToken),
-      'Content-Type': params.mimeType,
-      'x-upsert': params.upsert ? 'true' : 'false',
-    },
-    body: new Uint8Array(params.fileBuffer),
-  });
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => res.statusText);
-    throw new Error(`Storage upload failed: ${body}`);
-  }
-
-  const data = (await res.json()) as { Key: string; Id: string };
-  // Key is returned as "bucketName/path" — strip the bucket prefix
-  const path = data.Key.replace(`${STORAGE_BUCKET}/`, '');
-  return { path };
+  if (error) throw new Error(`Storage upload failed: ${JSON.stringify(error)}`);
+  return { path: data.path };
 }
 
 /** @deprecated Use uploadToStorage */
@@ -208,23 +159,11 @@ export async function deleteFromStorage(params: {
   storagePaths: string[];
 }): Promise<void> {
   if (params.storagePaths.length === 0) return;
-
-  const base = getStorageBaseUrl();
-  const url = `${base}/object/${STORAGE_BUCKET}`;
-
-  const res = await fetch(url, {
-    method: 'DELETE',
-    headers: {
-      ...authHeaders(params.accessToken),
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ prefixes: params.storagePaths }),
-  });
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => res.statusText);
-    throw new Error(`Storage delete failed: ${body}`);
-  }
+  const supabase = getStorageAdminClient();
+  const { error } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .remove(params.storagePaths);
+  if (error) throw new Error(`Storage delete failed: ${JSON.stringify(error)}`);
 }
 
 /** @deprecated Use deleteFromStorage */
@@ -242,29 +181,12 @@ export async function listStorageFolder(params: {
   folderPath: string;
   limit?: number;
 }): Promise<string[]> {
-  const base = getStorageBaseUrl();
-  const url = `${base}/object/list/${STORAGE_BUCKET}`;
-
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      ...authHeaders(params.accessToken),
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      prefix: params.folderPath,
-      limit: params.limit ?? 100,
-      offset: 0,
-    }),
-  });
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => res.statusText);
-    throw new Error(`Storage list failed: ${body}`);
-  }
-
-  const files = (await res.json()) as Array<{ name: string }>;
-  return files.map((f) => `${params.folderPath}/${f.name}`);
+  const supabase = getStorageAdminClient();
+  const { data, error } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .list(params.folderPath, { limit: params.limit ?? 100 });
+  if (error) throw new Error(`Storage list failed: ${JSON.stringify(error)}`);
+  return (data ?? []).map((f) => `${params.folderPath}/${f.name}`);
 }
 
 /**
@@ -276,57 +198,55 @@ export async function getSignedDocumentUrl(params: {
   storagePath: string;
   expiresInSeconds?: number;
 }): Promise<string> {
-  const base = getStorageBaseUrl();
-  const url = `${base}/object/sign/${STORAGE_BUCKET}/${params.storagePath}`;
   const expiresIn = params.expiresInSeconds ?? DEFAULT_SIGNED_URL_EXPIRES;
   const cacheKey = getSignedUrlCacheKey(params.storagePath, expiresIn);
   const cache = getSignedUrlCache();
   const cached = cache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.url;
-  }
+  if (cached && cached.expiresAt > Date.now()) return cached.url;
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      ...authHeaders(params.accessToken),
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ expiresIn }),
-  });
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => res.statusText);
-    throw new Error(`Failed to create signed URL: ${body}`);
-  }
-
-  const data = (await res.json()) as { signedURL: string };
-
-  // The Storage API returns a path relative to the storage root, e.g. "/object/sign/..."
-  // We need to make it absolute: prepend the Supabase base URL + "/storage/v1".
-  // Guard against future API versions that might already include "/storage/v1".
-  if (data.signedURL.startsWith('/')) {
-    const preferLocal = process.env.NODE_ENV !== 'production';
-    const supabaseUrl = preferLocal
-      ? process.env.NEXT_PUBLIC_SUPABASE_URL_LOCAL ||
-        process.env.NEXT_PUBLIC_SUPABASE_URL
-      : process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const path = data.signedURL.startsWith('/storage/v1')
-      ? data.signedURL
-      : `/storage/v1${data.signedURL}`;
-    const absoluteUrl = `${supabaseUrl}${path}`;
-    cache.set(cacheKey, {
-      url: absoluteUrl,
-      expiresAt: Date.now() + expiresIn * 1000 - SIGNED_URL_CACHE_SKEW_MS,
-    });
-    return absoluteUrl;
-  }
+  const supabase = getStorageAdminClient();
+  const { data, error } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .createSignedUrl(params.storagePath, expiresIn);
+  if (error) throw new Error(`Failed to create signed URL: ${JSON.stringify(error)}`);
 
   cache.set(cacheKey, {
-    url: data.signedURL,
+    url: data.signedUrl,
     expiresAt: Date.now() + expiresIn * 1000 - SIGNED_URL_CACHE_SKEW_MS,
   });
-  return data.signedURL;
+  return data.signedUrl;
+}
+
+// ---------------------------------------------------------------------------
+// PHI draft blob storage — encrypted blobs in phi-drafts/ prefix
+// ---------------------------------------------------------------------------
+
+/**
+ * Path for an encrypted PHI draft blob.
+ * Format: phi-drafts/{applicationId}/{resumeId}.enc
+ * The resumeId is stored in the DB; the AES key is held only by the applicant.
+ */
+export function buildPhiDraftStoragePath(
+  applicationId: string,
+  resumeId: string,
+): string {
+  return `phi-drafts/${applicationId}/${resumeId}.enc`;
+}
+
+/**
+ * Download a raw blob from the bucket and return it as a Buffer.
+ * Used to proxy encrypted PHI draft blobs back to the authenticated client.
+ */
+export async function downloadBlobFromStorage(params: {
+  accessToken?: string;
+  storagePath: string;
+}): Promise<Buffer> {
+  const supabase = getStorageAdminClient();
+  const { data, error } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .download(params.storagePath);
+  if (error) throw new Error(`Storage download failed: ${JSON.stringify(error)}`);
+  return Buffer.from(await data.arrayBuffer());
 }
 
 export async function getSignedDocumentUrls(params: {

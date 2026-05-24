@@ -33,6 +33,7 @@ import { logServerError } from "@/lib/server/logger"
 import { getSignedDocumentUrl, uploadToStorage } from "@/lib/supabase/storage"
 import { getDbPool } from "@/lib/db/server"
 import { validateUpload } from "@/lib/uploads/validate"
+import { decryptDisplayName } from "@/lib/db/applicant-fields"
 
 const execFileAsync = promisify(execFile)
 
@@ -249,12 +250,20 @@ export async function POST(request: Request, { params }: Params) {
     void (async () => {
       try {
         const pool = getDbPool()
-        const { rows } = await pool.query<{ first_name: string | null; last_name: string | null }>(
-          "SELECT first_name, last_name FROM public.applicants WHERE user_id = $1::uuid LIMIT 1",
-          [authResult.userId],
-        )
-        const senderName =
-          [rows[0]?.first_name, rows[0]?.last_name].filter(Boolean).join(" ") || null
+        let senderName: string | null = null
+        if (isSenderSw) {
+          const { rows } = await pool.query<{ first_name: string | null; last_name: string | null }>(
+            "SELECT first_name, last_name FROM public.social_worker_profiles WHERE user_id = $1::uuid LIMIT 1",
+            [authResult.userId],
+          )
+          senderName = [rows[0]?.first_name, rows[0]?.last_name].filter(Boolean).join(" ") || null
+        } else {
+          const { rows } = await pool.query<{ first_name_encrypted: string | null; last_name_encrypted: string | null }>(
+            "SELECT first_name_encrypted, last_name_encrypted FROM public.applicants WHERE user_id = $1::uuid LIMIT 1",
+            [authResult.userId],
+          )
+          senderName = decryptDisplayName(rows[0]?.first_name_encrypted, rows[0]?.last_name_encrypted)
+        }
 
         await notifyNewDirectMessage(
           otherUserId,

@@ -69,4 +69,14 @@ describe("social-worker application pages", () => {
       actingForPatientId: PATIENT_ID,
     })
   })
+
+  it("opens Compass by default when creating a new draft", async () => {
+    render(<SWNewApplicationPage />)
+
+    await waitFor(() => expect(mocks.intakeChat).toHaveBeenCalled())
+    expect(mocks.intakeChat.mock.calls.at(-1)?.[0]).toMatchObject({
+      actingForPatientId: PATIENT_ID,
+    })
+    expect(mocks.formWizard).not.toHaveBeenCalled()
+  })
 })

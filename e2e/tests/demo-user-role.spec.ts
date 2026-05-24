@@ -50,9 +50,10 @@ test.describe.serial("Demo video - applicant", () => {
     await expect(page.getByText(/benefit|program|family|household/i).first()).toBeVisible({ timeout: 15_000 })
     await page.waitForTimeout(2500)
 
-    const ageInput = page.locator("#age")
-    if (await ageInput.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await ageInput.fill("35")
+    // Step 0 uses DobInput (id="dob-applicant") — age field was replaced with DOB picker
+    const dobInput = page.locator("#dob-applicant")
+    if (await dobInput.isVisible({ timeout: 5_000 }).catch(() => false)) {
+      await dobInput.fill("01/01/1990")
       await page.waitForTimeout(800)
       for (let i = 0; i < 5; i += 1) {
         const nextButton = page.getByRole("button", { name: /^next$/i })

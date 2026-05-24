@@ -29,6 +29,7 @@ import { MASSHEALTH_APPLICATION_TYPES } from "@/lib/masshealth/application-types
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { setLanguage } from "@/lib/redux/features/app-slice"
 import { setApplicationWizardState, DEFAULT_APPLICATION_ID } from "@/lib/redux/features/application-slice"
+import type { UserProfile } from "@/lib/user-profile/types"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { hasFirstAndLastName } from "@/lib/utils/person-name"
 import { formatCurrency, formatPhoneNumber, formatSsn, parseCurrency } from "@/lib/utils/input-format"
@@ -38,6 +39,8 @@ import { parsePastedUsAddress } from "@/lib/utils/address-parse"
 import { countHouseholdRelationshipMentions } from "@/lib/masshealth/household-relationships"
 import { evaluateConditionalRule } from "@/hooks/use-conditional"
 import { type WidgetSpec, } from "@/components/application/aca3/intake-question-widget"
+import { splitWizardState } from "@/lib/phi-token/token"
+import { PhiSaveExitDialog } from "@/components/application/phi-save-exit-dialog"
 import type {
   AddressValidationResponse,
   FieldValue,
@@ -2006,6 +2009,46 @@ function restoreWizardDataFromRaw(raw: unknown): WizardData | null {
   return restored
 }
 
+// ── Profile pre-fill helpers ──────────────────────────────────────────────────
+
+function buildProfileFilledLabels(profile: UserProfile): string[] {
+  const labels: string[] = []
+  if (profile.firstName || profile.lastName) labels.push("name")
+  if (profile.dateOfBirth) labels.push("date of birth")
+  if (profile.phone) labels.push("phone number")
+  if (profile.addressLine1) labels.push("home address")
+  if (profile.citizenshipStatus) labels.push("citizenship status")
+  return labels
+}
+
+function applyProfileToWizardData(data: WizardData, profile: UserProfile): WizardData {
+  const nextContact: FormRecord = { ...data.contact }
+
+  const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(" ")
+  if (fullName) nextContact.p1_name = fullName
+  if (profile.dateOfBirth) nextContact.p1_dob = profile.dateOfBirth
+  if (profile.phone) nextContact.p1_phone = profile.phone
+  if (profile.addressLine1) nextContact.p1_home_street = profile.addressLine1
+  if (profile.addressLine2) nextContact.p1_home_apt = profile.addressLine2
+  if (profile.city) nextContact.p1_home_city = profile.city
+  if (profile.state) nextContact.p1_home_state = profile.state
+  if (profile.zip) nextContact.p1_home_zip = profile.zip
+
+  // Sync name/dob into person 0 identity and citizenship into coverage
+  const nextPersons = [...data.persons]
+  const person0 = nextPersons[0] ?? {}
+  const nextIdentity = { ...(person0.identity as Record<string, unknown> ?? {}) }
+  if (fullName) nextIdentity.name = fullName
+  if (profile.dateOfBirth) nextIdentity.dob = profile.dateOfBirth
+  const nextCoverage = { ...(person0.coverage as Record<string, unknown> ?? {}) }
+  if (profile.citizenshipStatus) {
+    nextCoverage.us_citizen = profile.citizenshipStatus === "citizen" ? "Yes" : "No"
+  }
+  nextPersons[0] = { ...person0, identity: nextIdentity as PersonState["identity"], coverage: nextCoverage as PersonState["coverage"] }
+
+  return { ...data, contact: nextContact, persons: nextPersons }
+}
+
 export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard, onSaveAndExit }: IntakeChatProps) {
   const router = useRouter()
   const dispatch = useAppDispatch()
@@ -2025,6 +2068,8 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
     return state.application.applicationsById[resolvedApplicationId]?.aca3Wizard ?? null
   })
 
+  const userProfile = useAppSelector((state) => state.userProfile?.profile ?? null)
+
   const copy = UI_COPY[selectedLanguage]
 
   const handleLanguageChange = (value: string) => {
@@ -2038,16 +2083,34 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
   const [skippedQuestionIds, setSkippedQuestionIds] = useState<Set<string>>(() => new Set())
   const [intakeStarted, setIntakeStarted] = useState(false)
   const [hydrationPending, setHydrationPending] = useState(true)
+  // "pending"  — waiting for user's yes/no on profile pre-fill
+  // "accepted" — profile applied; normal intake continues
+  // "declined" — user declined or no profile; normal intake flow
+  const [profilePrefillMode, setProfilePrefillMode] = useState<"pending" | "accepted" | "declined">("declined")
   const [currentQuestionId, setCurrentQuestionId] = useState<string | null>(null)
   const [messages, setMessages] = useState<IntakeMessage[]>([])
   const [draft, setDraft] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [autoSpeak, setAutoSpeak] = useState(false)
+  const [saveExitDialogOpen, setSaveExitDialogOpen] = useState(false)
   const bottomAnchorRef = useRef<HTMLDivElement | null>(null)
   const translationCacheRef = useRef<Map<string, string>>(new Map())
   const lastSpokenMessageIdRef = useRef<string | null>(null)
   const draftSaveBackoffUntilRef = useRef(0)
   const hydratedRef = useRef(false)
+
+  // Intercept browser back button once the chat has started so users don't
+  // accidentally leave without saving.
+  useEffect(() => {
+    if (!intakeStarted) return
+    window.history.pushState(null, "", window.location.href)
+    const onPopState = () => {
+      window.history.pushState(null, "", window.location.href)
+      setSaveExitDialogOpen(true)
+    }
+    window.addEventListener("popstate", onPopState)
+    return () => window.removeEventListener("popstate", onPopState)
+  }, [intakeStarted])
 
   // Restore previous session data from Redux cache or server draft on mount.
   useEffect(() => {
@@ -2271,6 +2334,14 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
         return
       }
 
+      // Don't save at all if no questions have been answered yet. An
+      // answeredCount of 0 means the chat just initialised / resumed and
+      // hasn't collected real data — saving would stomp any existing
+      // wizard draft_step with step 1.
+      if ((opts?.answeredCount ?? 0) === 0) {
+        return
+      }
+
       // Map answered/total to wizard step 1-9 so the dashboard progress bar reflects
       // actual chat completion rather than always showing step 1.
       const chatStep =
@@ -2297,12 +2368,13 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
           headers["X-Acting-For-Patient"] = actingForPatientId
         }
 
+        const { safeState } = splitWizardState(wizardState as Record<string, unknown>)
         const response = await authenticatedFetch(`/api/applications/${encodeURIComponent(resolvedApplicationId)}/draft`, {
           method: "PUT",
           headers,
           body: JSON.stringify({
             applicationType: selectedApplicationType || undefined,
-            wizardState,
+            wizardState: safeState,
           }),
         })
 
@@ -2375,6 +2447,26 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
         ? `${copy.savedPrefix} ${applicationTypeLabel} selected. ${copy.subtitle}`
         : copy.subtitle
 
+      // If a profile exists with contact data, offer to pre-fill instead of the opening memo.
+      if (userProfile?.firstName) {
+        const profileLabels = buildProfileFilledLabels(userProfile)
+        const fieldList = profileLabels.join(", ")
+        setProfilePrefillMode("pending")
+        setMessages([
+          {
+            id: createMessageId(),
+            role: "assistant",
+            content: intro,
+          },
+          {
+            id: createMessageId(),
+            role: "assistant",
+            content: `Hi ${userProfile.firstName}! I can see your ${fieldList} are already saved in your profile. Would you like me to pre-fill those fields so you can skip straight to what's missing? Type **Yes** to use your saved info, or **No** to answer the questions yourself.`,
+          },
+        ])
+        return
+      }
+
       setMessages([
         {
           id: createMessageId(),
@@ -2391,7 +2483,7 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
 
     void initialize()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrationPending, applicationTypeLabel, copy.openingMemoPrompt, copy.savedPrefix, copy.subtitle, messages.length])
+  }, [hydrationPending, applicationTypeLabel, copy.openingMemoPrompt, copy.savedPrefix, copy.subtitle, messages.length, userProfile])
 
   useEffect(() => {
     if (!autoSpeak) {
@@ -2424,6 +2516,52 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
           content: answer,
         },
       ])
+
+      // ── Profile pre-fill yes/no intercept ──────────────────────────────────
+      if (profilePrefillMode === "pending") {
+        const normalized = answer.trim().toLowerCase()
+        const isYes = /^(yes|yeah|yep|yup|sure|ok|okay|y\b)/.test(normalized)
+
+        if (isYes && userProfile) {
+          const prefilled = applyProfileToWizardData(wizardData, userProfile)
+          const refreshedQs = buildQuestions(prefilled)
+          const refreshedAnswered = computeAnsweredQuestionIds(refreshedQs, prefilled)
+          const nextQ = findNextPendingQuestion(refreshedQs, refreshedAnswered, prefilled, skippedQuestionIds)
+
+          setWizardData(prefilled)
+          setAnsweredQuestionIds(refreshedAnswered)
+          setIntakeStarted(true)
+          setProfilePrefillMode("accepted")
+
+          await persistWizardData(prefilled, {
+            skippedIds: skippedQuestionIds,
+            answeredCount: refreshedAnswered.size,
+            totalCount: refreshedQs.length,
+          })
+
+          const appliedLabels = buildProfileFilledLabels(userProfile)
+          const confirmMsg = `${copy.savedPrefix}, ${userProfile.firstName}. I've pre-filled your ${appliedLabels.join(", ")}.`
+
+          if (!nextQ) {
+            setCurrentQuestionId(null)
+            setMessages((previous) => [
+              ...previous,
+              { id: createMessageId(), role: "assistant", content: `${confirmMsg} ${copy.complete}` },
+            ])
+            return
+          }
+
+          await appendAssistantQuestion(confirmMsg, nextQ)
+        } else {
+          // Declined — show opening memo prompt and let user type their info
+          setProfilePrefillMode("declined")
+          setMessages((previous) => [
+            ...previous,
+            { id: createMessageId(), role: "assistant", content: copy.openingMemoPrompt },
+          ])
+        }
+        return
+      }
 
       if (!intakeStarted) {
         const extractedData = applyInitialMemoExtraction(wizardData, answer)
@@ -2631,7 +2769,7 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
       setIsLoading(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [intakeStarted, currentQuestion, wizardData, skippedQuestionIds, copy, applicationTypeLabel, dispatch, persistWizardData, appendAssistantQuestion, localizeQuestion])
+  }, [intakeStarted, currentQuestion, wizardData, skippedQuestionIds, copy, applicationTypeLabel, dispatch, persistWizardData, appendAssistantQuestion, localizeQuestion, profilePrefillMode, userProfile])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -2666,6 +2804,7 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
     setCurrentQuestionId(null)
     setMessages([])
     setDraft("")
+    setProfilePrefillMode("declined")
     translationCacheRef.current.clear()
   }
 
@@ -2697,10 +2836,20 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
     return null
   }, [currentQuestion, intakeStarted])
 
+  const currentWizardStateForDialog = useMemo<WizardState>(
+    () => createDraftWizardState(wizardData),
+    [wizardData],
+  )
+
+  const handleSaveAndExitClick = useCallback(() => {
+    setSaveExitDialogOpen(true)
+  }, [])
+
   return (
+    <>
     <IntakeChatPanel
       copy={copy}
-      onSaveAndExit={onSaveAndExit ?? (() => router.back())}
+      onSaveAndExit={handleSaveAndExitClick}
       onSwitchToWizard={onSwitchToWizard}
       autoSpeak={autoSpeak}
       onAutoSpeakChange={setAutoSpeak}
@@ -2714,8 +2863,8 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
       draft={draft}
       onDraftChange={setDraft}
       onSubmit={handleSubmit}
-      disableInput={isLoading || (intakeStarted && !currentQuestion)}
-      disableSubmit={isLoading || !draft.trim() || (intakeStarted && !currentQuestion)}
+      disableInput={isLoading || (intakeStarted && !currentQuestion && profilePrefillMode !== "pending")}
+      disableSubmit={isLoading || !draft.trim() || (intakeStarted && !currentQuestion && profilePrefillMode !== "pending")}
       onResetChat={handleResetChat}
       collectedSections={collectedSections}
       onEditAnswer={handleEditAnswer}
@@ -2723,5 +2872,23 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
       onWidgetAnswer={handleWidgetAnswer}
       widgetKey={currentQuestionId ?? undefined}
     />
+    {resolvedApplicationId && (
+      <PhiSaveExitDialog
+        open={saveExitDialogOpen}
+        applicationId={resolvedApplicationId}
+        wizardState={currentWizardStateForDialog}
+        actingForPatientId={actingForPatientId}
+        onExit={() => {
+          setSaveExitDialogOpen(false)
+          if (onSaveAndExit) {
+            onSaveAndExit()
+          } else {
+            router.back()
+          }
+        }}
+        onCancel={() => setSaveExitDialogOpen(false)}
+      />
+    )}
+    </>
   )
 }

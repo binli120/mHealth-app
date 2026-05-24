@@ -94,6 +94,16 @@ export interface UserExportRow {
   created_at: string
 }
 
+interface ApplicationExportRawRow extends Omit<ApplicationExportRow, "first_name" | "last_name"> {
+  first_name_encrypted: string | null
+  last_name_encrypted: string | null
+}
+
+interface UserExportRawRow extends Omit<UserExportRow, "first_name" | "last_name"> {
+  first_name_encrypted: string | null
+  last_name_encrypted: string | null
+}
+
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 async function queryModuleUsage(pool: Pool, since: Date): Promise<ModuleCount[]> {
@@ -308,14 +318,26 @@ const APP_COLS: DrillDownColumn[] = [
   { key: "created_at",        label: "Filed",    format: "date" },
 ]
 
-function safeDecryptField(enc: string | null | undefined, plain: string | null | undefined): string | null {
-  try { return decryptOrPlain(enc, plain) } catch { return null }
+function safeDecryptField(enc: string | null | undefined): string | null {
+  try { return decryptOrPlain(enc) } catch { return null }
 }
 
 function buildAppName(row: Record<string, unknown>): string {
-  const first = safeDecryptField(row.first_name_enc as string | null, null)
-  const last  = safeDecryptField(row.last_name_enc  as string | null, null)
+  const first = safeDecryptField(row.first_name_enc as string | null)
+  const last  = safeDecryptField(row.last_name_enc  as string | null)
   return [first, last].filter(Boolean).join(" ") || (row.email as string | null) || ""
+}
+
+interface AppSelectRaw {
+  first_name_enc:    string | null
+  last_name_enc:     string | null
+  email:             string | null
+  status:            string | null
+  household_size:    number | null
+  fpl_percentage:    number | null
+  estimated_program: string | null
+  created_at:        string | null
+  submitted_at:      string | null
 }
 
 const APP_SELECT = `
@@ -340,8 +362,8 @@ const APP_SELECT = `
   ) es ON true
 `
 
-function mapAppRows(rows: Record<string, unknown>[]): Record<string, unknown>[] {
-  return rows.map((r) => ({ ...r, name: buildAppName(r) }))
+function mapAppRows(rows: AppSelectRaw[]): Record<string, unknown>[] {
+  return rows.map((r) => ({ ...r, name: buildAppName(r as unknown as Record<string, unknown>) }))
 }
 
 async function drillAppsMonth(pool: Pool, value: string, limit: number, offset: number): Promise<DrillDownResult> {
@@ -354,7 +376,7 @@ async function drillAppsMonth(pool: Pool, value: string, limit: number, offset: 
       `SELECT COUNT(*) AS count FROM public.applications a WHERE a.created_at >= $1 AND a.created_at < $2`,
       [from, to],
     ),
-    pool.query<Record<string, unknown>>(
+    pool.query<AppSelectRaw>(
       `${APP_SELECT} WHERE a.created_at >= $1 AND a.created_at < $2 ORDER BY a.created_at DESC LIMIT $3 OFFSET $4`,
       [from, to, limit, offset],
     ),
@@ -368,7 +390,7 @@ async function drillAppsStatus(pool: Pool, value: string, limit: number, offset:
       `SELECT COUNT(*) AS count FROM public.applications a WHERE a.status = $1`,
       [value],
     ),
-    pool.query<Record<string, unknown>>(
+    pool.query<AppSelectRaw>(
       `${APP_SELECT} WHERE a.status = $1 ORDER BY a.created_at DESC LIMIT $2 OFFSET $3`,
       [value, limit, offset],
     ),
@@ -406,7 +428,7 @@ async function drillUsersMonth(pool: Pool, value: string, limit: number, offset:
       `SELECT COUNT(DISTINCT u.id) AS count FROM public.users u WHERE u.created_at >= $1 AND u.created_at < $2`,
       [from, to],
     ),
-    pool.query<Record<string, unknown>>(`
+    pool.query<{ first_name_encrypted: string | null; last_name_encrypted: string | null; email: string; is_active: boolean; created_at: string; company_name: string | null; roles: string }>(`
       SELECT
         ap.first_name_encrypted AS first_name_enc,
         ap.last_name_encrypted  AS last_name_enc,
@@ -516,8 +538,8 @@ export async function getApplicationsForExport(opts: {
   )
   return result.rows.map((r) => ({
     ...r,
-    first_name: safeDecryptField(r.first_name_encrypted, null),
-    last_name:  safeDecryptField(r.last_name_encrypted,  null),
+    first_name: safeDecryptField(r.first_name_encrypted),
+    last_name:  safeDecryptField(r.last_name_encrypted),
   }))
 }
 
@@ -541,7 +563,7 @@ export async function getUsersForExport(): Promise<UserExportRow[]> {
   `)
   return result.rows.map((r) => ({
     ...r,
-    first_name: safeDecryptField(r.first_name_encrypted, null),
-    last_name:  safeDecryptField(r.last_name_encrypted,  null),
+    first_name: safeDecryptField(r.first_name_encrypted),
+    last_name:  safeDecryptField(r.last_name_encrypted),
   }))
 }

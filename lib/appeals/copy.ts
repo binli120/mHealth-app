@@ -4,6 +4,7 @@
  */
 
 import type { SupportedLanguage } from "@/lib/i18n/languages"
+import type { DenialReasonId } from "@/lib/appeals/types"
 
 export interface AppealCopy {
   dashboard: string
@@ -41,6 +42,18 @@ export interface AppealCopy {
   evidenceTitle: string
   startOver: string
   disclaimer: string
+  /** Localised labels for the denial-reason select options. */
+  denialReasons: Record<DenialReasonId, string>
+  /** Five analysis-progress stage labels + helper descriptions. */
+  analysisStages: [
+    { label: string; description: string },
+    { label: string; description: string },
+    { label: string; description: string },
+    { label: string; description: string },
+    { label: string; description: string },
+  ]
+  /** Expected-duration note shown under the progress bar. */
+  analysisEta: string
 }
 
 const COPY: Record<SupportedLanguage, AppealCopy> = {
@@ -80,6 +93,25 @@ const COPY: Record<SupportedLanguage, AppealCopy> = {
     evidenceTitle: "Evidence to Gather",
     startOver: "Start Over",
     disclaimer: "This analysis is AI-generated and is not legal advice. For complex cases, consider consulting a benefits attorney or legal aid organization.",
+    denialReasons: {
+      missing_disability_proof: "Missing proof of disability",
+      income_exceeds_limit: "Income exceeds eligibility limit",
+      residency_not_verified: "Residency not verified",
+      citizenship_immigration: "Citizenship / immigration status issue",
+      age_not_eligible: "Age not eligible for program category",
+      already_enrolled: "Already enrolled in other coverage",
+      missing_documentation: "Missing required documentation",
+      ssn_not_verified: "Social Security Number not verified",
+      other: "Other (describe below)",
+    },
+    analysisStages: [
+      { label: "Reading your denial details…",          description: "Parsing the denial reason and any uploaded documents" },
+      { label: "Searching regulations & precedents…",   description: "Looking up relevant MassHealth policy and appeal outcomes" },
+      { label: "Drafting your appeal letter…",          description: "Writing a personalised, evidence-backed appeal" },
+      { label: "Reviewing for quality…",                description: "Checking the letter for completeness and accuracy" },
+      { label: "Almost ready…",                         description: "Finishing up — just a moment" },
+    ],
+    analysisEta: "This usually takes 30–40 seconds",
   },
   "zh-CN": {
     dashboard: "仪表板",
@@ -117,6 +149,25 @@ const COPY: Record<SupportedLanguage, AppealCopy> = {
     evidenceTitle: "需要准备的证据",
     startOver: "重新开始",
     disclaimer: "此分析由 AI 生成，不构成法律建议。对于复杂案件，请考虑咨询福利律师或法律援助机构。",
+    denialReasons: {
+      missing_disability_proof: "缺少残疾证明",
+      income_exceeds_limit: "收入超过资格限制",
+      residency_not_verified: "居住地未经核实",
+      citizenship_immigration: "公民身份 / 移民身份问题",
+      age_not_eligible: "年龄不符合项目类别资格",
+      already_enrolled: "已参加其他保险计划",
+      missing_documentation: "缺少必要文件",
+      ssn_not_verified: "社会安全号码未经核实",
+      other: "其他（请在下方描述）",
+    },
+    analysisStages: [
+      { label: "正在读取您的拒绝详情…",       description: "解析拒绝原因及任何上传的文件" },
+      { label: "正在搜索法规和先例…",         description: "查找相关 MassHealth 政策和申诉结果" },
+      { label: "正在起草您的申诉信…",         description: "撰写有据可查的个性化申诉" },
+      { label: "正在进行质量审核…",           description: "检查信件的完整性和准确性" },
+      { label: "即将完成…",                  description: "即将完成，请稍候" },
+    ],
+    analysisEta: "通常需要 30–40 秒",
   },
   ht: {
     dashboard: "Tablo de bò",
@@ -154,6 +205,25 @@ const COPY: Record<SupportedLanguage, AppealCopy> = {
     evidenceTitle: "Prèv pou Rasanble",
     startOver: "Kòmanse Ankò",
     disclaimer: "Analiz sa a fèt pa AI e li pa konsèy legal. Pou ka konplike, konsidere konsilte yon avoka benefis oswa yon òganizasyon asistans legal.",
+    denialReasons: {
+      missing_disability_proof: "Manke prèv andikap",
+      income_exceeds_limit: "Revni depase limit elijibilite a",
+      residency_not_verified: "Rezidans pa verifye",
+      citizenship_immigration: "Pwoblèm sitwayen / imigrasyon",
+      age_not_eligible: "Laj pa elijib pou kategori pwogram nan",
+      already_enrolled: "Deja enskri nan yon lòt asirans",
+      missing_documentation: "Manke dokiman obligatwa",
+      ssn_not_verified: "Nimewo Sekirite Sosyal pa verifye",
+      other: "Lòt (dekri anba a)",
+    },
+    analysisStages: [
+      { label: "Ap li detay refi ou a…",              description: "Ap analize rezon refi a ak nenpòt dokiman ou telechaje" },
+      { label: "Ap chèche règleman ak prekèdans…",    description: "Ap jwenn politik MassHealth ki enpòtan ak rezilta apèl" },
+      { label: "Ap ekri lèt apèl ou a…",              description: "Ap rédijé yon apèl pèsonalize ak prèv" },
+      { label: "Ap revize pou kalite…",               description: "Ap tcheke lèt la pou konplètitid ak presizyon" },
+      { label: "Prèske prè…",                         description: "Ap fini — jis yon moman" },
+    ],
+    analysisEta: "Sa pran anviron 30–40 segonn",
   },
   "pt-BR": {
     dashboard: "Painel",
@@ -191,6 +261,25 @@ const COPY: Record<SupportedLanguage, AppealCopy> = {
     evidenceTitle: "Provas para Reunir",
     startOver: "Começar de Novo",
     disclaimer: "Esta análise foi gerada por IA e não constitui aconselhamento jurídico. Em casos complexos, considere consultar um advogado de benefícios ou uma organização de assistência jurídica.",
+    denialReasons: {
+      missing_disability_proof: "Falta de comprovação de deficiência",
+      income_exceeds_limit: "Renda acima do limite de elegibilidade",
+      residency_not_verified: "Residência não verificada",
+      citizenship_immigration: "Problema de cidadania / imigração",
+      age_not_eligible: "Idade fora da faixa elegível para a categoria",
+      already_enrolled: "Já inscrito em outro plano de saúde",
+      missing_documentation: "Documentação obrigatória ausente",
+      ssn_not_verified: "Número de Seguro Social não verificado",
+      other: "Outro (descreva abaixo)",
+    },
+    analysisStages: [
+      { label: "Lendo os detalhes da negativa…",             description: "Analisando o motivo da negativa e os documentos enviados" },
+      { label: "Pesquisando regulamentos e precedentes…",    description: "Buscando política do MassHealth e resultados de recursos" },
+      { label: "Redigindo sua carta de recurso…",            description: "Escrevendo um recurso personalizado com base em evidências" },
+      { label: "Revisando a qualidade…",                     description: "Verificando a completude e precisão da carta" },
+      { label: "Quase pronto…",                              description: "Finalizando — só um momento" },
+    ],
+    analysisEta: "Geralmente leva 30–40 segundos",
   },
   es: {
     dashboard: "Panel",
@@ -228,6 +317,25 @@ const COPY: Record<SupportedLanguage, AppealCopy> = {
     evidenceTitle: "Pruebas para Reunir",
     startOver: "Empezar de Nuevo",
     disclaimer: "Este análisis fue generado por IA y no constituye asesoría legal. En casos complejos, considere consultar a un abogado de beneficios o a una organización de ayuda legal.",
+    denialReasons: {
+      missing_disability_proof: "Falta de prueba de discapacidad",
+      income_exceeds_limit: "Los ingresos superan el límite de elegibilidad",
+      residency_not_verified: "Residencia no verificada",
+      citizenship_immigration: "Problema de ciudadanía / inmigración",
+      age_not_eligible: "Edad no elegible para la categoría del programa",
+      already_enrolled: "Ya inscrito en otra cobertura",
+      missing_documentation: "Documentación requerida faltante",
+      ssn_not_verified: "Número de Seguro Social no verificado",
+      other: "Otro (describir a continuación)",
+    },
+    analysisStages: [
+      { label: "Leyendo los detalles de su denegación…",     description: "Analizando el motivo de la denegación y los documentos cargados" },
+      { label: "Buscando regulaciones y precedentes…",       description: "Consultando la política de MassHealth y resultados de apelaciones" },
+      { label: "Redactando su carta de apelación…",          description: "Escribiendo una apelación personalizada respaldada por evidencia" },
+      { label: "Revisando la calidad…",                      description: "Verificando la completitud y precisión de la carta" },
+      { label: "Casi listo…",                                description: "Terminando — solo un momento" },
+    ],
+    analysisEta: "Esto suele tardar 30–40 segundos",
   },
   vi: {
     dashboard: "Bảng điều khiển",
@@ -265,6 +373,25 @@ const COPY: Record<SupportedLanguage, AppealCopy> = {
     evidenceTitle: "Bằng Chứng Cần Chuẩn Bị",
     startOver: "Bắt Đầu Lại",
     disclaimer: "Phân tích này do AI tạo ra và không phải là tư vấn pháp lý. Với các trường hợp phức tạp, hãy cân nhắc tham khảo luật sư về phúc lợi hoặc tổ chức hỗ trợ pháp lý.",
+    denialReasons: {
+      missing_disability_proof: "Thiếu bằng chứng về khuyết tật",
+      income_exceeds_limit: "Thu nhập vượt quá giới hạn đủ điều kiện",
+      residency_not_verified: "Nơi cư trú chưa được xác minh",
+      citizenship_immigration: "Vấn đề về quốc tịch / nhập cư",
+      age_not_eligible: "Độ tuổi không đủ điều kiện cho danh mục chương trình",
+      already_enrolled: "Đã đăng ký tham gia bảo hiểm khác",
+      missing_documentation: "Thiếu tài liệu bắt buộc",
+      ssn_not_verified: "Số An sinh Xã hội chưa được xác minh",
+      other: "Khác (mô tả bên dưới)",
+    },
+    analysisStages: [
+      { label: "Đang đọc chi tiết từ chối của bạn…",       description: "Phân tích lý do từ chối và các tài liệu đã tải lên" },
+      { label: "Đang tìm kiếm quy định và tiền lệ…",       description: "Tra cứu chính sách MassHealth liên quan và kết quả kháng cáo" },
+      { label: "Đang soạn thảo thư kháng cáo…",            description: "Viết đơn kháng cáo cá nhân hóa có căn cứ bằng chứng" },
+      { label: "Đang xem xét chất lượng…",                 description: "Kiểm tra tính đầy đủ và chính xác của thư" },
+      { label: "Gần xong…",                                description: "Đang hoàn thiện — chỉ một chút nữa thôi" },
+    ],
+    analysisEta: "Thường mất 30–40 giây",
   },
 }
 

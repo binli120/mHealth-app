@@ -172,25 +172,15 @@ function daysSince(value: string | null): number {
   return Math.max(0, Math.floor((Date.now() - timestamp) / 86_400_000))
 }
 
-function safeDecryptField(enc: string | null | undefined, plain: string | null | undefined): string | null {
-  try { return decryptOrPlain(enc, plain) } catch { return null }
-}
-
 function fallbackApplicantName(row: Record<string, unknown>): string {
-  try {
-    return (
-      decryptDisplayName(
-        row.first_name_encrypted as string | null,
-        row.first_name as string | null,
-        row.last_name_encrypted as string | null,
-        row.last_name as string | null,
-      ) ??
-      ((row.applicant_email as string | null) || null) ??
-      "Unknown applicant"
-    )
-  } catch {
-    return (row.applicant_email as string | null) ?? "Unknown applicant"
-  }
+  return (
+    decryptDisplayName(
+      row.first_name_encrypted as string | null,
+      row.last_name_encrypted as string | null,
+    ) ??
+    ((row.applicant_email as string | null) || null) ??
+    "Unknown applicant"
+  )
 }
 
 function buildFlags(params: {
@@ -228,7 +218,7 @@ function toCaseSummary(row: Record<string, unknown>): ReviewerCaseSummary {
     displayId: displayId(id),
     applicantName: fallbackApplicantName(row),
     applicantEmail: (row.applicant_email as string | null) ?? null,
-    applicantPhone: safeDecryptField(row.phone_encrypted as string | null, row.phone as string | null),
+    applicantPhone: decryptOrPlain(row.phone_encrypted as string | null),
     applicationType: (row.application_type as string | null) ?? null,
     status,
     householdSize: toNumber(row.household_size),
@@ -762,15 +752,15 @@ export async function getReviewerCase(applicationId: string): Promise<ReviewerCa
 
   return {
     ...summary,
-    applicantDob: safeDecryptField(row.dob_encrypted as string | null, row.dob as string | null),
+    applicantDob: decryptOrPlain(row.dob_encrypted as string | null),
     applicantAddress: {
-      line1: safeDecryptField(row.address_line1_encrypted as string | null, row.address_line1 as string | null),
-      line2: safeDecryptField(row.address_line2_encrypted as string | null, row.address_line2 as string | null),
-      city: safeDecryptField(row.city_encrypted as string | null, row.city as string | null),
-      state: safeDecryptField(row.state_encrypted as string | null, row.state as string | null),
-      zip: safeDecryptField(row.zip_encrypted as string | null, row.zip as string | null),
+      line1: decryptOrPlain(row.address_line1_encrypted as string | null),
+      line2: decryptOrPlain(row.address_line2_encrypted as string | null),
+      city: decryptOrPlain(row.city_encrypted as string | null),
+      state: decryptOrPlain(row.state_encrypted as string | null),
+      zip: decryptOrPlain(row.zip_encrypted as string | null),
     },
-    citizenshipStatus: (row.citizenship_status as string | null) ?? null,
+    citizenshipStatus: null,
     draftState: (row.draft_state as Record<string, unknown> | null) ?? null,
     documents,
     validationResults,

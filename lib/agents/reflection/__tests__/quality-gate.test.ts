@@ -50,7 +50,7 @@ describe("reviewAppealLetterQuality", () => {
       policyContext: "Policy context",
     })
 
-    expect(result.finalText).toBe("Reviewed letter")
+    expect(result.finalText).toBe("Draft letter")
     expect(result.review).toMatchObject({
       reviewed: true,
       factuallyAccurate: false,

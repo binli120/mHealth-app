@@ -61,11 +61,7 @@ async function getApplicantIdByUserId(userId: string): Promise<string | null> {
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
   const pool = getDbPool()
 
-  // Fetch applicant core fields + user_profiles row (if exists) in one query.
-  // PHI columns are selected in dual form (encrypted + legacy plaintext) via
-  // APPLICANT_PHI_SELECT so that pre-backfill rows still resolve correctly.
   const result = await pool.query<{
-    // Encrypted columns
     first_name_encrypted: string | null
     last_name_encrypted: string | null
     dob_encrypted: string | null
@@ -75,25 +71,12 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     city_encrypted: string | null
     state_encrypted: string | null
     zip_encrypted: string | null
-    // NULL aliases for dropped plaintext columns (kept for decryptOrPlain compatibility)
-    first_name: string | null
-    last_name: string | null
-    dob: string | null
-    phone: string | null
-    address_line1: string | null
-    address_line2: string | null
-    city: string | null
-    state: string | null
-    zip: string | null
-    // Non-PHI columns
-    citizenship_status: CitizenshipStatus | null
     profile_data: UserProfileData | null
     bank_data: StoredBankData | null
     avatar_url: string | null
   }>(
     `SELECT
        ${APPLICANT_PHI_SELECT("a")},
-       NULL::text AS citizenship_status,
        up.profile_data,
        up.bank_data,
        up.avatar_url
@@ -131,16 +114,16 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
   const avatarUrl = await resolveAvatarUrl(row.avatar_url)
 
   return {
-    firstName:    decryptOrPlain(row.first_name_encrypted,    row.first_name)  ?? "",
-    lastName:     decryptOrPlain(row.last_name_encrypted,     row.last_name)   ?? "",
-    dateOfBirth:  decryptOrPlain(row.dob_encrypted,           row.dob),
-    phone:        decryptOrPlain(row.phone_encrypted,         row.phone),
-    addressLine1: decryptOrPlain(row.address_line1_encrypted, row.address_line1),
-    addressLine2: decryptOrPlain(row.address_line2_encrypted, row.address_line2),
-    city:         decryptOrPlain(row.city_encrypted,          row.city),
-    state:        decryptOrPlain(row.state_encrypted,         row.state),
-    zip:          decryptOrPlain(row.zip_encrypted,           row.zip),
-    citizenshipStatus: row.citizenship_status,
+    firstName:    decryptOrPlain(row.first_name_encrypted)  ?? "",
+    lastName:     decryptOrPlain(row.last_name_encrypted)   ?? "",
+    dateOfBirth:  decryptOrPlain(row.dob_encrypted),
+    phone:        decryptOrPlain(row.phone_encrypted),
+    addressLine1: decryptOrPlain(row.address_line1_encrypted),
+    addressLine2: decryptOrPlain(row.address_line2_encrypted),
+    city:         decryptOrPlain(row.city_encrypted),
+    state:        decryptOrPlain(row.state_encrypted),
+    zip:          decryptOrPlain(row.zip_encrypted),
+    citizenshipStatus: null,
     profileData,
     avatarUrl,
     hasBankAccount: !!bank?.routingNumberEncrypted,

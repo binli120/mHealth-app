@@ -7,7 +7,11 @@ import { defineConfig, devices } from "@playwright/test"
 import * as fs from "fs"
 import * as path from "path"
 
-const BASE_URL = process.env.E2E_BASE_URL ?? "http://localhost:3000"
+// Use port 3001 (not 3000) so e2e tests never collide with the Agent Gateway
+// or any other process that may already be occupying :3000.  The webServer
+// block below starts Next.js on PORT=3001 automatically when no server is
+// already listening there.  Override with E2E_BASE_URL for CI / staging.
+const BASE_URL = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3001"
 const IS_DEMO = process.env.DEMO_MODE === "true"
 const SKIP_WEB_SERVER = process.env.E2E_SKIP_WEB_SERVER === "true"
 // When targeting a remote URL (cloud/staging), skip starting a local dev server
@@ -130,7 +134,7 @@ export default defineConfig({
     ? {}
     : {
         webServer: {
-          command: "pnpm dev",
+          command: "PORT=3001 pnpm dev",
           url: BASE_URL,
           reuseExistingServer: true,
           timeout: 120_000,

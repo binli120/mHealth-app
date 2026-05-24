@@ -30,8 +30,8 @@ test.describe("Benefit Stack (Cross-Program Orchestration)", () => {
   test("wizard form is visible", async ({ page }) => {
     await benefitStack.goto()
     // FamilyProfileWizard renders a div-based step wizard (no <form> tag).
-    // Step 0 (About You) always renders the age input field.
-    await expect(page.locator("#age")).toBeVisible({ timeout: 15_000 })
+    // Step 0 (About You) always shows the date-of-birth input (DobInput).
+    await expect(page.locator("#dob-applicant")).toBeVisible({ timeout: 15_000 })
   })
 
   test("happy path returns benefit results", async ({ page }) => {

@@ -27,6 +27,7 @@ import {
 } from "@/lib/masshealth/application-types"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { buildApplicationContinueHref, buildApplicationStartHref } from "@/lib/applications/navigation"
 import { cn } from "@/lib/utils"
 import { createUuid } from "@/lib/utils/random-id"
 import { ArrowLeft, Bot, CheckCircle2, ChevronRight, FileText, Sparkles } from "lucide-react"
@@ -134,7 +135,7 @@ export default function ApplicationTypePage() {
         applicationType,
       }),
     )
-    router.push(`/application/new?applicationId=${applicationId}`)
+    router.push(buildApplicationStartHref(applicationId))
   }
 
   const handleSelectType = async (applicationType: (typeof MASSHEALTH_APPLICATION_TYPES)[number]["id"]) => {
@@ -160,7 +161,7 @@ export default function ApplicationTypePage() {
 
   const handleContinueExisting = () => {
     if (!existingDraftPrompt) return
-    router.push(`/application/new?applicationId=${existingDraftPrompt.existingApplicationId}`)
+    router.push(buildApplicationContinueHref(existingDraftPrompt.existingApplicationId))
     setExistingDraftPrompt(null)
   }
 

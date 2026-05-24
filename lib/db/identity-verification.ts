@@ -44,7 +44,7 @@ export interface ApplicantIdentityRow {
 export interface ApplicantProfileRow {
   first_name: string
   last_name: string
-  dob: string          // YYYY-MM-DD from DB
+  dob: string
   address_line1: string
   city: string
   state: string
@@ -66,28 +66,21 @@ export async function getApplicantProfileForVerification(
   // still resolve correctly via decryptOrPlain.
   const result = await pool.query<{
     first_name_encrypted: string | null
-    first_name: string | null
     last_name_encrypted: string | null
-    last_name: string | null
     dob_encrypted: string | null
-    dob: string | null
     address_line1_encrypted: string | null
-    address_line1: string | null
     city_encrypted: string | null
-    city: string | null
     state_encrypted: string | null
-    state: string | null
     zip_encrypted: string | null
-    zip: string | null
   }>(
     `SELECT
-       first_name_encrypted, first_name,
-       last_name_encrypted,  last_name,
-       dob_encrypted,        dob::text AS dob,
-       address_line1_encrypted, address_line1,
-       city_encrypted,       city,
-       state_encrypted,      state,
-       zip_encrypted,        zip
+       first_name_encrypted,
+       last_name_encrypted,
+       dob_encrypted,
+       address_line1_encrypted,
+       city_encrypted,
+       state_encrypted,
+       zip_encrypted
      FROM applicants
      WHERE user_id = $1
      LIMIT 1`,
@@ -98,13 +91,13 @@ export async function getApplicantProfileForVerification(
   if (!row) return null
 
   return {
-    first_name:    decryptOrPlain(row.first_name_encrypted,    row.first_name)    ?? "",
-    last_name:     decryptOrPlain(row.last_name_encrypted,     row.last_name)     ?? "",
-    dob:           decryptOrPlain(row.dob_encrypted,           row.dob)           ?? "",
-    address_line1: decryptOrPlain(row.address_line1_encrypted, row.address_line1) ?? "",
-    city:          decryptOrPlain(row.city_encrypted,          row.city)          ?? "",
-    state:         decryptOrPlain(row.state_encrypted,         row.state)         ?? "",
-    zip:           decryptOrPlain(row.zip_encrypted,           row.zip)           ?? "",
+    first_name:    decryptOrPlain(row.first_name_encrypted)    ?? "",
+    last_name:     decryptOrPlain(row.last_name_encrypted)     ?? "",
+    dob:           decryptOrPlain(row.dob_encrypted)           ?? "",
+    address_line1: decryptOrPlain(row.address_line1_encrypted) ?? "",
+    city:          decryptOrPlain(row.city_encrypted)          ?? "",
+    state:         decryptOrPlain(row.state_encrypted)         ?? "",
+    zip:           decryptOrPlain(row.zip_encrypted)           ?? "",
   }
 }
 

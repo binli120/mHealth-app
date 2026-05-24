@@ -24,7 +24,9 @@ export async function POST(request: Request) {
     }
 
     // Basic validation
-    if (typeof body.age !== "number" || body.age < 0 || body.age > 120) {
+    // age may be 0 when the user hasn't entered a date of birth yet — that is
+    // perfectly valid; the orchestrator handles age-0 gracefully.
+    if (typeof body.age !== "number" || body.age < 0 || body.age > 130) {
       return NextResponse.json({ ok: false, error: "Invalid age in profile." }, { status: 400 })
     }
     if (!body.citizenshipStatus) {

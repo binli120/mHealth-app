@@ -40,21 +40,24 @@ describe("FamilyProfileWizard", () => {
 
   it("renders step tabs for all 6 steps", () => {
     renderWizard()
+    // Tabs now have role="tab" (not "button") — part of the accessible tablist
     const stepLabels = ["About You", "Household", "Your Income", "Housing", "Assets", "Review"]
     for (const label of stepLabels) {
-      expect(screen.getByRole("button", { name: new RegExp(label, "i") })).toBeInTheDocument()
+      expect(screen.getByRole("tab", { name: new RegExp(label, "i") })).toBeInTheDocument()
     }
   })
 
   it("renders a progress bar", () => {
     renderWizard()
-    // Progress component renders a div with role=progressbar or a visible bar
-    expect(screen.getByText(/Step 1 of 6/i)).toBeInTheDocument()
+    // "Step 1 of 6" appears in both the visible label and the sr-only live region;
+    // use getAllByText and verify at least one element is in the document.
+    expect(screen.getAllByText(/Step 1 of 6/i).length).toBeGreaterThan(0)
   })
 
-  it("renders the age input on step 0", () => {
+  it("renders the date of birth picker on step 0", () => {
     renderWizard()
-    expect(screen.getByLabelText(/your age/i)).toBeInTheDocument()
+    // DobInput renders a text input associated with the "Date of birth" label
+    expect(screen.getByRole("textbox", { name: /date of birth/i })).toBeInTheDocument()
   })
 
   it("renders citizenship status select on step 0", () => {
@@ -91,21 +94,21 @@ describe("FamilyProfileWizard", () => {
 
   it("navigates directly to a step when a step tab is clicked", () => {
     renderWizard()
-    // Click on "Housing" tab (index 3)
-    fireEvent.click(screen.getByRole("button", { name: /housing/i }))
+    // Tabs now have role="tab"
+    fireEvent.click(screen.getByRole("tab", { name: /housing/i }))
     expect(screen.getByText(/Housing & utilities/i)).toBeInTheDocument()
   })
 
   it("renders the Review step with a submit button", () => {
     renderWizard()
-    fireEvent.click(screen.getByRole("button", { name: /review/i }))
+    fireEvent.click(screen.getByRole("tab", { name: /review/i }))
     expect(screen.getByRole("button", { name: /see my benefits stack/i })).toBeInTheDocument()
   })
 
   it("shows loading state when loading prop is true", () => {
     renderWizard({ loading: true })
-    // Navigate to review step
-    fireEvent.click(screen.getByRole("button", { name: /review/i }))
+    // Navigate to review step via tab
+    fireEvent.click(screen.getByRole("tab", { name: /review/i }))
     expect(screen.getByRole("button", { name: /see my benefits stack/i })).toBeDisabled()
   })
 })

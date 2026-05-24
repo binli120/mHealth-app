@@ -24,6 +24,7 @@ interface WizardLayoutProps {
   currentStep: number
   title: string
   contentClassName?: string
+  onSaveAndExit?: () => void
 }
 
 export function WizardLayout({
@@ -32,6 +33,7 @@ export function WizardLayout({
   currentStep,
   title,
   contentClassName,
+  onSaveAndExit,
 }: WizardLayoutProps) {
   const activeStep = steps[currentStep - 1] ?? steps.find((step) => step.current)
   const getConnectorClass = (step: Step | undefined) => {
@@ -55,10 +57,21 @@ export function WizardLayout({
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
-          <Link href="/application/type" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" />
-            <span className="text-sm hidden sm:inline">Save & Exit</span>
-          </Link>
+          {onSaveAndExit ? (
+            <button
+              type="button"
+              onClick={onSaveAndExit}
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span className="text-sm hidden sm:inline">Save & Exit</span>
+            </button>
+          ) : (
+            <Link href="/application/type" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="h-4 w-4" />
+              <span className="text-sm hidden sm:inline">Save & Exit</span>
+            </Link>
+          )}
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <ShieldHeartIcon color="currentColor" className="h-4 w-4 text-primary-foreground" />

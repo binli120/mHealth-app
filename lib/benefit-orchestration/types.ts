@@ -105,6 +105,7 @@ export interface HouseholdMemberProfile {
   id: string
   firstName?: string
   relationship: RelationshipType
+  dateOfBirth?: string   // ISO date (YYYY-MM-DD); age is derived from this when set
   age: number
   pregnant: boolean
   disabled: boolean
@@ -122,6 +123,7 @@ export interface FamilyProfile {
   applicantId?: string  // links to applicants table
 
   // ── Primary applicant demographics ──────────────────────────────────────
+  dateOfBirth?: string   // ISO date (YYYY-MM-DD); age is derived from this when set
   age: number
   pregnant: boolean
   dueDate?: string       // ISO date string

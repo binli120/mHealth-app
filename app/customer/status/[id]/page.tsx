@@ -14,6 +14,7 @@ import { type SupportedLanguage } from "@/lib/i18n/languages"
 import { type ApplicationStatus } from "@/lib/application-status"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { toUserFacingError } from "@/lib/errors/user-facing"
+import { buildApplicationContinueHref } from "@/lib/applications/navigation"
 import { useAppSelector } from "@/lib/redux/hooks"
 import { ShieldHeartIcon, UserBadgeIcon } from "@/lib/icons"
 import type { PageProps, ApplicationDraftRecord, DraftApiResponse, TimelineEvent } from "./page.types"
@@ -89,7 +90,7 @@ export default function StatusDetailPage({ params }: PageProps) {
 
   const status = record ? statusConfig[record.status] : statusConfig.draft
   const StatusIcon = status.icon
-  const editHref = record ? `/application/new?applicationId=${record.id}` : "/application/type"
+  const editHref = record ? buildApplicationContinueHref(record.id) : "/application/type"
 
   return (
     <div className="min-h-screen bg-background">

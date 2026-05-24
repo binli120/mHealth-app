@@ -8,7 +8,7 @@
  * @author: Bin Lee
  */
 
-export type RegisterStep = "role-select" | "company-search" | "form" | "verify"
+export type RegisterStep = "role-select" | "company-search" | "form" | "verify" | "mfa-setup"
 export type AccountRole = "applicant" | "social_worker"
 
 export interface CompanyResult {

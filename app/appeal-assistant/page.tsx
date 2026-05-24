@@ -12,12 +12,11 @@ import { DenialInputForm } from "@/components/appeals/DenialInputForm"
 import { AppealResultView } from "@/components/appeals/AppealResultView"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { PageIntro } from "@/components/shared/PageIntro"
-import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton"
+import { AnalysisProgress } from "@/components/appeals/AnalysisProgress"
 import { ErrorCard } from "@/components/shared/ErrorCard"
 import { getAppealAssistantCopy } from "@/lib/appeals/copy"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { toUserFacingError } from "@/lib/errors/user-facing"
-import { APPEAL_DENIAL_REASONS } from "@/lib/appeals/constants"
 import type { AppealAnalysis, AppealRequest } from "@/lib/appeals/types"
 import { useAppSelector } from "@/lib/redux/hooks"
 import type { AppealApiErrorResponse, AppealApiResponse, PageState } from "./page.types"
@@ -31,8 +30,8 @@ export default function AppealAssistantPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   async function handleSubmit(request: AppealRequest) {
-    const reason = APPEAL_DENIAL_REASONS.find((r) => r.id === request.denialReasonId)
-    setSelectedReasonLabel(reason?.label ?? "")
+    // Use the localised label from copy so the result view matches the UI language
+    setSelectedReasonLabel(copy.denialReasons[request.denialReasonId] ?? "")
     setPageState("loading")
     setErrorMessage(null)
 
@@ -85,9 +84,7 @@ export default function AppealAssistantPage() {
           />
         )}
 
-        {pageState === "loading" && (
-          <LoadingSkeleton blocks={["h-6 w-48", "h-28", "h-52", "h-36"]} />
-        )}
+        {pageState === "loading" && <AnalysisProgress language={language} />}
 
         {pageState === "form" && (
           <DenialInputForm onSubmit={handleSubmit} isLoading={false} language={language} />
