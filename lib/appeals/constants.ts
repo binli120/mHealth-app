@@ -75,6 +75,16 @@ export const APPEAL_DENIAL_REASON_IDS = [
 export const APPEAL_DETAILS_MAX_LENGTH = 1000
 export const APPEAL_RAG_TOP_K = 3
 
+// A full appeal letter JSON (explanation + formal letter + checklist) easily
+// exceeds 1024 tokens.  Use a dedicated higher limit so the model is never
+// forced to truncate the letter mid-stream.
+export const APPEAL_ANALYZE_MAX_OUTPUT_TOKENS = 3000
+
+// The appeal pipeline (RAG + generation + quality gate) takes 30–90 s on
+// local hardware.  Use a dedicated timeout that is well above the chat
+// timeout so an AbortError never surfaces as a 500 on a slow second run.
+export const APPEAL_ANALYZE_TIMEOUT_MS = 120_000
+
 // Document upload
 export const MAX_DOCUMENT_UPLOAD_BYTES = 10 * 1024 * 1024 // 10 MB
 export const ACCEPTED_IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"] as const

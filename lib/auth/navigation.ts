@@ -21,6 +21,11 @@ export function getSafeAuthNextPath(nextPath: string | null, fallback: string): 
 }
 
 export async function resolvePostAuthRedirect(explicitNext: string, accessToken: string): Promise<string> {
+  // MFA setup after registration must reach the setup page regardless of role.
+  if (explicitNext === "/setup-mfa" || explicitNext.startsWith("/setup-mfa?")) {
+    return explicitNext
+  }
+
   // If the user is already headed to a role-specific area they belong to, trust it.
   // Role-specific prefixes are guarded by their own server-side checks.
   if (

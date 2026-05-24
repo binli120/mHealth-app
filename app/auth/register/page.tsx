@@ -23,11 +23,19 @@ import {
   UserRound, UserCheck, Search, Building2, Loader2,
 } from "lucide-react"
 import { ShieldHeartIcon } from "@/lib/icons"
+import { MfaEnrollStep } from "@/components/auth/MfaEnrollStep"
+import { PasswordStrengthMeter } from "@/components/auth/PasswordStrengthMeter"
+import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher"
+import { useHydratedLanguage } from "@/lib/i18n/useHydratedLanguage"
+import { checkPasswordStrength } from "@/lib/auth/password-strength"
+import { getRegisterCopy } from "./register-copy"
 import type { RegisterStep, AccountRole, CompanyResult, DevRegisterResponse } from "./page.types"
 
 function RegisterPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const language = useHydratedLanguage()
+  const copy = useMemo(() => getRegisterCopy(language), [language])
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [step, setStep] = useState<RegisterStep>("role-select")
@@ -39,8 +47,11 @@ function RegisterPageContent() {
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
+  const passwordStrength = useMemo(() => checkPasswordStrength(password), [password])
   const [errorMessage, setErrorMessage] = useState("")
   const [infoMessage, setInfoMessage] = useState("")
+  // Where to redirect after 2FA enrolment is complete
+  const [postMfaPath, setPostMfaPath] = useState("")
 
   // Social worker fields
   const [swCompany, setSwCompany] = useState<CompanyResult | null>(null)
@@ -113,11 +124,11 @@ function RegisterPageContent() {
     const localAuthHelperEnabled = isLocalAuthHelperEnabled()
 
     if (!normalizedEmail) {
-      setErrorMessage("Email is required.")
+      setErrorMessage(copy.emailRequired)
       return
     }
-    if (password.length < 8) {
-      setErrorMessage("Password must be at least 8 characters.")
+    if (!passwordStrength.isValid) {
+      setErrorMessage(copy.passwordTooWeak)
       return
     }
 
@@ -126,14 +137,14 @@ function RegisterPageContent() {
       const emailDomain = normalizedEmail.split("@")[1]?.toLowerCase()
       if (emailDomain !== swCompany.email_domain.toLowerCase()) {
         setErrorMessage(
-          `Your email must use your company domain (@${swCompany.email_domain}).`,
+          copy.emailDomainMismatch.replace("{domain}", swCompany.email_domain),
         )
         return
       }
     }
 
     if (role === "social_worker" && !swCompany) {
-      setErrorMessage("Please select your company first.")
+      setErrorMessage(copy.selectCompanyFirst)
       setStep("company-search")
       return
     }
@@ -158,6 +169,13 @@ function RegisterPageContent() {
               jobTitle: swJobTitle,
             }
           : {}
+
+      // Helper: navigate to 2FA setup instead of directly to the dashboard.
+      // `destination` is stored so we can forward there after enrolment.
+      const goToMfaSetup = (destination: string) => {
+        setPostMfaPath(destination)
+        setStep("mfa-setup")
+      }
 
       const tryDevRegisterAndSignIn = async (params: {
         email: string
@@ -202,6 +220,12 @@ function RegisterPageContent() {
         return { ok: true as const }
       }
 
+      // emailRedirectTo sends new users to the MFA setup page after they
+      // confirm their email in the production (no auto-confirm) flow.
+      const emailRedirectTo =
+        `${window.location.origin}/auth/callback` +
+        `?next=${encodeURIComponent("/setup-mfa")}`
+
       const { data, error } = await supabase.auth.signUp({
         email: normalizedEmail,
         password,
@@ -210,6 +234,7 @@ function RegisterPageContent() {
           // whether to create an applicants row. Social workers get their
           // identity stored in social_worker_profiles instead.
           data: { first_name: firstName, last_name: lastName, phone, role },
+          emailRedirectTo,
         },
       })
 
@@ -219,7 +244,7 @@ function RegisterPageContent() {
             email: normalizedEmail, password, firstName, lastName, phone,
           })
           if (recovered.ok) {
-            router.push(role === "social_worker" ? "/social-worker/dashboard" : nextPath)
+            goToMfaSetup(role === "social_worker" ? "/social-worker/dashboard" : nextPath)
             return
           }
           setErrorMessage(toUserFacingError(recovered.error || error, { fallback: "Registration failed.", context: "auth" }))
@@ -238,7 +263,7 @@ function RegisterPageContent() {
             email: normalizedEmail, password, firstName, lastName, phone,
           })
           if (recovered.ok) {
-            router.push(role === "social_worker" ? "/social-worker/dashboard" : nextPath)
+            goToMfaSetup(role === "social_worker" ? "/social-worker/dashboard" : nextPath)
             return
           }
           setErrorMessage(toUserFacingError(recovered.error || "An account with this email already exists.", {
@@ -257,7 +282,7 @@ function RegisterPageContent() {
       }
 
       if (data.session) {
-        router.push(role === "social_worker" ? "/social-worker/dashboard" : nextPath)
+        goToMfaSetup(role === "social_worker" ? "/social-worker/dashboard" : nextPath)
         return
       }
 
@@ -266,7 +291,7 @@ function RegisterPageContent() {
           email: normalizedEmail, password, firstName, lastName, phone,
         })
         if (recovered.ok) {
-          router.push(role === "social_worker" ? "/social-worker/dashboard" : nextPath)
+          goToMfaSetup(role === "social_worker" ? "/social-worker/dashboard" : nextPath)
           return
         }
         setErrorMessage(toUserFacingError(recovered.error || "Local auto-confirm failed.", {
@@ -309,11 +334,12 @@ function RegisterPageContent() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="border-b border-border bg-card px-4 py-4">
-        <div className="mx-auto flex max-w-7xl items-center gap-4">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
-            <span className="text-sm">Back to Home</span>
+            <span className="text-sm">{copy.backToHome}</span>
           </Link>
+          <LanguageSwitcher className="w-[150px] border-border bg-card text-foreground" />
         </div>
       </header>
 
@@ -323,7 +349,7 @@ function RegisterPageContent() {
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
               <ShieldHeartIcon color="currentColor" className="h-6 w-6 text-primary-foreground" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">Create Account</h1>
+            <h1 className="text-2xl font-bold text-foreground">{copy.pageTitle}</h1>
             <p className="mt-1 text-muted-foreground">HealthCompass MA</p>
           </div>
 
@@ -331,8 +357,8 @@ function RegisterPageContent() {
           {step === "role-select" && (
             <Card className="border-border bg-card">
               <CardHeader className="pb-4">
-                <CardTitle className="text-xl">I am…</CardTitle>
-                <CardDescription>Choose how you want to use HealthCompass MA</CardDescription>
+                <CardTitle className="text-xl">{copy.roleTitle}</CardTitle>
+                <CardDescription>{copy.roleDescription}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <button
@@ -344,10 +370,8 @@ function RegisterPageContent() {
                     <UserRound className="w-5 h-5 text-blue-600" />
                   </div>
                   <div>
-                    <div className="font-semibold text-foreground text-sm">Applying for Benefits</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      I want to apply for MassHealth or other benefit programs
-                    </div>
+                    <div className="font-semibold text-foreground text-sm">{copy.roleApplicantLabel}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">{copy.roleApplicantDescription}</div>
                   </div>
                 </button>
 
@@ -360,10 +384,8 @@ function RegisterPageContent() {
                     <UserCheck className="w-5 h-5 text-emerald-600" />
                   </div>
                   <div>
-                    <div className="font-semibold text-foreground text-sm">Social Worker / Case Manager</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      I help clients apply for benefits at a licensed agency
-                    </div>
+                    <div className="font-semibold text-foreground text-sm">{copy.roleSocialWorkerLabel}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">{copy.roleSocialWorkerDescription}</div>
                   </div>
                 </button>
 
@@ -372,7 +394,7 @@ function RegisterPageContent() {
                     <span className="w-full border-t border-border" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-2 text-muted-foreground">Or sign up quickly</span>
+                    <span className="bg-card px-2 text-muted-foreground">{copy.orSignUpQuickly}</span>
                   </div>
                 </div>
 
@@ -401,17 +423,15 @@ function RegisterPageContent() {
                       fill="#EA4335"
                     />
                   </svg>
-                  Continue with Google
+                  {copy.continueWithGoogle}
                 </Button>
-                <p className="text-xs text-muted-foreground text-center">
-                  Google sign-up creates a benefit applicant account
-                </p>
+                <p className="text-xs text-muted-foreground text-center">{copy.googleNote}</p>
 
                 {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
 
                 <p className="text-center text-sm text-muted-foreground pt-1">
-                  Already have an account?{" "}
-                  <Link href={loginHref} className="font-medium text-primary hover:underline">Sign in</Link>
+                  {copy.alreadyHaveAccount}{" "}
+                  <Link href={loginHref} className="font-medium text-primary hover:underline">{copy.signIn}</Link>
                 </p>
               </CardContent>
             </Card>
@@ -425,17 +445,15 @@ function RegisterPageContent() {
                   onClick={() => setStep("role-select")}
                   className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-2"
                 >
-                  <ArrowLeft className="w-3 h-3" /> Back
+                  <ArrowLeft className="w-3 h-3" /> {copy.back}
                 </button>
-                <CardTitle className="text-xl">Find Your Agency</CardTitle>
-                <CardDescription>
-                  Search for the social work agency or organization you work for
-                </CardDescription>
+                <CardTitle className="text-xl">{copy.companyTitle}</CardTitle>
+                <CardDescription>{copy.companyDescription}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex gap-2">
                   <Input
-                    placeholder="Agency name (e.g. 'Boston Medical')"
+                    placeholder={copy.companyPlaceholder}
                     value={companyQuery}
                     onChange={(e) => setCompanyQuery(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && searchCompanies()}
@@ -471,7 +489,7 @@ function RegisterPageContent() {
                           <div className="text-xs text-muted-foreground truncate">
                             {[c.address, c.city, c.state].filter(Boolean).join(", ")}
                             {c.source === "local" && (
-                              <span className="ml-1.5 text-emerald-600 font-medium">✓ Approved</span>
+                              <span className="ml-1.5 text-emerald-600 font-medium">{copy.companyApproved}</span>
                             )}
                           </div>
                         </div>
@@ -482,7 +500,7 @@ function RegisterPageContent() {
 
                 {companyResults.length === 0 && companyQuery.length >= 2 && !companySearching && (
                   <p className="text-xs text-muted-foreground text-center py-2">
-                    No results yet — click search or press Enter
+                    {copy.companyNoResults}
                   </p>
                 )}
 
@@ -500,11 +518,11 @@ function RegisterPageContent() {
                     onClick={() => setStep("company-search")}
                     className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-1"
                   >
-                    <ArrowLeft className="w-3 h-3" /> Back
+                    <ArrowLeft className="w-3 h-3" /> {copy.back}
                   </button>
                 )}
                 <CardTitle className="text-xl text-card-foreground">
-                  {role === "social_worker" ? "Social Worker Account" : "Account Information"}
+                  {role === "social_worker" ? copy.swAccountTitle : copy.applicantAccountTitle}
                 </CardTitle>
                 {role === "social_worker" && swCompany && (
                   <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2 mt-1">
@@ -516,29 +534,27 @@ function RegisterPageContent() {
                   </div>
                 )}
                 <CardDescription>
-                  {role === "social_worker"
-                    ? "Use your company email address to register"
-                    : "Create an account to save your progress"}
+                  {role === "social_worker" ? copy.swAccountDescription : copy.applicantAccountDescription}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="firstName">First Name</Label>
+                      <Label htmlFor="firstName">{copy.firstNameLabel}</Label>
                       <Input
                         id="firstName"
-                        placeholder="John"
+                        placeholder={copy.firstNamePlaceholder}
                         required
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="lastName">Last Name</Label>
+                      <Label htmlFor="lastName">{copy.lastNameLabel}</Label>
                       <Input
                         id="lastName"
-                        placeholder="Doe"
+                        placeholder={copy.lastNamePlaceholder}
                         required
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
@@ -547,10 +563,10 @@ function RegisterPageContent() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">
-                      Email Address
+                      {copy.emailLabel}
                       {role === "social_worker" && swCompany?.email_domain && (
                         <span className="text-xs text-muted-foreground ml-1">
-                          (must end in @{swCompany.email_domain})
+                          ({copy.emailDomainNote.replace("{domain}", swCompany.email_domain)})
                         </span>
                       )}
                     </Label>
@@ -559,8 +575,8 @@ function RegisterPageContent() {
                       type="email"
                       placeholder={
                         role === "social_worker" && swCompany?.email_domain
-                          ? `you@${swCompany.email_domain}`
-                          : "you@example.com"
+                          ? copy.emailSwPlaceholder.replace("{domain}", swCompany.email_domain)
+                          : copy.emailPlaceholder
                       }
                       required
                       value={email}
@@ -568,11 +584,11 @@ function RegisterPageContent() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
+                    <Label htmlFor="phone">{copy.phoneLabel}</Label>
                     <Input
                       id="phone"
                       type="tel"
-                      placeholder="(555)123-4567"
+                      placeholder={copy.phonePlaceholder}
                       required
                       value={phone}
                       onChange={(e) => setPhone(formatPhoneNumber(e.target.value))}
@@ -585,21 +601,22 @@ function RegisterPageContent() {
                   {role === "social_worker" && (
                     <>
                       <div className="space-y-2">
-                        <Label htmlFor="jobTitle">Job Title</Label>
+                        <Label htmlFor="jobTitle">{copy.jobTitleLabel}</Label>
                         <Input
                           id="jobTitle"
-                          placeholder="e.g. Case Manager, Social Worker"
+                          placeholder={copy.jobTitlePlaceholder}
                           value={swJobTitle}
                           onChange={(e) => setSwJobTitle(e.target.value)}
                         />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="license">
-                          License Number <span className="text-muted-foreground text-xs">(optional)</span>
+                          {copy.licenseLabel}{" "}
+                          <span className="text-muted-foreground text-xs">{copy.licenseOptional}</span>
                         </Label>
                         <Input
                           id="license"
-                          placeholder="e.g. LCSW-123456"
+                          placeholder={copy.licensePlaceholder}
                           value={swLicense}
                           onChange={(e) => setSwLicense(e.target.value)}
                         />
@@ -608,12 +625,12 @@ function RegisterPageContent() {
                   )}
 
                   <div className="space-y-2">
-                    <Label htmlFor="password">Create Password</Label>
+                    <Label htmlFor="password">{copy.passwordLabel}</Label>
                     <div className="relative">
                       <Input
                         id="password"
                         type={showPassword ? "text" : "password"}
-                        placeholder="Create a strong password"
+                        placeholder={copy.passwordPlaceholder}
                         required
                         className="pr-10"
                         value={password}
@@ -627,29 +644,52 @@ function RegisterPageContent() {
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
-                    <p className="text-xs text-muted-foreground">At least 8 characters</p>
+                    <PasswordStrengthMeter
+                      strength={passwordStrength}
+                      copy={copy.password}
+                    />
                   </div>
 
                   {role === "social_worker" && (
                     <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-xs text-amber-800">
-                      Your account will be reviewed by an admin before you can access the social worker portal.
+                      {copy.swReviewNotice}
                     </div>
                   )}
 
                   {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
                   {infoMessage && <p className="text-sm text-accent">{infoMessage}</p>}
 
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Creating Account…" : "Create Account"}
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={isLoading || !passwordStrength.isValid}
+                  >
+                    {isLoading ? copy.creatingAccount : copy.createAccountButton}
                   </Button>
                 </form>
 
                 <p className="mt-6 text-center text-sm text-muted-foreground">
-                  Already have an account?{" "}
-                  <Link href={loginHref} className="font-medium text-primary hover:underline">Sign in</Link>
+                  {copy.alreadyHaveAccount}{" "}
+                  <Link href={loginHref} className="font-medium text-primary hover:underline">{copy.signIn}</Link>
                 </p>
               </CardContent>
             </Card>
+          )}
+
+          {/* Step: 2FA Setup */}
+          {step === "mfa-setup" && (
+            <MfaEnrollStep
+              friendlyName={`${firstName} ${lastName}`.trim() || email}
+              language={language}
+              onComplete={() => {
+                router.push(postMfaPath || nextPath)
+                router.refresh()
+              }}
+              onCancel={async () => {
+                await getSupabaseClient().auth.signOut({ scope: "local" })
+                router.push("/auth/login")
+              }}
+            />
           )}
 
           {/* Step: Verify email */}
@@ -659,15 +699,15 @@ function RegisterPageContent() {
                 <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-accent/10">
                   <CheckCircle2 className="h-6 w-6 text-accent" />
                 </div>
-                <CardTitle className="text-center text-xl">Verify Your Email</CardTitle>
+                <CardTitle className="text-center text-xl">{copy.verifyTitle}</CardTitle>
                 <CardDescription className="text-center">
-                  We sent a confirmation link to <span className="font-medium">{email}</span>
+                  {copy.verifySentTo} <span className="font-medium">{email}</span>
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 {role === "social_worker" && (
                   <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2.5 text-xs text-blue-800 text-center">
-                    After email verification, an admin will review and approve your account.
+                    {copy.swVerifyNotice}
                   </div>
                 )}
                 {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
@@ -679,17 +719,17 @@ function RegisterPageContent() {
                   className="w-full"
                   disabled={isLoading}
                 >
-                  {isLoading ? "Sending…" : "Resend Confirmation Email"}
+                  {isLoading ? copy.sending : copy.resendButton}
                 </Button>
                 <Link href={loginHref} className="block">
-                  <Button type="button" className="w-full">Go to Sign In</Button>
+                  <Button type="button" className="w-full">{copy.goToSignIn}</Button>
                 </Link>
               </CardContent>
             </Card>
           )}
 
           <p className="mt-6 text-center text-xs text-muted-foreground">
-            Need help? Email{" "}
+            {copy.needHelp}{" "}
             <a href={CUSTOMER_SUPPORT_MAILTO} className="font-medium text-foreground hover:underline">
               {CUSTOMER_SUPPORT_EMAIL}
             </a>

@@ -110,7 +110,16 @@ export async function reviewAppealLetterQuality(
     const review = result.output
     const revised = review.revisedLetter?.trim()
 
-    if (revised) {
+    // Only accept the model's revision if it looks like a complete letter —
+    // a truncated response (e.g. just a date line) must not replace the full
+    // original draft.  Require at least 200 chars AND ≥ 50 % of the original.
+    const MIN_REVISED_LENGTH = 200
+    const isSubstantiveRevision =
+      !!revised &&
+      revised.length >= MIN_REVISED_LENGTH &&
+      revised.length >= input.appealLetter.length * 0.5
+
+    if (isSubstantiveRevision) {
       incrementCounter("reflection_revision", {
         type: "appeal",
         issueCount: String(normaliseIssues(review.issues).length),
@@ -118,7 +127,7 @@ export async function reviewAppealLetterQuality(
     }
 
     return {
-      finalText: revised || input.appealLetter,
+      finalText: isSubstantiveRevision ? revised! : input.appealLetter,
       review: {
         reviewed: true,
         factuallyAccurate: review.factuallyAccurate,

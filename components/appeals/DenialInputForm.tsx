@@ -96,7 +96,7 @@ export function DenialInputForm({ onSubmit, isLoading, language = "en" }: Denial
               <SelectContent>
                 {APPEAL_DENIAL_REASONS.map((reason) => (
                   <SelectItem key={reason.id} value={reason.id}>
-                    {reason.label}
+                    {copy.denialReasons[reason.id]}
                   </SelectItem>
                 ))}
               </SelectContent>
