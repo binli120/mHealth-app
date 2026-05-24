@@ -644,6 +644,7 @@ function buildPreFillFromProfile(profile: UserProfile): Partial<ApplicationFormD
   if (profile.city) fields.city = profile.city
   if (profile.state) fields.state = profile.state
   if (profile.zip) fields.zip = profile.zip
+  if (profile.citizenshipStatus) fields.citizenship = profile.citizenshipStatus
   return fields
 }
 
@@ -654,6 +655,7 @@ function describedAppliedFields(profile: UserProfile): string[] {
   if (profile.dateOfBirth) labels.push("date of birth")
   if (profile.phone) labels.push("phone number")
   if (profile.addressLine1) labels.push("home address")
+  if (profile.citizenshipStatus) labels.push("citizenship status")
   return labels
 }
 
@@ -1060,6 +1062,7 @@ export function ApplicationAssistant({
         hasDob: Boolean(userProfile.dateOfBirth),
         hasPhone: Boolean(userProfile.phone),
         hasAddress: Boolean(userProfile.addressLine1),
+        hasCitizenship: Boolean(userProfile.citizenshipStatus),
       }
       greeting = getProfileAwareFormAssistantGreeting(summary, language)
       setProfileFillMode("pending")

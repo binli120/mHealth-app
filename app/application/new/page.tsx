@@ -16,6 +16,23 @@ import type { ApplicationFormData } from "@/lib/redux/features/application-slice
 import { useAppSelector } from "@/lib/redux/hooks"
 import { getApplicationTypeLabel } from "@/lib/masshealth/application-types"
 import { UserRound } from "lucide-react"
+import type { UserProfile } from "@/lib/user-profile/types"
+
+function buildPrefillFromProfile(profile: UserProfile | null): Partial<ApplicationFormData> | undefined {
+  if (!profile) return undefined
+  const fields: Partial<ApplicationFormData> = {}
+  if (profile.firstName) fields.firstName = profile.firstName
+  if (profile.lastName) fields.lastName = profile.lastName
+  if (profile.dateOfBirth) fields.dob = profile.dateOfBirth
+  if (profile.phone) fields.phone = profile.phone
+  if (profile.addressLine1) fields.address = profile.addressLine1
+  if (profile.addressLine2) fields.apartment = profile.addressLine2
+  if (profile.city) fields.city = profile.city
+  if (profile.state) fields.state = profile.state
+  if (profile.zip) fields.zip = profile.zip
+  if (profile.citizenshipStatus) fields.citizenship = profile.citizenshipStatus
+  return Object.keys(fields).length > 0 ? fields : undefined
+}
 
 function readPrefillFromSessionStorage(key: string | null): Partial<ApplicationFormData> | undefined {
   if (!key || typeof window === "undefined") return undefined
@@ -63,6 +80,14 @@ function NewApplicationPageContent() {
   // Consumed once from sessionStorage on mount — shared across both tabs
   const [prefillFormData] = useState<Partial<ApplicationFormData> | undefined>(
     () => readPrefillFromSessionStorage(prefillKey),
+  )
+
+  const userProfile = useAppSelector((state) => state.userProfile?.profile ?? null)
+  // Profile-based prefill for the FormWizard. Document upload prefill takes precedence.
+  const wizardPrefill = useMemo(
+    () => prefillFormData ?? buildPrefillFromProfile(userProfile),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],  // evaluated once on mount — profile is stable after login
   )
 
   const urlEntryMode = useMemo(
@@ -133,7 +158,7 @@ function NewApplicationPageContent() {
           <FormWizard
             applicationId={queryApplicationId || undefined}
             actingForPatientId={actingForPatientId}
-            prefillFormData={prefillFormData}
+            prefillFormData={wizardPrefill}
           />
         </TabsContent>
       </Tabs>

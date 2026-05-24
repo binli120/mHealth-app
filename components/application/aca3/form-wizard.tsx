@@ -1247,7 +1247,7 @@ function FormProvider({
       dispatch({ type: "set_root_field", payload: { scope: "contact", fieldId, value } })
     }
 
-    const { firstName, lastName, dob, email, phone, otherPhone, address, apartment, city, state: stateCode, zip, county, preferredSpokenLanguage, preferredWrittenLanguage } = prefillFormData
+    const { firstName, lastName, dob, email, phone, otherPhone, address, apartment, city, state: stateCode, zip, county, preferredSpokenLanguage, preferredWrittenLanguage, citizenship } = prefillFormData
 
     const fullName = [firstName, lastName].filter(Boolean).join(" ")
     set("p1_name", fullName)
@@ -1263,6 +1263,12 @@ function FormProvider({
     set("p1_home_county", county ?? "")
     set("p1_language_spoken", preferredSpokenLanguage ?? "")
     set("p1_language_written", preferredWrittenLanguage ?? "")
+
+    // Map citizenship status → person 0 coverage.us_citizen ("Yes"/"No")
+    if (citizenship) {
+      const usCitizen = citizenship === "citizen" ? "Yes" : "No"
+      dispatch({ type: "set_person_field", payload: { personIndex: 0, section: "coverage", fieldId: "us_citizen", value: usCitizen } })
+    }
   }, [isHydratedReady, prefillFormData])
 
   useEffect(() => {

@@ -136,7 +136,7 @@ const EN_MESSAGES = {
 
   // ── Benefit Stack — Wizard: About You ──────────────────────────────────
   bsAboutYouTitle: "Tell us about yourself",
-  bsYourAge: "Your age",
+  bsDateOfBirth: "Date of birth",
   bsCitizenshipStatus: "Citizenship status",
   bsEmploymentStatus: "Employment status",
   bsYourSituation: "Your situation (check all that apply)",
@@ -482,7 +482,7 @@ const MESSAGES: Record<SupportedLanguage, MessageCatalog> = {
     bsStep4: "资产",
     bsStep5: "审核",
     bsAboutYouTitle: "请介绍一下您自己",
-    bsYourAge: "您的年龄",
+    bsDateOfBirth: "出生日期",
     bsCitizenshipStatus: "公民身份",
     bsEmploymentStatus: "就业状态",
     bsYourSituation: "您的情况（请勾选所有适用项）",
@@ -792,7 +792,7 @@ const MESSAGES: Record<SupportedLanguage, MessageCatalog> = {
     bsStep4: "Aktif",
     bsStep5: "Revizyon",
     bsAboutYouTitle: "Di nou sou ou",
-    bsYourAge: "Laj ou",
+    bsDateOfBirth: "Dat nesans",
     bsCitizenshipStatus: "Estati sitwayènte",
     bsEmploymentStatus: "Estati travay",
     bsYourSituation: "Sitiyasyon ou (tcheke tout ki aplike)",

@@ -58,25 +58,26 @@ export function decryptDisplayName(
 // ── Encrypted column names (for SELECT / GROUP BY) ────────────────────────────
 
 /**
- * SQL fragment that SELECTs both the encrypted and legacy plaintext PHI
- * columns for a given table alias.
+ * SQL fragment that SELECTs the encrypted PHI columns for a given table alias.
+ * Legacy plaintext columns (first_name, last_name, etc.) were dropped after the
+ * encryption backfill completed. NULL aliases preserve the column names so that
+ * all call sites and decryptOrPlain() invocations remain unchanged — the plain
+ * argument is simply always null now.
  *
  * Usage:
  *   SELECT ${APPLICANT_PHI_SELECT("a")} FROM applicants a …
- *
- * Produces: a.first_name_encrypted, a.first_name, a.last_name_encrypted, …
  */
 export function APPLICANT_PHI_SELECT(alias: string): string {
   return [
-    `${alias}.first_name_encrypted`,
-    `${alias}.last_name_encrypted`,
-    `${alias}.dob_encrypted`,
-    `${alias}.phone_encrypted`,
-    `${alias}.address_line1_encrypted`,
-    `${alias}.address_line2_encrypted`,
-    `${alias}.city_encrypted`,
-    `${alias}.state_encrypted`,
-    `${alias}.zip_encrypted`,
+    `${alias}.first_name_encrypted`, `NULL::text AS first_name`,
+    `${alias}.last_name_encrypted`,  `NULL::text AS last_name`,
+    `${alias}.dob_encrypted`,        `NULL::text AS dob`,
+    `${alias}.phone_encrypted`,      `NULL::text AS phone`,
+    `${alias}.address_line1_encrypted`, `NULL::text AS address_line1`,
+    `${alias}.address_line2_encrypted`, `NULL::text AS address_line2`,
+    `${alias}.city_encrypted`,       `NULL::text AS city`,
+    `${alias}.state_encrypted`,      `NULL::text AS state`,
+    `${alias}.zip_encrypted`,        `NULL::text AS zip`,
   ].join(",\n       ")
 }
 
@@ -96,8 +97,8 @@ export function APPLICANT_PHI_GROUP_BY(alias: string): string {
 
 export function APPLICANT_NAME_SELECT(alias: string): string {
   return [
-    `${alias}.first_name_encrypted`,
-    `${alias}.last_name_encrypted`,
+    `${alias}.first_name_encrypted`, `NULL::text AS first_name`,
+    `${alias}.last_name_encrypted`,  `NULL::text AS last_name`,
   ].join(", ")
 }
 

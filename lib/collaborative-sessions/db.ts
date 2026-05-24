@@ -97,9 +97,19 @@ const NAME_JOIN = `
 
 const NAME_SELECT = `
   sw_a.first_name_encrypted AS sw_first_enc,
+<<<<<<< HEAD
   sw_a.last_name_encrypted  AS sw_last_enc,
   pt_a.first_name_encrypted AS pt_first_enc,
   pt_a.last_name_encrypted  AS pt_last_enc
+=======
+  NULL::text                AS sw_first,
+  sw_a.last_name_encrypted  AS sw_last_enc,
+  NULL::text                AS sw_last,
+  pt_a.first_name_encrypted AS pt_first_enc,
+  NULL::text                AS pt_first,
+  pt_a.last_name_encrypted  AS pt_last_enc,
+  NULL::text                AS pt_last
+>>>>>>> dev
 `
 
 // ── Session CRUD ─────────────────────────────────────────────────────────────

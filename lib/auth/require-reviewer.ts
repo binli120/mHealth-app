@@ -10,6 +10,7 @@ import { NextResponse } from "next/server"
 
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 import { getDbPool } from "@/lib/db/server"
+import { logServerError } from "@/lib/server/logger"
 
 export const REVIEWER_ROLE_NAMES = ["admin", "reviewer", "case_reviewer", "supervisor"] as const
 
@@ -24,17 +25,21 @@ export type ReviewerAuthResult =
 
 async function getUserRoles(userId: string): Promise<string[]> {
   const pool = getDbPool()
-  const result = await pool.query<{ name: string }>(
-    `
-      SELECT r.name
-      FROM public.user_roles ur
-      JOIN public.roles r ON r.id = ur.role_id
-      WHERE ur.user_id = $1::uuid
-    `,
-    [userId],
-  )
-
-  return result.rows.map((row) => row.name)
+  try {
+    const result = await pool.query<{ name: string }>(
+      `
+        SELECT r.name
+        FROM public.user_roles ur
+        JOIN public.roles r ON r.id = ur.role_id
+        WHERE ur.user_id = $1::uuid
+      `,
+      [userId],
+    )
+    return result.rows.map((row) => row.name)
+  } catch (error) {
+    logServerError("[require-reviewer]", error, { fn: "getUserRoles", userId })
+    return []
+  }
 }
 
 function hasReviewerRole(roles: string[]): boolean {

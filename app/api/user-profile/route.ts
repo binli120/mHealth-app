@@ -12,6 +12,7 @@ import { getClientIp } from "@/lib/server/rate-limit"
 import { getUserProfile, upsertUserProfile, upsertBankAccount } from "@/lib/db/user-profile"
 import {
   ERROR_USER_PROFILE_NOT_FOUND,
+  ERROR_USER_PROFILE_LOAD_FAILED,
   ERROR_USER_PROFILE_SAVE_FAILED,
   ERROR_USER_PROFILE_INVALID_PAYLOAD,
   ERROR_USER_PROFILE_LOG_PREFIX,
@@ -90,7 +91,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true, profile }, { status: 200 })
   } catch (error) {
     logServerError(ERROR_USER_PROFILE_LOG_PREFIX, error, { route: "GET /api/user-profile" })
-    return NextResponse.json({ ok: false, error: ERROR_USER_PROFILE_SAVE_FAILED }, { status: 500 })
+    return NextResponse.json({ ok: false, error: ERROR_USER_PROFILE_LOAD_FAILED }, { status: 500 })
   }
 }
 

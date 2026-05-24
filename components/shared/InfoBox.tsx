@@ -20,19 +20,30 @@ interface InfoBoxProps {
   variant?: InfoBoxVariant
   children: ReactNode
   className?: string
+  /** ARIA role — use "alert" for error messages that should be announced immediately. */
+  role?: string
+  /** ARIA live region politeness. Defaults to "off"; "assertive" is set automatically when role="alert". */
+  "aria-live"?: "off" | "polite" | "assertive"
+  /** ARIA label for the box (e.g. to give it a name when role="alert"). */
+  "aria-label"?: string
 }
 
 /**
  * Colored info/note/warning box.
  * Replaces the repeated inline `rounded-lg bg-amber-50 border border-amber-200` pattern.
  *
+ * Pass `role="alert"` on error variants so screen readers announce the message immediately.
+ *
  * @example
  * <InfoBox variant="warning">Important: these are estimates only.</InfoBox>
+ * <InfoBox variant="error" role="alert">Something went wrong.</InfoBox>
  * <InfoBox variant="neutral" className="text-xs">Note: primary home not counted.</InfoBox>
  */
-export function InfoBox({ variant = "neutral", children, className }: InfoBoxProps) {
+export function InfoBox({ variant = "neutral", children, className, role, ...aria }: InfoBoxProps) {
   return (
     <div
+      role={role}
+      {...aria}
       className={cn(
         "rounded-lg border px-4 py-3 text-sm leading-relaxed",
         VARIANT_CLASSES[variant],

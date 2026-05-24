@@ -28,7 +28,7 @@ import * as fs from "fs"
 import * as path from "path"
 import { Pool } from "pg"
 
-const BASE_URL = process.env.E2E_BASE_URL ?? "http://localhost:3000"
+const BASE_URL = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3001" // matches playwright.config.ts default
 const IS_REMOTE = !BASE_URL.startsWith("http://localhost") && !BASE_URL.startsWith("http://127.0.0.1")
 
 // Allow credential overrides for pre-existing cloud accounts (set via GitHub secrets)

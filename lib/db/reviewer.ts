@@ -714,6 +714,7 @@ export async function getReviewerCase(applicationId: string): Promise<ReviewerCa
         COALESCE(a.submitted_at, a.last_saved_at, a.updated_at, a.created_at) AS last_activity_at,
         u.email AS applicant_email,
         ${APPLICANT_PHI_SELECT("ap")},
+        NULL::text AS citizenship_status,
         es.fpl_percentage,
         es.estimated_program,
         COALESCE(dc.document_count, 0)::int AS document_count,

@@ -5,7 +5,7 @@
 
 import "server-only"
 import { getDbPool } from "@/lib/db/server"
-import { decryptDisplayName, decryptOrPlain } from "@/lib/db/applicant-fields"
+import { decryptOrPlain } from "@/lib/db/applicant-fields"
 import type { Pool } from "pg"
 
 // ── Shared chart types ────────────────────────────────────────────────────────
@@ -318,10 +318,32 @@ const APP_COLS: DrillDownColumn[] = [
   { key: "created_at",        label: "Filed",    format: "date" },
 ]
 
+function safeDecryptField(enc: string | null | undefined): string | null {
+  try { return decryptOrPlain(enc) } catch { return null }
+}
+
+function buildAppName(row: Record<string, unknown>): string {
+  const first = safeDecryptField(row.first_name_enc as string | null)
+  const last  = safeDecryptField(row.last_name_enc  as string | null)
+  return [first, last].filter(Boolean).join(" ") || (row.email as string | null) || ""
+}
+
+interface AppSelectRaw {
+  first_name_enc:    string | null
+  last_name_enc:     string | null
+  email:             string | null
+  status:            string | null
+  household_size:    number | null
+  fpl_percentage:    number | null
+  estimated_program: string | null
+  created_at:        string | null
+  submitted_at:      string | null
+}
+
 const APP_SELECT = `
   SELECT
-    ap.first_name_encrypted,
-    ap.last_name_encrypted,
+    ap.first_name_encrypted AS first_name_enc,
+    ap.last_name_encrypted  AS last_name_enc,
     u.email,
     a.status,
     a.household_size,
@@ -340,29 +362,8 @@ const APP_SELECT = `
   ) es ON true
 `
 
-type AppSelectRaw = {
-  first_name_encrypted: string | null
-  last_name_encrypted: string | null
-  email: string
-  status: string
-  household_size: number | null
-  fpl_percentage: number | null
-  estimated_program: string | null
-  created_at: string
-  submitted_at: string | null
-}
-
-function appSelectToRow(r: AppSelectRaw): Record<string, unknown> {
-  return {
-    name: decryptDisplayName(r.first_name_encrypted, r.last_name_encrypted) ?? "",
-    email: r.email,
-    status: r.status,
-    household_size: r.household_size,
-    fpl_percentage: r.fpl_percentage,
-    estimated_program: r.estimated_program,
-    created_at: r.created_at,
-    submitted_at: r.submitted_at,
-  }
+function mapAppRows(rows: AppSelectRaw[]): Record<string, unknown>[] {
+  return rows.map((r) => ({ ...r, name: buildAppName(r as unknown as Record<string, unknown>) }))
 }
 
 async function drillAppsMonth(pool: Pool, value: string, limit: number, offset: number): Promise<DrillDownResult> {
@@ -380,7 +381,7 @@ async function drillAppsMonth(pool: Pool, value: string, limit: number, offset: 
       [from, to, limit, offset],
     ),
   ])
-  return { total: parseInt(cnt.rows[0]?.count ?? "0", 10), rows: rows.rows.map(appSelectToRow), columns: APP_COLS }
+  return { total: parseInt(cnt.rows[0]?.count ?? "0", 10), rows: mapAppRows(rows.rows), columns: APP_COLS }
 }
 
 async function drillAppsStatus(pool: Pool, value: string, limit: number, offset: number): Promise<DrillDownResult> {
@@ -394,7 +395,7 @@ async function drillAppsStatus(pool: Pool, value: string, limit: number, offset:
       [value, limit, offset],
     ),
   ])
-  return { total: parseInt(cnt.rows[0]?.count ?? "0", 10), rows: rows.rows.map(appSelectToRow), columns: APP_COLS }
+  return { total: parseInt(cnt.rows[0]?.count ?? "0", 10), rows: mapAppRows(rows.rows), columns: APP_COLS }
 }
 
 async function drillUsersMonth(pool: Pool, value: string, limit: number, offset: number): Promise<DrillDownResult> {
@@ -418,7 +419,8 @@ async function drillUsersMonth(pool: Pool, value: string, limit: number, offset:
     LEFT JOIN public.user_roles ur ON ur.user_id = u.id
     LEFT JOIN public.roles r       ON r.id = ur.role_id
     WHERE u.created_at >= $1 AND u.created_at < $2
-    GROUP BY u.id, u.email, u.is_active, u.created_at, ap.first_name_encrypted, ap.last_name_encrypted, c.name
+    GROUP BY u.id, u.email, u.is_active, u.created_at,
+             ap.first_name_encrypted, ap.last_name_encrypted, c.name
   `
 
   const [cnt, rows] = await Promise.all([
@@ -428,8 +430,8 @@ async function drillUsersMonth(pool: Pool, value: string, limit: number, offset:
     ),
     pool.query<{ first_name_encrypted: string | null; last_name_encrypted: string | null; email: string; is_active: boolean; created_at: string; company_name: string | null; roles: string }>(`
       SELECT
-        ap.first_name_encrypted,
-        ap.last_name_encrypted,
+        ap.first_name_encrypted AS first_name_enc,
+        ap.last_name_encrypted  AS last_name_enc,
         u.email,
         u.is_active,
         u.created_at,
@@ -439,18 +441,8 @@ async function drillUsersMonth(pool: Pool, value: string, limit: number, offset:
       ORDER BY u.created_at DESC LIMIT $3 OFFSET $4
     `, [from, to, limit, offset]),
   ])
-  return {
-    total: parseInt(cnt.rows[0]?.count ?? "0", 10),
-    rows: rows.rows.map((r) => ({
-      name: decryptDisplayName(r.first_name_encrypted, r.last_name_encrypted) ?? "",
-      email: r.email,
-      is_active: r.is_active,
-      created_at: r.created_at,
-      company_name: r.company_name,
-      roles: r.roles,
-    })),
-    columns: COLS,
-  }
+  const mappedRows = rows.rows.map((r) => ({ ...r, name: buildAppName(r) }))
+  return { total: parseInt(cnt.rows[0]?.count ?? "0", 10), rows: mappedRows, columns: COLS }
 }
 
 async function drillAiMonth(pool: Pool, value: string, limit: number, offset: number): Promise<DrillDownResult> {
@@ -521,7 +513,10 @@ export async function getApplicationsForExport(opts: {
   if (opts.from)   { conditions.push(`a.created_at >= $${p++}`);      params.push(opts.from) }
   if (opts.to)     { conditions.push(`a.created_at <= $${p++}`);      params.push(opts.to) }
 
-  const result = await pool.query<ApplicationExportRawRow>(
+  const result = await pool.query<Omit<ApplicationExportRow, "first_name" | "last_name"> & {
+    first_name_encrypted: string | null
+    last_name_encrypted: string | null
+  }>(
     `
     SELECT a.id, a.status, a.household_size, a.total_monthly_income, a.confidence_score,
            a.created_at, a.submitted_at, a.decided_at,
@@ -543,14 +538,17 @@ export async function getApplicationsForExport(opts: {
   )
   return result.rows.map((r) => ({
     ...r,
-    first_name: decryptOrPlain(r.first_name_encrypted),
-    last_name:  decryptOrPlain(r.last_name_encrypted),
+    first_name: safeDecryptField(r.first_name_encrypted),
+    last_name:  safeDecryptField(r.last_name_encrypted),
   }))
 }
 
 export async function getUsersForExport(): Promise<UserExportRow[]> {
   const pool = getDbPool()
-  const result = await pool.query<UserExportRawRow>(`
+  const result = await pool.query<Omit<UserExportRow, "first_name" | "last_name"> & {
+    first_name_encrypted: string | null
+    last_name_encrypted: string | null
+  }>(`
     SELECT u.id, u.email, u.is_active, u.created_at,
            ap.first_name_encrypted, ap.last_name_encrypted, c.name AS company_name,
            COALESCE(string_agg(DISTINCT r.name, ', ' ORDER BY r.name), '') AS roles
@@ -565,7 +563,7 @@ export async function getUsersForExport(): Promise<UserExportRow[]> {
   `)
   return result.rows.map((r) => ({
     ...r,
-    first_name: decryptOrPlain(r.first_name_encrypted),
-    last_name:  decryptOrPlain(r.last_name_encrypted),
+    first_name: safeDecryptField(r.first_name_encrypted),
+    last_name:  safeDecryptField(r.last_name_encrypted),
   }))
 }

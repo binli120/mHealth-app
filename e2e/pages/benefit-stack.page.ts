@@ -46,11 +46,12 @@ export class BenefitStackPage {
     await this.goto()
 
     // FamilyProfileWizard renders a div-based step wizard — no <form> tag.
-    // Step 0 (About You) always shows #age.
-    await this.page.waitForSelector("#age", { timeout: 10_000 })
+    // Step 0 (About You) shows the DobInput text field (id="dob-applicant").
+    await this.page.waitForSelector("#dob-applicant", { timeout: 10_000 })
 
-    // Step 0: fill age so the profile is non-trivial
-    await this.page.fill("#age", "35")
+    // Step 0: type a date of birth so the profile has a non-trivial age.
+    // DobInput auto-formats MM/DD/YYYY as digits are entered.
+    await this.page.fill("#dob-applicant", "01/01/1990")
 
     // Navigate through steps 0→5 by clicking the "Next" nav button each time.
     // Uses getByRole for reliable accessible-name matching (avoids fragile

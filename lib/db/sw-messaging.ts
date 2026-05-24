@@ -534,7 +534,8 @@ export async function getSwMessageThreads(swUserId: string): Promise<DirectMessa
      WHERE dm.sw_user_id = $1::uuid
      GROUP BY dm.sw_user_id, dm.patient_user_id,
               swp.first_name, swp.last_name, su.email, c.name,
-              pa.first_name_encrypted, pa.last_name_encrypted,
+              pa.first_name_encrypted,
+              pa.last_name_encrypted,
               pu.email
      ORDER BY last_message_at DESC NULLS LAST`,
     [swUserId],
@@ -545,7 +546,7 @@ export async function getSwMessageThreads(swUserId: string): Promise<DirectMessa
     swEmail: r.sw_email,
     companyName: r.company_name,
     patientUserId: r.patient_user_id,
-    patientName: decryptDisplayName(r.patient_first_encrypted, r.patient_last_encrypted),
+    patientName: (() => { try { return decryptDisplayName(r.patient_first_encrypted, r.patient_last_encrypted) } catch { return null } })(),
     patientEmail: r.patient_email,
     lastMessageAt: r.last_message_at ? r.last_message_at.toISOString() : null,
     lastMessageContent: r.last_message_content,
@@ -602,7 +603,8 @@ export async function getPatientMessageThreads(
      WHERE psa.patient_user_id = $1::uuid AND psa.is_active = true
      GROUP BY psa.social_worker_user_id, psa.patient_user_id,
               swp.first_name, swp.last_name, su.email, c.name,
-              pa.first_name_encrypted, pa.last_name_encrypted,
+              pa.first_name_encrypted,
+              pa.last_name_encrypted,
               pu.email
      ORDER BY last_message_at DESC NULLS LAST`,
     [patientUserId],
@@ -613,7 +615,7 @@ export async function getPatientMessageThreads(
     swEmail: r.sw_email,
     companyName: r.company_name,
     patientUserId: r.patient_user_id,
-    patientName: decryptDisplayName(r.patient_first_encrypted, r.patient_last_encrypted),
+    patientName: (() => { try { return decryptDisplayName(r.patient_first_encrypted, r.patient_last_encrypted) } catch { return null } })(),
     patientEmail: r.patient_email,
     lastMessageAt: r.last_message_at ? r.last_message_at.toISOString() : null,
     lastMessageContent: r.last_message_content,

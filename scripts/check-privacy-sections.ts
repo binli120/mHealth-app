@@ -1,5 +1,5 @@
 /**
- * CI script: verify all 12 required privacy section anchors exist in the
+ * CI script: verify all 18 required privacy section anchors exist in the
  * built HTML output of /privacy, or in the MDX source as headings.
  *
  * Usage: npx tsx scripts/check-privacy-sections.ts
@@ -10,17 +10,23 @@ import path from "node:path"
 
 const REQUIRED_SECTIONS: Array<{ id: string; heading: string }> = [
   { id: "overview", heading: "Overview" },
+  { id: "who-uses-the-platform", heading: "Who Uses the Platform" },
   { id: "data-we-collect", heading: "Data We Collect" },
   { id: "how-we-use-data", heading: "How We Use Data" },
-  { id: "sharing-and-disclosure", heading: "Sharing & Disclosure" },
+  { id: "ai-use", heading: "AI Use, Boundaries, and Limitations" },
   { id: "hipaa", heading: "HIPAA Compliance" },
-  { id: "massachusetts", heading: "Massachusetts Law" },
-  { id: "your-rights", heading: "Your Rights" },
+  { id: "eligibility-boundaries", heading: "Eligibility and Plan Recommendation Boundaries" },
+  { id: "hix-ies-boundaries", heading: "HIX/IES System Interaction Boundaries" },
+  { id: "conflict-of-interest", heading: "Conflict of Interest" },
+  { id: "language-access", heading: "Language Access" },
+  { id: "data-retention", heading: "Data Retention" },
   { id: "security", heading: "Security" },
-  { id: "age-eligibility", heading: "Age Eligibility" },
-  { id: "changes", heading: "Changes to This Policy" },
-  { id: "contact", heading: "Contact" },
+  { id: "massachusetts", heading: "Massachusetts Law" },
+  { id: "sharing-and-disclosure", heading: "Sharing & Disclosure" },
+  { id: "changes", heading: "Changes to This Statement" },
+  { id: "your-rights", heading: "Your Rights" },
   { id: "service-region", heading: "Service Region" },
+  { id: "contact", heading: "Contact" },
 ]
 
 const htmlCandidates = [

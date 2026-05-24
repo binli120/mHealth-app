@@ -46,6 +46,7 @@ export const REMINDER_LEAD_DAY_OPTIONS: SelectOption<string>[] = [
 ]
 
 export const ERROR_USER_PROFILE_NOT_FOUND = "Profile not found. Please complete registration first."
+export const ERROR_USER_PROFILE_LOAD_FAILED = "Failed to load profile. Please try again."
 export const ERROR_USER_PROFILE_SAVE_FAILED = "Failed to save profile. Please try again."
 export const ERROR_USER_PROFILE_INVALID_PAYLOAD = "Invalid profile data submitted."
 export const ERROR_USER_PROFILE_LOG_PREFIX = "[user-profile]"

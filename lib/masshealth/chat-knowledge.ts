@@ -1081,6 +1081,7 @@ export interface ProfilePreFillSummary {
   hasDob: boolean
   hasPhone: boolean
   hasAddress: boolean
+  hasCitizenship?: boolean
 }
 
 /**
@@ -1095,6 +1096,7 @@ export function getProfileAwareFormAssistantGreeting(
   if (profile.hasDob) fieldsHad.push("date of birth")
   if (profile.hasPhone) fieldsHad.push("phone number")
   if (profile.hasAddress) fieldsHad.push("home address")
+  if (profile.hasCitizenship) fieldsHad.push("citizenship status")
   const fieldList = fieldsHad.join(", ")
 
   const BY_LANGUAGE: Record<SupportedLanguage, string> = {

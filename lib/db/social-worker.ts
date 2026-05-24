@@ -107,7 +107,7 @@ export async function getSwPatients(swUserId: string): Promise<SwPatient[]> {
         psa.patient_user_id,
         u.email,
         ${APPLICANT_PHI_SELECT("ap")},
-        ap.citizenship_status,
+        NULL::text AS citizenship_status,
         psa.granted_at,
         COUNT(a.id)::int AS application_count,
         (
@@ -126,7 +126,7 @@ export async function getSwPatients(swUserId: string): Promise<SwPatient[]> {
         AND psa.is_active = true
       GROUP BY psa.id, psa.patient_user_id, u.email,
                ${APPLICANT_PHI_GROUP_BY("ap")},
-               ap.citizenship_status, psa.granted_at
+               psa.granted_at
       ORDER BY psa.granted_at DESC
     `,
     [swUserId],

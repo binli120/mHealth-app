@@ -5,7 +5,7 @@
 
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { Camera, Trash2, ScanLine, CheckCircle2, ShieldCheck, ShieldAlert, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -19,6 +19,7 @@ import { AddressFields, type AddressValue } from "@/components/shared/AddressFie
 import { FieldRow } from "@/components/user-profile/FieldRow"
 import { EditableSectionCard, SectionActions } from "@/components/user-profile/section-primitives"
 import { UserAvatar } from "@/components/shared/UserAvatar"
+import { PhoneInput } from "@/components/shared/PhoneInput"
 import { ProfileScanModal, type ProfileScanResult } from "@/components/identity/ProfileScanModal"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { toUserFacingError } from "@/lib/errors/user-facing"
@@ -106,10 +107,32 @@ export function PersonalSection({ profile, onSaved }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [avatarUploading, setAvatarUploading] = useState(false)
 
+  // Local blob: URL shown immediately when the user picks a file, giving instant
+  // visual feedback before the server upload is done.  Cleared once the signed URL
+  // returned by the server has been preloaded into the browser cache (so switching
+  // from blob: → https: is seamless — Radix Avatar sees image.complete === true
+  // and never shows the initials fallback during the transition).
+  const [previewAvatarUrl, setPreviewAvatarUrl] = useState<string | null>(null)
+
+  // When profile.avatarUrl is updated with a freshly-signed https:// URL (after a
+  // successful upload), revoke the now-obsolete blob: preview.
+  useEffect(() => {
+    if (!previewAvatarUrl) return
+    if (!profile.avatarUrl?.startsWith("https://")) return
+    const blobUrl = previewAvatarUrl
+    setPreviewAvatarUrl(null)
+    URL.revokeObjectURL(blobUrl)
+  }, [profile.avatarUrl, previewAvatarUrl])
+
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     e.target.value = ""
+
+    // Show local preview immediately — avatar displays the chosen photo
+    // before the upload round-trip even begins.
+    const objectUrl = URL.createObjectURL(file)
+    setPreviewAvatarUrl(objectUrl)
     setAvatarUploading(true)
     try {
       const form = new FormData()
@@ -117,9 +140,28 @@ export function PersonalSection({ profile, onSaved }: Props) {
       const res = await authenticatedFetch("/api/user-profile/avatar", { method: "POST", body: form })
       const payload = (await res.json().catch(() => ({}))) as { ok: boolean; avatarUrl?: string; error?: string }
       if (!res.ok || !payload.ok) throw new Error(payload.error ?? "Upload failed.")
-      onSaved({ avatarUrl: payload.avatarUrl ?? null })
+
+      const newAvatarUrl = payload.avatarUrl ?? null
+
+      // Preload the signed URL into the browser's image cache before calling
+      // onSaved.  When React then re-renders with the new profile.avatarUrl, Radix's
+      // internal useImageLoadingStatus hook finds image.complete === true and skips
+      // the loading→fallback transition entirely — no flash of initials.
+      if (newAvatarUrl?.startsWith("https://")) {
+        await new Promise<void>((resolve) => {
+          const img = new Image()
+          img.onload = () => resolve()
+          img.onerror = () => resolve()  // don't block on failure
+          img.src = newAvatarUrl
+        })
+      }
+
+      onSaved({ avatarUrl: newAvatarUrl })
       toast.success("Profile photo updated.")
     } catch (err) {
+      // Upload failed — revert to the previous state (profile.avatarUrl or nothing)
+      setPreviewAvatarUrl(null)
+      URL.revokeObjectURL(objectUrl)
       toast.error(toUserFacingError(err, { fallback: "Could not upload photo. Please try again.", context: "upload" }))
     } finally {
       setAvatarUploading(false)
@@ -127,6 +169,11 @@ export function PersonalSection({ profile, onSaved }: Props) {
   }
 
   const handleRemoveAvatar = async () => {
+    // Clear any pending blob preview so the avatar doesn't show a stale photo
+    if (previewAvatarUrl) {
+      URL.revokeObjectURL(previewAvatarUrl)
+      setPreviewAvatarUrl(null)
+    }
     setAvatarUploading(true)
     try {
       const res = await authenticatedFetch("/api/user-profile/avatar", { method: "DELETE" })
@@ -323,22 +370,39 @@ export function PersonalSection({ profile, onSaved }: Props) {
       >
         {/* ── Avatar (always visible) ── */}
         <div className="flex items-center gap-4">
-          <div className="relative">
+          {/* Clickable thumbnail — clicking opens the file picker directly */}
+          <button
+            type="button"
+            className="relative group shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            onClick={() => !avatarUploading && fileInputRef.current?.click()}
+            disabled={avatarUploading}
+            aria-label={(profile.avatarUrl || previewAvatarUrl) ? "Change profile photo" : "Upload profile photo"}
+          >
             <UserAvatar
-              avatarUrl={profile.avatarUrl}
+              avatarUrl={previewAvatarUrl ?? profile.avatarUrl}
               firstName={profile.firstName}
               lastName={profile.lastName}
               size="xl"
             />
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              className="hidden"
-              onChange={handleAvatarChange}
-              disabled={avatarUploading}
-            />
-          </div>
+            {/* Camera overlay on hover — always shown while uploading */}
+            <span
+              className={cn(
+                "absolute inset-0 flex items-center justify-center rounded-full bg-black/50 transition-opacity",
+                avatarUploading ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+              )}
+              aria-hidden
+            >
+              <Camera className="h-5 w-5 text-white" />
+            </span>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="hidden"
+            onChange={handleAvatarChange}
+            disabled={avatarUploading}
+          />
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2 flex-wrap">
               <p className="text-sm font-medium text-foreground">Profile photo</p>
@@ -354,9 +418,9 @@ export function PersonalSection({ profile, onSaved }: Props) {
                 disabled={avatarUploading}
               >
                 <Camera className="h-3.5 w-3.5" />
-                {avatarUploading ? "Uploading…" : profile.avatarUrl ? "Change photo" : "Upload photo"}
+                {avatarUploading ? "Uploading…" : (profile.avatarUrl || previewAvatarUrl) ? "Change photo" : "Upload photo"}
               </Button>
-              {profile.avatarUrl && (
+              {(profile.avatarUrl || previewAvatarUrl) && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -506,16 +570,12 @@ export function PersonalSection({ profile, onSaved }: Props) {
             </div>
 
             {/* ── Phone ── */}
-            <div className="space-y-1.5">
-              <Label htmlFor="phone">Phone number</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="(617) 555-0100"
-              />
-            </div>
+            <PhoneInput
+              id="phone"
+              label="Phone number"
+              value={phone}
+              onChange={setPhone}
+            />
 
             {/* ── Citizenship ── */}
             <div className="space-y-1.5">
@@ -535,21 +595,42 @@ export function PersonalSection({ profile, onSaved }: Props) {
               </Select>
             </div>
 
-            {/* ── Address (with scan badges per-field) ── */}
-            <AddressFieldsWithBadges
-              address={address}
-              onChange={(val, changedKey) => {
+            {/* ── Address (with scan badges per-field + geocode validation) ── */}
+            <AddressFields
+              idPrefix="profile"
+              value={address}
+              onChange={(val, changedField) => {
                 setAddress(val)
-                if (changedKey) {
+                if (changedField) {
+                  // Single-field edit: clear only that field's scan badge
+                  const fieldMap: Partial<Record<keyof AddressValue, ScannedFieldKey>> = {
+                    line1: "addressLine1", city: "city", state: "state", zip: "zip",
+                  }
+                  const key = fieldMap[changedField]
+                  if (key) setScannedFields((p) => { const n = new Set(p); n.delete(key); return n })
+                } else {
+                  // Auto-fill: clear all address scan badges
                   setScannedFields((p) => {
                     const n = new Set(p)
-                    n.delete(changedKey as ScannedFieldKey)
+                    ;(["addressLine1", "city", "state", "zip"] as ScannedFieldKey[]).forEach((k) => n.delete(k))
                     return n
                   })
                 }
               }}
-              scannedFields={scannedFields}
+              showValidation
               disabled={saving}
+              fieldBadge={{
+                line1: scannedFields.has("addressLine1") ? <ScanBadge /> : undefined,
+                city:  scannedFields.has("city")         ? <ScanBadge /> : undefined,
+                state: scannedFields.has("state")        ? <ScanBadge /> : undefined,
+                zip:   scannedFields.has("zip")          ? <ScanBadge /> : undefined,
+              }}
+              fieldHighlight={{
+                line1: scannedFields.has("addressLine1"),
+                city:  scannedFields.has("city"),
+                state: scannedFields.has("state"),
+                zip:   scannedFields.has("zip"),
+              }}
             />
 
             {/* ── Session verified banner ── */}
@@ -570,103 +651,4 @@ export function PersonalSection({ profile, onSaved }: Props) {
   )
 }
 
-// ─── Address fields wrapper with per-field scan badges ────────────────────────
-
 type ScannedFieldKey = "firstName" | "lastName" | "addressLine1" | "city" | "state" | "zip"
-
-interface AddressFieldsWithBadgesProps {
-  address: AddressValue
-  onChange: (val: AddressValue, changedKey?: ScannedFieldKey) => void
-  scannedFields: ScannedFields
-  disabled: boolean
-}
-
-function AddressFieldsWithBadges({ address, onChange, scannedFields, disabled }: AddressFieldsWithBadgesProps) {
-  const addressScanned = scannedFields.has("addressLine1") || scannedFields.has("city") ||
-    scannedFields.has("state") || scannedFields.has("zip")
-
-  return (
-    <div className="space-y-3">
-      {/* Line 1 */}
-      <div className="space-y-1.5">
-        <div className="flex items-center gap-2">
-          <Label htmlFor="profile-line1">Street address</Label>
-          {scannedFields.has("addressLine1") && <ScanBadge />}
-        </div>
-        <Input
-          id="profile-line1"
-          value={address.line1}
-          disabled={disabled}
-          placeholder="123 Main St"
-          className={cn(scannedFields.has("addressLine1") && "ring-1 ring-primary/40")}
-          onChange={(e) => onChange({ ...address, line1: e.target.value }, "addressLine1")}
-        />
-      </div>
-
-      {/* Line 2 */}
-      <div className="space-y-1.5">
-        <Label htmlFor="profile-line2">Apt / unit (optional)</Label>
-        <Input
-          id="profile-line2"
-          value={address.line2}
-          disabled={disabled}
-          placeholder="Apt 4B"
-          onChange={(e) => onChange({ ...address, line2: e.target.value })}
-        />
-      </div>
-
-      {/* City / State / ZIP */}
-      <div className="grid grid-cols-6 gap-3">
-        <div className="col-span-3 space-y-1.5">
-          <div className="flex items-center gap-2">
-            <Label htmlFor="profile-city">City</Label>
-            {scannedFields.has("city") && <ScanBadge />}
-          </div>
-          <Input
-            id="profile-city"
-            value={address.city}
-            disabled={disabled}
-            placeholder="Boston"
-            className={cn(scannedFields.has("city") && "ring-1 ring-primary/40")}
-            onChange={(e) => onChange({ ...address, city: e.target.value }, "city")}
-          />
-        </div>
-        <div className="col-span-1 space-y-1.5">
-          <div className="flex items-center gap-1">
-            <Label htmlFor="profile-state">State</Label>
-            {scannedFields.has("state") && <ScanBadge />}
-          </div>
-          <Input
-            id="profile-state"
-            value={address.state}
-            disabled={disabled}
-            placeholder="MA"
-            maxLength={2}
-            className={cn("uppercase", scannedFields.has("state") && "ring-1 ring-primary/40")}
-            onChange={(e) => onChange({ ...address, state: e.target.value.toUpperCase() }, "state")}
-          />
-        </div>
-        <div className="col-span-2 space-y-1.5">
-          <div className="flex items-center gap-2">
-            <Label htmlFor="profile-zip">ZIP</Label>
-            {scannedFields.has("zip") && <ScanBadge />}
-          </div>
-          <Input
-            id="profile-zip"
-            value={address.zip}
-            disabled={disabled}
-            placeholder="02101"
-            className={cn(scannedFields.has("zip") && "ring-1 ring-primary/40")}
-            onChange={(e) => onChange({ ...address, zip: e.target.value }, "zip")}
-          />
-        </div>
-      </div>
-
-      {addressScanned && (
-        <p className="text-xs text-muted-foreground">
-          Address filled from your license — please verify it matches your current residence.
-        </p>
-      )}
-    </div>
-  )
-}

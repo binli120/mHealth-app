@@ -309,9 +309,9 @@ export async function POST(request: Request) {
       `,
       [
         resolvedUserId,
-        encryptApplicantField(firstName ?? ""),
-        encryptApplicantField(lastName ?? ""),
-        encryptApplicantField(phone ?? ""),
+        encryptApplicantField(firstName),
+        encryptApplicantField(lastName),
+        encryptApplicantField(phone),
       ],
     )
 

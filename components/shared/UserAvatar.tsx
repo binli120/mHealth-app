@@ -34,13 +34,14 @@ function getInitials(firstName?: string | null, lastName?: string | null): strin
 
 /**
  * Reusable profile avatar.
- * - Shows the uploaded photo when avatarUrl is set.
- * - Falls back to initials (first + last name) on a coloured background.
- * - Falls back to the default UserBadgeIcon (from the ui/avatar Fallback) when
- *   neither photo nor name is available.
+ * - Shows the uploaded photo when avatarUrl is a valid https://, http://, or blob: URL.
+ * - Falls back to initials (first letter of first + last name) on a coloured
+ *   background when no valid photo URL is available.
+ * - Falls back to the default UserBadgeIcon when neither photo nor name is set.
  *
- * Use it everywhere a profile thumbnail is needed: navbar, dashboard header,
- * comments, staff views, etc.
+ * Note: avatarUrl must be a fully-qualified URL (https://, http://, or blob:).
+ * Raw storage paths are ignored so a broken or unsigned path never overrides initials.
+ * blob: URLs are accepted for immediate local previews during upload.
  */
 export function UserAvatar({
   avatarUrl,
@@ -51,12 +52,18 @@ export function UserAvatar({
 }: UserAvatarProps) {
   const initials = getInitials(firstName, lastName)
   const hasInitials = initials !== "?"
+  const hasValidPhoto = Boolean(
+    avatarUrl?.startsWith("https://") ||
+    avatarUrl?.startsWith("http://") ||
+    // blob: URLs are valid — used for immediate local previews before the signed URL is ready
+    avatarUrl?.startsWith("blob:"),
+  )
 
   return (
     <Avatar className={cn(SIZE_CLASSES[size], className)}>
-      {avatarUrl && (
+      {hasValidPhoto && (
         <AvatarImage
-          src={avatarUrl}
+          src={avatarUrl!}
           alt={`${firstName ?? ""} ${lastName ?? ""}`.trim() || "Profile photo"}
         />
       )}

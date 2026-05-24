@@ -173,14 +173,14 @@ describe("hooks/use-personal-info-validation", () => {
 
     expect(result.current.hasValidPersonalInfo).toBe(false)
     expect(result.current.fieldErrors.address).toBe(
-      "Check street address. Suggested: 123 Main Street",
+      "Did you mean: 123 Main Street?",
     )
     expect(result.current.fieldErrors.city).toBe(
-      "Check city. Suggested: Cambridge",
+      "Did you mean: Cambridge?",
     )
     expect(result.current.fieldErrors.state).toBeNull()
     expect(result.current.fieldErrors.zip).toBe(
-      "Check ZIP code. Suggested: 02139",
+      "Did you mean: 02139?",
     )
   })
 })
