@@ -23,6 +23,9 @@ import { toUserFacingError } from "@/lib/errors/user-facing"
 import { Eye, EyeOff, ArrowLeft, KeyRound } from "lucide-react"
 import { ShieldHeartIcon } from "@/lib/icons"
 import { CUSTOMER_SUPPORT_EMAIL, CUSTOMER_SUPPORT_MAILTO } from "@/lib/support/contact"
+import { useHydratedLanguage } from "@/lib/i18n/useHydratedLanguage"
+import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher"
+import { getLoginCopy } from "./login-copy"
 
 const REMEMBER_EMAIL_STORAGE_KEY = "healthcompass.rememberedEmail"
 
@@ -57,6 +60,8 @@ function saveRememberedEmail(shouldRememberEmail: boolean, email: string) {
 function LoginPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const language = useHydratedLanguage()
+  const copy = useMemo(() => getLoginCopy(language), [language])
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isPasskeyLoading, setIsPasskeyLoading] = useState(false)
@@ -105,9 +110,9 @@ function LoginPageContent() {
           redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
         },
       })
-      if (error) setErrorMessage(toUserFacingError(error, { fallback: "Unable to sign in with Google.", context: "auth" }))
+      if (error) setErrorMessage(toUserFacingError(error, { fallback: copy.unableSignInGoogle, context: "auth" }))
     } catch (error) {
-      setErrorMessage(toUserFacingError(error, { fallback: "Unable to sign in with Google.", context: "auth" }))
+      setErrorMessage(toUserFacingError(error, { fallback: copy.unableSignInGoogle, context: "auth" }))
     } finally {
       setIsLoading(false)
     }
@@ -120,7 +125,7 @@ function LoginPageContent() {
     try {
       const normalizedEmail = normalizeAuthEmail(email)
       if (!normalizedEmail) {
-        setErrorMessage("Enter your admin email before using a passkey.")
+        setErrorMessage(copy.passkeyEmailRequired)
         return
       }
 
@@ -135,7 +140,7 @@ function LoginPageContent() {
         options?: Parameters<typeof startAuthentication>[0]["optionsJSON"]
       }
       if (!optionsResponse.ok || !optionsPayload.ok || !optionsPayload.options) {
-        setErrorMessage(optionsPayload.error || "No admin passkey is available for this email.")
+        setErrorMessage(optionsPayload.error || copy.passkeyNotAvailable)
         return
       }
 
@@ -151,14 +156,14 @@ function LoginPageContent() {
         redirectTo?: string
       }
       if (!verifyResponse.ok || !verifyPayload.ok) {
-        setErrorMessage(verifyPayload.error || "Unable to sign in with passkey.")
+        setErrorMessage(verifyPayload.error || copy.unableSignInPasskey)
         return
       }
 
       saveRememberedEmail(shouldRememberEmail, normalizedEmail)
       router.push(verifyPayload.redirectTo || "/admin")
     } catch (error) {
-      setErrorMessage(toUserFacingError(error, { fallback: "Unable to sign in with passkey.", context: "auth" }))
+      setErrorMessage(toUserFacingError(error, { fallback: copy.unableSignInPasskey, context: "auth" }))
     } finally {
       setIsPasskeyLoading(false)
     }
@@ -175,7 +180,7 @@ function LoginPageContent() {
       const localAuthHelperEnabled = isLocalAuthHelperEnabled()
 
       if (!normalizedEmail) {
-        setErrorMessage("Email is required.")
+        setErrorMessage(copy.emailRequired)
         return
       }
 
@@ -262,11 +267,11 @@ function LoginPageContent() {
               return
             }
 
-            setErrorMessage(toUserFacingError(retry.error, { fallback: "Unable to sign in.", context: "auth" }))
+            setErrorMessage(toUserFacingError(retry.error, { fallback: copy.unableSignIn, context: "auth" }))
             return
           }
 
-          setErrorMessage(toUserFacingError(confirmPayload.error || signIn.error, { fallback: "Unable to sign in.", context: "auth" }))
+          setErrorMessage(toUserFacingError(confirmPayload.error || signIn.error, { fallback: copy.unableSignIn, context: "auth" }))
           return
         }
 
@@ -283,11 +288,11 @@ function LoginPageContent() {
             return
           }
 
-          setErrorMessage(toUserFacingError(repaired.error || signIn.error, { fallback: "Unable to sign in.", context: "auth" }))
+          setErrorMessage(toUserFacingError(repaired.error || signIn.error, { fallback: copy.unableSignIn, context: "auth" }))
           return
         }
 
-        setErrorMessage(toUserFacingError(signIn.error, { fallback: "Unable to sign in.", context: "auth" }))
+        setErrorMessage(toUserFacingError(signIn.error, { fallback: copy.unableSignIn, context: "auth" }))
         return
       }
 
@@ -304,7 +309,7 @@ function LoginPageContent() {
       await syncSessionCookie(signIn.data.session)
       router.push(await resolvePostAuthRedirect(nextPath, signIn.data.session?.access_token ?? ""))
     } catch (error) {
-      setErrorMessage(toUserFacingError(error, { fallback: "Unable to sign in.", context: "auth" }))
+      setErrorMessage(toUserFacingError(error, { fallback: copy.unableSignIn, context: "auth" }))
     } finally {
       setIsLoading(false)
     }
@@ -314,11 +319,12 @@ function LoginPageContent() {
     <div className="flex min-h-screen flex-col bg-background">
       {/* Header */}
       <header className="border-b border-border bg-card px-4 py-4">
-        <div className="mx-auto flex max-w-7xl items-center gap-4">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
-            <span className="text-sm">Back to Home</span>
+            <span className="text-sm">{copy.backToHome}</span>
           </Link>
+          <LanguageSwitcher />
         </div>
       </header>
 
@@ -330,30 +336,26 @@ function LoginPageContent() {
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
               <ShieldHeartIcon color="currentColor" className="h-6 w-6 text-primary-foreground" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">Welcome Back</h1>
+            <h1 className="text-2xl font-bold text-foreground">{copy.welcomeBack}</h1>
             <p className="mt-1 text-muted-foreground">
-              {isContinuationSignIn
-                ? "Please sign in to continue."
-                : "Sign in to your HealthCompass MA account"}
+              {isContinuationSignIn ? copy.continuationSubtitle : copy.defaultSubtitle}
             </p>
           </div>
 
           {/* Login Card */}
           <Card className="border-border bg-card">
             <CardHeader className="space-y-1 pb-4">
-              <CardTitle className="text-xl text-card-foreground">Sign In</CardTitle>
-              <CardDescription>
-                Enter your credentials to access your account
-              </CardDescription>
+              <CardTitle className="text-xl text-card-foreground">{copy.cardTitle}</CardTitle>
+              <CardDescription>{copy.cardDescription}</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-foreground">Email Address</Label>
+                  <Label htmlFor="email" className="text-foreground">{copy.emailLabel}</Label>
                   <Input
                     id="email"
                     type="email"
-                    placeholder="you@example.com"
+                    placeholder={copy.emailPlaceholder}
                     required
                     className="border-input bg-background text-foreground"
                     value={email}
@@ -362,19 +364,19 @@ function LoginPageContent() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="password" className="text-foreground">Password</Label>
-                    <Link 
-                      href="/auth/forgot-password" 
+                    <Label htmlFor="password" className="text-foreground">{copy.passwordLabel}</Label>
+                    <Link
+                      href="/auth/forgot-password"
                       className="text-sm text-primary hover:underline"
                     >
-                      Forgot password?
+                      {copy.forgotPassword}
                     </Link>
                   </div>
                   <div className="relative">
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
-                      placeholder="Enter your password"
+                      placeholder={copy.passwordPlaceholder}
                       required
                       className="border-input bg-background pr-10 text-foreground"
                       value={password}
@@ -403,7 +405,7 @@ function LoginPageContent() {
                     htmlFor="remember-email"
                     className="cursor-pointer text-sm font-normal text-muted-foreground"
                   >
-                    Remember email address
+                    {copy.rememberEmail}
                   </Label>
                 </div>
                 {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
@@ -412,7 +414,7 @@ function LoginPageContent() {
                   className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                   disabled={isLoading}
                 >
-                  {isLoading ? "Signing in..." : "Sign In"}
+                  {isLoading ? copy.signingIn : copy.signInButton}
                 </Button>
               </form>
 
@@ -422,7 +424,7 @@ function LoginPageContent() {
                     <span className="w-full border-t border-border" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+                    <span className="bg-card px-2 text-muted-foreground">{copy.orContinueWith}</span>
                   </div>
                 </div>
 
@@ -436,7 +438,7 @@ function LoginPageContent() {
                       disabled={isLoading || isPasskeyLoading}
                     >
                       <KeyRound className="h-4 w-4" />
-                      {isPasskeyLoading ? "Checking passkey..." : "Sign in with passkey"}
+                      {isPasskeyLoading ? copy.checkingPasskey : copy.signInWithPasskey}
                     </Button>
                   )}
                   <Button
@@ -464,16 +466,16 @@ function LoginPageContent() {
                         fill="#EA4335"
                       />
                     </svg>
-                    Sign in with Google
+                    {copy.signInWithGoogle}
                   </Button>
 
                 </div>
               </div>
 
               <p className="mt-6 text-center text-sm text-muted-foreground">
-                {"Don't have an account? "}
+                {copy.noAccount}{" "}
                 <Link href={registerHref} className="font-medium text-primary hover:underline">
-                  Create one
+                  {copy.createOne}
                 </Link>
               </p>
             </CardContent>
@@ -481,7 +483,7 @@ function LoginPageContent() {
 
           {/* Help Text */}
           <p className="mt-6 text-center text-xs text-muted-foreground">
-            Need help? Email{" "}
+            {copy.needHelp}{" "}
             <a href={CUSTOMER_SUPPORT_MAILTO} className="font-medium text-foreground hover:underline">
               {CUSTOMER_SUPPORT_EMAIL}
             </a>

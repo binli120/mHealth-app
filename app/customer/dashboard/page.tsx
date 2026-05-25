@@ -56,6 +56,7 @@ import { dispatchOpenSwChat } from "@/lib/events/chat-events"
 import { NotificationBell } from "@/components/notifications/NotificationBell"
 import { SessionInviteBanner } from "@/components/collaborative-sessions/SessionInviteBanner"
 import { IdentityVerificationBanner } from "@/components/identity/IdentityVerificationBanner"
+import { MfaBanner } from "@/components/security/MfaBanner"
 import { getSafeSupabaseUser, signOutAndClearLocalAuth } from "@/lib/supabase/client"
 import { ShieldHeartIcon } from "@/lib/icons"
 import { UserAvatar } from "@/components/shared/UserAvatar"
@@ -421,6 +422,9 @@ export default function CustomerDashboardPage() {
         </div>
 
         <SessionInviteBanner />
+
+        {/* 2FA nudge — shown when user has no verified TOTP factor */}
+        <MfaBanner className="mb-4" />
 
         {/* Identity verification soft nudge — hidden once verified */}
         <IdentityVerificationBanner className="mb-4" />

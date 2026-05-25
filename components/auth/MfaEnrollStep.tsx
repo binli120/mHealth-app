@@ -59,30 +59,35 @@ export function MfaEnrollStep({ friendlyName, language = DEFAULT_LANGUAGE, onCom
     setEnrollApiError("")
     setEnrollGenericError(false)
 
-    getSupabaseClient()
-      .auth.mfa.enroll({
+    const name = friendlyName ?? "HealthCompass MA"
+    const supabase = getSupabaseClient()
+
+    const doEnroll = async () => {
+      const { data, error } = await supabase.auth.mfa.enroll({
         factorType: "totp",
         issuer: "HealthCompass MA",
-        friendlyName: friendlyName ?? "HealthCompass MA",
-      })
-      .then(({ data, error }) => {
-        if (cancelled) return
-        if (error || !data) {
-          if (error?.message) setEnrollApiError(error.message)
-          else setEnrollGenericError(true)
-          return
-        }
-        setEnrollData({
-          factorId: data.id,
-          qrCode: data.totp.qr_code,
-          secret: data.totp.secret,
-        })
-      })
-      .finally(() => {
-        if (!cancelled) setIsEnrolling(false)
+        friendlyName: name,
       })
 
+      if (cancelled) return
+      if (error || !data) {
+        if (error?.message) setEnrollApiError(error.message)
+        else setEnrollGenericError(true)
+        return
+      }
+      setEnrollData({
+        factorId: data.id,
+        qrCode: data.totp.qr_code,
+        secret: data.totp.secret,
+      })
+    }
+
+    doEnroll()
+      .catch(() => { if (!cancelled) setEnrollGenericError(true) })
+      .finally(() => { if (!cancelled) setIsEnrolling(false) })
+
     return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [friendlyName])
 
   // ── Copy secret to clipboard ──────────────────────────────────────────────
