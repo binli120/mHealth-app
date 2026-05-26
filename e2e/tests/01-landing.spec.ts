@@ -49,8 +49,8 @@ test.describe("Landing Page", () => {
       return
     }
     await appealLink.click()
-    // The landing page may use an anchor (#appeal) or navigate to /appeal-assistant
-    await expect(page).toHaveURL(/\/appeal-assistant|#appeal/, { timeout: 5_000 })
+    // The landing page may use an anchor (#appeal) or navigate to /masshealth-appeals
+    await expect(page).toHaveURL(/\/masshealth-appeals|#appeal/, { timeout: 5_000 })
   })
 
   test("no console errors on load", async ({ page }) => {

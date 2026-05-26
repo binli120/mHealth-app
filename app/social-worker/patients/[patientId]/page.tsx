@@ -145,14 +145,14 @@ export default function SWPatientDashboardPage() {
             </Card>
           </Link>
 
-          <Link href="/appeal-assistant">
+          <Link href="/masshealth-appeals">
             <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
               <CardContent className="flex items-center gap-4 p-4">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-destructive/10">
                   <Scale className="h-5 w-5 text-destructive" />
                 </div>
                 <div>
-                  <p className="font-medium text-card-foreground">Appeal Assistant</p>
+                  <p className="font-medium text-card-foreground">Appeal Letter</p>
                   <p className="text-sm text-muted-foreground">Help with denied applications</p>
                 </div>
               </CardContent>

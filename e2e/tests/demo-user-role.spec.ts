@@ -71,7 +71,7 @@ test.describe.serial("Demo video - applicant", () => {
     await expect(page.getByText(/status|application|case/i).first()).toBeVisible({ timeout: 15_000 })
     await page.waitForTimeout(2500)
 
-    await page.goto("/appeal-assistant")
+    await page.goto("/masshealth-appeals")
     await expect(page.getByText(/appeal|denial|masshealth/i).first()).toBeVisible({ timeout: 15_000 })
     await page.waitForTimeout(2500)
 

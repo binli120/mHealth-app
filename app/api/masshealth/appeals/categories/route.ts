@@ -15,6 +15,7 @@ import { logServerError, logServerInfo } from "@/lib/server/logger"
 export const runtime = "nodejs"
 
 const ANALYSIS_BASE = process.env.NEXT_PUBLIC_MASSHEALTH_ANALYSIS_BASE_URL ?? "http://localhost:8000"
+const MASSHEALTH_API_TOKEN = process.env.MASSHEALTH_API_TOKEN ?? ""
 
 function fallbackCategoriesResponse() {
   return NextResponse.json({
@@ -35,7 +36,10 @@ export async function GET(request: Request) {
   try {
     const upstream = await fetch(`${ANALYSIS_BASE}/masshealth/appeals/categories`, {
       method: "GET",
-      headers: { "user-id": authResult.userId },
+      headers: {
+        "user-id": authResult.userId,
+        ...(MASSHEALTH_API_TOKEN ? { Authorization: `Bearer ${MASSHEALTH_API_TOKEN}` } : {}),
+      },
     })
 
     const body = await upstream.text()

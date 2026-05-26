@@ -339,12 +339,6 @@ export default function CustomerDashboardPage() {
               {getMessage(language, "dashboardNavKnowledgeCenter")}
             </Link>
             <Link
-              href="/appeal-assistant"
-              className="shrink-0 whitespace-nowrap text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              {getMessage(language, "dashboardNavAppealAssistant")}
-            </Link>
-            <Link
               href="/masshealth-appeals"
               className="shrink-0 whitespace-nowrap text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
@@ -432,7 +426,7 @@ export default function CustomerDashboardPage() {
         {/* Dashboard actions */}
         <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12">
           <DashboardWidgetTooltip content="Start a new MassHealth application. You will choose the right form type, then complete it step by step.">
-            <Link href="/application/type" data-tour="dashboard-new-application" className="h-full lg:col-span-3">
+            <Link href="/application/type" data-tour="dashboard-new-application" className="h-full lg:col-span-4">
               <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
                 <CardContent className="flex items-center gap-4 p-4">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
@@ -447,7 +441,7 @@ export default function CustomerDashboardPage() {
             </Link>
           </DashboardWidgetTooltip>
           <DashboardWidgetTooltip content="Screen your household for MassHealth and other support programs, including food, housing, childcare, and cash assistance.">
-            <Link href="/benefit-stack" data-tour="dashboard-benefit-stack" className="h-full lg:col-span-3">
+            <Link href="/benefit-stack" data-tour="dashboard-benefit-stack" className="h-full lg:col-span-4">
               <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
                 <CardContent className="flex items-center gap-4 p-4">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50">
@@ -461,23 +455,8 @@ export default function CustomerDashboardPage() {
               </Card>
             </Link>
           </DashboardWidgetTooltip>
-          <DashboardWidgetTooltip content="Use guided appeal support when an application is denied, delayed, or needs a response to a MassHealth notice.">
-            <Link href="/appeal-assistant" data-tour="dashboard-appeals" className="h-full lg:col-span-3">
-              <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
-                <CardContent className="flex items-center gap-4 p-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-destructive/10">
-                    <Scale className="h-5 w-5 text-destructive" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-card-foreground">{getMessage(language, "dashboardAppealAssistant")}</p>
-                    <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardAppealAssistantDesc")}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          </DashboardWidgetTooltip>
           <DashboardWidgetTooltip content="Research the denial reason and draft a MassHealth appeal letter using your case details and supporting documents.">
-            <Link href="/masshealth-appeals" data-tour="dashboard-appeal-letter" className="h-full lg:col-span-3">
+            <Link href="/masshealth-appeals" data-tour="dashboard-appeal-letter" className="h-full lg:col-span-4">
               <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
                 <CardContent className="flex items-center gap-4 p-4">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-50">

@@ -17,6 +17,7 @@ import { logServerError, logServerInfo } from "@/lib/server/logger"
 export const runtime = "nodejs"
 
 const ANALYSIS_BASE = process.env.NEXT_PUBLIC_MASSHEALTH_ANALYSIS_BASE_URL ?? "http://localhost:8000"
+const MASSHEALTH_API_TOKEN = process.env.MASSHEALTH_API_TOKEN ?? ""
 
 export async function POST(request: Request) {
   const start = Date.now()
@@ -33,6 +34,7 @@ export async function POST(request: Request) {
       headers: {
         "Content-Type": "application/json",
         "user-id":      authResult.userId,
+        ...(MASSHEALTH_API_TOKEN ? { Authorization: `Bearer ${MASSHEALTH_API_TOKEN}` } : {}),
       },
       body,
     })

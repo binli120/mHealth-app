@@ -108,7 +108,7 @@ describe("GET /api/masshealth/appeals/categories", () => {
       expect.stringContaining("/masshealth/appeals/categories"),
       expect.objectContaining({
         method: "GET",
-        headers: { "user-id": USER_ID },
+        headers: expect.objectContaining({ "user-id": USER_ID }),
       }),
     )
   })

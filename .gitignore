@@ -23,6 +23,7 @@ database/dumps/
 storybook-static/
 debug-storybook.log
 .claude/
+.refact/
 
 # TypeScript build cache
 tsconfig.tsbuildinfo

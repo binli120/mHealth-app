@@ -8,7 +8,6 @@
 import { useMemo, type ReactNode } from "react"
 import { Provider } from "react-redux"
 import type { ApplicationCheckResult } from "@/lib/masshealth/application-checks"
-import type { AppealAnalysis } from "@/lib/appeals/types"
 import type { BenefitResult, BenefitStack } from "@/lib/benefit-orchestration/types"
 import { ThemeProvider } from "@/components/theme-provider"
 import { setLanguage, type AppState } from "@/lib/redux/features/app-slice"
@@ -92,23 +91,6 @@ export const sampleNotifications: Notification[] = [
   }),
 ]
 
-export const sampleAppealAnalysis: AppealAnalysis = {
-  explanation:
-    "MassHealth appears to have counted temporary overtime as recurring income. The denial can be challenged with updated wage documents and a clarification letter from the employer.",
-  appealLetter: `Dear MassHealth,
-
-I am requesting a fair hearing because the income used in my denial notice does not reflect my current household situation. My recent pay periods included temporary overtime that is no longer available.
-
-I have attached updated pay stubs and an employer note confirming my regular schedule.
-
-Sincerely,
-Applicant`,
-  evidenceChecklist: [
-    "Three recent pay stubs showing regular earnings",
-    "Employer note confirming overtime ended",
-    "Any denial notice pages listing the disputed income amount",
-  ],
-}
 
 export function makeBenefitResult(overrides: Partial<BenefitResult> = {}): BenefitResult {
   return {

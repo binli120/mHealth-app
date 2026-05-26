@@ -216,7 +216,7 @@ test.describe.serial("Full Demo Tour", () => {
 
   test("8 · Appeal Assistant — AI-powered appeal help", async ({ page }) => {
     test.setTimeout(60_000)
-    await page.goto("/appeal-assistant")
+    await page.goto("/masshealth-appeals")
     await expect(
       page.getByText(/Appeal Your MassHealth Denial/i).first(),
     ).toBeVisible({ timeout: 15_000 })

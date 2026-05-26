@@ -3,6 +3,7 @@
  * @email: blee@healthcompass.cloud
  */
 
+import { createRequire } from "node:module"
 import { NextResponse } from "next/server"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 import { extractPdfJson } from "@/lib/pdf/extract-pdf-json"
@@ -16,9 +17,13 @@ import {
 import {
   DEFAULT_OLLAMA_BASE_URL,
   OLLAMA_CHAT_ENDPOINT,
-  OLLAMA_TIMEOUT_MS,
 } from "@/app/api/chat/masshealth/constants"
 import { validateUpload } from "@/lib/uploads/validate"
+
+// OCR models (deepseek-ocr, glm-ocr) are slower than chat models — allow extra time
+const OCR_TIMEOUT_MS = 90_000
+// Lazy CJS loader — do NOT call at module scope (pdfjs-dist crashes Turbopack build worker)
+const _pdfRequire = createRequire(import.meta.url)
 
 export const runtime = "nodejs"
 
@@ -34,12 +39,56 @@ function getVisionModel(): string {
   return process.env.OLLAMA_VISION_MODEL || DEFAULT_OLLAMA_VISION_MODEL
 }
 
+/**
+ * Returns true when pdf-parse extracted nothing useful — only page-separator
+ * markers like "-- 1 of 6 --" that appear in scanned/image-based PDFs.
+ */
+function isScannedPdfText(text: string | null): boolean {
+  if (!text) return true
+  const stripped = text.replace(/--\s*\d+\s*of\s*\d+\s*--/gi, "").replace(/\s+/g, "")
+  return stripped.length < 30
+}
+
 function isUploadedFile(value: FormDataEntryValue | null): value is File {
   return value !== null && typeof value !== "string"
 }
 
 /**
- * Call Ollama vision model to extract text content from a denial letter image.
+ * Use pdf-parse v2 getImage() to pull embedded raster images from a scanned PDF,
+ * then run OCR on each page image via Ollama.  Returns joined text or "" on failure.
+ */
+async function extractTextFromScannedPdf(bytes: ArrayBuffer): Promise<string> {
+  try {
+    type PDFParseCtor = new (opts: { data: Uint8Array; verbosity: number }) => {
+      getImage(opts: { startPage: number; endPage: number }): Promise<{
+        pages: Array<{ images: Array<{ dataUrl?: string }> }>
+      }>
+    }
+    const { PDFParse } = _pdfRequire("pdf-parse") as { PDFParse: PDFParseCtor }
+    const parser = new PDFParse({ data: new Uint8Array(bytes), verbosity: 0 })
+
+    // Process first 2 pages — denial reason is almost always on page 1-2
+    const imageResult = await parser.getImage({ startPage: 1, endPage: 2 })
+    const parts: string[] = []
+
+    for (const page of imageResult.pages ?? []) {
+      for (const img of page.images ?? []) {
+        const dataUrl = img.dataUrl
+        if (!dataUrl) continue
+        const b64 = dataUrl.replace(/^data:[^;]+;base64,/, "")
+        const text = await extractTextFromImage(b64, "image/png")
+        if (text.trim()) parts.push(text.trim())
+      }
+    }
+
+    return parts.join("\n\n")
+  } catch {
+    return ""
+  }
+}
+
+/**
+ * Call Ollama vision/OCR model to extract text content from a denial letter image.
  * Returns the extracted text, or empty string on failure (graceful degradation).
  */
 async function extractTextFromImage(imageBase64: string, mimeType: string): Promise<string> {
@@ -49,7 +98,7 @@ async function extractTextFromImage(imageBase64: string, mimeType: string): Prom
     const response = await fetch(`${getOllamaBaseUrl()}${OLLAMA_CHAT_ENDPOINT}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(OLLAMA_TIMEOUT_MS),
+      signal: AbortSignal.timeout(OCR_TIMEOUT_MS),
       body: JSON.stringify({
         model,
         stream: false,
@@ -132,21 +181,30 @@ export async function POST(request: Request) {
     let extractedText = ""
 
     if (validation.mimeType !== "application/pdf") {
-      // Convert image bytes to base64 and send to Ollama vision model
+      // Convert image bytes to base64 and send to Ollama OCR model
       const base64 = Buffer.from(bytes).toString("base64")
       extractedText = await extractTextFromImage(base64, validation.mimeType)
     } else {
-      // PDF: extract form fields and metadata via existing pdf-lib utility
+      // PDF: try text layer extraction first, then OCR for scanned PDFs
       try {
         const pdfData = await extractPdfJson({
           bytes: new Uint8Array(bytes),
           fileName: uploaded.name || "denial-letter.pdf",
           fileSize: uploaded.size,
         })
-        extractedText = formatPdfExtraction(pdfData)
+        const textLayerResult = formatPdfExtraction(pdfData)
+
+        if (isScannedPdfText(pdfData.pageText)) {
+          // Scanned/image-based PDF — fall back to OCR via embedded page images
+          extractedText = await extractTextFromScannedPdf(bytes)
+          // If OCR also fails, surface empty so the UI prompts manual paste
+          if (!extractedText) extractedText = ""
+        } else {
+          extractedText = textLayerResult
+        }
       } catch {
-        // pdf-lib couldn't parse — graceful fallback
-        extractedText = ""
+        // pdf-lib couldn't parse — try OCR as last resort
+        extractedText = await extractTextFromScannedPdf(bytes)
       }
     }
 

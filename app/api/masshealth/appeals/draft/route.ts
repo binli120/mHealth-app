@@ -21,6 +21,7 @@ export const runtime = "nodejs"
 export const maxDuration = 120
 
 const ANALYSIS_BASE = process.env.NEXT_PUBLIC_MASSHEALTH_ANALYSIS_BASE_URL ?? "http://localhost:8000"
+const MASSHEALTH_API_TOKEN = process.env.MASSHEALTH_API_TOKEN ?? ""
 
 interface DraftResponseBody {
   letter_text?: unknown
@@ -116,6 +117,7 @@ export async function POST(request: Request) {
       headers: {
         ...upstreamRequest.headers,
         "user-id": authResult.userId,
+        ...(MASSHEALTH_API_TOKEN ? { Authorization: `Bearer ${MASSHEALTH_API_TOKEN}` } : {}),
       },
       body: upstreamRequest.body,
       // Leave budget for the reflection quality gate before the 120 s route cap.

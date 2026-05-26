@@ -284,11 +284,19 @@ export default function MassHealthAppealsPage() {
       if (redirectIfUnauthorized(res)) return
 
       if (!res.ok) {
-        const err = (await res.json().catch(() => ({}))) as { detail?: string }
-        throw new Error(err.detail ?? `Server error ${res.status}`)
+        const err = (await res.json().catch(() => ({}))) as { detail?: string; error?: string }
+        throw new Error(err.detail ?? err.error ?? `Server error ${res.status}`)
       }
 
-      setResearchResult((await res.json()) as ResearchResult)
+      const data = (await res.json()) as ResearchResult
+      setResearchResult(data)
+
+      // If the user left category blank (auto-detect), reflect the top match
+      // in the dropdown so they can see what was detected and override if needed.
+      if (!selectedCategory && data.matched_categories?.[0]?.code) {
+        setSelectedCategory(data.matched_categories[0].code)
+      }
+
       setPageState("research_results")
     } catch (e) {
       handleAppealError(e, "Failed to analyze denial notice.")

@@ -90,6 +90,14 @@ export function toUserFacingError(
     return "The assistant did not return a response. Please try again."
   }
 
+  if (/corpus.*not.*set up|ingestion pipeline|appeal corpus|ingest_appeal/.test(normalized)) {
+    return "The appeal letter service is still being set up. Please try again later or contact support."
+  }
+
+  if (/no relevant regulation|no relevant regulation text/.test(normalized)) {
+    return "No matching regulation text was found. The knowledge base may still be loading."
+  }
+
   if (/ollama|embedding|model request|ai service/.test(normalized) || options.context === "ai") {
     return AI_SERVICE_ERROR_MESSAGE
   }
