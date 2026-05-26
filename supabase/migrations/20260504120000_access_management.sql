@@ -110,7 +110,7 @@ INSERT INTO public.admin_settings (key, value)
   VALUES
     ('session_timeout_minutes', '60'),
     ('max_sessions_per_user',   '5'),
-    ('require_2fa_admin',       'false')
+    ('require_2fa_admin',       'true')
   ON CONFLICT (key) DO NOTHING;
 
 -- ── Extend users table ───────────────────────────────────────────────────────

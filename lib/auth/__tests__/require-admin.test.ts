@@ -52,8 +52,8 @@ function makeRequest(): Request {
   })
 }
 
-function mockAdminDb(isAdmin: boolean): void {
-  mockDbQuery.mockResolvedValueOnce({ rows: [{ is_admin: isAdmin }] })
+function mockAdminDb(isAdmin: boolean, require2fa: string | null = "true"): void {
+  mockDbQuery.mockResolvedValueOnce({ rows: [{ is_admin: isAdmin, require_2fa: require2fa }] })
 }
 
 // ── beforeEach ────────────────────────────────────────────────────────────────
@@ -283,5 +283,49 @@ describe("requireAdmin — MFA enforcement", () => {
     expect(result.ok).toBe(true)
     // Only the is_admin query — MFA factors query skipped because aal === "aal2"
     expect(mockDbQuery).toHaveBeenCalledTimes(1)
+  })
+})
+
+// ── require_2fa_admin setting validation ──────────────────────────────────────
+
+describe("requireAdmin — require_2fa_admin DB setting", () => {
+  beforeEach(() => {
+    // Use aal2 + passkey so we reach the setting check without MFA factor queries.
+    mockAuth.mockResolvedValue({ ok: true, userId: USER_ID, aal: "aal2", isPasskeySession: false })
+  })
+
+  it("does not log a warning when require_2fa is 'true'", async () => {
+    mockAdminDb(true, "true")
+
+    await requireAdmin(makeRequest())
+
+    expect(mockLogServerError).not.toHaveBeenCalled()
+  })
+
+  it("logs a SECURITY warning and still allows access when require_2fa is 'false'", async () => {
+    mockAdminDb(true, "false")
+
+    const result = await requireAdmin(makeRequest())
+
+    // Misconfigured setting must not block access — code enforces unconditionally
+    expect(result.ok).toBe(true)
+    expect(mockLogServerError).toHaveBeenCalledWith(
+      expect.stringMatching(/SECURITY/i),
+      expect.any(Error),
+      expect.objectContaining({ currentValue: "false" }),
+    )
+  })
+
+  it("logs a SECURITY warning when require_2fa is null (row missing)", async () => {
+    mockAdminDb(true, null)
+
+    const result = await requireAdmin(makeRequest())
+
+    expect(result.ok).toBe(true)
+    expect(mockLogServerError).toHaveBeenCalledWith(
+      expect.stringMatching(/SECURITY/i),
+      expect.any(Error),
+      expect.objectContaining({ currentValue: "(missing)" }),
+    )
   })
 })

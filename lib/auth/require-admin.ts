@@ -25,15 +25,18 @@ export async function requireAdmin(
 
   const pool = getDbPool()
 
-  const result = await pool.query<{ is_admin: boolean }>(
+  // Batch the role check and the MFA-required policy setting in a single query.
+  const result = await pool.query<{ is_admin: boolean; require_2fa: string | null }>(
     `
-      SELECT EXISTS (
-        SELECT 1
-        FROM public.user_roles ur
-        JOIN public.roles r ON r.id = ur.role_id
-        WHERE ur.user_id = $1::uuid
-          AND r.name = 'admin'
-      ) AS is_admin
+      SELECT
+        EXISTS (
+          SELECT 1
+          FROM public.user_roles ur
+          JOIN public.roles r ON r.id = ur.role_id
+          WHERE ur.user_id = $1::uuid
+            AND r.name = 'admin'
+        ) AS is_admin,
+        (SELECT value FROM public.admin_settings WHERE key = 'require_2fa_admin') AS require_2fa
     `,
     [authResult.userId],
   )
@@ -53,6 +56,19 @@ export async function requireAdmin(
   // admin routes without needing a real TOTP factor. Never active in production.
   if (isLocalAuthHelperEnabled() && isLocalRequest(request)) {
     return { ok: true, userId: authResult.userId }
+  }
+
+  // Verify that the DB policy setting matches the code-enforced behavior.
+  // MFA is ALWAYS required regardless of this setting — but a 'false' value
+  // indicates DB-level misconfiguration (e.g., the seed default was never updated)
+  // and must be surfaced immediately for remediation.
+  const require2fa = result.rows[0]?.require_2fa
+  if (require2fa !== "true") {
+    logServerError(
+      "[SECURITY] admin_settings.require_2fa_admin is not 'true' — MFA is still enforced by code but the DB policy is misconfigured. Run migration 20260526000000_require_2fa_admin_true.sql.",
+      new Error("require_2fa_admin misconfigured"),
+      { currentValue: require2fa ?? "(missing)" },
+    )
   }
 
   // Passkey sessions are already strong two-factor auth — skip TOTP check.
