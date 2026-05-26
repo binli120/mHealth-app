@@ -25,6 +25,9 @@ debug-storybook.log
 .claude/
 .refact/
 
+# Test coverage output
+coverage/
+
 # TypeScript build cache
 tsconfig.tsbuildinfo
 
