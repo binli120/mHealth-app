@@ -116,7 +116,7 @@ function isPrivateLanIp(hostname: string): boolean {
   return process.env.NODE_ENV === "development" && PRIVATE_IP_RE.test(hostname)
 }
 
-function isLocalRequest(request: Request): boolean {
+export function isLocalRequest(request: Request): boolean {
   try {
     const url = new URL(request.url)
     if (LOCAL_HOSTS.has(url.hostname) || isPrivateLanIp(url.hostname)) return true

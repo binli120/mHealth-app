@@ -146,7 +146,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         // Verify admin role by probing the stats endpoint
         const res = await authenticatedFetch("/api/admin/stats")
         if (res.status === 403) {
-          const body = (await res.json().catch(() => ({}))) as { mfa_required?: boolean }
+          const body = (await res.json().catch(() => ({}))) as {
+            mfa_required?: boolean
+            mfa_enrollment_required?: boolean
+          }
+          if (body.mfa_enrollment_required) {
+            router.replace("/setup-mfa?next=/admin")
+            return
+          }
           if (body.mfa_required) {
             router.replace("/auth/mfa?next=/admin")
             return
