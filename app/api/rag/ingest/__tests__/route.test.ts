@@ -3,7 +3,7 @@
  * @email: blee@healthcompass.cloud
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
 vi.mock("@/lib/auth/require-auth", () => ({
@@ -57,6 +57,8 @@ describe("POST /api/rag/ingest — secret guard", () => {
     })
     const res = await POST(req)
     expect(res.status).toBe(403)
+    const body = await res.json()
+    expect(body.ok).toBe(false)
   })
 
   it("returns 403 when wrong key is provided", async () => {

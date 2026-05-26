@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   }
 
   // ── Auth: must supply ingest secret (protects against non-staff users) ───
-  const ingestSecret = process.env.RAG_INGEST_SECRET
+  const ingestSecret = process.env.RAG_INGEST_SECRET?.trim()
   if (!ingestSecret) {
     return NextResponse.json(
       { ok: false, error: "Forbidden — endpoint not configured." },
