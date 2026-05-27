@@ -370,3 +370,70 @@ describe("isLocalAuthHelperEnabled — NODE_ENV fallback (no window, no env vars
     }
   })
 })
+
+// ── isLocalAuthHelperEnabled — cloud DB + explicit flag (staging guard) ───────
+//
+// Even when ENABLE_LOCAL_AUTH_HELPERS is explicitly set to "true", the routes
+// must be blocked if the database is cloud-hosted.
+
+describe("isLocalAuthHelperEnabled — explicit true blocked by cloud DB", () => {
+  it("returns false when flag is true but Supabase URL is cloud", () => {
+    vi.stubGlobal("window", undefined)
+    try {
+      withEnv({
+        NODE_ENV: "development",
+        NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS: "true",
+        NEXT_PUBLIC_SUPABASE_URL: "https://xyz.supabase.co",
+      }, () => {
+        expect(isLocalAuthHelperEnabled()).toBe(false)
+      })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it("returns false when server-side flag is true but DATABASE_URL is remote", () => {
+    vi.stubGlobal("window", undefined)
+    try {
+      withEnv({
+        NODE_ENV: "development",
+        ENABLE_LOCAL_AUTH_HELPERS: "true",
+        DATABASE_URL: "postgres://user:pass@prod.db.example.com:5432/db",
+      }, () => {
+        expect(isLocalAuthHelperEnabled()).toBe(false)
+      })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it("returns true when flag is true AND Supabase URL is local", () => {
+    vi.stubGlobal("window", undefined)
+    try {
+      withEnv({
+        NODE_ENV: "development",
+        NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS: "true",
+        NEXT_PUBLIC_SUPABASE_URL: "http://localhost:54321",
+      }, () => {
+        expect(isLocalAuthHelperEnabled()).toBe(true)
+      })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it("returns true when flag is true AND DATABASE_URL is local", () => {
+    vi.stubGlobal("window", undefined)
+    try {
+      withEnv({
+        NODE_ENV: "development",
+        ENABLE_LOCAL_AUTH_HELPERS: "true",
+        DATABASE_URL: "postgres://user:pass@localhost:5432/db",
+      }, () => {
+        expect(isLocalAuthHelperEnabled()).toBe(true)
+      })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+})
