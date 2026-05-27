@@ -45,7 +45,7 @@ vi.mock("@/lib/server/logger", () => ({
   logServerError: vi.fn(),
 }))
 
-import { POST } from "@/app/api/upload/mobile/[token]/route"
+import { GET, POST } from "@/app/api/upload/mobile/[token]/route"
 import {
   completeUploadSession,
   getUploadSessionByToken,
@@ -196,6 +196,21 @@ describe("POST /api/upload/mobile/[token] — expiresAt enforcement", () => {
     formData.set("file", makeJpeg("test.jpg"))
 
     const res = await POST(makeRequest(formData), makeContext())
+    expect(res.status).toBe(410)
+    const body = await res.json()
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("This upload link has expired. Please request a new QR code.")
+  })
+
+  it("GET returns 410 when expiresAt has passed even if status is still 'pending'", async () => {
+    const PAST = new Date(Date.now() - 60_000).toISOString()
+    vi.mocked(getUploadSessionByToken).mockResolvedValueOnce(
+      makeSession({ status: "pending", expiresAt: PAST }) as never,
+    )
+    const res = await GET(
+      new Request(`http://localhost/api/upload/mobile/${TOKEN}`),
+      makeContext(),
+    )
     expect(res.status).toBe(410)
     const body = await res.json()
     expect(body.ok).toBe(false)
