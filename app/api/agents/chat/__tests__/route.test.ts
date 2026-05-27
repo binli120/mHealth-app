@@ -35,6 +35,11 @@ vi.mock("@/lib/masshealth/chat-knowledge", () => ({
   getMassHealthOutOfScopeResponse: vi.fn().mockReturnValue("I can only help with MassHealth topics."),
 }))
 
+vi.mock("@/lib/server/rate-limit", () => ({
+  checkRateLimitAsync: vi.fn(),
+  aiChatLimiter: {},
+}))
+
 vi.mock("@/lib/agents/chat/tools", () => ({
   buildChatTools: vi.fn().mockReturnValue({}),
 }))
@@ -59,6 +64,8 @@ import { POST } from "@/app/api/agents/chat/route"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 import { isMassHealthTopic } from "@/lib/masshealth/chat-knowledge"
 import { createUIMessageStreamResponse, streamText } from "ai"
+import { checkRateLimitAsync } from "@/lib/server/rate-limit"
+import { NextResponse } from "next/server"
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -80,6 +87,32 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(requireAuthenticatedUser).mockResolvedValue({ ok: true, userId: USER_ID } as never)
   vi.mocked(isMassHealthTopic).mockReturnValue(true)
+  vi.mocked(checkRateLimitAsync).mockResolvedValue(null)
+})
+
+// ── Rate limiting ─────────────────────────────────────────────────────────────
+
+describe("POST /api/agents/chat — rate limiting", () => {
+  it("returns 429 when rate limit is exceeded", async () => {
+    vi.mocked(checkRateLimitAsync).mockResolvedValueOnce(
+      NextResponse.json({ ok: false, error: "Too many requests. Please try again later." }, { status: 429 }),
+    )
+
+    const response = await POST(makeRequest({ messages: IN_SCOPE_MSG }))
+    expect(response.status).toBe(429)
+    const json = await response.json()
+    expect(json.ok).toBe(false)
+    expect(json.error).toMatch(/too many requests/i)
+  })
+
+  it("does not invoke streamText when rate limited", async () => {
+    vi.mocked(checkRateLimitAsync).mockResolvedValueOnce(
+      NextResponse.json({ ok: false, error: "Too many requests. Please try again later." }, { status: 429 }),
+    )
+
+    await POST(makeRequest({ messages: IN_SCOPE_MSG }))
+    expect(streamText).not.toHaveBeenCalled()
+  })
 })
 
 // ── Auth ──────────────────────────────────────────────────────────────────────

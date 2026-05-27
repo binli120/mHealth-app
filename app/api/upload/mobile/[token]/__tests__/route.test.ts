@@ -45,6 +45,11 @@ vi.mock("@/lib/server/logger", () => ({
   logServerError: vi.fn(),
 }))
 
+vi.mock("@/lib/server/rate-limit", () => ({
+  checkRateLimitAsync: vi.fn(),
+  mobileUploadLimiter: {},
+}))
+
 import { GET, POST } from "@/app/api/upload/mobile/[token]/route"
 import {
   completeUploadSession,
@@ -52,6 +57,8 @@ import {
 } from "@/lib/db/mobile-upload-session"
 import { insertDocument } from "@/lib/db/documents"
 import { uploadDocumentToStorage } from "@/lib/supabase/storage"
+import { checkRateLimitAsync } from "@/lib/server/rate-limit"
+import { NextResponse } from "next/server"
 
 const TOKEN = "mobile-token"
 const USER_ID = "11111111-1111-4111-8111-111111111111"
@@ -103,6 +110,36 @@ beforeEach(() => {
   vi.unstubAllGlobals()
   vi.mocked(getUploadSessionByToken).mockResolvedValue(makeSession() as never)
   vi.mocked(insertDocument).mockImplementation(async (payload) => payload as never)
+  vi.mocked(checkRateLimitAsync).mockResolvedValue(null)
+})
+
+describe("POST /api/upload/mobile/[token] — rate limiting", () => {
+  it("returns 429 when rate limit is exceeded", async () => {
+    vi.mocked(checkRateLimitAsync).mockResolvedValueOnce(
+      NextResponse.json({ ok: false, error: "Too many requests. Please try again later." }, { status: 429 }),
+    )
+
+    const formData = new FormData()
+    formData.set("file", makeJpeg("test.jpg"))
+
+    const response = await POST(makeRequest(formData), makeContext())
+    expect(response.status).toBe(429)
+    const json = await response.json()
+    expect(json.ok).toBe(false)
+    expect(json.error).toMatch(/too many requests/i)
+  })
+
+  it("does not upload to storage when rate limited", async () => {
+    vi.mocked(checkRateLimitAsync).mockResolvedValueOnce(
+      NextResponse.json({ ok: false, error: "Too many requests. Please try again later." }, { status: 429 }),
+    )
+
+    const formData = new FormData()
+    formData.set("file", makeJpeg("test.jpg"))
+
+    await POST(makeRequest(formData), makeContext())
+    expect(uploadDocumentToStorage).not.toHaveBeenCalled()
+  })
 })
 
 describe("POST /api/upload/mobile/[token]", () => {

@@ -16,7 +16,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 import { logServerError } from "@/lib/server/logger"
-import { getClientIp } from "@/lib/server/rate-limit"
+import { checkRateLimitAsync, getClientIp, ssnSubmitLimiter } from "@/lib/server/rate-limit"
 import {
   hasApplicantSsn,
   upsertApplicantSsn,
@@ -71,6 +71,9 @@ export async function POST(request: Request) {
 
   const authResult = await requireAuthenticatedUser(request)
   if (!authResult.ok) return authResult.response
+
+  const rlResponse = await checkRateLimitAsync(ssnSubmitLimiter, `ssn:${authResult.userId}`)
+  if (rlResponse) return rlResponse
 
   try {
     // upsertApplicantSsn owns normalisation (plain → dashed) and encryption.

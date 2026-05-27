@@ -36,6 +36,7 @@ import { validateUpload } from "@/lib/uploads/validate"
 import { createAndUploadDocumentArtifacts } from "@/lib/uploads/document-artifacts"
 import { validateUploadedDocument } from "@/lib/masshealth/document-validation-workflow"
 import { logServerError } from "@/lib/server/logger"
+import { checkRateLimitAsync, mobileUploadLimiter } from "@/lib/server/rate-limit"
 import {
   isDriverLicenseDocument,
   requiresDualSideDocument,
@@ -122,6 +123,9 @@ export async function POST(request: Request, { params }: RouteContext) {
       { status: 410 },
     )
   }
+
+  const rlResponse = await checkRateLimitAsync(mobileUploadLimiter, `mobile-upload:${token}`)
+  if (rlResponse) return rlResponse
 
   // 2. Parse multipart body
   let formData: FormData
