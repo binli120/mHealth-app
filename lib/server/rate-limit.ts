@@ -118,7 +118,7 @@ export class DbRateLimiter {
         : new Date(row.window_start).getTime()
       const resetAt = windowStart + this.windowMs
 
-      if (count > this.limit) {
+      if (count >= this.limit) {
         return { allowed: false, remaining: 0, resetAt }
       }
 
@@ -210,7 +210,7 @@ export function checkRateLimit(
   limiter: RateLimiter,
   key: string,
 ): NextResponse | null {
-  const { allowed, remaining, resetAt } = limiter.check(key)
+  const { allowed, resetAt } = limiter.check(key)
 
   if (!allowed) {
     return NextResponse.json(
@@ -226,6 +226,5 @@ export function checkRateLimit(
     )
   }
 
-  void remaining // available for response headers if needed
   return null
 }
