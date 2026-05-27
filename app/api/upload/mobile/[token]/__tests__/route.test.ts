@@ -175,3 +175,29 @@ describe("POST /api/upload/mobile/[token]", () => {
     expect(uploadDocumentToStorage).not.toHaveBeenCalled()
   })
 })
+
+// ── expiresAt enforcement ────────────────────────────────────────────────────
+
+describe("POST /api/upload/mobile/[token] — expiresAt enforcement", () => {
+  it("returns 410 when expiresAt has passed even if status is still 'pending'", async () => {
+    const PAST = new Date(Date.now() - 60_000).toISOString()
+    vi.mocked(getUploadSessionByToken).mockResolvedValueOnce(
+      makeSession({
+        id: "sess-exp",
+        documentType: "generic",
+        requiredDocumentLabel: null,
+        status: "pending",   // status NOT updated yet by cron
+        expiresAt: PAST,     // expired by timestamp
+        createdAt: PAST,
+      }) as never,
+    )
+
+    const formData = new FormData()
+    formData.set("file", makeJpeg("test.jpg"))
+
+    const res = await POST(makeRequest(formData), makeContext())
+    expect(res.status).toBe(410)
+    const body = await res.json()
+    expect(body.ok).toBe(false)
+  })
+})

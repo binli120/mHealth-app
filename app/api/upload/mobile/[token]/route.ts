@@ -62,6 +62,14 @@ export async function GET(_request: Request, { params }: RouteContext) {
     if (!session) {
       return NextResponse.json({ ok: false, error: "Session not found." }, { status: 404 })
     }
+    // Enforce expiry by timestamp — do not rely solely on the status column,
+    // which may not have been updated yet by the cleanup job.
+    if (new Date(session.expiresAt) <= new Date()) {
+      return NextResponse.json(
+        { ok: false, error: "Session expired." },
+        { status: 410 },
+      )
+    }
     return NextResponse.json({
       ok: true,
       status: session.status,
@@ -103,6 +111,15 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json(
       { ok: false, error: "This session has already been used." },
       { status: 409 },
+    )
+  }
+
+  // Enforce expiry by timestamp — do not rely solely on the status column,
+  // which may not have been updated yet by the cleanup job.
+  if (new Date(session.expiresAt) <= new Date()) {
+    return NextResponse.json(
+      { ok: false, error: "This upload link has expired. Please request a new QR code." },
+      { status: 410 },
     )
   }
 
