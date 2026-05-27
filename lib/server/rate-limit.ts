@@ -141,7 +141,7 @@ export async function checkRateLimitAsync(
   limiter: DbRateLimiter,
   key: string,
 ): Promise<NextResponse | null> {
-  const { allowed, remaining, resetAt } = await limiter.checkAsync(key)
+  const { allowed, resetAt } = await limiter.checkAsync(key)
 
   if (!allowed) {
     return NextResponse.json(
