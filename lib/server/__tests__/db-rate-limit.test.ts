@@ -60,4 +60,22 @@ describe("DbRateLimiter", () => {
     const result = await limiter.checkAsync("ip:1.2.3.4")
     expect(result.allowed).toBe(true) // fail-open to avoid blocking all traffic on DB outage
   })
+
+  it("passes the rate-limit key and correct windowSeconds as SQL parameters", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ count: 1, window_start: new Date() }] })
+    const limiter = new DbRateLimiter({ limit: 5, windowMs: 60_000 })
+    await limiter.checkAsync("ssn:user-123")
+    expect(mockQuery).toHaveBeenCalledOnce()
+    const [_sql, params] = mockQuery.mock.calls[0]!
+    expect(params[0]).toBe("ssn:user-123")  // key
+    expect(params[1]).toBe(60)              // windowSeconds = ceil(60_000 / 1000)
+  })
+
+  it("blocks the request when failOpen=false and DB throws", async () => {
+    mockQuery.mockRejectedValueOnce(new Error("DB down"))
+    const limiter = new DbRateLimiter({ limit: 5, windowMs: 60_000, failOpen: false })
+    const result = await limiter.checkAsync("ssn:user-123")
+    expect(result.allowed).toBe(false)
+    expect(result.remaining).toBe(0)
+  })
 })

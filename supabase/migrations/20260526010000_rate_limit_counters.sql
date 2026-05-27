@@ -5,7 +5,7 @@
 CREATE TABLE IF NOT EXISTS public.rate_limit_counters (
   key          TEXT        NOT NULL,
   window_start TIMESTAMPTZ NOT NULL,
-  count        INTEGER     NOT NULL DEFAULT 0,
+  count        INTEGER     NOT NULL DEFAULT 1,
   CONSTRAINT rate_limit_counters_pkey PRIMARY KEY (key, window_start)
 );
 
@@ -21,6 +21,11 @@ AS $$
   DELETE FROM public.rate_limit_counters
   WHERE window_start < (now() - interval '2 hours');
 $$;
+
+-- TODO: Schedule this function to run periodically. Two options:
+--   1. pg_cron (if available): SELECT cron.schedule('purge-rate-limits', '0 * * * *', 'SELECT public.purge_expired_rate_limit_counters()');
+--   2. App-level: set a daily cron in your background worker to call this function.
+--   Without scheduling, the rate_limit_counters table will grow unboundedly.
 
 -- Disable RLS — rate-limit rows contain no PHI and are written only via
 -- the server-side service-role connection pool, never by user JWTs.

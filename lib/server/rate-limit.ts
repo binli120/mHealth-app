@@ -18,6 +18,10 @@ interface RateLimitConfig {
   limit: number
   /** Window duration in milliseconds */
   windowMs: number
+  /** When true (default), allow requests through if the DB is unavailable.
+   *  Set to false for sensitive limiters (e.g. SSN, identity) where a DB
+   *  outage should block rather than silently pass brute-force attempts. */
+  failOpen?: boolean
 }
 
 // Each limiter instance keeps its own in-memory store.
@@ -77,10 +81,12 @@ export class RateLimiter {
 export class DbRateLimiter {
   private readonly limit: number
   private readonly windowMs: number
+  private readonly failOpen: boolean
 
-  constructor({ limit, windowMs }: RateLimitConfig) {
+  constructor({ limit, windowMs, failOpen }: RateLimitConfig) {
     this.limit = limit
     this.windowMs = windowMs
+    this.failOpen = failOpen ?? true
   }
 
   async checkAsync(key: string): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
@@ -118,7 +124,10 @@ export class DbRateLimiter {
 
       return { allowed: true, remaining: Math.max(0, this.limit - count), resetAt }
     } catch {
-      // Fail-open: do not block traffic if the DB is down.
+      // Fail-open by default; fail-closed for sensitive limiters (e.g. SSN, identity).
+      if (!this.failOpen) {
+        return { allowed: false, remaining: 0, resetAt: Date.now() + this.windowMs }
+      }
       return { allowed: true, remaining: this.limit - 1, resetAt: Date.now() + this.windowMs }
     }
   }
@@ -148,7 +157,6 @@ export async function checkRateLimitAsync(
     )
   }
 
-  void remaining
   return null
 }
 
@@ -169,10 +177,10 @@ setInterval(() => {
 // ── DB-backed limiter instances (multi-instance safe) ─────────────────────────
 
 /** SSN submission — 3 attempts per 15 min per user */
-export const ssnSubmitLimiter = new DbRateLimiter({ limit: 3, windowMs: 15 * 60_000 })
+export const ssnSubmitLimiter = new DbRateLimiter({ limit: 3, windowMs: 15 * 60_000, failOpen: false })
 
 /** Identity (driver-license) verification — 5 attempts per 30 min per user */
-export const identityVerifyLimiter = new DbRateLimiter({ limit: 5, windowMs: 30 * 60_000 })
+export const identityVerifyLimiter = new DbRateLimiter({ limit: 5, windowMs: 30 * 60_000, failOpen: false })
 
 /** AI chat — 30 messages per 5 min per user (streaming) */
 export const aiChatLimiter = new DbRateLimiter({ limit: 30, windowMs: 5 * 60_000 })
