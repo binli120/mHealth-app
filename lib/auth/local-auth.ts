@@ -107,12 +107,20 @@ export function isLocalAuthHelperEnabled(): boolean {
   }
 
   if (explicit === true) {
-    // Even with an explicit opt-in, block when we have positive evidence that
-    // the database is cloud-hosted.  This prevents a staging server with a
-    // cloud Supabase instance from accidentally exposing dev routes when
-    // ENABLE_LOCAL_AUTH_HELPERS=true is set in the environment.
-    // When no connection URL is available we cannot determine the runtime and
-    // trust the explicit flag (benefit of the doubt).
+    // Security guard: even with an explicit opt-in, block if there is
+    // positive evidence of a cloud-hosted database (Supabase URL or
+    // DATABASE_URL points to a remote host).
+    //
+    // We use isPositivelyCloudDb() rather than resolveLocalRuntime() here
+    // so that environments with no URL env vars set (e.g. a developer who
+    // set the flag but hasn't configured Supabase locally yet) still get
+    // benefit of the doubt.  resolveLocalRuntime() would return false in
+    // that case (no evidence of localhost), which would silently break the
+    // default local-dev workflow.
+    //
+    // This guard only applies to server-side API route handlers (where
+    // typeof window === "undefined"), so the window.hostname branch of
+    // resolveLocalRuntime() is not needed here.
     return !isPositivelyCloudDb()
   }
 

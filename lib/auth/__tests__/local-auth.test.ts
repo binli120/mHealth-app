@@ -436,4 +436,19 @@ describe("isLocalAuthHelperEnabled — explicit true blocked by cloud DB", () =>
       vi.unstubAllGlobals()
     }
   })
+
+  it("returns true when flag is true and no URL env vars are set (benefit of doubt)", () => {
+    vi.stubGlobal("window", undefined)
+    try {
+      withEnv({
+        NODE_ENV: "development",
+        NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS: "true",
+        // No Supabase URL, no DATABASE_URL — local dev with flag set but no URLs configured
+      }, () => {
+        expect(isLocalAuthHelperEnabled()).toBe(true)
+      })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
 })
