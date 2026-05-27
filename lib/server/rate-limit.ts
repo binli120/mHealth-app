@@ -6,6 +6,7 @@
 import "server-only"
 
 import { NextResponse } from "next/server"
+import { getDbPool } from "@/lib/db/server"
 
 interface RateLimitEntry {
   count: number
@@ -62,6 +63,95 @@ export class RateLimiter {
   }
 }
 
+// ── DbRateLimiter — Postgres-backed, multi-instance-safe ─────────────────────
+
+/**
+ * Rate limiter backed by a Postgres counter table (rate_limit_counters).
+ *
+ * Uses an atomic INSERT … ON CONFLICT DO UPDATE to increment a per-(key,
+ * window) counter. Safe across multiple Next.js instances.
+ *
+ * Fail-open: if the DB is unavailable, requests are allowed through rather
+ * than blocking all traffic during an outage.
+ */
+export class DbRateLimiter {
+  private readonly limit: number
+  private readonly windowMs: number
+
+  constructor({ limit, windowMs }: RateLimitConfig) {
+    this.limit = limit
+    this.windowMs = windowMs
+  }
+
+  async checkAsync(key: string): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
+    const windowSeconds = Math.ceil(this.windowMs / 1000)
+
+    try {
+      const pool = getDbPool()
+      const { rows } = await pool.query<{ count: number; window_start: Date }>(
+        `INSERT INTO public.rate_limit_counters (key, window_start, count)
+         VALUES (
+           $1,
+           to_timestamp(floor(extract(epoch from now()) / $2) * $2),
+           1
+         )
+         ON CONFLICT (key, window_start) DO UPDATE
+           SET count = rate_limit_counters.count + 1
+         RETURNING count, window_start`,
+        [key, windowSeconds],
+      )
+
+      const row = rows[0]
+      if (!row) {
+        return { allowed: true, remaining: this.limit - 1, resetAt: Date.now() + this.windowMs }
+      }
+
+      const count = typeof row.count === "string" ? parseInt(row.count, 10) : row.count
+      const windowStart = row.window_start instanceof Date
+        ? row.window_start.getTime()
+        : new Date(row.window_start).getTime()
+      const resetAt = windowStart + this.windowMs
+
+      if (count > this.limit) {
+        return { allowed: false, remaining: 0, resetAt }
+      }
+
+      return { allowed: true, remaining: Math.max(0, this.limit - count), resetAt }
+    } catch {
+      // Fail-open: do not block traffic if the DB is down.
+      return { allowed: true, remaining: this.limit - 1, resetAt: Date.now() + this.windowMs }
+    }
+  }
+}
+
+/**
+ * Run a DbRateLimiter check and return a 429 NextResponse if the limit is
+ * exceeded, or null if the request should proceed.
+ */
+export async function checkRateLimitAsync(
+  limiter: DbRateLimiter,
+  key: string,
+): Promise<NextResponse | null> {
+  const { allowed, remaining, resetAt } = await limiter.checkAsync(key)
+
+  if (!allowed) {
+    return NextResponse.json(
+      { ok: false, error: "Too many requests. Please try again later." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.ceil((resetAt - Date.now()) / 1000)),
+          "X-RateLimit-Remaining": "0",
+          "X-RateLimit-Reset": String(Math.ceil(resetAt / 1000)),
+        },
+      },
+    )
+  }
+
+  void remaining
+  return null
+}
+
 // ── Shared limiter instances ──────────────────────────────────────────────────
 
 /** Public invite-token lookup — 20 req / min per IP */
@@ -75,6 +165,23 @@ setInterval(() => {
   inviteTokenReadLimiter.prune()
   inviteTokenAcceptLimiter.prune()
 }, 5 * 60_000)
+
+// ── DB-backed limiter instances (multi-instance safe) ─────────────────────────
+
+/** SSN submission — 3 attempts per 15 min per user */
+export const ssnSubmitLimiter = new DbRateLimiter({ limit: 3, windowMs: 15 * 60_000 })
+
+/** Identity (driver-license) verification — 5 attempts per 30 min per user */
+export const identityVerifyLimiter = new DbRateLimiter({ limit: 5, windowMs: 30 * 60_000 })
+
+/** AI chat — 30 messages per 5 min per user (streaming) */
+export const aiChatLimiter = new DbRateLimiter({ limit: 30, windowMs: 5 * 60_000 })
+
+/** Document upload — 20 uploads per 10 min per user */
+export const documentUploadLimiter = new DbRateLimiter({ limit: 20, windowMs: 10 * 60_000 })
+
+/** Mobile upload — 5 attempts per token per 15 min */
+export const mobileUploadLimiter = new DbRateLimiter({ limit: 5, windowMs: 15 * 60_000 })
 
 // ── Helper ────────────────────────────────────────────────────────────────────
 
