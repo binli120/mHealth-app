@@ -2,7 +2,7 @@
  * @author: Bin Lee
  * @email: blee@healthcompass.cloud
  *
- * Unit tests for POST /api/user-profile/ssn.
+ * Unit tests for GET and POST /api/user-profile/ssn.
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
@@ -31,10 +31,10 @@ vi.mock("@/lib/server/logger", () => ({
 
 // ── Imports (after mocks) ─────────────────────────────────────────────────────
 
-import { POST } from "@/app/api/user-profile/ssn/route"
+import { GET, POST } from "@/app/api/user-profile/ssn/route"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 import { checkRateLimitAsync } from "@/lib/server/rate-limit"
-import { upsertApplicantSsn } from "@/lib/db/user-profile"
+import { hasApplicantSsn, upsertApplicantSsn } from "@/lib/db/user-profile"
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -54,7 +54,45 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(requireAuthenticatedUser).mockResolvedValue({ ok: true, userId: USER_ID } as never)
   vi.mocked(checkRateLimitAsync).mockResolvedValue(null)
+  vi.mocked(hasApplicantSsn).mockResolvedValue(false)
   vi.mocked(upsertApplicantSsn).mockResolvedValue(undefined)
+})
+
+// ── GET ───────────────────────────────────────────────────────────────────────
+
+describe("GET /api/user-profile/ssn", () => {
+  it("returns 401 when the user is not authenticated", async () => {
+    vi.mocked(requireAuthenticatedUser).mockResolvedValue({
+      ok: false,
+      response: new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), { status: 401 }),
+    } as never)
+
+    const request = new Request("http://localhost/api/user-profile/ssn", { method: "GET" })
+    const response = await GET(request)
+    expect(response.status).toBe(401)
+  })
+
+  it("returns { hasSsn: true } when user already has an SSN on file", async () => {
+    vi.mocked(hasApplicantSsn).mockResolvedValueOnce(true)
+
+    const request = new Request("http://localhost/api/user-profile/ssn", { method: "GET" })
+    const response = await GET(request)
+    expect(response.status).toBe(200)
+    const json = await response.json()
+    expect(json.ok).toBe(true)
+    expect(json.hasSsn).toBe(true)
+  })
+
+  it("returns { hasSsn: false } when no SSN is on file", async () => {
+    vi.mocked(hasApplicantSsn).mockResolvedValueOnce(false)
+
+    const request = new Request("http://localhost/api/user-profile/ssn", { method: "GET" })
+    const response = await GET(request)
+    expect(response.status).toBe(200)
+    const json = await response.json()
+    expect(json.ok).toBe(true)
+    expect(json.hasSsn).toBe(false)
+  })
 })
 
 // ── Rate limiting ─────────────────────────────────────────────────────────────
