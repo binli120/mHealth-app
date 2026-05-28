@@ -32,15 +32,33 @@ import * as path from "path"
 import { hasSupabaseAuthState } from "../auth-state"
 
 const AUTH_FILE = path.join(__dirname, "../.auth/user.json")
-const HAS_AUTH = hasSupabaseAuthState(AUTH_FILE)
 const BASE_URL = process.env.E2E_BASE_URL ?? "http://localhost:3000"
 const IS_LOCAL_E2E =
   BASE_URL.startsWith("http://localhost") || BASE_URL.startsWith("http://127.0.0.1")
+
+// Mirror the server-side isLocalAuthHelperEnabled() / isPositivelyCloudDb() logic:
+// local JWTs are only accepted by the server when Supabase is NOT a cloud instance.
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""
+const IS_CLOUD_SUPABASE =
+  Boolean(SUPABASE_URL) &&
+  !SUPABASE_URL.includes("localhost") &&
+  !SUPABASE_URL.includes("127.0.0.1")
 const LOCAL_AUTH_HELPERS_ENABLED =
+  !IS_CLOUD_SUPABASE &&
   process.env.NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS !== "false" &&
   process.env.ENABLE_LOCAL_AUTH_HELPERS !== "false"
 const LOCAL_DEV_JWT_SECRET =
   process.env.SUPABASE_JWT_SECRET ?? "super-secret-jwt-token-with-at-least-32-characters-long"
+
+// HAS_AUTH requires local Supabase + local auth helpers.
+// Cloud Supabase runs always skip authenticated API tests because:
+//   • The server only accepts locally-signed JWTs via the local-fallback path
+//   • Cloud Supabase may reject even non-expired stored tokens (rotation, revocation)
+//   • isStoredTokenFresh can falsely return true when supabase.auth.getUser rejects the token
+const HAS_AUTH =
+  !IS_CLOUD_SUPABASE &&
+  hasSupabaseAuthState(AUTH_FILE) &&
+  LOCAL_AUTH_HELPERS_ENABLED
 
 // ── Magic-byte buffers ────────────────────────────────────────────────────────
 

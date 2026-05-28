@@ -9,6 +9,15 @@ import * as path from "path"
 
 const AUTH_FILE = path.join(__dirname, "../.auth/admin.json")
 
+// requireAdmin bypasses MFA only when isLocalAuthHelperEnabled() is true,
+// which requires a non-cloud Supabase URL.  With cloud Supabase, an E2E session
+// is always aal1 (password only) and cannot complete TOTP in automation.
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""
+const IS_CLOUD_SUPABASE =
+  Boolean(SUPABASE_URL) &&
+  !SUPABASE_URL.includes("localhost") &&
+  !SUPABASE_URL.includes("127.0.0.1")
+
 function hasAuth(filePath: string) {
   try {
     const state = JSON.parse(fs.readFileSync(filePath, "utf8"))
@@ -26,7 +35,14 @@ test.use({ storageState: AUTH_FILE })
 
 test.describe("Admin sidebar", () => {
   test("extends full viewport height and can be hidden and restored on desktop", async ({ page }) => {
-    test.skip(!hasAuth(AUTH_FILE), "No admin auth session. Run Playwright setup or provide E2E_ADMIN_EMAIL/E2E_ADMIN_PASSWORD.")
+    test.skip(
+      !hasAuth(AUTH_FILE),
+      "No admin auth session. Run Playwright setup or provide E2E_ADMIN_EMAIL/E2E_ADMIN_PASSWORD.",
+    )
+    test.skip(
+      IS_CLOUD_SUPABASE,
+      "Cloud Supabase detected: admin gate requires MFA (aal2) which cannot be completed in automation. Run against a local Supabase instance.",
+    )
 
     await page.setViewportSize({ width: 1280, height: 720 })
     await page.goto("/admin", { waitUntil: "domcontentloaded", timeout: 15_000 })

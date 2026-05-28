@@ -74,6 +74,15 @@ const LOCAL_E2E_AUTH_ENV: Record<string, string> = !IS_REMOTE
     }
   : {}
 
+// Expose NEXT_PUBLIC_SUPABASE_URL to the test-runner process so test files
+// can detect cloud vs. local Supabase (IS_CLOUD_SUPABASE guard).
+// Next.js loads .env.local for the web server automatically, but Playwright
+// does not — so we read it here once and inject it.
+const projectLocalEnv = loadEnvFile(path.join(__dirname, ".env.local"))
+if (projectLocalEnv.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  process.env.NEXT_PUBLIC_SUPABASE_URL = projectLocalEnv.NEXT_PUBLIC_SUPABASE_URL
+}
+
 Object.assign(process.env, LOCAL_DEMO_ENV, LOCAL_E2E_AUTH_ENV)
 
 export default defineConfig({

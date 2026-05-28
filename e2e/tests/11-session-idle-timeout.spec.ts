@@ -69,7 +69,7 @@ test.describe("Session Idle Timeout", () => {
     await expect(page).toHaveURL(/\/$/, { timeout: 6_000 })
 
     await page.goto("/customer/status")
-    await expect(page).toHaveURL(/\/auth\/login\?next=%2Fcustomer%2Fdashboard/, {
+    await expect(page).toHaveURL(/\/auth\/login\?next=%2Fcustomer%2Fstatus/, {
       timeout: 10_000,
     })
   })
