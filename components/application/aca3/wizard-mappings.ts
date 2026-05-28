@@ -19,8 +19,8 @@ import {
   toBooleanYesNo,
 } from "@/lib/utils/aca3-form"
 import {
+  type Aca3CitizenshipStatus,
   type Aca3EligibilityApplicantInput,
-  type CitizenshipStatus,
   type EligibilityIncomeInput,
 } from "@/lib/masshealth/aca3-eligibility-engine"
 import type { MassHealthAcaPayload } from "@/lib/pdf/masshealth-aca-payload"
@@ -75,7 +75,7 @@ export function mapWizardToPdfPayload(data: WizardData): MassHealthAcaPayload {
 
 // ── Citizenship inference ─────────────────────────────────────────────────────
 
-export function inferCitizenshipStatus(primaryCoverage: FormRecord): CitizenshipStatus {
+export function inferCitizenshipStatus(primaryCoverage: FormRecord): Aca3CitizenshipStatus {
   if (toBooleanYesNo(primaryCoverage.us_citizen)) return "US_CITIZEN"
 
   if (toBooleanYesNo(primaryCoverage.eligible_immigration_status)) {

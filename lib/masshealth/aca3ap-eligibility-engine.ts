@@ -3,9 +3,8 @@
  * @email: blee@healthcompass.cloud
  */
 
-import { FPL_TABLE_2026, FPL_INCREMENT_AFTER_4 } from "./constants"
 import type {
-  CitizenshipStatus,
+  Aca3CitizenshipStatus,
   EligibilityIncomeInput,
   EligibilityFindingLevel,
   EligibilityFinding,
@@ -14,9 +13,15 @@ import type {
   Aca3ApEligibilityApplicantInput,
   Aca3ApEligibilityResult,
 } from "./types"
+import {
+  addRequiredDocument,
+  clampNonNegativeInteger,
+  computeMagiIncome,
+  resolveFplForHouseholdSize,
+} from "./aca3-eligibility-helpers"
 
 export type {
-  CitizenshipStatus,
+  Aca3CitizenshipStatus,
   EligibilityIncomeInput,
   EligibilityFindingLevel,
   EligibilityFinding,
@@ -24,18 +29,6 @@ export type {
   EligibilityRuleResult,
   Aca3ApEligibilityApplicantInput,
   Aca3ApEligibilityResult,
-}
-
-function clampNonNegativeInteger(value: number): number {
-  if (!Number.isFinite(value) || value <= 0) return 0
-  return Math.floor(value)
-}
-
-function resolveFplForHouseholdSize(householdSize: number): number {
-  if (householdSize <= 1) return FPL_TABLE_2026[1]
-  if (FPL_TABLE_2026[householdSize]) return FPL_TABLE_2026[householdSize]
-  const additionalPeople = householdSize - 4
-  return FPL_TABLE_2026[4] + additionalPeople * FPL_INCREMENT_AFTER_4
 }
 
 function computeNewHouseholdSize(input: Aca3ApEligibilityApplicantInput): number {
@@ -46,24 +39,6 @@ function computeNewHouseholdSize(input: Aca3ApEligibilityApplicantInput): number
     size += clampNonNegativeInteger(input.unbornChildren)
   }
   return Math.max(1, size)
-}
-
-function computeMagiIncome(income: EligibilityIncomeInput): number {
-  const total =
-    (income.wages ?? 0) +
-    (income.selfEmployment ?? 0) +
-    (income.unemployment ?? 0) +
-    (income.socialSecurityTaxable ?? 0) +
-    (income.rentalIncome ?? 0) +
-    (income.interest ?? 0) +
-    (income.pension ?? 0)
-  return Math.max(0, Math.round(total))
-}
-
-function addRequiredDocument(requiredDocuments: string[], document: string): void {
-  if (!requiredDocuments.includes(document)) {
-    requiredDocuments.push(document)
-  }
 }
 
 /**

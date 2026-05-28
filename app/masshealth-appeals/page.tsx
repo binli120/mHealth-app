@@ -77,51 +77,13 @@ import {
   formatAppealDraftFileSize,
   getTrustTierBadgeClass,
   masshealthFetch,
+  readCategoriesPayload,
   triggerBrowserDownload,
+  type CategoriesPayload,
 } from "./page.utils"
+import { FileUploadTrigger, TrustTierBadge } from "./page.components"
 
 const ACCEPTED_MIME_STRING = [...ACCEPTED_DOCUMENT_MIME_TYPES].join(",")
-
-interface CategoriesPayload {
-  categories?: AppealCategoryEntry[]
-  degraded?: boolean
-  warning?: string
-}
-
-function readCategoriesPayload(payload: unknown): CategoriesPayload {
-  if (Array.isArray(payload)) return { categories: payload as AppealCategoryEntry[], degraded: false }
-  if (payload && typeof payload === "object") {
-    const body = payload as CategoriesPayload
-    return {
-      categories: Array.isArray(body.categories) ? body.categories : [],
-      degraded: body.degraded === true,
-      warning: typeof body.warning === "string" ? body.warning : undefined,
-    }
-  }
-  return { categories: [] }
-}
-
-// ─── Page-level sub-components ────────────────────────────────────────────────
-
-function TrustTierBadge({ tier }: { tier: TrustTier }) {
-  return (
-    <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${getTrustTierBadgeClass(tier)}`}>
-      {tier.replace("_", " ")}
-    </span>
-  )
-}
-
-function FileUploadTrigger({ htmlFor, label }: { htmlFor: string; label: string }) {
-  return (
-    <Label
-      htmlFor={htmlFor}
-      className="flex cursor-pointer items-center gap-2 rounded-lg border-2 border-dashed border-gray-200 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-    >
-      <Paperclip className="h-4 w-4 shrink-0" />
-      {label}
-    </Label>
-  )
-}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 

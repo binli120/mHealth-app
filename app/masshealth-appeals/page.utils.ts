@@ -11,6 +11,30 @@
 import { getSafeSupabaseSession } from "@/lib/supabase/client"
 import { TRUST_TIER_CLASSES } from "./page.constants"
 import type { TrustTier } from "./page.types"
+import type { AppealCategoryEntry } from "@/lib/masshealth/appeal-categories"
+
+// ── Categories API payload parsing ───────────────────────────────────────────
+
+export interface CategoriesPayload {
+  categories?: AppealCategoryEntry[]
+  degraded?: boolean
+  warning?: string
+}
+
+export function readCategoriesPayload(payload: unknown): CategoriesPayload {
+  if (Array.isArray(payload)) {
+    return { categories: payload as AppealCategoryEntry[], degraded: false }
+  }
+  if (payload && typeof payload === "object") {
+    const body = payload as CategoriesPayload
+    return {
+      categories: Array.isArray(body.categories) ? body.categories : [],
+      degraded: body.degraded === true,
+      warning: typeof body.warning === "string" ? body.warning : undefined,
+    }
+  }
+  return { categories: [] }
+}
 
 /** Thrown when there is no valid session for an authenticated appeal request. */
 export class AuthNeededError extends Error {

@@ -97,7 +97,6 @@ import {
   evaluateAca3Eligibility,
   type Aca3EligibilityApplicantInput,
   type Aca3EligibilityResult,
-  type CitizenshipStatus,
   type EligibilityIncomeInput,
 } from "@/lib/masshealth/aca3-eligibility-engine"
 import { IdentityVerificationBanner } from "@/components/identity/IdentityVerificationBanner"
