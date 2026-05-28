@@ -5,16 +5,15 @@
  * POST /api/agents/vision
  *
  * Document extraction agent — accepts a PDF or image upload and returns the
- * extracted text for use in the Appeal agent.
+ * extracted text (e.g. for driving the appeals flow or other document workflows).
  *
  * Supported inputs:
- *   • PDF  → extract via pdf-lib (form fields + page text + metadata)
+ *   • PDF   → extract via pdf-lib (form fields + page text + metadata)
  *   • Image (JPEG / PNG / WebP) → OCR via Ollama vision model (llava / bakllava)
  *
- * This route is a peer of /api/agents/appeal — clients upload the denial
- * letter here first, then pass the extracted `documentText` to the appeal agent.
- *
- * Migrated from: /api/appeals/extract-document
+ * Note: /api/appeals/extract-document is the canonical extraction endpoint for the
+ * appeals page and supports additional OCR features (scanned-PDF rasterisation).
+ * This route is a lighter alternative for callers that only need the pdf-lib path.
  */
 
 import { NextResponse } from "next/server"

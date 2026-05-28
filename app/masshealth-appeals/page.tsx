@@ -49,6 +49,7 @@ import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton"
 import { ErrorCard } from "@/components/shared/ErrorCard"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { getSafeSupabaseSession, getSafeSupabaseUser } from "@/lib/supabase/client"
+import { useAppSelector } from "@/lib/redux/hooks"
 import { toUserFacingError } from "@/lib/errors/user-facing"
 import { useDocumentUpload } from "@/hooks/use-document-upload"
 import {
@@ -126,6 +127,7 @@ function FileUploadTrigger({ htmlFor, label }: { htmlFor: string; label: string 
 
 export default function MassHealthAppealsPage() {
   const router = useRouter()
+  const reduxProfile = useAppSelector((state) => state.userProfile.profile)
   const [pageState, setPageState] = useState<PageState>("form")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [prefilledFields, setPrefilledFields] = useState<PrefilledAppealFields>({
@@ -184,15 +186,22 @@ export default function MassHealthAppealsPage() {
 
     void (async () => {
       try {
+        // Use cached Redux profile when available to avoid a redundant fetch.
+        // The dashboard and profile pages both populate state.userProfile.profile
+        // on mount; the appeals page is read-only so it only needs a snapshot.
+        const profileFetch = reduxProfile
+          ? Promise.resolve(reduxProfile)
+          : authenticatedFetch("/api/user-profile", { cache: "no-store" })
+              .then(async (res) => {
+                if (!res.ok) return null
+                const payload = (await res.json().catch(() => ({}))) as { ok?: boolean; profile?: UserProfile }
+                return payload.ok ? (payload.profile ?? null) : null
+              })
+              .catch(() => null)
+
         const [{ user }, profileResult] = await Promise.all([
           getSafeSupabaseUser(),
-          authenticatedFetch("/api/user-profile", { cache: "no-store" })
-            .then(async (res) => {
-              if (!res.ok) return null
-              const payload = (await res.json().catch(() => ({}))) as { ok?: boolean; profile?: UserProfile }
-              return payload.ok ? (payload.profile ?? null) : null
-            })
-            .catch(() => null),
+          profileFetch,
         ])
 
         if (cancelled) return
@@ -217,6 +226,7 @@ export default function MassHealthAppealsPage() {
     return () => {
       cancelled = true
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {

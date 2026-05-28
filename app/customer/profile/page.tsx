@@ -28,7 +28,7 @@ import { AppSettingsSection } from "@/components/user-profile/AppSettingsSection
 import { NotificationsSection } from "@/components/user-profile/NotificationsSection"
 import { SecuritySection } from "@/components/user-profile/SecuritySection"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
-import { useAppDispatch } from "@/lib/redux/hooks"
+import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { setProfile } from "@/lib/redux/features/user-profile-slice"
 import { setLanguage } from "@/lib/redux/features/app-slice"
 import { toUserFacingError } from "@/lib/errors/user-facing"
@@ -40,6 +40,7 @@ import type { SectionId, UserProfileApiResponse } from "./page.types"
 
 export default function CustomerProfilePage() {
   const dispatch = useAppDispatch()
+  const reduxProfile = useAppSelector((state) => state.userProfile.profile)
   const [profile, setLocalProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -67,7 +68,29 @@ export default function CustomerProfilePage() {
     }
   }, [dispatch])
 
-  useEffect(() => { void loadProfile() }, [loadProfile])
+  // Seed from Redux immediately to avoid a blank flash when navigating from the
+  // dashboard (which already fetched the profile).  Still fire a background
+  // refresh so edits made server-side by another session are reflected.
+  useEffect(() => {
+    if (reduxProfile) {
+      setLocalProfile(reduxProfile)
+      setLoading(false)
+      // Background refresh — don't show spinner since we already have data
+      void authenticatedFetch("/api/user-profile", { method: "GET", cache: "no-store" })
+        .then((res) => res.json().catch(() => ({})))
+        .then((payload: UserProfileApiResponse) => {
+          if (payload.ok && payload.profile) {
+            setLocalProfile(payload.profile)
+            dispatch(setProfile(payload.profile))
+            dispatch(setLanguage(payload.profile.profileData.preferredLanguage))
+          }
+        })
+        .catch(() => null)
+      return
+    }
+    void loadProfile()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleSectionSave = (updated: Partial<UserProfile>) => {
     setLocalProfile((prev) => {

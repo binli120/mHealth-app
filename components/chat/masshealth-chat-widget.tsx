@@ -186,6 +186,9 @@ export function MassHealthChatWidget() {
   const [swChatTarget, setSwChatTarget] = useState<{ userId: string; name: string } | null>(null)
   // Per-SW message cache so switching tabs / minimizing widget doesn't lose chat state
   const swMessageCacheRef = useRef<Record<string, DirectMessage[]>>({})
+  // AbortController for the in-flight chat fetch — cancelled on unmount or
+  // when a new message is sent before the previous one completes.
+  const abortRef = useRef<AbortController | null>(null)
 
   // Subscribe to Supabase auth state — fires immediately with the current
   // session and again on every login/logout, so the widget shows/hides reactively.
@@ -199,6 +202,11 @@ export function MassHealthChatWidget() {
       },
     )
     return () => subscription.unsubscribe()
+  }, [])
+
+  // Cancel any in-flight stream when the widget unmounts.
+  useEffect(() => {
+    return () => { abortRef.current?.abort() }
   }, [])
   const copy = useMemo(() => getChatWidgetCopy(selectedLanguage), [selectedLanguage])
   const faqs = useMemo(() => getMassHealthCommonQuestions(selectedLanguage), [selectedLanguage])
@@ -305,6 +313,11 @@ export function MassHealthChatWidget() {
     setDraft("")
     setIsLoading(true)
 
+    // Cancel any previous in-flight request before starting a new one.
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+
     const currentMessages = isAdvisorView ? advisorMessages : messages
     const setCurrentMessages = isAdvisorView ? setAdvisorMessages : setMessages
 
@@ -331,6 +344,7 @@ export function MassHealthChatWidget() {
           language: selectedLanguage,
           ...(isAdvisorView ? { mode: "benefit_advisor" } : {}),
         }),
+        signal: controller.signal,
       })
 
       if (!response.ok) {
@@ -347,6 +361,7 @@ export function MassHealthChatWidget() {
             ),
           )
         },
+        controller.signal,
       )
 
       // Out-of-scope: no text stream — reply comes from the data annotation
@@ -371,6 +386,10 @@ export function MassHealthChatWidget() {
         ),
       )
     } catch (error) {
+      // AbortError is intentional (unmount or new message sent) — don't flash an error.
+      if (error instanceof Error && error.name === "AbortError") {
+        return
+      }
       console.error("MassHealth chat request failed", error)
       setCurrentMessages((previous) =>
         previous.map((m) =>
