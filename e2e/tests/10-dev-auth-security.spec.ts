@@ -37,7 +37,7 @@ function skipIfDevRegisterUnavailable(status: number): void {
 test.describe("POST /api/auth/dev-register — input validation", () => {
   test("returns 400 when email is missing", async ({ request }) => {
     const res = await request.post("/api/auth/dev-register", {
-      data: { password: "ValidPass1!" },
+      data: { password: "ValidPass1!23" },
     })
     skipIfDevRegisterUnavailable(res.status())
     expect(res.status()).toBe(400)
@@ -48,7 +48,7 @@ test.describe("POST /api/auth/dev-register — input validation", () => {
 
   test("returns 400 when email is malformed", async ({ request }) => {
     const res = await request.post("/api/auth/dev-register", {
-      data: { email: "not-an-email", password: "ValidPass1!" },
+      data: { email: "not-an-email", password: "ValidPass1!23" },
     })
     skipIfDevRegisterUnavailable(res.status())
     expect(res.status()).toBe(400)

@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server"
 import { getDbPool } from "@/lib/db/server"
 import { isLocalAuthHelperEnabled, normalizeAuthEmail } from "@/lib/auth/local-auth"
+import { MIN_PASSWORD_LENGTH, getPasswordMinLengthMessage } from "@/lib/auth/password-policy"
 
 interface DevRegisterRequestBody {
   email?: string
@@ -27,7 +28,6 @@ interface DevRegisterRequestBody {
   jobTitle?: string
 }
 
-const MIN_PASSWORD_LENGTH = 8
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const DEFAULT_INSTANCE_ID = "00000000-0000-0000-0000-000000000000"
 const ADMIN_EMAIL = "no-reply@healthcompass.cloud"
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
 
   if (password.length < MIN_PASSWORD_LENGTH) {
     return NextResponse.json(
-      { ok: false, error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` },
+      { ok: false, error: getPasswordMinLengthMessage() },
       { status: 400 },
     )
   }

@@ -10,6 +10,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Building2, CheckCircle, Eye, EyeOff, Loader2, ShieldAlert } from "lucide-react"
+import { MIN_PASSWORD_LENGTH, getPasswordMinLengthMessage } from "@/lib/auth/password-policy"
 import { toUserFacingError } from "@/lib/errors/user-facing"
 import { INVITE_ROLE_LABELS } from "./page.constants"
 import type { InvitationInfo, InvitePageState } from "./page.types"
@@ -56,8 +57,8 @@ export default function AcceptInvitePage() {
       setErrorMsg("Passwords do not match.")
       return
     }
-    if (password.length < 8) {
-      setErrorMsg("Password must be at least 8 characters.")
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setErrorMsg(getPasswordMinLengthMessage())
       return
     }
     setErrorMsg(null)

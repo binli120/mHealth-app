@@ -26,6 +26,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { MIN_PASSWORD_LENGTH, getPasswordMinLengthMessage } from "@/lib/auth/password-policy"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import type { Factor } from "@supabase/supabase-js"
@@ -100,8 +101,8 @@ export function SecuritySection() {
 
   const handleChangePassword = async () => {
     setPwError("")
-    if (pwNew.length < 8) {
-      setPwError("New password must be at least 8 characters.")
+    if (pwNew.length < MIN_PASSWORD_LENGTH) {
+      setPwError(getPasswordMinLengthMessage("New password"))
       return
     }
     if (pwNew !== pwConfirm) {
@@ -352,7 +353,7 @@ export function SecuritySection() {
                 <Input
                   id="pw-new"
                   type={pwShowNew ? "text" : "password"}
-                  placeholder="At least 8 characters"
+                  placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
                   value={pwNew}
                   onChange={(e) => setPwNew(e.target.value)}
                   className="pr-10"

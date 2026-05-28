@@ -7,6 +7,7 @@
 
 import { NextResponse } from "next/server"
 import { getDbPool } from "@/lib/db/server"
+import { MIN_PASSWORD_LENGTH, getPasswordMinLengthMessage } from "@/lib/auth/password-policy"
 import { claimInvitationByToken, getInvitationByToken } from "@/lib/db/invitations"
 import { toUserFacingError } from "@/lib/errors/user-facing"
 import {
@@ -71,9 +72,9 @@ export async function POST(
   }
 
   // Validate inputs
-  if (!body.password || body.password.length < 8) {
+  if (!body.password || body.password.length < MIN_PASSWORD_LENGTH) {
     return NextResponse.json(
-      { ok: false, error: "Password must be at least 8 characters." },
+      { ok: false, error: getPasswordMinLengthMessage() },
       { status: 400 },
     )
   }

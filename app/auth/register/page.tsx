@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { getSafeAuthNextPath } from "@/lib/auth/navigation"
+import { MIN_PASSWORD_LENGTH, getPasswordMinLengthMessage } from "@/lib/auth/password-policy"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { isLocalAuthHelperEnabled, normalizeAuthEmail } from "@/lib/auth/local-auth"
 import { toUserFacingError } from "@/lib/errors/user-facing"
@@ -116,8 +117,8 @@ function RegisterPageContent() {
       setErrorMessage("Email is required.")
       return
     }
-    if (password.length < 8) {
-      setErrorMessage("Password must be at least 8 characters.")
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setErrorMessage(getPasswordMinLengthMessage())
       return
     }
 
@@ -627,7 +628,7 @@ function RegisterPageContent() {
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
-                    <p className="text-xs text-muted-foreground">At least 8 characters</p>
+                    <p className="text-xs text-muted-foreground">At least {MIN_PASSWORD_LENGTH} characters</p>
                   </div>
 
                   {role === "social_worker" && (

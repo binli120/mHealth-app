@@ -157,10 +157,15 @@ test.describe("Authentication", () => {
     await page.fill("#email", "test@example.com")
     await page.fill("#phone", "(617)555-0100")
     await page.fill("#password", "short")
-    await page.click('button[type="submit"]')
-    await expect(
-      page.getByText(/at least 8|too short|password.*character/i).first(),
-    ).toBeVisible({ timeout: 8_000 })
+    await expect(page.getByText(/at least 12|password.*character/i).first()).toBeVisible()
+
+    const submitButton = page.locator('button[type="submit"]')
+    if (await submitButton.isEnabled()) {
+      await submitButton.click()
+      await expect(
+        page.getByText(/at least 12|too short|password.*character/i).first(),
+      ).toBeVisible({ timeout: 8_000 })
+    }
   })
 
   test("social worker registration validates company email domain", async ({ page }) => {

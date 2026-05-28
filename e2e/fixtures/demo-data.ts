@@ -13,7 +13,7 @@ export const DEMO_USER = {
   lastName: "Santos",
   email: "demo.e2e@masshealth-test.local",
   phone: "(617)555-0199",
-  password: "Demo@2026!",
+  password: "Demo@2026!12",
 }
 
 export const REVIEWER_USER = {
@@ -21,7 +21,7 @@ export const REVIEWER_USER = {
   lastName: "Reviewer",
   email: "reviewer.e2e@masshealth-test.local",
   phone: "(617)555-0188",
-  password: "Staff@2026!",
+  password: "Staff@2026!1",
 }
 
 export const ADMIN_USER = {
@@ -29,7 +29,7 @@ export const ADMIN_USER = {
   lastName: "Admin",
   email: "admin.e2e@masshealth-test.local",
   phone: "(617)555-0187",
-  password: "Admin@2026!",
+  password: "Admin@2026!1",
   role: "admin",
 }
 
