@@ -16,7 +16,8 @@ import { identityVerificationReducer } from "@/lib/redux/features/identity-verif
 
 export const makeStore = () =>
   configureStore({
-    devTools: false,
+    // Disabled in production to prevent PHI from leaking into browser DevTools.
+    devTools: process.env.NODE_ENV !== "production",
     reducer: {
       app: appReducer,
       application: applicationReducer,
