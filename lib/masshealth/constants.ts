@@ -28,6 +28,40 @@ export const FPL_TABLE_2026: Record<number, number> = {
 /** Additional FPL dollars per person beyond household size 4. */
 export const FPL_INCREMENT_AFTER_4 = 5380
 
+// ── MassHealth / ACA program FPL eligibility thresholds (% of FPL) ───────────
+//
+// Changing these changes legal eligibility boundaries — update only when
+// Massachusetts publishes new annual policy guidance.
+
+/** MassHealth Standard for adults with a documented disability (SSI/SSDI path). */
+export const FPL_PCT_ADULT_DISABILITY = 133
+
+/**
+ * MassHealth CarePlus upper bound for adults 19–64.
+ * Derived from the ACA Medicaid expansion: 133% + 5% income disregard = 138%.
+ */
+export const FPL_PCT_CAREPLUS = 138
+
+/** MassHealth Standard for children under 19. */
+export const FPL_PCT_CHILD_STANDARD = 150
+
+/** MassHealth Standard for pregnant individuals. */
+export const FPL_PCT_PREGNANCY_STANDARD = 200
+
+/**
+ * MassHealth Family Assistance / ConnectorCare upper bound.
+ * Children 150–300% FPL → Family Assistance (CHIP).
+ * Adults 138–300% FPL → ConnectorCare subsidised plans.
+ */
+export const FPL_PCT_FAMILY_ASSIST = 300
+
+/**
+ * Federal Advance Premium Tax Credit (APTC) upper bound.
+ * Households 300–500% FPL may qualify for federal marketplace subsidies.
+ * Above 500% → likely unsubsidised employer or marketplace plans.
+ */
+export const FPL_PCT_TAX_CREDITS_UPPER = 500
+
 // ── Fact extraction (LLM call config) ────────────────────────────────────────
 
 /** Ollama sampling temperature for JSON fact extraction (deterministic). */

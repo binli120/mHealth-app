@@ -13,7 +13,7 @@ A collaborative health-application platform that lets patients and social worker
 | UI | React 19, Tailwind CSS 4, Radix UI |
 | State | Redux Toolkit |
 | Database | Supabase (PostgreSQL + Auth + Storage) |
-| AI / LLM | Ollama — llama3.2 |
+| AI / LLM | Groq (production) · Ollama llama3.2 (local fallback) · Vercel AI SDK |
 | Speech-to-text | OpenAI Whisper CLI |
 | Email | Resend |
 | Observability | OpenObserve + OpenTelemetry |
@@ -124,7 +124,12 @@ NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS=true
 # Server-side only — never expose to the browser
 SUPABASE_SERVICE_ROLE_KEY=<service_role key from supabase start>
 
-# ── Ollama ────────────────────────────────────────────────────────────────────
+# ── AI / LLM ──────────────────────────────────────────────────────────────────
+# Production inference (Groq) — set GROQ_API_KEY to use Groq; leave blank to fall back to Ollama
+GROQ_API_KEY=
+GROQ_MODEL=llama-3.3-70b-versatile
+
+# Local fallback (Ollama) — used when GROQ_API_KEY is not set
 OLLAMA_BASE_URL=http://127.0.0.1:11434
 OLLAMA_MODEL=llama3.2
 OLLAMA_VISION_MODEL=llava
@@ -145,8 +150,8 @@ NEXT_PUBLIC_MASSHEALTH_ANALYSIS_BASE_URL=http://localhost:8000
 
 # ── OpenObserve observability ─────────────────────────────────────────────────
 # All three must be set to activate; leave blank to disable silently
-OPENOBSERVE_URL=http://72.60.29.200:5080
-OPENOBSERVE_USER=blee@healthcompass.cloud
+OPENOBSERVE_URL=http://<your-openobserve-host>:5080
+OPENOBSERVE_USER=<your-openobserve-user>
 OPENOBSERVE_PASSWORD=
 OPENOBSERVE_ORG=default
 OPENOBSERVE_STREAM=mhealth-app
@@ -161,37 +166,15 @@ RAG_INGEST_SECRET=             # bearer token for the RAG document ingestion end
 ### 4. Apply database migrations
 
 ```bash
-PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres \
-  -f database/mHealth_schema.sql \
-  -f database/mHealth_schema_update.sql \
-  -f database/user_profile_schema.sql \
-  -f database/rag_schema.sql \
-  -f database/benefit_orchestration_schema.sql \
-  -f database/documents_storage_migration.sql \
-  -f database/notifications_schema.sql \
-  -f database/social_worker_schema.sql \
-  -f database/staff_profile_migration.sql \
-  -f database/invitations_schema.sql \
-  -f database/sw_messaging_schema.sql \
-  -f database/collaborative_session_schema.sql \
-  -f database/voice_transcription_migration.sql \
-  -f database/identity_verification_schema.sql \
-  -f database/migrations/add_mobile_verify_sessions.sql \
-  -f database/migrations/add_mobile_session_extracted_data.sql
-```
-
-Seed the admin account:
-
-```bash
-PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres \
-  -f database/seed_admin.sql
-```
-
-Or use the pnpm shortcut (runs all pending migrations):
-
-```bash
 pnpm db:migrate:dev
 ```
+
+This runs all pending Supabase migrations in order and seeds the admin account. It is the recommended approach for local development.
+
+> **Manual alternative:** If you need to apply a single SQL file directly, use:
+> ```bash
+> PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -f supabase/migrations/<file>.sql
+> ```
 
 ### 5. Start Ollama
 
@@ -263,7 +246,7 @@ For day-to-day release readiness, solo-engineer QA workflow, and UAT guidance, u
 | Supabase Studio | http://127.0.0.1:54323 |
 | Supabase API | http://127.0.0.1:54321 |
 | Ollama API | http://127.0.0.1:11434 |
-| OpenObserve dashboard | http://72.60.29.200:5080 |
+| OpenObserve dashboard | http://\<your-openobserve-host\>:5080 |
 
 ---
 
@@ -300,8 +283,8 @@ instrumentation.ts            ← OpenTelemetry SDK (auto-loaded by Next.js)
 
 | | |
 |---|---|
-| **URL** | `http://72.60.29.200:5080` |
-| **Login** | `blee@healthcompass.cloud` |
+| **URL** | `http://<your-openobserve-host>:5080` |
+| **Login** | `<your-openobserve-user>` |
 | **Dev stream** | `mhealth-app` |
 | **Prod stream** | `mhealth-app-prod` |
 
@@ -310,8 +293,8 @@ instrumentation.ts            ← OpenTelemetry SDK (auto-loaded by Next.js)
 All three must be set to activate log shipping and tracing. Leave blank to disable silently.
 
 ```env
-OPENOBSERVE_URL=http://72.60.29.200:5080
-OPENOBSERVE_USER=blee@healthcompass.cloud
+OPENOBSERVE_URL=http://<your-openobserve-host>:5080
+OPENOBSERVE_USER=<your-openobserve-user>
 OPENOBSERVE_PASSWORD=<your-password>
 OPENOBSERVE_ORG=default
 OPENOBSERVE_STREAM=mhealth-app                   # Next.js app logs (structured JSON)
@@ -320,7 +303,7 @@ OPENOBSERVE_STREAM_CONTAINERS=containers-prod    # Vector: all container logs (O
 
 ### Querying logs
 
-1. Open **http://72.60.29.200:5080** → **Logs** → select stream `mhealth-app`
+1. Open your OpenObserve instance → **Logs** → select stream `mhealth-app`
 2. Useful queries:
    ```sql
    -- All errors
@@ -395,7 +378,7 @@ docker logs openobserve --tail 50 -f
 - Analysis service logs when the profile is enabled
 
 **Querying container logs:**
-1. Open **http://72.60.29.200:5080** → **Logs** → select stream **`containers-prod`**
+1. Open your OpenObserve instance → **Logs** → select stream **`containers-prod`**
 2. Filter by service:
    - Ollama: `service = 'healthcompass-ollama'`
    - Traefik: `service = 'healthcompass-proxy'`
@@ -754,7 +737,7 @@ See the **Setup → Configure environment variables** section above for the full
 
 | Secret | Value |
 |--------|-------|
-| `VPS_HOST` | `72.60.29.200` |
+| `VPS_HOST` | Your VPS IP address or hostname |
 | `VPS_USER` | `root` |
 | `VPS_SSH_KEY` | Full contents of private key (begins `-----BEGIN OPENSSH PRIVATE KEY-----`) |
 | `APP_DIR` | `/opt/masshealth-app` |
@@ -771,7 +754,7 @@ See the **Setup → Configure environment variables** section above for the full
 | `FROM_EMAIL` | Sender address |
 | `OLLAMA_BASE_URL` | `http://ollama:11434` |
 | `OLLAMA_MODEL` | `llama3.2` |
-| `OPENOBSERVE_URL` | `http://72.60.29.200:5080` |
+| `OPENOBSERVE_URL` | Your OpenObserve instance URL |
 | `OPENOBSERVE_USER` | OpenObserve admin email |
 | `OPENOBSERVE_PASSWORD` | OpenObserve admin password |
 | `OPENOBSERVE_ORG` | `default` |
@@ -866,7 +849,7 @@ VPS reboot
 ### First-time VPS Setup
 
 ```bash
-# 1. SSH in (via Hostinger hPanel → Terminal, or ssh root@72.60.29.200)
+# 1. SSH in (via Hostinger hPanel → Terminal, or ssh root@<your-vps-ip>)
 
 # 2. Install SSH server if missing (Debian/Ubuntu)
 apt-get update && apt-get install -y openssh-server
@@ -883,8 +866,8 @@ ufw allow 443/tcp
 ufw --force enable
 
 # 5. Verify SSH from your Mac
-nc -zv 72.60.29.200 22    # should say: succeeded
-ssh -i ~/.ssh/id_hostinger.ed25519 root@72.60.29.200
+nc -zv <your-vps-ip> 22    # should say: succeeded
+ssh -i ~/.ssh/id_hostinger.ed25519 root@<your-vps-ip>
 
 # 6. Pull Ollama model after first deploy
 docker exec healthcompass-ollama ollama pull llama3.2
@@ -919,7 +902,7 @@ Every `git push` to `main` triggers the workflow automatically:
 ```
 git push main
   └─► GitHub Actions
-        └─► SSH into 72.60.29.200
+        └─► SSH into <your-vps-ip>
               ├─► Install Docker (if missing) + ensure daemon running
               ├─► git clone (first run) or git reset --hard origin/main
               ├─► rm -f docker-compose.yaml          # remove stale file

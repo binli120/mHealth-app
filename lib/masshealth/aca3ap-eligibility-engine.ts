@@ -19,6 +19,12 @@ import {
   computeMagiIncome,
   resolveFplForHouseholdSize,
 } from "./aca3-eligibility-helpers"
+import {
+  FPL_PCT_CAREPLUS,
+  FPL_PCT_CHILD_STANDARD,
+  FPL_PCT_FAMILY_ASSIST,
+  FPL_PCT_PREGNANCY_STANDARD,
+} from "./constants"
 
 export type {
   Aca3CitizenshipStatus,
@@ -192,19 +198,19 @@ export function evaluateAca3ApEligibility(
 
   // ── RULE 09: Program Determination ───────────────────────────────────────────
   if (status === "APPROVED" || status === "LIMITED_COVERAGE") {
-    if (input.pregnant && fplPercent <= 200) {
+    if (input.pregnant && fplPercent <= FPL_PCT_PREGNANCY_STANDARD) {
       eligibleProgram = "MassHealth Standard"
     } else if (input.disabled) {
       eligibleProgram = "MassHealth CommonHealth"
     } else if (input.age < 19) {
-      if (fplPercent <= 150) {
+      if (fplPercent <= FPL_PCT_CHILD_STANDARD) {
         eligibleProgram = "MassHealth Standard"
-      } else if (fplPercent <= 300) {
+      } else if (fplPercent <= FPL_PCT_FAMILY_ASSIST) {
         eligibleProgram = "MassHealth Family Assistance"
       } else {
         eligibleProgram = "Health Connector"
       }
-    } else if (input.age >= 19 && input.age <= 64 && !input.pregnant && !input.disabled && fplPercent <= 138) {
+    } else if (input.age >= 19 && input.age <= 64 && !input.pregnant && !input.disabled && fplPercent <= FPL_PCT_CAREPLUS) {
       eligibleProgram = "MassHealth CarePlus"
     } else {
       eligibleProgram = "Health Connector"

@@ -51,7 +51,8 @@ The application demonstrates a **strong architectural foundation** for HIPAA com
 | Supabase Inc. | Business Associate | BAA required |
 | Vercel Inc. | Business Associate | BAA required |
 | Resend Inc. (email) | Business Associate | BAA required |
-| OpenAI (AI features) | Business Associate | BAA required |
+| Groq Inc. (AI inference) | Business Associate | BAA required |
+| OpenAI (AI features — legacy/secondary) | Business Associate | BAA required if still in use |
 | OpenObserve (logging) | Business Associate | BAA required |
 
 ### Rules in Scope
@@ -70,11 +71,11 @@ The following data elements constitute **electronic Protected Health Information
 
 | Data Element | Table / Field | Storage Format | Classification |
 |---|---|---|---|
-| Full name | `applicants.first_name`, `last_name` | Plaintext | PHI |
+| Full name | `applicants.first_name_encrypted`, `last_name_encrypted` | App-layer encrypted (AES-256-GCM) | PHI |
 | Date of birth | `applicants.dob` | Plaintext DATE | PHI |
 | Social Security Number | `applicants.ssn_encrypted` | App-layer encrypted (AES-256-GCM) | PHI — High Sensitivity |
-| Home address | `applicants.address` | Plaintext JSONB | PHI |
-| Phone number | `applicants.phone` | Plaintext | PHI |
+| Home address | `applicants.address_encrypted` | App-layer encrypted (AES-256-GCM) | PHI |
+| Phone number | `applicants.phone_encrypted` | App-layer encrypted (AES-256-GCM) | PHI |
 | Email address | `users.email` (Supabase Auth) | Plaintext | PHI |
 | Immigration / citizenship status | `applicants.citizenship_status` | Plaintext | PHI |
 | Household medical conditions | `household_members.pregnant`, `disabled`, `over_65` | Plaintext BOOLEAN | PHI |
@@ -104,7 +105,7 @@ The following data elements constitute **electronic Protected Health Information
                   (Documents)
 
 [App Server] ──── HTTPS ────► [Resend] (Email invites)
-[App Server] ──── HTTPS ────► [OpenAI] (Benefits advisor)
+[App Server] ──── HTTPS ────► [Groq] (AI inference — primary)
 [App Server] ──── HTTPS ────► [OpenObserve] (Logs/traces)
 ```
 
@@ -262,7 +263,8 @@ CREATE POLICY "Users can only see their own profile"
 |---|---|
 | Bank account data (`bank_data`) | ✅ AES-256-GCM, PBKDF2-derived key (`lib/user-profile/encrypt.ts`) |
 | SSN (`ssn_encrypted`) | ⚠️ Field named "encrypted" but encryption code path not confirmed for all write paths |
-| Names, addresses, phone, DOB | ❌ Stored plaintext in database |
+| Names, addresses, phone | ✅ AES-256-GCM encrypted (migration 20260526; `encryptField()` utility) |
+| DOB | ❌ Stored plaintext — targeted for Sprint 3 encryption |
 | Driver's license data | ❌ Stored plaintext |
 | Chat messages | ❌ Stored plaintext JSONB |
 | Data in transit | ✅ HTTPS/TLS enforced (HSTS 2-year preload) |
@@ -380,10 +382,10 @@ if (userRole?.roles?.name !== 'admin') {
 ```
 
 **Gaps:**
-- Multi-Factor Authentication (MFA) is not enforced for any role, including admins
-- `admin_settings.require_2fa_admin = false` in database
+- MFA is enforced for `admin` role via `require-admin.ts` checking `require_2fa_admin` in `admin_settings` — ✅ Resolved for admin
+- MFA is **not yet enforced** for `social_worker`, `reviewer`, and `supervisor` roles
 
-**Recommendation:** Enable and enforce MFA (TOTP or SMS) for all staff roles (admin, social_worker, reviewer, supervisor). Supabase Auth supports TOTP MFA natively.
+**Recommendation:** Extend MFA enforcement from `require-admin.ts` to `require-social-worker.ts` and the reviewer route guards. Supabase Auth TOTP MFA is already wired for admin accounts.
 
 ---
 
@@ -466,7 +468,8 @@ HIPAA requires a signed Business Associate Agreement (BAA) with every vendor tha
 | **Supabase Inc.** | Database, Auth, Storage — all PHI | ⚠️ Must be signed (Supabase offers BAA on Enterprise plan) |
 | **Vercel Inc.** | Application server processing PHI in memory | ⚠️ Must be signed (Vercel offers BAA on Enterprise plan) |
 | **Resend Inc.** | Email invitations (may contain PII) | ⚠️ Must be verified/signed |
-| **OpenAI** | AI benefits advisor (prompts may contain PHI) | ⚠️ Must be signed (OpenAI offers BAA for Healthcare) |
+| **Groq Inc.** | AI inference — primary LLM provider; prompts/completions may contain PHI | ⚠️ Must be signed — verify Groq's current BAA availability |
+| **OpenAI** | AI inference — legacy/secondary; prompts may contain PHI | ⚠️ Must be signed if still in use (OpenAI offers BAA for Healthcare) |
 | **OpenObserve** | Log/trace data (may include PHI context) | ⚠️ Must be verified/signed |
 
 > **Critical Note:** Without signed BAAs from all vendors above, the application **cannot be legally operated** with PHI under HIPAA, regardless of technical safeguards.
@@ -481,10 +484,10 @@ HIPAA requires a signed Business Associate Agreement (BAA) with every vendor tha
 |---|---|---|---|---|
 | 1 | SSN field encryption not verified end-to-end | Critical | Medium | Sprint 1 |
 | 2 | Business Associate Agreements not confirmed | Critical | Low | Immediate |
-| 3 | MFA not enforced for staff/admin roles | Critical | Low–Medium | Sprint 1 |
+| 3 | MFA enforced for admin ✅; not yet enforced for social_worker/reviewer | High | Low | Sprint 1 |
 | 4 | Comprehensive PHI access audit logging missing | High | Medium | Sprint 2 |
-| 5 | Session idle timeout not enforced in app | High | Low | Sprint 1 |
-| 6 | No session revocation mechanism | High | Medium | Sprint 2 |
+| 5 | Session idle timeout: admin ✅, social_worker ✅; customer/reviewer missing | Medium | Low | Sprint 1 |
+| 6 | Session revocation via `revoked_sessions` table ✅ — `isSessionRevoked()` checked on every request | ✅ Resolved | — | — |
 | 7 | Rate limiting is in-memory (breaks on multi-instance) | High | Medium | Sprint 2 |
 | 8 | `unsafe-inline` in CSP weakens XSS protection | High | Medium | Sprint 2 |
 | 9 | PII fields (name, address, DOB) not app-layer encrypted | Medium | High | Sprint 3 |
@@ -502,7 +505,7 @@ HIPAA requires a signed Business Associate Agreement (BAA) with every vendor tha
 
 1. **Verify and fix SSN encryption write path** — Audit all code paths that write to `applicants.ssn_encrypted` to confirm `encryptField()` is called. Add integration test.
 2. **Sign BAAs** — Contact Supabase, Vercel, Resend, OpenAI, OpenObserve to initiate BAA process (upgrade to Enterprise plans where needed).
-3. **Enable MFA** — Enable Supabase Auth TOTP MFA and enforce for admin, social_worker, and supervisor roles via `app_metadata.mfa_required` check in `require-auth.ts`.
+3. **Extend MFA enforcement** — Admin TOTP MFA is implemented and enforced via `require-admin.ts`. Extend to `social_worker` and `reviewer` route guards using the same pattern.
 4. **Enforce session idle timeout** — Add client-side `useIdleTimer` hook (15 min) and server-side `last_active` check against JWT `iat`.
 5. **Audit dev auth routes** — Confirm `NEXT_PUBLIC_ENABLE_LOCAL_AUTH_HELPERS=false` in all production environment configurations and add a startup assertion that fails loudly in production if set to `true`.
 
@@ -544,7 +547,7 @@ HIPAA requires a signed Business Associate Agreement (BAA) with every vendor tha
 | Audit controls | Required | ⚠️ | Login events only; PHI read access not logged |
 | Integrity — authentication mechanisms | Addressable | ✅ | ACID DB, Supabase checksums |
 | Integrity — transmission | Required | ✅ | TLS/HTTPS enforced via HSTS |
-| Person or entity authentication | Required | ⚠️ | JWT auth present; MFA not enforced |
+| Person or entity authentication | Required | ⚠️ | JWT auth present; MFA enforced for admin; social_worker/reviewer MFA pending |
 | Transmission security — encryption | Addressable | ✅ | TLS 1.2+ via Vercel/Supabase |
 
 ### HIPAA Security Rule — Administrative Safeguards (§164.308)
