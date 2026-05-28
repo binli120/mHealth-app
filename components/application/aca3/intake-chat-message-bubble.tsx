@@ -24,9 +24,9 @@ export function splitTrailingQuestion(content: string): { prefix: string; questi
   const questionEndIndex = trimmed.lastIndexOf("?")
   const delimiterCandidates = [
     trimmed.lastIndexOf("\n", questionEndIndex),
-    trimmed.lastIndexOf(": ", questionEndIndex),
     trimmed.lastIndexOf(". ", questionEndIndex),
     trimmed.lastIndexOf("! ", questionEndIndex),
+    trimmed.lastIndexOf("? ", questionEndIndex),
   ]
 
   const bestDelimiter = Math.max(...delimiterCandidates)
