@@ -44,7 +44,7 @@ export async function loadUserAgentMemory(userId: string): Promise<AgentMemory |
 
   const { rows } = await pool.query<MemoryRow>(
     `SELECT id, user_id, session_id, extracted_facts, form_progress, created_at, updated_at
-       FROM user_agent_memory
+       FROM public.user_agent_memory
       WHERE user_id = $1
       LIMIT 1`,
     [userId],

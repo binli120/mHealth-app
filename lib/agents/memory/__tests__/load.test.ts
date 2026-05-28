@@ -59,7 +59,7 @@ describe("loadUserAgentMemory", () => {
     await loadUserAgentMemory(USER_ID)
 
     const [sql, params] = mockQuery.mock.calls[0]
-    expect(sql).toMatch(/FROM user_agent_memory/i)
+    expect(sql).toMatch(/FROM public\.user_agent_memory/i)
     expect(params).toContain(USER_ID)
   })
 

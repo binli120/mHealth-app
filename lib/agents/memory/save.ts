@@ -54,12 +54,12 @@ export async function mergeAndSaveAgentMemory(
   )
 
   await pool.query(
-    `INSERT INTO user_agent_memory (user_id, session_id, extracted_facts, form_progress)
+    `INSERT INTO public.user_agent_memory (user_id, session_id, extracted_facts, form_progress)
           VALUES ($1, $2, $3::jsonb, $4::jsonb)
      ON CONFLICT (user_id) DO UPDATE SET
-       session_id      = COALESCE($2, user_agent_memory.session_id),
-       extracted_facts = user_agent_memory.extracted_facts || $3::jsonb,
-       form_progress   = user_agent_memory.form_progress   || $4::jsonb,
+       session_id      = COALESCE($2, public.user_agent_memory.session_id),
+       extracted_facts = public.user_agent_memory.extracted_facts || $3::jsonb,
+       form_progress   = public.user_agent_memory.form_progress   || $4::jsonb,
        updated_at      = now()`,
     [
       userId,
