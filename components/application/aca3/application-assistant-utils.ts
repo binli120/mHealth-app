@@ -9,11 +9,8 @@ import {
   detectCurrentSection,
   type FormSection,
 } from "@/lib/masshealth/form-sections"
-import { containsSsnLikeContent } from "@/lib/agents/sensitive-input"
 import {
   type ApplicationFormData,
-  type HouseholdMember,
-  type IncomeSource,
 } from "@/lib/redux/features/application-slice"
 import type { UserProfile } from "@/lib/user-profile/types"
 import type { SupportedLanguage } from "@/lib/i18n/languages"
