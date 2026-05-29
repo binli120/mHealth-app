@@ -154,7 +154,6 @@ import {
 import {
   AddressGroupField,
   FieldRenderer,
-  digitsOnly,
   isAddressCoreField,
   requiresFullNameFormat,
 } from "./form-wizard-field-renderer"
