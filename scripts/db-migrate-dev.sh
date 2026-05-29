@@ -20,13 +20,13 @@ if [[ -z "$db_url" ]]; then
   exit 1
 fi
 
-psql "$db_url" -v ON_ERROR_STOP=1 -f ./supabase/migrations/20260301133000_init_mhealth_schema.sql
-psql "$db_url" -v ON_ERROR_STOP=1 -f ./supabase/migrations/20260301133100_harden_mhealth_schema.sql
-psql "$db_url" -v ON_ERROR_STOP=1 -f ./supabase/migrations/20260301145000_auth_user_sync.sql
-psql "$db_url" -v ON_ERROR_STOP=1 -f ./supabase/migrations/20260301152000_rls_policies.sql
-psql "$db_url" -v ON_ERROR_STOP=1 -f ./supabase/migrations/20260305214500_application_drafts.sql
-psql "$db_url" -v ON_ERROR_STOP=1 -f ./supabase/migrations/20260306090000_applications_search_trgm.sql
-psql "$db_url" -v ON_ERROR_STOP=1 -f ./supabase/migrations/20260322000000_collaborative_sessions.sql
-psql "$db_url" -v ON_ERROR_STOP=1 -f ./supabase/migrations/20260410000000_income_verification.sql
-psql "$db_url" -v ON_ERROR_STOP=1 -f ./supabase/migrations/20260430140000_admin_passkeys.sql
-psql "$db_url" -v ON_ERROR_STOP=1 -f ./supabase/migrations/20260503090000_growth_system.sql
+echo "Applying baseline schema..."
+psql "$db_url" -v ON_ERROR_STOP=1 -f ./supabase/migrations/20260101000000_baseline_schema.sql
+
+echo "Applying baseline seed (roles, permissions, admin settings)..."
+psql "$db_url" -v ON_ERROR_STOP=1 -f ./supabase/migrations/20260101000001_baseline_seed.sql
+
+echo "Seeding local dev admin account..."
+psql "$db_url" -v ON_ERROR_STOP=1 -f ./supabase/seed.sql
+
+echo "Done. Database is ready."

@@ -161,7 +161,7 @@ The following data elements constitute **electronic Protected Health Information
 
 | Audit Mechanism | Implementation | Location |
 |---|---|---|
-| Login/logout events | `login_events` table with user_id, IP, user_agent, timestamp | `database/access_management_schema.sql` |
+| Login/logout events | `login_events` table with user_id, IP, user_agent, timestamp | `supabase/migrations/20260101000000_baseline_schema.sql` |
 | Structured server logs | JSON logs with user context, request path, response code | `lib/server/logger.ts` |
 | Log shipping | OpenTelemetry traces shipped to OpenObserve | `instrumentation.ts` |
 | PII redaction in logs | Keys: `authorization`, `token`, `password`, `ssn`, `dob` auto-redacted | `lib/server/logger.ts` |
@@ -288,7 +288,7 @@ const SENSITIVE_KEYS = new Set([
 // Automatically replaces sensitive values with '[REDACTED]'
 ```
 
-**Login audit trail** (`database/access_management_schema.sql`):
+**Login audit trail** (`supabase/migrations/20260101000000_baseline_schema.sql`):
 ```sql
 CREATE TABLE login_events (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -393,7 +393,7 @@ if (userRole?.roles?.name !== 'admin') {
 
 **Current Implementation:** PostgreSQL RLS policies enforce data isolation at the database layer, independent of application-layer access controls. This provides defense-in-depth: even if application authorization is bypassed, the database rejects unauthorized queries.
 
-**Key RLS functions** (`database/mHealth_schema.sql`):
+**Key RLS functions** (`supabase/migrations/20260101000000_baseline_schema.sql`):
 ```sql
 -- Extracts authenticated user ID from JWT
 CREATE FUNCTION public.request_user_id()
@@ -590,8 +590,7 @@ HIPAA requires a signed Business Associate Agreement (BAA) with every vendor tha
 | `lib/user-profile/encrypt.ts` | AES-256-GCM field encryption |
 | `lib/server/logger.ts` | Audit logging with PII redaction |
 | `lib/server/rate-limit.ts` | Rate limiting (needs Redis upgrade) |
-| `database/mHealth_schema.sql` | PHI table definitions and RLS policies |
-| `database/access_management_schema.sql` | RBAC schema, login_events, session settings |
+| `supabase/migrations/20260101000000_baseline_schema.sql` | All DDL — PHI tables, RBAC schema, login_events, RLS policies |
 | `next.config.mjs` | Security headers (HSTS, CSP, X-Frame-Options) |
 | `instrumentation.ts` | OpenTelemetry tracing (audit trail) |
 

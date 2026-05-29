@@ -57,7 +57,7 @@
 | FR-050 | The system shall collect a family profile for cross-program benefit evaluation. | `components/benefit-orchestration/FamilyProfileWizard.tsx`, `lib/benefit-orchestration/types.ts` |
 | FR-051 | The benefit orchestrator shall evaluate MassHealth, SNAP, WIC, LIHEAP, MSP, childcare, Section 8, TAFDC, EAEDC, and EITC modules. | `lib/benefit-orchestration/orchestrator.ts`, `lib/benefit-orchestration/programs/*` |
 | FR-052 | Benefit results shall include status, confidence, estimated value where available, eligibility factors, next steps, and required documents. | `lib/benefit-orchestration/types.ts` |
-| FR-053 | Benefit stack results and family profiles shall be persisted for later access. | `app/api/benefit-orchestration/*`, `lib/db/benefit-orchestration.ts`, `database/benefit_orchestration_schema.sql` |
+| FR-053 | Benefit stack results and family profiles shall be persisted for later access. | `app/api/benefit-orchestration/*`, `lib/db/benefit-orchestration.ts`, `supabase/migrations/20260101000000_baseline_schema.sql` |
 
 ## 7. Appeals
 

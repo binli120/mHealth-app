@@ -2,7 +2,7 @@
 
 **Status:** Generated from current codebase  
 **Baseline date:** 2026-04-15  
-**Primary source paths:** `app/`, `components/`, `lib/`, `database/`, `docs/AI_AGENT_DESIGN.md`, `docs/AI_AGENT_ARCHITECTURE_OVERVIEW.md`  
+**Primary source paths:** `app/`, `components/`, `lib/`, `supabase/migrations/`, `docs/AI_AGENT_DESIGN.md`, `docs/AI_AGENT_ARCHITECTURE_OVERVIEW.md`  
 
 This package describes what the application must do today and how the next development phases should evolve. It is intentionally written as implementation-facing requirements, not marketing material.
 

@@ -578,7 +578,7 @@ flowchart LR
 
 - `lib/agents/memory/load.ts`
 - `lib/agents/memory/save.ts`
-- `database/migrations/add_user_agent_memory.sql`
+- `supabase/migrations/20260101000000_baseline_schema.sql` (baseline schema)
 
 ```mermaid
 flowchart TD

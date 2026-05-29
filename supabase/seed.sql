@@ -1,11 +1,8 @@
--- @author: Bin Lee
--- @email: blee@healthcompass.cloud
-
-/**
- * Seed admin account: no-reply@healthcompass.cloud / password
- * Run after mHealth_schema.sql in local development
- * @author: Bin Lee
- */
+-- =============================================================================
+-- Local dev seed: admin account
+-- Automatically run by `supabase db reset` after migrations.
+-- Safe to re-run — all inserts are idempotent (ON CONFLICT … DO NOTHING/UPDATE).
+-- =============================================================================
 
 DO $$
 DECLARE
@@ -50,7 +47,7 @@ BEGIN
     )
     RETURNING id INTO v_user_id;
 
-    -- Identity row
+    -- Identity row (required for Supabase Auth)
     INSERT INTO auth.identities (id, provider_id, user_id, identity_data, provider, created_at, updated_at)
     VALUES (
       gen_random_uuid(), v_user_id::text, v_user_id,
@@ -60,7 +57,7 @@ BEGIN
     ON CONFLICT (provider_id, provider) DO NOTHING;
 
   ELSE
-    -- Update existing auth user password
+    -- Keep existing user; reset password to dev default
     UPDATE auth.users
     SET encrypted_password = crypt(v_password, gen_salt('bf', 10)),
         email_confirmed_at = COALESCE(email_confirmed_at, now()),
@@ -68,7 +65,7 @@ BEGIN
     WHERE id = v_user_id;
   END IF;
 
-  -- Sync public.users
+  -- Sync public.users row
   INSERT INTO public.users (id, email, password_hash, is_active, created_at)
   VALUES (v_user_id, v_email, 'supabase_auth_managed', true, now())
   ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email, is_active = true;

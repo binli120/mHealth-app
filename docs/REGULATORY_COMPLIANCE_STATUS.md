@@ -38,7 +38,7 @@ The `applicants` table contained ten plaintext PHI columns alongside their encry
 - All ten plaintext columns dropped: `ALTER TABLE applicants DROP COLUMN IF EXISTS ...`
 - `handle_new_user` trigger rewritten to insert only `user_id` + `created_at`; name/phone no longer written from auth metadata
 - View `identity_pending_review` recreated referencing `first_name_encrypted` / `last_name_encrypted`
-- Migration file: `database/migrations/remove_plaintext_phi.sql`
+- Included in baseline schema: `supabase/migrations/20260101000000_baseline_schema.sql`
 
 **Remaining columns:** Only `*_encrypted` (AES-256-GCM) columns and non-PHI identity metadata remain in `applicants`.
 
@@ -274,7 +274,7 @@ B2B SaaS revenue model does not create Navigator conflicts. No referral fee infr
 
 | Date | Change | Files |
 |---|---|---|
-| 2026-05-15 | Dropped 10 plaintext PHI columns from `applicants` | `database/migrations/remove_plaintext_phi.sql` |
+| 2026-05-15 | Dropped 10 plaintext PHI columns from `applicants` | `supabase/migrations/20260101000000_baseline_schema.sql` |
 | 2026-05-15 | Fixed `handle_new_user` trigger — no longer writes plaintext PHI on signup | Applied via Supabase MCP |
 | 2026-05-15 | Nulled PHI in `household_members`, `incomes`, `applications.total_monthly_income` | Applied via Supabase MCP |
 | 2026-05-15 | Rebuilt `identity_pending_review` view on encrypted columns | Applied via Supabase MCP |

@@ -482,7 +482,7 @@ Test audio files are included at `public/test-audio/`:
 | Email    | `no-reply@healthcompass.cloud` |
 | Password | `password`              |
 | Portal   | `/admin/dashboard`      |
-| Notes    | Auto-seeded by `database/seed_admin.sql`. Can approve social worker accounts. |
+| Notes    | Auto-seeded by `supabase/seed.sql` (runs automatically via `supabase db reset`). Can approve social worker accounts. |
 
 ---
 
@@ -677,10 +677,8 @@ app/api/
     [id]/read/route.ts                # POST (mark one read)
     read-all/route.ts                 # POST (mark all read)
 
-database/
-  collaborative_session_schema.sql    # Table definitions (reference)
 supabase/migrations/
-  20260322000000_collaborative_sessions.sql  # Applied migration
+  20260101000000_baseline_schema.sql  # All DDL — includes collaborative_sessions table
 ```
 
 ---
