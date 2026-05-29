@@ -24,31 +24,54 @@ export async function requireApprovedSocialWorker(
   }
 
   const pool = getDbPool()
-  const result = await pool.query<{ approved: boolean; is_admin: boolean }>(
-    `
-      SELECT
-        EXISTS (
-          SELECT 1
-          FROM public.user_roles ur
-          JOIN public.roles r ON r.id = ur.role_id
-          JOIN public.social_worker_profiles swp ON swp.user_id = ur.user_id
-          WHERE ur.user_id = $1::uuid
-            AND r.name = 'social_worker'
-            AND swp.status = 'approved'
-        ) AS approved,
-        EXISTS (
-          SELECT 1
-          FROM public.user_roles ur
-          JOIN public.roles r ON r.id = ur.role_id
-          WHERE ur.user_id = $1::uuid
-            AND r.name = 'admin'
-        ) AS is_admin
-    `,
-    [authResult.userId],
-  )
+
+  // Batch role check + MFA policy flag in a single round-trip.
+  // Fail CLOSED on DB error.
+  let approved: boolean
+  let isAdmin: boolean
+  let require2fa: string | null
+  try {
+    const result = await pool.query<{ approved: boolean; is_admin: boolean; require_2fa: string | null }>(
+      `
+        SELECT
+          EXISTS (
+            SELECT 1
+            FROM public.user_roles ur
+            JOIN public.roles r ON r.id = ur.role_id
+            JOIN public.social_worker_profiles swp ON swp.user_id = ur.user_id
+            WHERE ur.user_id = $1::uuid
+              AND r.name = 'social_worker'
+              AND swp.status = 'approved'
+          ) AS approved,
+          EXISTS (
+            SELECT 1
+            FROM public.user_roles ur
+            JOIN public.roles r ON r.id = ur.role_id
+            WHERE ur.user_id = $1::uuid
+              AND r.name = 'admin'
+          ) AS is_admin,
+          (SELECT value FROM public.admin_settings WHERE key = 'require_2fa_social_worker') AS require_2fa
+      `,
+      [authResult.userId],
+    )
+    approved  = Boolean(result.rows[0]?.approved)
+    isAdmin   = Boolean(result.rows[0]?.is_admin)
+    require2fa = result.rows[0]?.require_2fa ?? null
+  } catch (err) {
+    logServerError("Failed to query social worker role / 2FA policy — failing closed", err, {
+      userId: authResult.userId,
+    })
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { ok: false, error: "Unable to verify social worker access. Please try again." },
+        { status: 503 },
+      ),
+    }
+  }
 
   // Admin accounts are entirely separate from social workers.
-  if (result.rows[0]?.is_admin) {
+  if (isAdmin) {
     return {
       ok: false,
       response: NextResponse.json(
@@ -58,7 +81,7 @@ export async function requireApprovedSocialWorker(
     }
   }
 
-  if (!result.rows[0]?.approved) {
+  if (!approved) {
     return {
       ok: false,
       response: NextResponse.json(
@@ -68,14 +91,14 @@ export async function requireApprovedSocialWorker(
     }
   }
 
-  // Local dev: skip MFA enforcement for E2E / local testing.
-  if (isLocalAuthHelperEnabled() && isLocalRequest(request)) {
-    return { ok: true, userId: authResult.userId }
-  }
-
-  // aal2 (MFA) is required for social worker access.
-  // Passkey sessions are aal2-equivalent.
-  if (!authResult.isPasskeySession && authResult.aal !== "aal2") {
+  // aal2 (MFA) is enforced only when require_2fa_social_worker = 'true' in admin_settings.
+  // Passkey sessions are always exempt. Local dev bypass skips enforcement for E2E tests.
+  if (
+    require2fa === "true" &&
+    !authResult.isPasskeySession &&
+    authResult.aal !== "aal2" &&
+    !(isLocalAuthHelperEnabled() && isLocalRequest(request))
+  ) {
     let hasMfa: boolean
     try {
       const mfaResult = await pool.query<{ count: string }>(

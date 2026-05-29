@@ -81,14 +81,17 @@ INSERT INTO public.role_permissions (role_name, permission)
 
 INSERT INTO public.admin_settings (key, value)
 VALUES
-  ('session_timeout_minutes', '60'),
-  ('max_sessions_per_user',   '5'),
-  ('require_2fa_admin',       'true')
+  ('session_timeout_minutes',      '60'),
+  ('max_sessions_per_user',        '5'),
+  ('require_2fa_admin',            'true'),
+  ('require_2fa_reviewer',         'false'),
+  ('require_2fa_social_worker',    'false')
 ON CONFLICT (key) DO UPDATE
   SET value      = CASE
     -- Always enforce require_2fa_admin = true (corrects any false value)
     WHEN public.admin_settings.key = 'require_2fa_admin' THEN 'true'
-    -- Leave other settings at their existing value on re-run
+    -- Leave reviewer/SW MFA flags at their existing value on re-run
+    -- (allows an admin to flip them to 'true' without the seed reverting them)
     ELSE public.admin_settings.value
   END,
   updated_at = now();

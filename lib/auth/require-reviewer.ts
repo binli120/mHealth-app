@@ -24,25 +24,6 @@ export type ReviewerAuthResult =
   | (AuthenticatedUserResult & { roles: string[] })
   | { ok: false; response: NextResponse }
 
-async function getUserRoles(userId: string): Promise<string[]> {
-  const pool = getDbPool()
-  try {
-    const result = await pool.query<{ name: string }>(
-      `
-        SELECT r.name
-        FROM public.user_roles ur
-        JOIN public.roles r ON r.id = ur.role_id
-        WHERE ur.user_id = $1::uuid
-      `,
-      [userId],
-    )
-    return result.rows.map((row) => row.name)
-  } catch (error) {
-    logServerError("[require-reviewer]", error, { fn: "getUserRoles", userId })
-    return []
-  }
-}
-
 function hasReviewerRole(roles: string[]): boolean {
   return roles.some((role) => REVIEWER_ROLE_NAMES.includes(role as (typeof REVIEWER_ROLE_NAMES)[number]))
 }
@@ -53,7 +34,39 @@ export async function requireReviewer(request: Request): Promise<ReviewerAuthRes
     return authResult
   }
 
-  const roles = await getUserRoles(authResult.userId)
+  const pool = getDbPool()
+
+  // Batch role list + MFA policy flag in a single round-trip.
+  // Fail CLOSED on DB error — a transient failure must never grant reviewer access.
+  let roles: string[]
+  let require2fa: string | null
+  try {
+    const result = await pool.query<{ role_name: string; require_2fa: string | null }>(
+      `
+        SELECT
+          r.name AS role_name,
+          (SELECT value FROM public.admin_settings WHERE key = 'require_2fa_reviewer') AS require_2fa
+        FROM public.user_roles ur
+        JOIN public.roles r ON r.id = ur.role_id
+        WHERE ur.user_id = $1::uuid
+      `,
+      [authResult.userId],
+    )
+    roles = result.rows.map((row) => row.role_name)
+    require2fa = result.rows[0]?.require_2fa ?? null
+  } catch (err) {
+    logServerError("Failed to query reviewer role / 2FA policy — failing closed", err, {
+      userId: authResult.userId,
+    })
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { ok: false, error: "Unable to verify reviewer access. Please try again." },
+        { status: 503 },
+      ),
+    }
+  }
+
   if (!hasReviewerRole(roles)) {
     return {
       ok: false,
@@ -64,15 +77,15 @@ export async function requireReviewer(request: Request): Promise<ReviewerAuthRes
     }
   }
 
-  // Local dev: skip MFA enforcement for E2E / local testing.
-  if (isLocalAuthHelperEnabled() && isLocalRequest(request)) {
-    return { ...authResult, roles }
-  }
-
-  // aal2 (MFA) is required for reviewer access.
-  // Admin accounts already hold aal2; passkey sessions are aal2-equivalent.
-  if (!authResult.isPasskeySession && authResult.aal !== "aal2") {
-    const pool = getDbPool()
+  // aal2 (MFA) is enforced only when require_2fa_reviewer = 'true' in admin_settings.
+  // Passkey sessions and admin accounts (which already hold aal2) are always exempt.
+  // Local dev bypass: skip when isLocalAuthHelperEnabled() to allow E2E tests.
+  if (
+    require2fa === "true" &&
+    !authResult.isPasskeySession &&
+    authResult.aal !== "aal2" &&
+    !(isLocalAuthHelperEnabled() && isLocalRequest(request))
+  ) {
     let hasMfa: boolean
     try {
       const mfaResult = await pool.query<{ count: string }>(
