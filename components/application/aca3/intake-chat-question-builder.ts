@@ -322,6 +322,41 @@ function getActiveSubFields(field: SchemaField, value: unknown): SchemaField[] {
   return active
 }
 
+// ── Chat-specific initial data ─────────────────────────────────────────────────
+// Uses the local seedFieldDefaults / normalizeScalarFieldValue (checkbox → null)
+// so that checkbox fields start as "unknown" in the chat flow, not pre-answered.
+// wizard-reducer's createInitialData uses false for checkbox, which would mark
+// p1_mailing_same as already answered and incorrectly surface mailing fields.
+
+export function createInitialIntakeData(): WizardData {
+  const preApp: FormRecord = {}
+  const contact: FormRecord = {}
+  const assister: FormRecord = {}
+
+  seedFieldDefaults(ACA3_SCHEMA.pre_application.fields, preApp)
+  seedFieldDefaults(ACA3_SCHEMA.step1_contact.fields, contact)
+  seedFieldDefaults(ACA3_SCHEMA.enrollment_assister.fields, assister)
+
+  const personCount = clampPersonCount(contact.p1_num_people || 1)
+  // Cast: local makeDefaultPersonState uses FormRecord for skippedOptional, but
+  // PersonState types it as Record<string, boolean>; the values are compatible at runtime.
+  const persons = Array.from(
+    { length: personCount },
+    (_, index) => makeDefaultPersonState(index) as unknown as import("./types").PersonState,
+  )
+
+  contact.p1_num_people = String(personCount)
+
+  return {
+    preApp,
+    contact,
+    assister,
+    assisterEnabled: false,
+    persons,
+    attestation: false,
+  }
+}
+
 // ── Exported question-engine functions ────────────────────────────────────────
 
 export function getQuestionRecord(data: WizardData, question: IntakeQuestion): FormRecord | null {
