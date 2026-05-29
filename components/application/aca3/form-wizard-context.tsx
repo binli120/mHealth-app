@@ -1,6 +1,13 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+// createContext / useContext are client-only in Next.js App Router
 "use client"
 
 import { createContext, useContext } from "react"
+import { splitWizardState } from "@/lib/phi-token/token"
+import { PHI_DATA_KEYS } from "@/lib/phi-token/phi-fields"
 import type { FieldValue, FormContextValue, PersonState, SchemaField, WizardData, WizardState } from "./types"
 import {
   clampPersonCount,
@@ -9,8 +16,6 @@ import {
   makeDefaultPersonState,
   normalizeScalarFieldValue,
 } from "./wizard-reducer"
-import { splitWizardState } from "@/lib/phi-token/token"
-import { PHI_DATA_KEYS } from "@/lib/phi-token/phi-fields"
 
 export function getIncomeChecklistMemberId(applicationId: string, personIndex: number): string {
   const normalizedApplicationId = applicationId.replace(/-/g, "").toLowerCase()
