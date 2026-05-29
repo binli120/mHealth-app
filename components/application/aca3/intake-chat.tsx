@@ -15,11 +15,7 @@ import {
   splitTrailingQuestion,
 } from "@/components/application/aca3/intake-chat-message-bubble"
 
-import {
-  DOB_FIELD_PATTERN,
-  EMAIL_PATTERN,
-  SSN_PATTERN,
-} from "@/lib/constant"
+// (no constants needed directly in this file after extraction)
 import { useRouter } from "next/navigation"
 import { isSupportedLanguage, SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/lib/i18n/languages"
 import { MASSHEALTH_APPLICATION_TYPES } from "@/lib/masshealth/application-types"
@@ -28,13 +24,9 @@ import { setLanguage } from "@/lib/redux/features/app-slice"
 import { setApplicationWizardState, DEFAULT_APPLICATION_ID } from "@/lib/redux/features/application-slice"
 import type { UserProfile } from "@/lib/user-profile/types"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
-import { hasFirstAndLastName } from "@/lib/utils/person-name"
-import { formatCurrency, formatPhoneNumber, formatSsn, parseCurrency } from "@/lib/utils/input-format"
 import { createUuid } from "@/lib/utils/random-id"
-import { normalizeNumberInput, parseDate, validateDobBounds } from "@/lib/utils/aca3-form"
 import { parsePastedUsAddress } from "@/lib/utils/address-parse"
 import { countHouseholdRelationshipMentions } from "@/lib/masshealth/household-relationships"
-import { evaluateConditionalRule } from "@/hooks/use-conditional"
 import { type WidgetSpec, } from "@/components/application/aca3/intake-question-widget"
 import { splitWizardState } from "@/lib/phi-token/token"
 import { PhiSaveExitDialog } from "@/components/application/phi-save-exit-dialog"
@@ -46,8 +38,11 @@ import {
   deriveSkippedFromLastAnswered,
   findNextPendingQuestion,
   getAddressSiblingFieldIds,
+  isFilledValue,
+  isRequiredInCurrentContext,
   readValue,
   shouldSkipQuestionInChat,
+  validateParsedFieldValue,
   writeFieldById,
   writeValue,
 } from "@/components/application/aca3/intake-chat-question-builder"
@@ -64,12 +59,22 @@ import type {
 import {
   clampPersonCount,
   createDraftWizardState,
-  createInitialData,
   ensurePersonCount,
-  makeDefaultPersonState,
-  normalizeScalarFieldValue,
-  seedFieldDefaults,
 } from "./wizard-reducer"
+import {
+  applyInitialMemoExtraction,
+  applyProfileToWizardData,
+  buildAcknowledgementPrefix,
+  buildProfileFilledLabels,
+  formatDisplayValue,
+  formatQuestionPrompt,
+  isDeclineAnswer,
+  normalizeFlexibleDateInput,
+  parseAnswerValue,
+  resolveSpeechLanguage,
+  restoreWizardDataFromRaw,
+  toSpeakableQuestionText,
+} from "./intake-chat-answer-parser"
 
 interface ChatApiResponse {
   ok: boolean
@@ -184,158 +189,8 @@ function createMessageId() {
   return createUuid()
 }
 
-
-
-function isFilledValue(value: unknown): boolean {
-  if (typeof value === "string") {
-    return value.trim().length > 0
-  }
-
-  if (Array.isArray(value)) {
-    return value.length > 0
-  }
-
-  if (typeof value === "boolean") {
-    return true
-  }
-
-  if (typeof value === "number") {
-    return Number.isFinite(value)
-  }
-
-  return value !== null && value !== undefined
-}
-
-function isRequiredInCurrentContext(field: SchemaField, contextValues: Record<string, unknown>): boolean {
-  if (typeof field.required_if === "boolean") {
-    return Boolean(field.required) || field.required_if
-  }
-
-  if (field.required_if) {
-    return Boolean(field.required) || evaluateConditionalRule(field.required_if, contextValues)
-  }
-
-  return Boolean(field.required)
-}
-
-function validateParsedFieldValue(
-  field: SchemaField,
-  value: FieldValue,
-  contextValues: Record<string, unknown>,
-): string | null {
-  if (field.type === "checkbox") {
-    return typeof value === "boolean" ? null : "Please answer Yes or No."
-  }
-
-  const isRequired = isRequiredInCurrentContext(field, contextValues)
-
-  if (isRequired && !isFilledValue(value)) {
-    return "This field is required."
-  }
-
-  if (!isFilledValue(value)) {
-    return null
-  }
-
-  if (field.type === "text" && /first name/i.test(field.label) && /last name/i.test(field.label)) {
-    return hasFirstAndLastName(String(value)) ? null : "Please enter first and last name."
-  }
-
-  if (field.type === "email") {
-    return EMAIL_PATTERN.test(String(value).trim()) ? null : "Please enter a valid email address."
-  }
-
-  if (field.type === "phone") {
-    const digits = String(value).replace(/\D/g, "")
-    return digits.length === 10 ? null : "Please enter a 10-digit US phone number."
-  }
-
-  if (field.type === "ssn") {
-    return SSN_PATTERN.test(String(value)) ? null : "Please use SSN format ###-##-####."
-  }
-
-  if (field.type === "zip") {
-    return /^\d{5}$/.test(String(value)) ? null : "ZIP code must be exactly 5 digits."
-  }
-
-  if (field.type === "date") {
-    const normalizedDate = normalizeFlexibleDateInput(String(value))
-    if (!normalizedDate) {
-      return "Please enter a valid date, for example Jan 29 1980 or 7/12/1980."
-    }
-
-    const parsedDate = parseDate(normalizedDate)
-    if (!parsedDate) {
-      return "Please enter a real calendar date."
-    }
-
-    if (DOB_FIELD_PATTERN.test(field.id)) {
-      const boundsError = validateDobBounds(parsedDate)
-      if (boundsError) {
-        return boundsError
-      }
-    }
-  }
-
-  if (field.type === "number") {
-    const numeric = Number.parseFloat(String(value))
-    if (!Number.isFinite(numeric)) {
-      return "Please enter a valid number."
-    }
-
-    if (field.validation?.min !== undefined && numeric < field.validation.min) {
-      return `Value must be at least ${field.validation.min}.`
-    }
-
-    if (field.validation?.max !== undefined && numeric > field.validation.max) {
-      return `Value must be at most ${field.validation.max}.`
-    }
-  }
-
-  if (field.type === "currency") {
-    const numeric = parseCurrency(String(value))
-    if (!Number.isFinite(numeric) || numeric < 0) {
-      return "Please enter a valid non-negative amount."
-    }
-  }
-
-  if ((field.type === "radio" || field.type === "select") && field.options && field.options.length > 0) {
-    return field.options.includes(String(value))
-      ? null
-      : `Please choose one of: ${field.options.join(", ")}.`
-  }
-
-  if (field.type === "checkbox_group") {
-    if (!Array.isArray(value)) {
-      return "Please provide one or more selections."
-    }
-
-    if (field.max_select && value.length > field.max_select) {
-      return `Please select at most ${field.max_select} options.`
-    }
-
-    if (field.options && value.some((item) => !field.options?.includes(String(item)))) {
-      return `Please choose options from: ${field.options.join(", ")}.`
-    }
-  }
-
-  return null
-}
-
-import {
-  applyInitialMemoExtraction,
-  applyProfileToWizardData,
-  buildAcknowledgementPrefix,
-  buildProfileFilledLabels,
-  formatDisplayValue,
-  formatQuestionPrompt,
-  isDeclineAnswer,
-  normalizeFlexibleDateInput,
-  parseAnswerValue,
-  resolveSpeechLanguage,
-  restoreWizardDataFromRaw,
-  toSpeakableQuestionText,
-} from "./intake-chat-answer-parser"
+// isFilledValue, isRequiredInCurrentContext, validateParsedFieldValue
+// are imported from ./intake-chat-question-builder above.
 
 interface AddressAutofillResult {
   data: WizardData

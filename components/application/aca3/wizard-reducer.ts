@@ -161,6 +161,42 @@ export function createInitialData(): WizardData {
   }
 }
 
+export function ensurePersonCount(data: WizardData, count: number): WizardData {
+  const nextCount = clampPersonCount(count)
+  const nextPeople = [...data.persons]
+
+  if (nextPeople.length > nextCount) {
+    nextPeople.length = nextCount
+  }
+
+  if (nextPeople.length < nextCount) {
+    for (let index = nextPeople.length; index < nextCount; index += 1) {
+      nextPeople.push(makeDefaultPersonState(index))
+    }
+  }
+
+  return {
+    ...data,
+    contact: {
+      ...data.contact,
+      p1_num_people: String(nextCount),
+    },
+    persons: nextPeople,
+  }
+}
+
+export function createDraftWizardState(data: WizardData, currentStep = 1): WizardState {
+  return {
+    data,
+    currentStep,
+    completedSteps: Array.from({ length: Math.max(0, currentStep - 1) }, (_, i) => i + 1),
+    tabByStep: { 4: 0, 5: 0, 6: 0, 7: 0 },
+    errors: {},
+    dirty: true,
+    submitted: false,
+  }
+}
+
 export function createInitialState(): WizardState {
   return {
     data: createInitialData(),
