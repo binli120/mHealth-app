@@ -26,20 +26,35 @@ export async function requireAdmin(
   const pool = getDbPool()
 
   // Batch the role check and the MFA-required policy setting in a single query.
-  const result = await pool.query<{ is_admin: boolean; require_2fa: string | null }>(
-    `
-      SELECT
-        EXISTS (
-          SELECT 1
-          FROM public.user_roles ur
-          JOIN public.roles r ON r.id = ur.role_id
-          WHERE ur.user_id = $1::uuid
-            AND r.name = 'admin'
-        ) AS is_admin,
-        (SELECT value FROM public.admin_settings WHERE key = 'require_2fa_admin') AS require_2fa
-    `,
-    [authResult.userId],
-  )
+  // Fail CLOSED on any DB error — a transient failure must never grant admin access.
+  let result: { rows: Array<{ is_admin: boolean; require_2fa: string | null }> }
+  try {
+    result = await pool.query<{ is_admin: boolean; require_2fa: string | null }>(
+      `
+        SELECT
+          EXISTS (
+            SELECT 1
+            FROM public.user_roles ur
+            JOIN public.roles r ON r.id = ur.role_id
+            WHERE ur.user_id = $1::uuid
+              AND r.name = 'admin'
+          ) AS is_admin,
+          (SELECT value FROM public.admin_settings WHERE key = 'require_2fa_admin') AS require_2fa
+      `,
+      [authResult.userId],
+    )
+  } catch (err) {
+    logServerError("Failed to query admin role / 2FA policy — failing closed", err, {
+      userId: authResult.userId,
+    })
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { ok: false, error: "Unable to verify admin access. Please try again." },
+        { status: 503 },
+      ),
+    }
+  }
 
   if (!result.rows[0]?.is_admin) {
     return {
@@ -58,16 +73,31 @@ export async function requireAdmin(
     return { ok: true, userId: authResult.userId }
   }
 
-  // Verify that the DB policy setting matches the code-enforced behavior.
-  // MFA is ALWAYS required regardless of this setting — but a 'false' value
-  // indicates DB-level misconfiguration (e.g., the seed default was never updated)
-  // and must be surfaced immediately for remediation.
+  // Verify the DB policy setting.
+  // If the key is ABSENT (null) — the admin_settings row was never seeded — fail
+  // closed with 503: we cannot safely determine the MFA policy from an empty DB.
+  // If the key is present but 'false' — log a security alert and continue;
+  // MFA is still enforced by the aal2 / factor check below.
   const require2fa = result.rows[0]?.require_2fa
+  if (require2fa === null || require2fa === undefined) {
+    logServerError(
+      "[SECURITY] admin_settings.require_2fa_admin key is missing from the database — failing closed. Re-run the baseline seed.",
+      new Error("require_2fa_admin absent from DB"),
+      { userId: authResult.userId },
+    )
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { ok: false, error: "Admin policy unavailable. Please contact your administrator." },
+        { status: 503 },
+      ),
+    }
+  }
   if (require2fa !== "true") {
     logServerError(
       "[SECURITY] admin_settings.require_2fa_admin is not 'true' — MFA is still enforced by code but the DB policy is misconfigured. Run migration 20260526000000_require_2fa_admin_true.sql.",
       new Error("require_2fa_admin misconfigured"),
-      { currentValue: require2fa ?? "(missing)" },
+      { currentValue: require2fa },
     )
   }
 

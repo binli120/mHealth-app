@@ -316,16 +316,21 @@ describe("requireAdmin — require_2fa_admin DB setting", () => {
     )
   })
 
-  it("logs a SECURITY warning when require_2fa is null (row missing)", async () => {
+  it("fails closed (503) when require_2fa is null (key absent from admin_settings)", async () => {
+    // Null means the admin_settings row is entirely missing — we cannot
+    // safely determine the MFA policy so we must deny access.
     mockAdminDb(true, null)
 
     const result = await requireAdmin(makeRequest())
 
-    expect(result.ok).toBe(true)
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.response.status).toBe(503)
+    }
     expect(mockLogServerError).toHaveBeenCalledWith(
       expect.stringMatching(/SECURITY/i),
       expect.any(Error),
-      expect.objectContaining({ currentValue: "(missing)" }),
+      expect.objectContaining({ userId: expect.any(String) }),
     )
   })
 })

@@ -16,6 +16,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 
 vi.mock("@/lib/auth/require-auth", () => ({
   requireAuthenticatedUser: vi.fn(),
+  // isLocalRequest is used by the MFA dev-bypass; return false in tests so
+  // the MFA path is exercised and not short-circuited.
+  isLocalRequest: vi.fn().mockReturnValue(false),
+}))
+
+vi.mock("@/lib/auth/local-auth", () => ({
+  isLocalAuthHelperEnabled: vi.fn().mockReturnValue(false),
 }))
 
 const mockDbQuery = vi.fn()
@@ -67,7 +74,8 @@ describe("requireApprovedSocialWorker — auth guard", () => {
 
 describe("requireApprovedSocialWorker — approved social worker", () => {
   beforeEach(() => {
-    mockAuth.mockResolvedValue({ ok: true, userId: USER_ID })
+    // aal2 = MFA already verified this session; no extra DB check needed.
+    mockAuth.mockResolvedValue({ ok: true, userId: USER_ID, aal: "aal2", isPasskeySession: false })
   })
 
   it("returns ok: true with the userId when the user has an approved social_worker role", async () => {
