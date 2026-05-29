@@ -36,7 +36,7 @@ import { validateUpload } from "@/lib/uploads/validate"
 import { createAndUploadDocumentArtifacts } from "@/lib/uploads/document-artifacts"
 import { validateUploadedDocument } from "@/lib/masshealth/document-validation-workflow"
 import { logServerError } from "@/lib/server/logger"
-import { checkRateLimitAsync, mobileUploadLimiter } from "@/lib/server/rate-limit"
+import { checkRateLimitAsync, getClientIp, mobileUploadLimiter } from "@/lib/server/rate-limit"
 import {
   isDriverLicenseDocument,
   requiresDualSideDocument,
@@ -122,6 +122,23 @@ export async function POST(request: Request, { params }: RouteContext) {
       { ok: false, error: "This upload link has expired. Please request a new QR code." },
       { status: 410 },
     )
+  }
+
+  // IP binding — reject uploads from a different device than the one that
+  // received the QR code.  Null allowedIp = legacy session, skip check.
+  if (session.allowedIp !== null) {
+    const requestIp = getClientIp(request)
+    if (requestIp !== session.allowedIp) {
+      logServerError("Mobile upload IP mismatch — rejecting request", null, {
+        module: "upload/mobile",
+        expected: session.allowedIp,
+        received: requestIp,
+      })
+      return NextResponse.json(
+        { ok: false, error: "Upload session is not valid for this device." },
+        { status: 403 },
+      )
+    }
   }
 
   const rlResponse = await checkRateLimitAsync(mobileUploadLimiter, `mobile-upload:${token}`)

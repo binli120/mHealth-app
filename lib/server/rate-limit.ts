@@ -133,12 +133,89 @@ export class DbRateLimiter {
   }
 }
 
+// ── UpstashRateLimiter — Redis-backed, low-latency, multi-instance-safe ────────
+
 /**
- * Run a DbRateLimiter check and return a 429 NextResponse if the limit is
- * exceeded, or null if the request should proceed.
+ * Rate limiter backed by Upstash Redis via their REST API (no SDK required).
+ *
+ * Uses a fixed-window INCR + EXPIRE pipeline for O(1) atomic counting.
+ * When UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN are not set the
+ * limiter falls back transparently to the Postgres-backed DbRateLimiter.
+ *
+ * Set failOpen: false for sensitive endpoints (SSN, identity) so that a
+ * Redis outage causes a deny rather than silently passing brute-force attempts.
+ */
+export class UpstashRateLimiter {
+  private readonly limit: number
+  private readonly windowMs: number
+  private readonly failOpen: boolean
+  /** Postgres fallback used when Upstash env vars are absent or on error. */
+  private readonly pgFallback: DbRateLimiter
+
+  constructor({ limit, windowMs, failOpen = true }: RateLimitConfig) {
+    this.limit = limit
+    this.windowMs = windowMs
+    this.failOpen = failOpen
+    this.pgFallback = new DbRateLimiter({ limit, windowMs, failOpen })
+  }
+
+  async checkAsync(key: string): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
+    const url = process.env.UPSTASH_REDIS_REST_URL?.trim()
+    const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim()
+
+    // Fall back to Postgres when Upstash is not configured.
+    if (!url || !token) {
+      return this.pgFallback.checkAsync(key)
+    }
+
+    const windowSeconds = Math.ceil(this.windowMs / 1000)
+    // Bucket key is scoped to the current fixed window so entries auto-expire.
+    const bucket = Math.floor(Date.now() / 1000 / windowSeconds)
+    const windowKey = `rl:${key}:${bucket}`
+    const resetAt = (bucket + 1) * windowSeconds * 1000
+
+    try {
+      const res = await fetch(`${url}/pipeline`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        // Pipeline: atomically increment counter, then set expiry only on
+        // the first write so the key dies when the window closes.
+        body: JSON.stringify([
+          ["INCR", windowKey],
+          ["EXPIRE", windowKey, String(windowSeconds + 5), "NX"],
+        ]),
+        cache: "no-store",
+      })
+
+      if (!res.ok) throw new Error(`Upstash HTTP ${res.status}`)
+
+      const results = (await res.json()) as Array<{ result: unknown }>
+      const count = typeof results[0]?.result === "number" ? results[0].result : 1
+
+      if (count > this.limit) {
+        return { allowed: false, remaining: 0, resetAt }
+      }
+
+      return { allowed: true, remaining: Math.max(0, this.limit - count), resetAt }
+    } catch {
+      // Redis error — apply the configured fail-open / fail-closed policy.
+      if (!this.failOpen) {
+        return { allowed: false, remaining: 0, resetAt: Date.now() + this.windowMs }
+      }
+      return { allowed: true, remaining: this.limit - 1, resetAt: Date.now() + this.windowMs }
+    }
+  }
+}
+
+/**
+ * Run a DbRateLimiter or UpstashRateLimiter check and return a 429 NextResponse
+ * if the limit is exceeded, or null if the request should proceed.
  */
 export async function checkRateLimitAsync(
-  limiter: DbRateLimiter,
+  limiter: DbRateLimiter | UpstashRateLimiter,
   key: string,
 ): Promise<NextResponse | null> {
   const { allowed, resetAt } = await limiter.checkAsync(key)
@@ -161,29 +238,28 @@ export async function checkRateLimitAsync(
 }
 
 // ── Shared limiter instances ──────────────────────────────────────────────────
+// Invite token limiters use DbRateLimiter (Postgres) so they are multi-instance
+// safe on Fluid Compute / Vercel deployments (no shared in-process memory).
 
 /** Public invite-token lookup — 20 req / min per IP */
-export const inviteTokenReadLimiter = new RateLimiter({ limit: 20, windowMs: 60_000 })
+export const inviteTokenReadLimiter = new DbRateLimiter({ limit: 20, windowMs: 60_000 })
 
 /** Invite acceptance (account creation) — 5 req / min per IP */
-export const inviteTokenAcceptLimiter = new RateLimiter({ limit: 5, windowMs: 60_000 })
+export const inviteTokenAcceptLimiter = new DbRateLimiter({ limit: 5, windowMs: 60_000 })
 
-// Prune stale entries every 5 minutes to keep memory bounded
-setInterval(() => {
-  inviteTokenReadLimiter.prune()
-  inviteTokenAcceptLimiter.prune()
-}, 5 * 60_000)
+// ── Upstash-backed limiter instances (Redis-first, Postgres fallback) ─────────
+// These endpoints are sensitive or high-volume.  When UPSTASH_REDIS_REST_URL
+// and UPSTASH_REDIS_REST_TOKEN are set the limiters use Redis for lower latency;
+// otherwise they fall back to the Postgres-backed DbRateLimiter.
 
-// ── DB-backed limiter instances (multi-instance safe) ─────────────────────────
+/** SSN submission — 3 attempts per 15 min per user (fail-closed) */
+export const ssnSubmitLimiter = new UpstashRateLimiter({ limit: 3, windowMs: 15 * 60_000, failOpen: false })
 
-/** SSN submission — 3 attempts per 15 min per user */
-export const ssnSubmitLimiter = new DbRateLimiter({ limit: 3, windowMs: 15 * 60_000, failOpen: false })
-
-/** Identity (driver-license) verification — 5 attempts per 30 min per user */
-export const identityVerifyLimiter = new DbRateLimiter({ limit: 5, windowMs: 30 * 60_000, failOpen: false })
+/** Identity (driver-license) verification — 5 attempts per 30 min per user (fail-closed) */
+export const identityVerifyLimiter = new UpstashRateLimiter({ limit: 5, windowMs: 30 * 60_000, failOpen: false })
 
 /** AI chat — 30 messages per 5 min per user (streaming) */
-export const aiChatLimiter = new DbRateLimiter({ limit: 30, windowMs: 5 * 60_000 })
+export const aiChatLimiter = new UpstashRateLimiter({ limit: 30, windowMs: 5 * 60_000 })
 
 /** Document upload — 20 uploads per 10 min per user */
 export const documentUploadLimiter = new DbRateLimiter({ limit: 20, windowMs: 10 * 60_000 })

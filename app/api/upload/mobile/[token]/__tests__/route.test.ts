@@ -48,6 +48,9 @@ vi.mock("@/lib/server/logger", () => ({
 vi.mock("@/lib/server/rate-limit", () => ({
   checkRateLimitAsync: vi.fn(),
   mobileUploadLimiter: {},
+  // getClientIp is called when session.allowedIp !== null.
+  // makeSession defaults allowedIp to null, so this is a safety stub.
+  getClientIp: vi.fn().mockReturnValue("127.0.0.1"),
 }))
 
 import { GET, POST } from "@/app/api/upload/mobile/[token]/route"
@@ -87,6 +90,7 @@ function makeSession(overrides: Partial<Awaited<ReturnType<typeof getUploadSessi
     createdAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 60_000).toISOString(),
     completedAt: null,
+    allowedIp: null, // null = IP binding disabled; tests don't exercise IP validation
     ...overrides,
   }
 }

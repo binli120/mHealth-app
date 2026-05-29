@@ -29,6 +29,8 @@ export interface MobileUploadSession {
   createdAt: string
   expiresAt: string
   completedAt: string | null
+  /** Client IP captured at session creation; null = no IP binding. */
+  allowedIp: string | null
 }
 
 interface SessionRow {
@@ -43,6 +45,7 @@ interface SessionRow {
   created_at: string
   expires_at: string
   completed_at: string | null
+  allowed_ip: string | null
 }
 
 function mapRow(row: SessionRow): MobileUploadSession {
@@ -58,6 +61,7 @@ function mapRow(row: SessionRow): MobileUploadSession {
     createdAt: row.created_at,
     expiresAt: row.expires_at,
     completedAt: row.completed_at,
+    allowedIp: row.allowed_ip ?? null,
   }
 }
 
@@ -68,6 +72,8 @@ export async function createMobileUploadSession(
   applicationId: string,
   documentType?: string,
   requiredDocumentLabel?: string,
+  /** Client IP to bind this session to. Upload requests from a different IP will be rejected. */
+  allowedIp?: string | null,
 ): Promise<MobileUploadSession> {
   const pool = getDbPool()
 
@@ -84,10 +90,10 @@ export async function createMobileUploadSession(
 
   const result = await pool.query<SessionRow>(
     `INSERT INTO public.mobile_upload_sessions
-       (user_id, application_id, document_type, required_document_label, token)
-     VALUES ($1, $2, $3, $4, $5)
+       (user_id, application_id, document_type, required_document_label, token, allowed_ip)
+     VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING *`,
-    [userId, applicationId, documentType ?? null, requiredDocumentLabel ?? null, generateToken()],
+    [userId, applicationId, documentType ?? null, requiredDocumentLabel ?? null, generateToken(), allowedIp ?? null],
   )
 
   const row = result.rows[0]

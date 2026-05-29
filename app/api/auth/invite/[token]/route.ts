@@ -11,7 +11,7 @@ import { claimInvitationByToken, getInvitationByToken } from "@/lib/db/invitatio
 import { encryptApplicantField } from "@/lib/db/applicant-fields"
 import { toUserFacingError } from "@/lib/errors/user-facing"
 import {
-  checkRateLimit,
+  checkRateLimitAsync,
   getClientIp,
   inviteTokenAcceptLimiter,
   inviteTokenReadLimiter,
@@ -27,7 +27,7 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ token: string }> },
 ) {
-  const limited = checkRateLimit(inviteTokenReadLimiter, getClientIp(request))
+  const limited = await checkRateLimitAsync(inviteTokenReadLimiter, `invite-read:${getClientIp(request)}`)
   if (limited) return limited
 
   const { token } = await params
@@ -61,7 +61,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ token: string }> },
 ) {
-  const limited = checkRateLimit(inviteTokenAcceptLimiter, getClientIp(request))
+  const limited = await checkRateLimitAsync(inviteTokenAcceptLimiter, `invite-accept:${getClientIp(request)}`)
   if (limited) return limited
 
   const { token } = await params
