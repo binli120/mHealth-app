@@ -14,7 +14,7 @@ import {
   useRef,
   useState,
 } from "react"
-import { Mic, MicOff, Send, CheckCircle2, Circle, ChevronDown, ChevronUp, ArrowRight, Loader2, User, UserRound, Volume2, VolumeX, CalendarDays, Pencil, Check, X } from "lucide-react"
+import { Mic, MicOff, Send, CheckCircle2, Circle, ChevronDown, ChevronUp, ArrowRight, Loader2, Volume2, CalendarDays, Pencil, Check, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Progress } from "@/components/ui/progress"
@@ -53,7 +53,6 @@ import {
   detectCurrentSection,
   type FormSection,
 } from "@/lib/masshealth/form-sections"
-import { DocumentUploader } from "@/components/application/document-uploader"
 import { containsSsnLikeContent, SSN_CHAT_HANDOFF_MESSAGE } from "@/lib/agents/sensitive-input"
 import {
   ACTIVE_ASSISTANT_APPLICATION_KEY,
@@ -98,6 +97,8 @@ import {
   type InputFieldType,
   type TextMessage,
 } from "./application-assistant-utils"
+import type { ApplicationAssistantProps } from "./application-assistant-types"
+import { CompassIcon, MessageBubble } from "./application-assistant-message-bubble"
 
 export {
   ASSISTANT_CONNECTION_FAILURE_MESSAGE,
@@ -111,8 +112,6 @@ export {
 } from "./application-assistant-utils"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-
-type MessageRole = "user" | "assistant"
 
 interface ImmediateFieldPatch {
   fields: Partial<ApplicationFormData>
@@ -129,21 +128,7 @@ const FIELD_TYPE_HINT: Record<InputFieldType, string> = {
   text: "",
 }
 
-function CompassIcon({ className }: { className?: string }) {
-  return <UserRound className={className} aria-hidden="true" />
-}
-
 // ── Component ─────────────────────────────────────────────────────────────────
-
-interface ApplicationAssistantProps {
-  applicationId?: string
-  actingForPatientId?: string
-  /** Structured form data pre-parsed from an uploaded document. When provided
-   *  these fields are applied directly to the Redux store and the assistant
-   *  skips to asking only about missing or uncertain fields. */
-  prefillFormData?: Partial<ApplicationFormData>
-  onSwitchToWizard?: () => void
-}
 
 async function validateAndPatchAddress(
   flatFields: Partial<ApplicationFormData>,
@@ -1369,82 +1354,3 @@ export function ApplicationAssistant({
   )
 }
 
-// ── Message bubble sub-component ──────────────────────────────────────────────
-
-function MessageBubble({
-  message,
-  applicationId,
-  onSpeak,
-  isSpeaking,
-}: {
-  message: AssistantMessage
-  applicationId: string
-  onSpeak?: (text: string) => void
-  isSpeaking?: boolean
-}) {
-  const isUser = message.role === "user"
-
-  if (isUser) {
-    return (
-      <div className="flex items-start justify-end gap-2">
-        <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground">
-          {message.content}
-        </div>
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-          <User className="h-4 w-4 text-primary" />
-        </div>
-      </div>
-    )
-  }
-
-  if (message.type === "upload_prompt") {
-    return (
-      <div className="flex items-start gap-2">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
-          <CompassIcon className="h-4 w-4 text-muted-foreground" />
-        </div>
-        <div className="flex-1 space-y-3">
-          <div className="max-w-[90%] rounded-2xl rounded-tl-sm bg-muted px-4 py-2.5 text-sm">
-            {message.content}
-          </div>
-          <div className="space-y-2">
-            {message.docTypes.map((doc) => (
-              <DocumentUploader
-                key={doc.type}
-                applicationId={applicationId}
-                documentType={doc.type}
-                requiredDocumentLabel={doc.label}
-                title={doc.label}
-                description={doc.description}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Standard assistant text message
-  return (
-    <div className="group flex items-start gap-2">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
-        <CompassIcon className="h-4 w-4 text-muted-foreground" />
-      </div>
-      <div className="relative max-w-[85%] rounded-2xl rounded-tl-sm bg-muted px-4 py-2.5 text-sm leading-relaxed">
-        {message.content}
-        {onSpeak && message.content && (
-          <button
-            type="button"
-            aria-label={isSpeaking ? "Stop reading" : "Read aloud"}
-            onClick={() => onSpeak(message.content)}
-            className="absolute -bottom-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
-          >
-            {isSpeaking
-              ? <VolumeX className="h-3 w-3" />
-              : <Volume2 className="h-3 w-3" />}
-          </button>
-        )}
-      </div>
-    </div>
-  )
-}

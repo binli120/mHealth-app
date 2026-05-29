@@ -15,45 +15,28 @@ import {
 import type { UserProfile } from "@/lib/user-profile/types"
 import type { SupportedLanguage } from "@/lib/i18n/languages"
 
-// ── Local type aliases (mirrors from application-assistant.tsx) ───────────────
+// ── Import and re-export canonical types from the types file ─────────────────
 
-type MessageRole = "user" | "assistant"
+import type {
+  MessageRole,
+  BaseMessage,
+  TextMessage,
+  UploadPromptMessage,
+  AssistantMessage,
+  ApiChatMessage,
+  QuickReply,
+  AssistantDraftState,
+} from "./application-assistant-types"
 
-interface BaseMessage {
-  id: string
-  role: MessageRole
-  content: string
-}
-
-interface TextMessage extends BaseMessage {
-  type: "text"
-}
-
-interface UploadPromptMessage extends BaseMessage {
-  type: "upload_prompt"
-  docTypes: Array<{ type: string; label: string; description: string }>
-}
-
-export type { TextMessage, UploadPromptMessage }
-export type AssistantMessage = TextMessage | UploadPromptMessage
-
-export interface ApiChatMessage {
-  role: "user" | "assistant"
-  content: string
-}
-
-export interface QuickReply {
-  label: string
-  value: string
-}
-
-export interface AssistantDraftState {
-  mode: "form_assistant"
-  updatedAt: string
-  formData: Partial<ApplicationFormData>
-  messages: AssistantMessage[]
-  noHouseholdMembers: boolean
-  noIncome: boolean
+export type {
+  MessageRole,
+  BaseMessage,
+  TextMessage,
+  UploadPromptMessage,
+  AssistantMessage,
+  ApiChatMessage,
+  QuickReply,
+  AssistantDraftState,
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
