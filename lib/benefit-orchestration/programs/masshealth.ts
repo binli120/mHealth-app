@@ -7,6 +7,7 @@
 import type { FamilyProfile, BenefitResult } from '../types'
 import { getAnnualFPL, computeMAGIMonthly } from '../fpl-utils'
 import {
+  FPL_PCT_ADULT_DISABILITY,
   FPL_PCT_CAREPLUS,
   FPL_PCT_CHILD_STANDARD,
   FPL_PCT_FAMILY_ASSIST,
@@ -190,7 +191,7 @@ export function evaluateMassHealth(profile: FamilyProfile, fplPercent: number): 
 
   // ── Adults 19–64 ────────────────────────────────────────────────────────
   if (profile.age >= 19 && profile.age <= 64 && isQualified) {
-    if (profile.disabled && magiAsFPL <= 133) {
+    if (profile.disabled && magiAsFPL <= FPL_PCT_ADULT_DISABILITY) {
       results.push({
         programId: 'masshealth_standard',
         programName: 'MassHealth Standard',
@@ -207,7 +208,7 @@ export function evaluateMassHealth(profile: FamilyProfile, fplPercent: number): 
         keyRequirements: [
           'MA resident',
           'Documented disability or SSI/SSDI recipient',
-          `Income ≤133% FPL (~$${Math.round(annualFPL * 1.33).toLocaleString()}/yr)`,
+          `Income ≤${FPL_PCT_ADULT_DISABILITY}% FPL (~$${Math.round(annualFPL * (FPL_PCT_ADULT_DISABILITY / 100)).toLocaleString()}/yr)`,
         ],
         requiredDocuments: [
           ...baseRequiredDocs,
@@ -236,7 +237,7 @@ export function evaluateMassHealth(profile: FamilyProfile, fplPercent: number): 
         keyRequirements: [
           'MA resident',
           'Age 19–64',
-          `Income ≤138% FPL (~$${Math.round(annualFPL * 1.38).toLocaleString()}/yr)`,
+          `Income ≤${FPL_PCT_CAREPLUS}% FPL (~$${Math.round(annualFPL * (FPL_PCT_CAREPLUS / 100)).toLocaleString()}/yr)`,
           'Not enrolled in Medicare',
         ],
         requiredDocuments: baseRequiredDocs,
@@ -263,7 +264,7 @@ export function evaluateMassHealth(profile: FamilyProfile, fplPercent: number): 
         keyRequirements: [
           'MA resident',
           'Age 19–64',
-          `Income 138–300% FPL (~$${Math.round(annualFPL * 1.38).toLocaleString()}–$${Math.round(annualFPL * 3).toLocaleString()}/yr)`,
+          `Income ${FPL_PCT_CAREPLUS}–${FPL_PCT_FAMILY_ASSIST}% FPL (~$${Math.round(annualFPL * (FPL_PCT_CAREPLUS / 100)).toLocaleString()}–$${Math.round(annualFPL * (FPL_PCT_FAMILY_ASSIST / 100)).toLocaleString()}/yr)`,
         ],
         requiredDocuments: baseRequiredDocs,
         nextSteps: [
@@ -290,7 +291,7 @@ export function evaluateMassHealth(profile: FamilyProfile, fplPercent: number): 
         priority: 0,
         keyRequirements: [
           'MA resident',
-          `Income 300–500% FPL`,
+          `Income ${FPL_PCT_FAMILY_ASSIST}–${FPL_PCT_TAX_CREDITS_UPPER}% FPL`,
           'No affordable employer coverage',
         ],
         requiredDocuments: baseRequiredDocs,
