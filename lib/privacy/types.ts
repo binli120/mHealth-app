@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 export interface PrivacyFrontmatter {
   version: string
   effectiveDate: string

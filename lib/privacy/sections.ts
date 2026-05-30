@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import type { PrivacySectionMeta } from "./types"
 
 export const REQUIRED_SECTIONS: PrivacySectionMeta[] = [

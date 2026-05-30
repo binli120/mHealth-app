@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Route-level loading state for all /admin/* pages.
  * The admin layout shows its own auth-gate loading screen once mounted;
  * this loader covers the brief period while the layout JS chunk is fetched.

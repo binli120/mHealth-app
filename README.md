@@ -1029,3 +1029,13 @@ Secrets added to GitHub environment **Variables** (not **Secrets**) use a differ
 | `relation collaborative_sessions does not exist` | Run `pnpm db:migrate:dev` |
 | Patient doesn't see invite without refresh | `SessionInviteBanner` polls every 30 s — wait or refresh `/customer/dashboard` |
 | Session card shows no Delete button | Delete is only available on `ended` or `cancelled` sessions |
+
+---
+
+## License
+
+Copyright © 2026 HealthCompass MA. All rights reserved.
+
+This software and its source code are the proprietary and confidential property of HealthCompass MA. Unauthorized copying, distribution, modification, or use — in whole or in part — is strictly prohibited without prior written permission.
+
+See [`LICENSE`](./LICENSE) for full terms. Licensing inquiries: blee@healthcompass.cloud

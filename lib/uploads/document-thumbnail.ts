@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Server-side thumbnail generation for uploaded application documents.
  *
  * Thumbnails are derived objects stored next to the original upload:

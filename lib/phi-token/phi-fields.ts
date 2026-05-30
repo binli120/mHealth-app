@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * PHI fields within WizardState.data that must never be persisted on the server.
  *
  * contact  — applicant name, address, SSN, DOB, phone, citizenship, language prefs

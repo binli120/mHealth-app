@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Route-level loading state for all /customer/* pages.
  *
  * This Suspense boundary fires while the route's JS bundle is fetching and

@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import fs from "node:fs"
 import path from "node:path"
 import matter from "gray-matter"

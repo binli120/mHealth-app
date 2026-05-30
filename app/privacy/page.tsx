@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import { notFound } from "next/navigation"
 import { compileMDX } from "next-mdx-remote/rsc"
 import Link from "next/link"

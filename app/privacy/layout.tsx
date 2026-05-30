@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import type { Metadata } from "next"
 import { loadPrivacyContent } from "@/lib/privacy/load-content"
 import { buildPrivacyJsonLd } from "@/lib/privacy/json-ld"

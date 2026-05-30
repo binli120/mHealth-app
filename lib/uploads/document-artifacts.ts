@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Server-side artifacts for uploaded documents:
  * - small WebP thumbnail for UI preview
  * - PDF rendition for uploaded/captured images

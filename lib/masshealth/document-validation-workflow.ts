@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import "server-only"
 
 import { getApplicationDraft } from "@/lib/db/application-drafts"

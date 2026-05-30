@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import type { Root, Element } from "hast"
 import { visit } from "unist-util-visit"
 

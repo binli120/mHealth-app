@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import { ShieldCheck, ShieldOff } from "lucide-react"
 
 const surfaces = [

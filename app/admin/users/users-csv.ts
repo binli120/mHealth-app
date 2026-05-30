@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * CSV import helpers for the admin users page.
  * Parses a bulk-invite CSV with columns: email, first_name, last_name, role, company_id.
  */
