@@ -30,15 +30,18 @@ describe("DbRateLimiter", () => {
     expect(result.remaining).toBe(4)
   })
 
-  it("blocks the request when count equals the limit (boundary)", async () => {
+  it("allows the request when count equals the limit (last slot, boundary)", async () => {
+    // The DB increments BEFORE the check, so count=5 with limit=5 means this
+    // is the 5th of 5 allowed requests — it should be permitted with 0 remaining.
     mockQuery.mockResolvedValueOnce({ rows: [{ count: 5, window_start: new Date() }] })
     const limiter = new DbRateLimiter({ limit: 5, windowMs: 60_000 })
     const result = await limiter.checkAsync("ip:1.2.3.4")
-    expect(result.allowed).toBe(false)
+    expect(result.allowed).toBe(true)
     expect(result.remaining).toBe(0)
   })
 
   it("blocks the request when count exceeds the limit", async () => {
+    // count=6 with limit=5 means the 6th request — blocked.
     mockQuery.mockResolvedValueOnce({ rows: [{ count: 6, window_start: new Date() }] })
     const limiter = new DbRateLimiter({ limit: 5, windowMs: 60_000 })
     const result = await limiter.checkAsync("ip:1.2.3.4")

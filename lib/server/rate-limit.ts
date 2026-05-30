@@ -118,7 +118,9 @@ export class DbRateLimiter {
         : new Date(row.window_start).getTime()
       const resetAt = windowStart + this.windowMs
 
-      if (count >= this.limit) {
+      // count > limit (not >=) because the INSERT already incremented before the check.
+      // With limit=3: count=1,2,3 → allowed; count=4 → blocked.
+      if (count > this.limit) {
         return { allowed: false, remaining: 0, resetAt }
       }
 

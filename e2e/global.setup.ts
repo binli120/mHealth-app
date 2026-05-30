@@ -278,6 +278,24 @@ async function ensureLocalDemoRoles() {
     }
 
     await pool.query("COMMIT")
+
+    // Clear rate-limit counters for test users so CI re-runs don't inherit
+    // accumulated counts from a previous run in the same time window.
+    const testUserIds = [demoUserId, reviewerUserId, adminUserId, swUserId].filter(Boolean)
+    if (testUserIds.length > 0) {
+      await pool.query(
+        `DELETE FROM public.rate_limit_counters
+         WHERE key = ANY(
+           SELECT 'ssn:' || id FROM public.users WHERE id = ANY($1::uuid[])
+           UNION ALL
+           SELECT 'identity-verify:' || id FROM public.users WHERE id = ANY($1::uuid[])
+           UNION ALL
+           SELECT 'chat:' || id FROM public.users WHERE id = ANY($1::uuid[])
+         )`,
+        [testUserIds],
+      )
+    }
+
     console.log("[setup] ✅ Local demo admin/SW roles prepared")
   } catch (err) {
     await pool.query("ROLLBACK").catch(() => null)

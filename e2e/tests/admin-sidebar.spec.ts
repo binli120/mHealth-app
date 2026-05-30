@@ -47,6 +47,15 @@ test.describe("Admin sidebar", () => {
     await page.setViewportSize({ width: 1280, height: 720 })
     await page.goto("/admin", { waitUntil: "domcontentloaded", timeout: 15_000 })
 
+    // Secondary cloud guard: if the admin gate redirected to MFA or login,
+    // the sidebar will never render.  Skip rather than fail so that CI
+    // using cloud Supabase does not report a spurious failure even when
+    // NEXT_PUBLIC_SUPABASE_URL was not injected into the Playwright process.
+    const landedUrl = page.url()
+    if (!landedUrl.includes("/admin")) {
+      test.skip(true, `Admin requires MFA on this instance — redirected to ${landedUrl}`)
+    }
+
     const sidebar = page.getByRole("complementary", { name: /admin sidebar/i })
     await expect(sidebar).toBeVisible({ timeout: 20_000 })
     await expect(page.getByRole("button", { name: /hide admin sidebar/i })).toBeVisible()
