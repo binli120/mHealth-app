@@ -51,9 +51,13 @@ test.describe("Admin sidebar", () => {
     // the sidebar will never render.  Skip rather than fail so that CI
     // using cloud Supabase does not report a spurious failure even when
     // NEXT_PUBLIC_SUPABASE_URL was not injected into the Playwright process.
-    const landedUrl = page.url()
-    if (!landedUrl.includes("/admin")) {
-      test.skip(true, `Admin requires MFA on this instance — redirected to ${landedUrl}`)
+    //
+    // NOTE: check the pathname only — a MFA redirect produces a URL like
+    // /auth/mfa?next=/admin which still *contains* "/admin" as a substring,
+    // so a simple includes() check would miss it.
+    const landedPathname = new URL(page.url()).pathname
+    if (!landedPathname.startsWith("/admin")) {
+      test.skip(true, `Admin requires MFA on this instance — redirected to ${page.url()}`)
     }
 
     const sidebar = page.getByRole("complementary", { name: /admin sidebar/i })
