@@ -31,6 +31,34 @@ function hasAuth(filePath: string) {
   }
 }
 
+async function waitForAdminShellOrAuthGate(page: import("@playwright/test").Page) {
+  const sidebar = page.getByRole("complementary", { name: /admin sidebar/i })
+  const notAdminHeading = page.getByRole("heading", { name: /admin role required/i })
+
+  const outcome = await Promise.race([
+    sidebar.waitFor({ state: "visible", timeout: 20_000 })
+      .then(() => "ready" as const)
+      .catch(() => "timeout" as const),
+    notAdminHeading.waitFor({ state: "visible", timeout: 20_000 })
+      .then(() => "not-admin" as const)
+      .catch(() => "timeout" as const),
+    page.waitForURL(
+      (url) => !url.pathname.startsWith("/admin"),
+      { timeout: 20_000 },
+    ).then(() => "redirected" as const).catch(() => "timeout" as const),
+    page.waitForTimeout(20_000).then(() => "timeout" as const),
+  ])
+
+  if (outcome === "redirected") {
+    test.skip(true, `Admin requires additional auth on this instance — redirected to ${page.url()}`)
+  }
+  if (outcome === "not-admin") {
+    test.skip(true, "Current E2E admin account is authenticated but does not have the admin role.")
+  }
+
+  return sidebar
+}
+
 test.use({ storageState: AUTH_FILE })
 
 test.describe("Admin sidebar", () => {
@@ -47,20 +75,9 @@ test.describe("Admin sidebar", () => {
     await page.setViewportSize({ width: 1280, height: 720 })
     await page.goto("/admin", { waitUntil: "domcontentloaded", timeout: 15_000 })
 
-    // Secondary cloud guard: if the admin gate redirected to MFA or login,
-    // the sidebar will never render.  Skip rather than fail so that CI
-    // using cloud Supabase does not report a spurious failure even when
-    // NEXT_PUBLIC_SUPABASE_URL was not injected into the Playwright process.
-    //
-    // NOTE: check the pathname only — a MFA redirect produces a URL like
-    // /auth/mfa?next=/admin which still *contains* "/admin" as a substring,
-    // so a simple includes() check would miss it.
-    const landedPathname = new URL(page.url()).pathname
-    if (!landedPathname.startsWith("/admin")) {
-      test.skip(true, `Admin requires MFA on this instance — redirected to ${page.url()}`)
-    }
-
-    const sidebar = page.getByRole("complementary", { name: /admin sidebar/i })
+    // The admin gate resolves client-side after domcontentloaded. Wait for the
+    // shell, a known auth redirect, or the not-admin fallback before asserting.
+    const sidebar = await waitForAdminShellOrAuthGate(page)
     await expect(sidebar).toBeVisible({ timeout: 20_000 })
     await expect(page.getByRole("button", { name: /hide admin sidebar/i })).toBeVisible()
 
