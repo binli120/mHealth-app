@@ -95,8 +95,10 @@ function NewApplicationPageContent() {
     [requestedMode, prefillKey, queryApplicationId],
   )
   const [entryMode, setEntryMode] = useState<ApplicationEntryMode>(urlEntryMode)
+  const [hasOpenedChat, setHasOpenedChat] = useState(urlEntryMode === "chat")
 
   useEffect(() => {
+    if (urlEntryMode === "chat") setHasOpenedChat(true)
     setEntryMode(urlEntryMode)
   }, [urlEntryMode])
 
@@ -114,7 +116,11 @@ function NewApplicationPageContent() {
     <div className="container mx-auto space-y-4 px-4 py-6">
       <Tabs
         value={entryMode}
-        onValueChange={(value) => setEntryMode(value as ApplicationEntryMode)}
+        onValueChange={(value) => {
+          const nextMode = value as ApplicationEntryMode
+          if (nextMode === "chat") setHasOpenedChat(true)
+          setEntryMode(nextMode)
+        }}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -136,7 +142,12 @@ function NewApplicationPageContent() {
           </TabsList>
         </div>
 
-        <TabsContent value="chat" className="mt-4">
+        <TabsContent
+          value="chat"
+          className="mt-4"
+          style={entryMode === "chat" ? undefined : { display: "none" }}
+          {...(hasOpenedChat ? { forceMount: true } : {})}
+        >
           {prefillFormData ? (
             <ApplicationAssistant
               applicationId={queryApplicationId || undefined}

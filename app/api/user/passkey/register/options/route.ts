@@ -15,7 +15,7 @@ import {
 
 export const runtime = "nodejs"
 
-export const USER_PASSKEY_REGISTER_CHALLENGE_COOKIE = "hc-user-passkey-register"
+const USER_PASSKEY_REGISTER_CHALLENGE_COOKIE = "hc-user-passkey-register"
 
 async function getEmail(userId: string): Promise<string | null> {
   return getUserEmail(userId)

@@ -9,6 +9,7 @@ import {
   buildIntakeQuestions,
   computeAnsweredIntakeQuestionIds,
   createInitialIntakeData,
+  getWizardStepForIntakeProgress,
   parseIntakeAnswerValue,
   writeIntakeQuestionValue,
 } from "@/components/application/aca3/intake-chat"
@@ -140,5 +141,14 @@ describe("IntakeChat question plan", () => {
     questions = buildIntakeQuestions(data)
     const answered = computeAnsweredIntakeQuestionIds(questions, data)
     expect(answered.has(employmentCountQuestion!.id)).toBe(true)
+  })
+
+  it("maps chat progress to the wizard step for the next pending question", () => {
+    const data = createInitialIntakeData()
+    const questions = buildIntakeQuestions(data)
+    const answered = computeAnsweredIntakeQuestionIds(questions, data)
+
+    expect(questions.find((question) => question.field.id === "p1_name")?.id).toBeDefined()
+    expect(getWizardStepForIntakeProgress(questions, answered, data, new Set())).toBe(2)
   })
 })

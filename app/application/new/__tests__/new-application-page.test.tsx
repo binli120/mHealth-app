@@ -3,7 +3,8 @@
  * @email: blee@healthcompass.cloud
  */
 
-import { render, waitFor } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { Provider } from "react-redux"
 import { configureStore } from "@reduxjs/toolkit"
@@ -160,5 +161,25 @@ describe("new application page", () => {
     expect(mocks.formWizard.mock.calls.at(-1)?.[0]).toMatchObject({
       applicationId: "app-123",
     })
+  })
+
+  it("can switch from wizard to chat and back to wizard without a refresh", async () => {
+    mocks.useSearchParams.mockReturnValue(
+      new URLSearchParams({
+        applicationId: "app-123",
+        mode: "wizard",
+      }),
+    )
+
+    renderPage()
+
+    await waitFor(() => expect(screen.getByTestId("form-wizard")).toBeVisible())
+
+    await userEvent.click(screen.getByRole("tab", { name: /compass/i }))
+    expect(screen.getByTestId("intake-chat")).toBeVisible()
+
+    await userEvent.click(screen.getByRole("tab", { name: /form wizard/i }))
+    expect(screen.getByTestId("form-wizard")).toBeVisible()
+    expect(screen.getByTestId("intake-chat")).not.toBeVisible()
   })
 })

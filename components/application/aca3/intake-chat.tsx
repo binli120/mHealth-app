@@ -38,6 +38,7 @@ import {
   deriveSkippedFromLastAnswered,
   findNextPendingQuestion,
   getAddressSiblingFieldIds,
+  getWizardStepForIntakeProgress,
   isFilledValue,
   isRequiredInCurrentContext,
   readValue,
@@ -60,6 +61,7 @@ import {
   clampPersonCount,
   createDraftWizardState,
   ensurePersonCount,
+  getFormCacheKey,
 } from "./wizard-reducer"
 import {
   applyInitialMemoExtraction,
@@ -115,7 +117,7 @@ const UI_COPY: Record<SupportedLanguage, IntakeChatCopy> = {
     send: "Send",
     resetChat: "Reset chat",
     autoPlay: "Auto-play question",
-    complete: "All intake questions are complete. You can switch to Form Wizard to review and submit.",
+    complete: "All intake questions are complete. Next, verify your identity and submit your application.",
     savedPrefix: "Thanks",
   },
   es: {
@@ -128,7 +130,7 @@ const UI_COPY: Record<SupportedLanguage, IntakeChatCopy> = {
     send: "Enviar",
     resetChat: "Reiniciar chat",
     autoPlay: "Reproducir pregunta automáticamente",
-    complete: "Todas las preguntas de admisión están completas. Puede cambiar al formulario para revisar y enviar.",
+    complete: "Todas las preguntas de admisión están completas. Ahora verifique su identidad y envíe su solicitud.",
     savedPrefix: "Gracias",
   },
   "pt-BR": {
@@ -141,7 +143,7 @@ const UI_COPY: Record<SupportedLanguage, IntakeChatCopy> = {
     send: "Enviar",
     resetChat: "Reiniciar chat",
     autoPlay: "Reproduzir pergunta automaticamente",
-    complete: "Todas as perguntas foram concluídas. Você pode ir ao formulário para revisar e enviar.",
+    complete: "Todas as perguntas foram concluídas. Agora verifique sua identidade e envie sua solicitação.",
     savedPrefix: "Obrigado",
   },
   "zh-CN": {
@@ -154,7 +156,7 @@ const UI_COPY: Record<SupportedLanguage, IntakeChatCopy> = {
     send: "发送",
     resetChat: "重置聊天",
     autoPlay: "自动朗读问题",
-    complete: "所有采集问题已完成。您可以切换到表单向导进行检查并提交。",
+    complete: "所有采集问题已完成。接下来请验证身份并提交申请。",
     savedPrefix: "谢谢",
   },
   ht: {
@@ -167,7 +169,7 @@ const UI_COPY: Record<SupportedLanguage, IntakeChatCopy> = {
     send: "Voye",
     resetChat: "Rekòmanse chat",
     autoPlay: "Li kestyon an otomatikman",
-    complete: "Tout kestyon yo fini. Ou ka chanje nan Form Wizard pou revize epi soumèt.",
+    complete: "Tout kestyon yo fini. Kounye a verifye idantite ou epi soumèt aplikasyon an.",
     savedPrefix: "Mèsi",
   },
   vi: {
@@ -180,7 +182,7 @@ const UI_COPY: Record<SupportedLanguage, IntakeChatCopy> = {
     send: "Gửi",
     resetChat: "Đặt lại chat",
     autoPlay: "Tự phát câu hỏi",
-    complete: "Đã hoàn thành các câu hỏi thu thập. Bạn có thể chuyển sang form-wizard để rà soát và nộp.",
+    complete: "Đã hoàn thành các câu hỏi thu thập. Tiếp theo, hãy xác minh danh tính và nộp đơn.",
     savedPrefix: "Cảm ơn",
   },
 }
@@ -310,6 +312,7 @@ export { parseAnswerValue as parseIntakeAnswerValue } from "./intake-chat-answer
 export { buildQuestions as buildIntakeQuestions } from "./intake-chat-question-builder"
 export { computeAnsweredQuestionIds as computeAnsweredIntakeQuestionIds } from "./intake-chat-question-builder"
 export { findNextPendingQuestion as findNextPendingIntakeQuestion } from "./intake-chat-question-builder"
+export { getWizardStepForIntakeProgress } from "./intake-chat-question-builder"
 export { writeValue as writeIntakeQuestionValue } from "./intake-chat-question-builder"
 
 export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard, onSaveAndExit }: IntakeChatProps) {
@@ -317,7 +320,7 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
   const dispatch = useAppDispatch()
   const selectedLanguage = useAppSelector((state) => state.app.language)
   const activeApplicationId = useAppSelector((state) => state.application.activeApplicationId)
-  const resolvedApplicationId = applicationId ?? (activeApplicationId !== DEFAULT_APPLICATION_ID ? activeApplicationId ?? undefined : undefined)
+  const resolvedApplicationId = applicationId ?? activeApplicationId ?? DEFAULT_APPLICATION_ID
   const selectedApplicationType = useAppSelector((state) => {
     if (!resolvedApplicationId) {
       return ""
@@ -362,6 +365,37 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
   const draftSaveBackoffUntilRef = useRef(0)
   const hydratedRef = useRef(false)
 
+  const applyRestoredWizardState = useCallback((raw: unknown) => {
+    const restored = restoreWizardDataFromRaw(raw)
+    if (!restored) return false
+    const restoredQuestions = buildQuestions(restored)
+    const restoredAnswered = computeAnsweredQuestionIds(restoredQuestions, restored)
+    if (restoredAnswered.size === 0) return false
+
+    // Restore explicitly persisted skipped IDs (new sessions).
+    const rawObj = raw as Record<string, unknown>
+    const persistedSkipped = new Set<string>()
+    if (Array.isArray(rawObj.chatSkippedIds)) {
+      for (const id of rawObj.chatSkippedIds) {
+        if (typeof id === "string") persistedSkipped.add(id)
+      }
+    }
+
+    // Derive skipped IDs from the last-answered checkpoint (covers legacy sessions
+    // saved before chatSkippedIds was persisted, and acts as a safety net for new ones).
+    const restoredSkipped = deriveSkippedFromLastAnswered(
+      restoredQuestions, restoredAnswered, restored, persistedSkipped,
+    )
+
+    setWizardData(restored)
+    setAnsweredQuestionIds(restoredAnswered)
+    setSkippedQuestionIds(restoredSkipped)
+    setIntakeStarted(true)
+    const nextQ = findNextPendingQuestion(restoredQuestions, restoredAnswered, restored, restoredSkipped)
+    setCurrentQuestionId(nextQ?.id ?? null)
+    return true
+  }, [])
+
   // Intercept browser back button once the chat has started so users don't
   // accidentally leave without saving.
   useEffect(() => {
@@ -382,46 +416,15 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
       return
     }
 
-    const applyRestoredData = (raw: unknown) => {
-      const restored = restoreWizardDataFromRaw(raw)
-      if (!restored) return false
-      const restoredQuestions = buildQuestions(restored)
-      const restoredAnswered = computeAnsweredQuestionIds(restoredQuestions, restored)
-      if (restoredAnswered.size === 0) return false
-
-      // Restore explicitly persisted skipped IDs (new sessions).
-      const rawObj = raw as Record<string, unknown>
-      const persistedSkipped = new Set<string>()
-      if (Array.isArray(rawObj.chatSkippedIds)) {
-        for (const id of rawObj.chatSkippedIds) {
-          if (typeof id === "string") persistedSkipped.add(id)
-        }
-      }
-
-      // Derive skipped IDs from the last-answered checkpoint (covers legacy sessions
-      // saved before chatSkippedIds was persisted, and acts as a safety net for new ones).
-      const restoredSkipped = deriveSkippedFromLastAnswered(
-        restoredQuestions, restoredAnswered, restored, persistedSkipped,
-      )
-
-      setWizardData(restored)
-      setAnsweredQuestionIds(restoredAnswered)
-      setSkippedQuestionIds(restoredSkipped)
-      setIntakeStarted(true)
-      const nextQ = findNextPendingQuestion(restoredQuestions, restoredAnswered, restored, restoredSkipped)
-      setCurrentQuestionId(nextQ?.id ?? null)
-      return true
-    }
-
     // Try Redux cache first (fast, synchronous).
-    if (savedAca3Wizard && applyRestoredData(savedAca3Wizard)) {
+    if (savedAca3Wizard && applyRestoredWizardState(savedAca3Wizard)) {
       hydratedRef.current = true
       setHydrationPending(false)
       return
     }
 
     // Fall back to server draft.
-    if (!resolvedApplicationId) {
+    if (resolvedApplicationId === DEFAULT_APPLICATION_ID) {
       setHydrationPending(false)
       return
     }
@@ -441,7 +444,7 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
         }
         const payload = (await response.json()) as { draftState?: unknown }
         if (!cancelled) {
-          if (applyRestoredData(payload.draftState)) {
+          if (applyRestoredWizardState(payload.draftState)) {
             hydratedRef.current = true
           }
           setHydrationPending(false)
@@ -454,7 +457,15 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
     void loadFromServer()
     return () => { cancelled = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [actingForPatientId, resolvedApplicationId])
+  }, [actingForPatientId, resolvedApplicationId, applyRestoredWizardState])
+
+  useEffect(() => {
+    if (hydrationPending || !savedAca3Wizard) {
+      return
+    }
+
+    applyRestoredWizardState(savedAca3Wizard)
+  }, [applyRestoredWizardState, hydrationPending, savedAca3Wizard])
 
   const applicationTypeLabel = useMemo(() => {
     return (
@@ -588,11 +599,8 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
   const persistWizardData = useCallback(
     async (
       data: WizardData,
-      opts?: { skippedIds?: Set<string>; answeredCount?: number; totalCount?: number },
+      opts?: { skippedIds?: Set<string>; answeredCount?: number; totalCount?: number; targetStep?: number },
     ) => {
-      if (!resolvedApplicationId) {
-        return
-      }
       if (Date.now() < draftSaveBackoffUntilRef.current) {
         return
       }
@@ -605,23 +613,40 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
         return
       }
 
-      // Map answered/total to wizard step 1-9 so the dashboard progress bar reflects
-      // actual chat completion rather than always showing step 1.
+      // Keep the form wizard on the step that owns the next unanswered chat question.
+      // This prevents percentage-based progress from jumping to Tax while chat is
+      // still collecting Primary Applicant fields.
+      const progressQuestions = buildQuestions(data)
+      const progressAnswered = computeAnsweredQuestionIds(progressQuestions, data)
+      const progressSkipped = opts?.skippedIds ?? new Set<string>()
       const chatStep =
-        opts?.answeredCount !== undefined && opts.totalCount && opts.totalCount > 0
-          ? Math.max(1, Math.min(9, Math.round((opts.answeredCount / opts.totalCount) * 9)))
-          : 1
+        opts?.targetStep ??
+        getWizardStepForIntakeProgress(progressQuestions, progressAnswered, data, progressSkipped)
 
       const wizardState = {
         ...createDraftWizardState(data, chatStep),
         chatSkippedIds: opts?.skippedIds ? [...opts.skippedIds] : [],
       }
+
+      try {
+        window.localStorage.setItem(
+          getFormCacheKey(resolvedApplicationId),
+          JSON.stringify(wizardState),
+        )
+      } catch {
+        // Redux remains the source of truth if browser storage is unavailable.
+      }
+
       dispatch(
         setApplicationWizardState({
           applicationId: resolvedApplicationId,
           wizardState: wizardState as unknown as Record<string, unknown>,
         }),
       )
+
+      if (resolvedApplicationId === DEFAULT_APPLICATION_ID) {
+        return
+      }
 
       try {
         const headers: Record<string, string> = {
@@ -655,6 +680,34 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
       }
     },
     [actingForPatientId, dispatch, resolvedApplicationId, selectedApplicationType],
+  )
+
+  const completeIntakeAndOpenVerification = useCallback(
+    async (
+      data: WizardData,
+      refreshedQuestions: IntakeQuestion[],
+      refreshedAnswered: Set<string>,
+      skippedIds: Set<string>,
+      message: string,
+    ) => {
+      setCurrentQuestionId(null)
+      await persistWizardData(data, {
+        skippedIds,
+        answeredCount: refreshedAnswered.size,
+        totalCount: refreshedQuestions.length,
+        targetStep: 9,
+      })
+      setMessages((previous) => [
+        ...previous,
+        {
+          id: createMessageId(),
+          role: "assistant",
+          content: message,
+        },
+      ])
+      onSwitchToWizard()
+    },
+    [onSwitchToWizard, persistWizardData],
   )
 
   const appendAssistantQuestion = useCallback(
@@ -806,11 +859,13 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
           const confirmMsg = `${copy.savedPrefix}, ${userProfile.firstName}. I've pre-filled your ${appliedLabels.join(", ")}.`
 
           if (!nextQ) {
-            setCurrentQuestionId(null)
-            setMessages((previous) => [
-              ...previous,
-              { id: createMessageId(), role: "assistant", content: `${confirmMsg} ${copy.complete}` },
-            ])
+            await completeIntakeAndOpenVerification(
+              prefilled,
+              refreshedQs,
+              refreshedAnswered,
+              skippedQuestionIds,
+              `${confirmMsg} ${copy.complete}`,
+            )
             return
           }
 
@@ -847,15 +902,13 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
         })
 
         if (!nextQuestion) {
-          setCurrentQuestionId(null)
-          setMessages((previous) => [
-            ...previous,
-            {
-              id: createMessageId(),
-              role: "assistant",
-              content: copy.complete,
-            },
-          ])
+          await completeIntakeAndOpenVerification(
+            extractedData,
+            refreshedQuestions,
+            refreshedAnswered,
+            skippedQuestionIds,
+            copy.complete,
+          )
           return
         }
 
@@ -1005,15 +1058,13 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
       }
 
       if (!nextQuestion) {
-        setCurrentQuestionId(null)
-        setMessages((previous) => [
-          ...previous,
-          {
-            id: createMessageId(),
-            role: "assistant",
-            content: copy.complete,
-          },
-        ])
+        await completeIntakeAndOpenVerification(
+          nextData,
+          refreshedQuestions,
+          nextAnswered,
+          nextSkipped,
+          copy.complete,
+        )
         return
       }
 
@@ -1032,7 +1083,7 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
       setIsLoading(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [intakeStarted, currentQuestion, wizardData, skippedQuestionIds, copy, applicationTypeLabel, dispatch, persistWizardData, appendAssistantQuestion, localizeQuestion, profilePrefillMode, userProfile])
+  }, [intakeStarted, currentQuestion, wizardData, skippedQuestionIds, copy, applicationTypeLabel, dispatch, persistWizardData, appendAssistantQuestion, localizeQuestion, profilePrefillMode, userProfile, completeIntakeAndOpenVerification])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()

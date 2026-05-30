@@ -129,6 +129,20 @@ import { sleep, ValidateAndSubmitStep } from "./form-wizard-submit-step"
 
 export { validateStepWithWizardRules } from "./form-wizard-validation"
 
+function clampWizardProgressToFirstIncomplete(state: WizardState): WizardState {
+  for (let step = 1; step < state.currentStep; step += 1) {
+    if (Object.keys(validateStepWithWizardRules(step, state.data)).length > 0) {
+      return {
+        ...state,
+        currentStep: step,
+        completedSteps: state.completedSteps.filter((completedStep) => completedStep < step),
+      }
+    }
+  }
+
+  return state
+}
+
 function FormProvider({
   children,
   applicationId,
@@ -153,6 +167,7 @@ function FormProvider({
   )
   const hydratedRef = useRef(false)
   const hydratedApplicationRef = useRef<string | null>(null)
+  const skipNextPersistRef = useRef(false)
   const saveTimeoutRef = useRef<number | null>(null)
   const saveFailureBackoffUntilRef = useRef(0)
 
@@ -306,6 +321,7 @@ function FormProvider({
         return
       }
 
+      skipNextPersistRef.current = true
       dispatch({ type: "hydrate", payload: nextState })
       hydratedRef.current = true
       setIsHydratedReady(true)
@@ -403,7 +419,7 @@ function FormProvider({
       }
 
       const normalized = normalizeHydratedState(preferredRaw)
-      applyHydratedState(normalized ?? createInitialState())
+      applyHydratedState(clampWizardProgressToFirstIncomplete(normalized ?? createInitialState()))
     }
 
     void hydrateFromServerThenCache()
@@ -450,6 +466,11 @@ function FormProvider({
 
   useEffect(() => {
     if (!hydratedRef.current) {
+      return
+    }
+
+    if (skipNextPersistRef.current) {
+      skipNextPersistRef.current = false
       return
     }
 

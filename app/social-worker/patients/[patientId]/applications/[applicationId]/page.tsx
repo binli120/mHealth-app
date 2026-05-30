@@ -25,12 +25,17 @@ export default function SWEditApplicationPage() {
   const patientId     = params.patientId     as string
   const applicationId = params.applicationId as string
   const [entryMode, setEntryMode] = useState<ApplicationEntryMode>("wizard")
+  const [hasOpenedChat, setHasOpenedChat] = useState(false)
 
   return (
     <div className="container mx-auto space-y-4 px-4 py-6">
       <Tabs
         value={entryMode}
-        onValueChange={(value) => setEntryMode(value as ApplicationEntryMode)}
+        onValueChange={(value) => {
+          const nextMode = value as ApplicationEntryMode
+          if (nextMode === "chat") setHasOpenedChat(true)
+          setEntryMode(nextMode)
+        }}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -48,7 +53,12 @@ export default function SWEditApplicationPage() {
           </TabsList>
         </div>
 
-        <TabsContent value="chat" className="mt-4">
+        <TabsContent
+          value="chat"
+          className="mt-4"
+          style={entryMode === "chat" ? undefined : { display: "none" }}
+          {...(hasOpenedChat ? { forceMount: true } : {})}
+        >
           <IntakeChat
             applicationId={applicationId}
             actingForPatientId={patientId}

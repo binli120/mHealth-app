@@ -1017,6 +1017,46 @@ export function findNextPendingQuestion(
   return null
 }
 
+export function getWizardStepForQuestion(question: IntakeQuestion): number {
+  if (question.scope === "preApp") {
+    return 1
+  }
+
+  if (question.scope === "contact" || question.scope === "assister") {
+    return 2
+  }
+
+  if (question.scope === "person") {
+    switch (question.sectionKey) {
+      case "identity":
+        return question.personIndex && question.personIndex > 0 ? 3 : 2
+      case "demographics":
+      case "ssn":
+        return 4
+      case "tax":
+        return 5
+      case "coverage":
+        return 6
+      case "income":
+        return 7
+      default:
+        return 2
+    }
+  }
+
+  return 1
+}
+
+export function getWizardStepForIntakeProgress(
+  questions: IntakeQuestion[],
+  answeredQuestionIds: Set<string>,
+  data: WizardData,
+  skippedQuestionIds: Set<string>,
+): number {
+  const nextQuestion = findNextPendingQuestion(questions, answeredQuestionIds, data, skippedQuestionIds)
+  return nextQuestion ? getWizardStepForQuestion(nextQuestion) : 8
+}
+
 /**
  * On resume, any unanswered optional question that precedes the last answered
  * question was clearly seen and skipped in a prior session.  Mark it skipped so

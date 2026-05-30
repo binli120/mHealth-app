@@ -80,10 +80,19 @@ export class ApplicationPage {
   }
 
   private basePerson(overrides: {
+    identity?: Record<string, string>
     coverage?: Record<string, string>
     income?: Record<string, unknown>
   } = {}): Record<string, unknown> {
     return {
+      identity: {
+        name: "Primary Applicant",
+        relationship_to_p1: "SELF",
+        lives_with_p1: "Yes",
+        dob: "03/15/1991",
+        sex_at_birth: "Female",
+        ...overrides.identity,
+      },
       ssn: { has_ssn: "Yes", ssn: "123-45-6789", ssn_name_matches: "Yes" },
       tax: {
         aptc_agree: "Yes",
@@ -392,6 +401,13 @@ export class ApplicationPage {
           }),
           {
             ...this.basePerson({
+              identity: {
+                name: "Second Member",
+                relationship_to_p1: "Child",
+                lives_with_p1: "Yes",
+                dob: "07/22/2014",
+                sex_at_birth: "Male",
+              },
               income: {
                 has_income: "Yes",
                 employment_jobs: [

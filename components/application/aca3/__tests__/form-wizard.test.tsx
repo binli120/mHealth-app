@@ -9,7 +9,11 @@ import { Provider } from "react-redux"
 import { configureStore } from "@reduxjs/toolkit"
 
 import { appReducer } from "@/lib/redux/features/app-slice"
-import { applicationReducer } from "@/lib/redux/features/application-slice"
+import {
+  applicationReducer,
+  DEFAULT_APPLICATION_ID,
+  setApplicationWizardState,
+} from "@/lib/redux/features/application-slice"
 import { FORM_CACHE_KEY_PREFIX } from "@/lib/constant"
 
 vi.mock("next/navigation", () => ({
@@ -25,6 +29,7 @@ vi.mock("@/lib/supabase/client", () => ({
 
 import { FormWizard } from "@/components/application/aca3/form-wizard"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { createDraftWizardState, createInitialData } from "@/components/application/aca3/wizard-reducer"
 
 function makeStore() {
   return configureStore({
@@ -35,6 +40,14 @@ function makeStore() {
 function renderWizard(applicationId?: string) {
   return render(
     <Provider store={makeStore()}>
+      <FormWizard applicationId={applicationId} />
+    </Provider>,
+  )
+}
+
+function renderWizardWithStore(store: ReturnType<typeof makeStore>, applicationId?: string) {
+  return render(
+    <Provider store={store}>
       <FormWizard applicationId={applicationId} />
     </Provider>,
   )
@@ -70,7 +83,7 @@ describe("FormWizard", () => {
     await waitFor(() => expect(screen.getByText("MassHealth")).toBeInTheDocument())
   })
 
-  it("keeps server wizard progress when stale local cache is newer", async () => {
+  it("prefers the server draft over stale local cache and clamps invalid progress", async () => {
     const applicationId = "9b786f61-c945-4098-b813-e62c069114d2"
     localStorage.setItem(
       `${FORM_CACHE_KEY_PREFIX}:${applicationId}`,
@@ -112,7 +125,46 @@ describe("FormWizard", () => {
 
     renderWizard(applicationId)
 
-    await waitFor(() => expect(screen.getByText("Step 7 of 9")).toBeInTheDocument())
-    expect(screen.getByText("78% complete")).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText("Step 2 of 9")).toBeInTheDocument())
+    expect(screen.getByText("22% complete")).toBeInTheDocument()
+  })
+
+  it("does not overwrite a Redux chat draft with the empty pre-hydration state", async () => {
+    const store = makeStore()
+    const data = createInitialData()
+    data.contact.p1_name = "Jane Doe"
+    const wizardState = createDraftWizardState(data, 2)
+
+    store.dispatch(
+      setApplicationWizardState({
+        applicationId: DEFAULT_APPLICATION_ID,
+        wizardState: wizardState as unknown as Record<string, unknown>,
+      }),
+    )
+
+    renderWizardWithStore(store)
+
+    await waitFor(() => expect(screen.getByText("Step 2 of 9")).toBeInTheDocument())
+
+    await waitFor(() => {
+      const saved = store.getState().application.applicationsById[DEFAULT_APPLICATION_ID]?.aca3Wizard
+      expect((saved?.data as { contact?: Record<string, unknown> } | undefined)?.contact?.p1_name).toBe("Jane Doe")
+    })
+  })
+
+  it("clamps stale saved progress to the first incomplete wizard step", async () => {
+    const store = makeStore()
+    const data = createInitialData()
+
+    store.dispatch(
+      setApplicationWizardState({
+        applicationId: DEFAULT_APPLICATION_ID,
+        wizardState: createDraftWizardState(data, 5) as unknown as Record<string, unknown>,
+      }),
+    )
+
+    renderWizardWithStore(store)
+
+    await waitFor(() => expect(screen.getByText("Step 2 of 9")).toBeInTheDocument())
   })
 })
