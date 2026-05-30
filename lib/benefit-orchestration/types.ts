@@ -56,7 +56,14 @@ export type BenefitCategory =
   | 'cash'
   | 'tax_credit'
 
-export type EligibilityStatus = 'likely' | 'possibly' | 'unlikely' | 'ineligible'
+/**
+ * Per-benefit eligibility likelihood for the benefit-orchestration stack.
+ *
+ * Named `BenefitEligibilityStatus` to distinguish it from `EligibilityStatus`
+ * in `@/lib/eligibility-engine`, which has only three values ('likely' |
+ * 'possibly' | 'unlikely') and is used by the quick prescreener.
+ */
+export type BenefitEligibilityStatus = 'likely' | 'possibly' | 'unlikely' | 'ineligible'
 
 export type BenefitProgramId =
   | 'masshealth_standard'
@@ -178,7 +185,7 @@ export interface BenefitResult {
   category: BenefitCategory
   administeredBy: string  // e.g., "MA DTA", "MA DPH", "HUD/Local HA"
 
-  eligibilityStatus: EligibilityStatus
+  eligibilityStatus: BenefitEligibilityStatus
   confidence: number       // 0–100
   ineligibleReason?: string
 

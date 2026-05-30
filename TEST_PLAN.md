@@ -97,7 +97,7 @@ All specs live in `e2e/tests/`. Run: `pnpm test:e2e`.
 | 04 | `04-dashboard.spec.ts` | Dashboard loads with all cards | ✅ |
 | 05 | `05-benefit-stack.spec.ts` | Enter family profile → see stacked benefits | ✅ |
 | 06 | `06-application.spec.ts` | Start application → fill fields → submit | ✅ |
-| 07 | `07-appeal-assistant.spec.ts` | Enter denial → AI generates appeal | ✅ |
+| 07 | ~~`07-appeal-assistant.spec.ts`~~ | _(deleted — appeal assistant feature removed; `demo:appeal` script also removed)_ | ❌ Deleted |
 | 08 | `08-profile.spec.ts` | View & update user profile | ✅ |
 | 09 | `09-reviewer.spec.ts` | Social worker reviews application | ✅ |
 | 10 | `demo-full-tour.spec.ts` | End-to-end tour across all features | ✅ |

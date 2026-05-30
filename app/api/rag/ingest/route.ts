@@ -47,15 +47,19 @@ export async function POST(request: Request) {
   }
 
   // ── Auth: must supply ingest secret (protects against non-staff users) ───
-  const ingestSecret = process.env.RAG_INGEST_SECRET
-  if (ingestSecret) {
-    const providedKey = request.headers.get("x-ingest-key")
-    if (providedKey !== ingestSecret) {
-      return NextResponse.json(
-        { ok: false, error: "Forbidden — invalid ingest key." },
-        { status: 403 },
-      )
-    }
+  const ingestSecret = process.env.RAG_INGEST_SECRET?.trim()
+  if (!ingestSecret) {
+    return NextResponse.json(
+      { ok: false, error: "Forbidden — endpoint not configured." },
+      { status: 403 },
+    )
+  }
+  const providedKey = request.headers.get("x-ingest-key")
+  if (providedKey !== ingestSecret) {
+    return NextResponse.json(
+      { ok: false, error: "Forbidden — invalid ingest key." },
+      { status: 403 },
+    )
   }
 
   try {

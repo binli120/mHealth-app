@@ -19,6 +19,7 @@ import {
   createMobileUploadSession,
   getUploadSessionForUser,
 } from "@/lib/db/mobile-upload-session"
+import { getClientIp } from "@/lib/server/rate-limit"
 import { logServerError } from "@/lib/server/logger"
 
 const UUID_PATTERN =
@@ -81,6 +82,7 @@ export async function POST(request: Request, context: RouteContext) {
       applicationId,
       documentType,
       requiredDocumentLabel,
+      getClientIp(request),
     )
 
     const mobileUrl = `${getMobileBaseUrl()}/upload/mobile/${session.token}`

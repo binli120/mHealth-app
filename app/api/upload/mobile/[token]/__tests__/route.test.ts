@@ -45,13 +45,23 @@ vi.mock("@/lib/server/logger", () => ({
   logServerError: vi.fn(),
 }))
 
-import { POST } from "@/app/api/upload/mobile/[token]/route"
+vi.mock("@/lib/server/rate-limit", () => ({
+  checkRateLimitAsync: vi.fn(),
+  mobileUploadLimiter: {},
+  // getClientIp is called when session.allowedIp !== null.
+  // makeSession defaults allowedIp to null, so this is a safety stub.
+  getClientIp: vi.fn().mockReturnValue("127.0.0.1"),
+}))
+
+import { GET, POST } from "@/app/api/upload/mobile/[token]/route"
 import {
   completeUploadSession,
   getUploadSessionByToken,
 } from "@/lib/db/mobile-upload-session"
 import { insertDocument } from "@/lib/db/documents"
 import { uploadDocumentToStorage } from "@/lib/supabase/storage"
+import { checkRateLimitAsync } from "@/lib/server/rate-limit"
+import { NextResponse } from "next/server"
 
 const TOKEN = "mobile-token"
 const USER_ID = "11111111-1111-4111-8111-111111111111"
@@ -80,6 +90,7 @@ function makeSession(overrides: Partial<Awaited<ReturnType<typeof getUploadSessi
     createdAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 60_000).toISOString(),
     completedAt: null,
+    allowedIp: null, // null = IP binding disabled; tests don't exercise IP validation
     ...overrides,
   }
 }
@@ -103,6 +114,36 @@ beforeEach(() => {
   vi.unstubAllGlobals()
   vi.mocked(getUploadSessionByToken).mockResolvedValue(makeSession() as never)
   vi.mocked(insertDocument).mockImplementation(async (payload) => payload as never)
+  vi.mocked(checkRateLimitAsync).mockResolvedValue(null)
+})
+
+describe("POST /api/upload/mobile/[token] — rate limiting", () => {
+  it("returns 429 when rate limit is exceeded", async () => {
+    vi.mocked(checkRateLimitAsync).mockResolvedValueOnce(
+      NextResponse.json({ ok: false, error: "Too many requests. Please try again later." }, { status: 429 }),
+    )
+
+    const formData = new FormData()
+    formData.set("file", makeJpeg("test.jpg"))
+
+    const response = await POST(makeRequest(formData), makeContext())
+    expect(response.status).toBe(429)
+    const json = await response.json()
+    expect(json.ok).toBe(false)
+    expect(json.error).toMatch(/too many requests/i)
+  })
+
+  it("does not upload to storage when rate limited", async () => {
+    vi.mocked(checkRateLimitAsync).mockResolvedValueOnce(
+      NextResponse.json({ ok: false, error: "Too many requests. Please try again later." }, { status: 429 }),
+    )
+
+    const formData = new FormData()
+    formData.set("file", makeJpeg("test.jpg"))
+
+    await POST(makeRequest(formData), makeContext())
+    expect(uploadDocumentToStorage).not.toHaveBeenCalled()
+  })
 })
 
 describe("POST /api/upload/mobile/[token]", () => {
@@ -173,5 +214,46 @@ describe("POST /api/upload/mobile/[token]", () => {
     expect(response.status).toBe(422)
     expect(json.error).toMatch(/Massachusetts/i)
     expect(uploadDocumentToStorage).not.toHaveBeenCalled()
+  })
+})
+
+// ── expiresAt enforcement ────────────────────────────────────────────────────
+
+describe("POST /api/upload/mobile/[token] — expiresAt enforcement", () => {
+  it("returns 410 when expiresAt has passed even if status is still 'pending'", async () => {
+    const PAST = new Date(Date.now() - 60_000).toISOString()
+    vi.mocked(getUploadSessionByToken).mockResolvedValueOnce(
+      makeSession({
+        id: "sess-exp",
+        documentType: "generic",
+        requiredDocumentLabel: null,
+        status: "pending",   // status NOT updated yet by cron
+        expiresAt: PAST,     // expired by timestamp
+        createdAt: PAST,
+      }) as never,
+    )
+
+    const formData = new FormData()
+    formData.set("file", makeJpeg("test.jpg"))
+
+    const res = await POST(makeRequest(formData), makeContext())
+    expect(res.status).toBe(410)
+    const body = await res.json()
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("This upload link has expired. Please request a new QR code.")
+  })
+
+  it("GET returns 410 when expiresAt has passed even if status is still 'pending'", async () => {
+    const PAST = new Date(Date.now() - 60_000).toISOString()
+    vi.mocked(getUploadSessionByToken).mockResolvedValueOnce(
+      makeSession({ status: "pending", expiresAt: PAST }) as never,
+    )
+    const res = await GET(
+      new Request(`http://localhost/api/upload/mobile/${TOKEN}`),
+      makeContext(),
+    )
+    expect(res.status).toBe(410)
+    const body = await res.json()
+    expect(body.ok).toBe(false)
   })
 })

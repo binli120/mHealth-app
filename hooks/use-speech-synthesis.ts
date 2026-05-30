@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"

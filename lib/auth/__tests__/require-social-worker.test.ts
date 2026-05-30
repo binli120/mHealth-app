@@ -16,6 +16,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 
 vi.mock("@/lib/auth/require-auth", () => ({
   requireAuthenticatedUser: vi.fn(),
+  // isLocalRequest is used by the MFA dev-bypass; return false in tests so
+  // the MFA path is exercised and not short-circuited.
+  isLocalRequest: vi.fn().mockReturnValue(false),
+}))
+
+vi.mock("@/lib/auth/local-auth", () => ({
+  isLocalAuthHelperEnabled: vi.fn().mockReturnValue(false),
 }))
 
 const mockDbQuery = vi.fn()
@@ -67,11 +74,14 @@ describe("requireApprovedSocialWorker — auth guard", () => {
 
 describe("requireApprovedSocialWorker — approved social worker", () => {
   beforeEach(() => {
-    mockAuth.mockResolvedValue({ ok: true, userId: USER_ID })
+    // aal2 = MFA already verified this session; no extra DB check needed.
+    mockAuth.mockResolvedValue({ ok: true, userId: USER_ID, aal: "aal2", isPasskeySession: false })
   })
 
   it("returns ok: true with the userId when the user has an approved social_worker role", async () => {
-    mockDbQuery.mockResolvedValue({ rows: [{ approved: true }] })
+    mockDbQuery.mockResolvedValue({
+      rows: [{ approved: true, is_admin: false, require_2fa: "false" }],
+    })
 
     const result = await requireApprovedSocialWorker(makeRequest())
     expect(result.ok).toBe(true)
@@ -79,7 +89,9 @@ describe("requireApprovedSocialWorker — approved social worker", () => {
   })
 
   it("passes the correct userId to the DB query", async () => {
-    mockDbQuery.mockResolvedValue({ rows: [{ approved: true }] })
+    mockDbQuery.mockResolvedValue({
+      rows: [{ approved: true, is_admin: false, require_2fa: "false" }],
+    })
 
     await requireApprovedSocialWorker(makeRequest())
     expect(mockDbQuery).toHaveBeenCalledOnce()
@@ -91,11 +103,13 @@ describe("requireApprovedSocialWorker — approved social worker", () => {
 
 describe("requireApprovedSocialWorker — not approved", () => {
   beforeEach(() => {
-    mockAuth.mockResolvedValue({ ok: true, userId: USER_ID })
+    mockAuth.mockResolvedValue({ ok: true, userId: USER_ID, aal: "aal1", isPasskeySession: false })
   })
 
   it("returns 403 when the DB query returns approved: false", async () => {
-    mockDbQuery.mockResolvedValue({ rows: [{ approved: false }] })
+    mockDbQuery.mockResolvedValue({
+      rows: [{ approved: false, is_admin: false, require_2fa: "false" }],
+    })
 
     const result = await requireApprovedSocialWorker(makeRequest())
     expect(result.ok).toBe(false)
@@ -115,7 +129,9 @@ describe("requireApprovedSocialWorker — not approved", () => {
   })
 
   it("returns 403 when the DB row has a null/undefined approved field", async () => {
-    mockDbQuery.mockResolvedValue({ rows: [{ approved: null }] })
+    mockDbQuery.mockResolvedValue({
+      rows: [{ approved: null, is_admin: false, require_2fa: "false" }],
+    })
 
     const result = await requireApprovedSocialWorker(makeRequest())
     expect(result.ok).toBe(false)

@@ -23,6 +23,7 @@ import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 import { getOllamaModel } from "@/lib/masshealth/ollama-provider"
 import { isSupportedLanguage } from "@/lib/i18n/languages"
 import { logServerError, logServerInfo } from "@/lib/server/logger"
+import { checkRateLimitAsync, aiChatLimiter } from "@/lib/server/rate-limit"
 import { isMassHealthTopic, getMassHealthOutOfScopeResponse } from "@/lib/masshealth/chat-knowledge"
 import { buildChatTools } from "@/lib/agents/chat/tools"
 import { buildChatAgentSystemPrompt } from "@/lib/agents/chat/prompts"
@@ -63,6 +64,9 @@ export async function POST(request: Request) {
   try {
     const authResult = await requireAuthenticatedUser(request)
     if (!authResult.ok) return authResult.response
+
+    const rlResponse = await checkRateLimitAsync(aiChatLimiter, `chat:${authResult.userId}`)
+    if (rlResponse) return rlResponse
 
     const body = await request.json()
     const payload = requestSchema.parse(body)

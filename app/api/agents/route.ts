@@ -14,9 +14,9 @@
  *   intake           → /api/agents/intake
  *   general          → /api/agents/chat
  *
- * Note: The appeal and vision agents require structured inputs that cannot
- * be inferred from a general chat message.  Clients that need those agents
- * should call them directly.
+ * Note: The vision agent requires a multipart file upload and cannot be
+ * routed from a general chat message.  Clients that need vision extraction
+ * should call /api/agents/vision (or /api/appeals/extract-document) directly.
  *
  * Body: same shape as /api/agents/benefit-advisor — { messages, language? }
  */

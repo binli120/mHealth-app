@@ -127,7 +127,21 @@ async function loginAndSaveState(
     await page.fill("#email",    user.email)
     await page.fill("#password", user.password)
     await page.click('button[type="submit"]')
-    await page.waitForURL(/\/(customer\/dashboard|admin|social-worker\/dashboard|reviewer\/dashboard)/, { timeout: 20_000 })
+    // Anchor on the path segment so an MFA redirect such as
+    // /auth/mfa?next=/admin never falsely satisfies the pattern.
+    await page.waitForURL(
+      /^[^?#]*\/(customer\/dashboard|admin|social-worker\/dashboard|reviewer\/dashboard)/,
+      { timeout: 20_000 },
+    )
+    // Wait for the proxy session-hint cookie to be set by the login page's
+    // syncSessionCookie call before saving state — otherwise the 7-day hint
+    // won't be captured and tests would be blocked by the proxy auth gate.
+    const cookieDeadline = Date.now() + 5_000
+    while (Date.now() < cookieDeadline) {
+      const cookies = await page.context().cookies()
+      if (cookies.some((c) => c.name === "hc-session-hint")) break
+      await page.waitForTimeout(200)
+    }
     await page.context().storageState({ path: filePath })
     console.log(`[setup] ✅ Auth state saved for ${user.email} → ${path.basename(filePath)}`)
     return true

@@ -6,6 +6,14 @@
 // MassHealth evaluator — covers all tracks based on age, income, and circumstances
 import type { FamilyProfile, BenefitResult } from '../types'
 import { getAnnualFPL, computeMAGIMonthly } from '../fpl-utils'
+import {
+  FPL_PCT_ADULT_DISABILITY,
+  FPL_PCT_CAREPLUS,
+  FPL_PCT_CHILD_STANDARD,
+  FPL_PCT_FAMILY_ASSIST,
+  FPL_PCT_PREGNANCY_STANDARD,
+  FPL_PCT_TAX_CREDITS_UPPER,
+} from '@/lib/masshealth/constants'
 
 const COMMON_DOCS = ['Photo ID or birth certificate', 'Proof of MA residency', 'Social Security card or number']
 const INCOME_DOCS = ['Recent pay stubs (last 4 weeks)', 'Most recent federal tax return']
@@ -89,7 +97,7 @@ export function evaluateMassHealth(profile: FamilyProfile, fplPercent: number): 
   }
 
   // ── Pregnancy (qualified status, ≤200% FPL) ──────────────────────────────
-  if (profile.pregnant && isQualified && magiAsFPL <= 200) {
+  if (profile.pregnant && isQualified && magiAsFPL <= FPL_PCT_PREGNANCY_STANDARD) {
     results.push({
       programId: 'masshealth_standard_pregnancy',
       programName: 'MassHealth Standard – Pregnancy',
@@ -126,7 +134,7 @@ export function evaluateMassHealth(profile: FamilyProfile, fplPercent: number): 
   )
 
   if (childrenInHousehold.length > 0) {
-    if (magiAsFPL <= 150) {
+    if (magiAsFPL <= FPL_PCT_CHILD_STANDARD) {
       results.push({
         programId: 'masshealth_standard',
         programName: 'MassHealth Standard (Children)',
@@ -152,7 +160,7 @@ export function evaluateMassHealth(profile: FamilyProfile, fplPercent: number): 
         ],
         ...applyInfo,
       })
-    } else if (magiAsFPL <= 300) {
+    } else if (magiAsFPL <= FPL_PCT_FAMILY_ASSIST) {
       results.push({
         programId: 'masshealth_family_assistance',
         programName: 'MassHealth Family Assistance (CHIP)',
@@ -183,7 +191,7 @@ export function evaluateMassHealth(profile: FamilyProfile, fplPercent: number): 
 
   // ── Adults 19–64 ────────────────────────────────────────────────────────
   if (profile.age >= 19 && profile.age <= 64 && isQualified) {
-    if (profile.disabled && magiAsFPL <= 133) {
+    if (profile.disabled && magiAsFPL <= FPL_PCT_ADULT_DISABILITY) {
       results.push({
         programId: 'masshealth_standard',
         programName: 'MassHealth Standard',
@@ -200,7 +208,7 @@ export function evaluateMassHealth(profile: FamilyProfile, fplPercent: number): 
         keyRequirements: [
           'MA resident',
           'Documented disability or SSI/SSDI recipient',
-          `Income ≤133% FPL (~$${Math.round(annualFPL * 1.33).toLocaleString()}/yr)`,
+          `Income ≤${FPL_PCT_ADULT_DISABILITY}% FPL (~$${Math.round(annualFPL * (FPL_PCT_ADULT_DISABILITY / 100)).toLocaleString()}/yr)`,
         ],
         requiredDocuments: [
           ...baseRequiredDocs,
@@ -212,7 +220,7 @@ export function evaluateMassHealth(profile: FamilyProfile, fplPercent: number): 
         ],
         ...applyInfo,
       })
-    } else if (!profile.hasMedicare && magiAsFPL <= 138) {
+    } else if (!profile.hasMedicare && magiAsFPL <= FPL_PCT_CAREPLUS) {
       results.push({
         programId: 'masshealth_careplus',
         programName: 'MassHealth CarePlus',
@@ -229,7 +237,7 @@ export function evaluateMassHealth(profile: FamilyProfile, fplPercent: number): 
         keyRequirements: [
           'MA resident',
           'Age 19–64',
-          `Income ≤138% FPL (~$${Math.round(annualFPL * 1.38).toLocaleString()}/yr)`,
+          `Income ≤${FPL_PCT_CAREPLUS}% FPL (~$${Math.round(annualFPL * (FPL_PCT_CAREPLUS / 100)).toLocaleString()}/yr)`,
           'Not enrolled in Medicare',
         ],
         requiredDocuments: baseRequiredDocs,
@@ -239,7 +247,7 @@ export function evaluateMassHealth(profile: FamilyProfile, fplPercent: number): 
         ],
         ...applyInfo,
       })
-    } else if (!profile.hasMedicare && magiAsFPL > 138 && magiAsFPL <= 300) {
+    } else if (!profile.hasMedicare && magiAsFPL > FPL_PCT_CAREPLUS && magiAsFPL <= FPL_PCT_FAMILY_ASSIST) {
       results.push({
         programId: 'connector_care',
         programName: 'ConnectorCare',
@@ -256,7 +264,7 @@ export function evaluateMassHealth(profile: FamilyProfile, fplPercent: number): 
         keyRequirements: [
           'MA resident',
           'Age 19–64',
-          `Income 138–300% FPL (~$${Math.round(annualFPL * 1.38).toLocaleString()}–$${Math.round(annualFPL * 3).toLocaleString()}/yr)`,
+          `Income ${FPL_PCT_CAREPLUS}–${FPL_PCT_FAMILY_ASSIST}% FPL (~$${Math.round(annualFPL * (FPL_PCT_CAREPLUS / 100)).toLocaleString()}–$${Math.round(annualFPL * (FPL_PCT_FAMILY_ASSIST / 100)).toLocaleString()}/yr)`,
         ],
         requiredDocuments: baseRequiredDocs,
         nextSteps: [
@@ -267,7 +275,7 @@ export function evaluateMassHealth(profile: FamilyProfile, fplPercent: number): 
         applicationUrl: 'https://www.mahealthconnector.org',
         processingTime: '2–4 weeks',
       })
-    } else if (!profile.hasMedicare && magiAsFPL > 300 && magiAsFPL <= 500) {
+    } else if (!profile.hasMedicare && magiAsFPL > FPL_PCT_FAMILY_ASSIST && magiAsFPL <= FPL_PCT_TAX_CREDITS_UPPER) {
       results.push({
         programId: 'health_connector_credits',
         programName: 'Health Connector with Tax Credits',
@@ -283,7 +291,7 @@ export function evaluateMassHealth(profile: FamilyProfile, fplPercent: number): 
         priority: 0,
         keyRequirements: [
           'MA resident',
-          `Income 300–500% FPL`,
+          `Income ${FPL_PCT_FAMILY_ASSIST}–${FPL_PCT_TAX_CREDITS_UPPER}% FPL`,
           'No affordable employer coverage',
         ],
         requiredDocuments: baseRequiredDocs,

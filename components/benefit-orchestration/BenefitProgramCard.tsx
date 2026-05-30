@@ -11,7 +11,7 @@ import { ChevronDown, ChevronUp, ExternalLink, Phone, Clock, FileText, Zap } fro
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import type { BenefitResult, BenefitCategory, EligibilityStatus } from "@/lib/benefit-orchestration/types"
+import type { BenefitResult, BenefitCategory, BenefitEligibilityStatus } from "@/lib/benefit-orchestration/types"
 import { getMessage } from "@/lib/i18n/messages"
 import { useAppSelector } from "@/lib/redux/hooks"
 
@@ -35,7 +35,7 @@ const CATEGORY_ICONS: Record<BenefitCategory, string> = {
   tax_credit: "📋",
 }
 
-const STATUS_STYLES: Record<EligibilityStatus, { badge: string; border: string; dot: string }> = {
+const STATUS_STYLES: Record<BenefitEligibilityStatus, { badge: string; border: string; dot: string }> = {
   likely: {
     badge: "bg-emerald-100 text-emerald-800 border-emerald-200",
     border: "border-l-4 border-l-emerald-500",
@@ -58,7 +58,7 @@ const STATUS_STYLES: Record<EligibilityStatus, { badge: string; border: string; 
   },
 }
 
-const STATUS_LABEL_KEYS: Record<EligibilityStatus, Parameters<typeof getMessage>[1]> = {
+const STATUS_LABEL_KEYS: Record<BenefitEligibilityStatus, Parameters<typeof getMessage>[1]> = {
   likely: "bsStatusLikely",
   possibly: "bsStatusPossibly",
   unlikely: "bsStatusUnlikely",

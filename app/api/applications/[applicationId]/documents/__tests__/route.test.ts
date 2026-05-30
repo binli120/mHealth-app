@@ -36,10 +36,17 @@ vi.mock("@/lib/server/logger", () => ({
   logServerError: vi.fn(),
 }))
 
+vi.mock("@/lib/server/rate-limit", () => ({
+  checkRateLimitAsync: vi.fn(),
+  documentUploadLimiter: {},
+}))
+
 import { GET, POST } from "@/app/api/applications/[applicationId]/documents/route"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 import { insertDocument, listDocumentsByApplication, userCanAccessApplication } from "@/lib/db/documents"
 import { deleteFromStorage, getSignedDocumentUrls, uploadDocumentToStorage } from "@/lib/supabase/storage"
+import { checkRateLimitAsync } from "@/lib/server/rate-limit"
+import { NextResponse } from "next/server"
 
 const USER_ID = "11111111-1111-4111-8111-111111111111"
 const APPLICATION_ID = "22222222-2222-4222-8222-222222222222"
@@ -72,6 +79,30 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(requireAuthenticatedUser).mockResolvedValue({ ok: true, userId: USER_ID } as never)
   vi.mocked(getSignedDocumentUrls).mockResolvedValue({})
+  vi.mocked(checkRateLimitAsync).mockResolvedValue(null)
+})
+
+describe("POST /api/applications/[applicationId]/documents — rate limiting", () => {
+  it("returns 429 when rate limit is exceeded", async () => {
+    vi.mocked(checkRateLimitAsync).mockResolvedValueOnce(
+      NextResponse.json({ ok: false, error: "Too many requests. Please try again later." }, { status: 429 }),
+    )
+
+    const response = await POST(makeRequest(), makeContext())
+    expect(response.status).toBe(429)
+    const json = await response.json()
+    expect(json.ok).toBe(false)
+    expect(json.error).toMatch(/too many requests/i)
+  })
+
+  it("does not upload to storage when rate limited", async () => {
+    vi.mocked(checkRateLimitAsync).mockResolvedValueOnce(
+      NextResponse.json({ ok: false, error: "Too many requests. Please try again later." }, { status: 429 }),
+    )
+
+    await POST(makeRequest(), makeContext())
+    expect(uploadDocumentToStorage).not.toHaveBeenCalled()
+  })
 })
 
 describe("POST /api/applications/[applicationId]/documents", () => {

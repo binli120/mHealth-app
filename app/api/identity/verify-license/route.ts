@@ -24,6 +24,7 @@ import {
   getApplicantIdForUser,
 } from "@/lib/db/identity-verification"
 import { logServerError } from "@/lib/server/logger"
+import { checkRateLimitAsync, identityVerifyLimiter } from "@/lib/server/rate-limit"
 
 // ─── GET — fetch current identity status ─────────────────────────────────────
 
@@ -65,6 +66,9 @@ interface VerifyRequestBody {
 export async function POST(request: Request) {
   const auth = await requireAuthenticatedUser(request)
   if (!auth.ok) return auth.response
+
+  const rlResponse = await checkRateLimitAsync(identityVerifyLimiter, `identity-verify:${auth.userId}`)
+  if (rlResponse) return rlResponse
 
   // ── Parse request body ───────────────────────────────────────────────────
   let body: VerifyRequestBody

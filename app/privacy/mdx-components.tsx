@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import type { AnchorHTMLAttributes, HTMLAttributes } from "react"
 
 function MdxH2({ children, id, ...props }: HTMLAttributes<HTMLHeadingElement>) {

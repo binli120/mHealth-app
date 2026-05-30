@@ -80,7 +80,7 @@
 
 | ID | Requirement |
 |---|---|
-| DATA-040 | Schema changes shall be represented as SQL migrations under `database/` or `database/migrations/`. |
+| DATA-040 | Schema changes shall be represented as SQL migrations under `supabase/migrations/`. |
 | DATA-041 | Migrations shall be idempotent where practical and safe to run in local and cloud Supabase. |
 | DATA-042 | New tables shall include primary keys, timestamps, ownership references, and indexes for common access paths. |
 | DATA-043 | Sensitive tables shall be designed for row-level ownership even if application-level guards are currently used. |

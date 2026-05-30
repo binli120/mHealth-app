@@ -60,11 +60,13 @@ export interface OllamaResponse {
 // ── ACA-3 eligibility ─────────────────────────────────────────────────────────
 
 /**
- * ACA-3 citizenship/immigration status values (uppercase).
- * Note: distinct from `CitizenshipStatus` in `@/lib/eligibility-engine`,
- * which uses lowercase values like "citizen" | "qualified_immigrant".
+ * ACA-3 citizenship/immigration status values (uppercase, detailed).
+ *
+ * Named `Aca3CitizenshipStatus` to distinguish it from:
+ *   • `CitizenshipStatus` in `@/lib/eligibility-engine`  — prescreener, 4 lowercase values
+ *   • `CitizenshipStatus` in `@/lib/benefit-orchestration/types` — re-export of the above
  */
-export type CitizenshipStatus =
+export type Aca3CitizenshipStatus =
   | "US_CITIZEN"
   | "NATIONAL"
   | "QUALIFIED_NONCITIZEN"
@@ -92,7 +94,7 @@ export interface Aca3EligibilityApplicantInput {
   age: number
   stateResident: string
   identityVerified: boolean
-  citizenshipStatus: CitizenshipStatus
+  citizenshipStatus: Aca3CitizenshipStatus
   married: boolean
   taxDependents: number
   taxFiler: boolean
@@ -201,7 +203,7 @@ export interface Aca3ApEligibilityApplicantInput {
   age: number
   /** Whether the additional person is a Massachusetts resident. */
   maResident: boolean
-  citizenshipStatus: CitizenshipStatus
+  citizenshipStatus: Aca3CitizenshipStatus
   /** Whether the additional person is being added to an existing case (should always be true). */
   addingToExistingCase: boolean
   /** Size of the existing household BEFORE adding this person. */

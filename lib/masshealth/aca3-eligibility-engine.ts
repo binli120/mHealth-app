@@ -3,9 +3,8 @@
  * @email: blee@healthcompass.cloud
  */
 
-import { FPL_TABLE_2026, FPL_INCREMENT_AFTER_4 } from "./constants"
 import type {
-  CitizenshipStatus,
+  Aca3CitizenshipStatus,
   EligibilityIncomeInput,
   Aca3EligibilityApplicantInput,
   EligibilityFindingLevel,
@@ -14,10 +13,22 @@ import type {
   EligibilityRuleResult,
   Aca3EligibilityResult,
 } from "./types"
+import {
+  addRequiredDocument,
+  clampNonNegativeInteger,
+  computeMagiIncome,
+  resolveFplForHouseholdSize,
+} from "./aca3-eligibility-helpers"
+import {
+  FPL_PCT_CAREPLUS,
+  FPL_PCT_CHILD_STANDARD,
+  FPL_PCT_FAMILY_ASSIST,
+  FPL_PCT_PREGNANCY_STANDARD,
+} from "./constants"
 
 // Re-export so existing consumers (`form-wizard.tsx`, etc.) keep working unchanged.
 export type {
-  CitizenshipStatus,
+  Aca3CitizenshipStatus,
   EligibilityIncomeInput,
   Aca3EligibilityApplicantInput,
   EligibilityFindingLevel,
@@ -27,27 +38,6 @@ export type {
   Aca3EligibilityResult,
 }
 
-function clampNonNegativeInteger(value: number): number {
-  if (!Number.isFinite(value) || value <= 0) {
-    return 0
-  }
-
-  return Math.floor(value)
-}
-
-function resolveFplForHouseholdSize(householdSize: number): number {
-  if (householdSize <= 1) {
-    return FPL_TABLE_2026[1]
-  }
-
-  if (FPL_TABLE_2026[householdSize]) {
-    return FPL_TABLE_2026[householdSize]
-  }
-
-  // Inference: values grow linearly by $5,380 per additional person.
-  const additionalPeople = householdSize - 4
-  return FPL_TABLE_2026[4] + additionalPeople * FPL_INCREMENT_AFTER_4
-}
 
 function computeHouseholdSize(input: Aca3EligibilityApplicantInput): number {
   let householdSize = 1
@@ -69,24 +59,6 @@ function computeHouseholdSize(input: Aca3EligibilityApplicantInput): number {
   return Math.max(1, householdSize)
 }
 
-function computeMagiIncome(income: EligibilityIncomeInput): number {
-  const total =
-    (income.wages ?? 0) +
-    (income.selfEmployment ?? 0) +
-    (income.unemployment ?? 0) +
-    (income.socialSecurityTaxable ?? 0) +
-    (income.rentalIncome ?? 0) +
-    (income.interest ?? 0) +
-    (income.pension ?? 0)
-
-  return Math.max(0, Math.round(total))
-}
-
-function addRequiredDocument(requiredDocuments: string[], document: string): void {
-  if (!requiredDocuments.includes(document)) {
-    requiredDocuments.push(document)
-  }
-}
 
 export function evaluateAca3Eligibility(input: Aca3EligibilityApplicantInput): Aca3EligibilityResult {
   const findings: EligibilityFinding[] = []
@@ -218,14 +190,14 @@ export function evaluateAca3Eligibility(input: Aca3EligibilityApplicantInput): A
   })
 
   if (status === "APPROVED" || status === "LIMITED_COVERAGE") {
-    if (input.pregnant && fplPercent <= 200) {
+    if (input.pregnant && fplPercent <= FPL_PCT_PREGNANCY_STANDARD) {
       eligibleProgram = "MassHealth Standard"
     } else if (input.disabled) {
       eligibleProgram = "MassHealth CommonHealth"
     } else if (input.age < 19) {
-      if (fplPercent <= 150) {
+      if (fplPercent <= FPL_PCT_CHILD_STANDARD) {
         eligibleProgram = "MassHealth Standard"
-      } else if (fplPercent <= 300) {
+      } else if (fplPercent <= FPL_PCT_FAMILY_ASSIST) {
         eligibleProgram = "MassHealth Family Assistance"
       } else {
         eligibleProgram = "Health Connector"
@@ -235,7 +207,7 @@ export function evaluateAca3Eligibility(input: Aca3EligibilityApplicantInput): A
       input.age <= 64 &&
       !input.pregnant &&
       !input.disabled &&
-      fplPercent <= 138
+      fplPercent <= FPL_PCT_CAREPLUS
     ) {
       eligibleProgram = "MassHealth CarePlus"
     } else {

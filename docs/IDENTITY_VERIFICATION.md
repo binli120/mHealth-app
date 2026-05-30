@@ -636,10 +636,8 @@ CREATE OR REPLACE VIEW identity_pending_review AS
 ### Migrations
 
 ```bash
-# Apply in order:
-database/identity_verification_schema.sql
-database/migrations/add_mobile_verify_sessions.sql
-database/migrations/add_mobile_session_extracted_data.sql
+# All tables are included in the consolidated baseline schema:
+supabase/migrations/20260101000000_baseline_schema.sql
 ```
 
 ---
@@ -789,8 +787,6 @@ components/user-profile/
 lib/redux/features/
   identity-verification-slice.ts  # Redux state (status, score, scannerOpen, ...)
 
-database/
-  identity_verification_schema.sql              # applicants columns + attempts table
-  migrations/add_mobile_verify_sessions.sql     # mobile_verify_sessions table
-  migrations/add_mobile_session_extracted_data.sql  # extracted_data JSONB column
+supabase/migrations/
+  20260101000000_baseline_schema.sql            # All DDL — includes applicants columns, mobile_verify_sessions, extracted_data
 ```

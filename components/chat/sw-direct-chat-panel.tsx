@@ -4,7 +4,7 @@
  *
  * Patient-side 1:1 direct chat panel with their assigned social worker.
  * Supports text messages, voice recording, and image uploads.
- * Polls for new messages every 15 seconds.
+ * Uses Supabase Realtime for instant delivery of incoming messages.
  */
 
 "use client"
@@ -38,6 +38,7 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { formatConversationDateLabel, formatTime } from "@/lib/utils/format"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { getSupabaseClient, getSafeSupabaseUser } from "@/lib/supabase/client"
 import { useAutoScroll } from "@/hooks/use-auto-scroll"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -469,7 +470,6 @@ export function SwDirectChatPanel({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const bottomRef = useAutoScroll([messages, loading])
   const { recording, durationSec, liveTranscript, start: startRecording, stop: stopRecording, cancel: cancelRecording } = useAudioRecorder(voiceLang)
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const onMessagesChangeRef = useRef(onMessagesChange)
   onMessagesChangeRef.current = onMessagesChange
 
@@ -519,19 +519,45 @@ export function SwDirectChatPanel({
   }, [swUserId, currentUserId, setMessagesAndNotify])
 
   useEffect(() => {
-    // If we have cached messages, refresh silently (no spinner).
-    // Otherwise show the loading state.
+    // Initial load — show spinner only when no cached messages are available.
     const hasCached = (initialMessages?.length ?? 0) > 0
     if (!hasCached) setLoading(true)
     void fetchMessages().finally(() => setLoading(false))
 
-    // Poll every 15 seconds for new messages
-    pollRef.current = setInterval(() => void fetchMessages(), 15_000)
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current)
-    }
+    // Subscribe to Supabase Realtime for instant delivery of incoming messages.
+    // We filter on sender_id=swUserId so we only react to messages FROM the
+    // other participant; our own sent messages are already appended optimistically
+    // via appendMessage() in the send handlers below.
+    let realtimeCleanup: (() => void) | undefined
+
+    void getSafeSupabaseUser().then(({ user }) => {
+      if (!user) return
+      const supabase = getSupabaseClient()
+      // Channel name is deterministic from both participant IDs (order-independent).
+      const channelId = `dm-${[user.id, swUserId].sort().join("-")}`
+      const channel = supabase
+        .channel(channelId)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "sw_direct_messages",
+            filter: `sender_id=eq.${swUserId}`,
+          },
+          () => {
+            // Re-fetch on any insert from the other participant.
+            void fetchMessages()
+          },
+        )
+        .subscribe()
+
+      realtimeCleanup = () => { void supabase.removeChannel(channel) }
+    })
+
+    return () => { realtimeCleanup?.() }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchMessages])
+  }, [fetchMessages, swUserId])
 
   // ── Send text ───────────────────────────────────────────────────────────────
 

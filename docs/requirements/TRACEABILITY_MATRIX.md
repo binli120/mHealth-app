@@ -22,22 +22,22 @@
 | Collaboration and messaging | FR-080 to FR-083, API-090 to API-094 | `app/api/social-worker/**`, `app/api/patient/**`, `app/api/messages/**`, `app/api/sessions/**`, `components/collaborative-sessions/*`, `components/chat/sw-*`, `lib/collaborative-sessions/*`, `lib/db/sw-messaging.ts` | `app/api/sessions/**/__tests__/*`, `components/collaborative-sessions/__tests__/*` |
 | Notifications | FR-083, API-110 to API-111 | `app/api/notifications/**`, `components/notifications/*`, `lib/notifications/*`, `lib/db/notifications.ts` | `app/api/notifications/__tests__/routes.test.ts`, `components/notifications/__tests__/*`, `lib/notifications/__tests__/*` |
 | Admin | FR-090 to FR-092, API-120 to API-122 | `app/admin/**`, `app/api/admin/**`, `lib/db/admin.ts`, `lib/db/admin-analytics.ts` | `app/api/admin/__tests__/*`, `app/api/admin/users/__tests__/invite.test.ts` |
-| RAG | AI-020 to AI-027, API-130 to API-132 | `app/api/rag/ingest/route.ts`, `lib/rag/*`, `database/rag_schema.sql` | `lib/rag/__tests__/*` |
+| RAG | AI-020 to AI-027, API-130 to API-132 | `app/api/rag/ingest/route.ts`, `lib/rag/*`, `supabase/migrations/20260101000000_baseline_schema.sql` | `lib/rag/__tests__/*` |
 
 ## 2. Data Traceability
 
 | Table or schema | Requirement IDs | Current migration files |
 |---|---|---|
-| Core applications and review | DATA-020 to DATA-045 | `database/mHealth_schema.sql`, `database/mHealth_schema_update.sql` |
-| User profile | DATA-010 to DATA-012 | `database/user_profile_schema.sql` |
-| RAG | AI-020 to AI-027, DATA-044 | `database/rag_schema.sql` |
-| Agent memory | AI-030 to AI-035, DATA-013, DATA-034 | `database/migrations/add_user_agent_memory.sql` |
-| Benefit orchestration | FR-050 to FR-053 | `database/benefit_orchestration_schema.sql` |
-| Identity | FR-073 to FR-074, DATA-030 to DATA-032 | `database/identity_verification_schema.sql`, `database/migrations/add_mobile_verify_sessions.sql`, `database/migrations/add_mobile_session_extracted_data.sql` |
-| Notifications | FR-083 | `database/notifications_schema.sql` |
-| Social workers and messaging | FR-080 to FR-082 | `database/social_worker_schema.sql`, `database/sw_messaging_schema.sql`, `database/collaborative_session_schema.sql` |
-| Invitations | API-011, DATA-033 | `database/invitations_schema.sql` |
-| Chat logs | DATA-022 to DATA-035 | `database/chat_logs_schema.sql` |
+| Core applications and review | DATA-020 to DATA-045 | `supabase/migrations/20260101000000_baseline_schema.sql` |
+| User profile | DATA-010 to DATA-012 | `supabase/migrations/20260101000000_baseline_schema.sql` |
+| RAG | AI-020 to AI-027, DATA-044 | `supabase/migrations/20260101000000_baseline_schema.sql` |
+| Agent memory | AI-030 to AI-035, DATA-013, DATA-034 | `supabase/migrations/20260101000000_baseline_schema.sql` |
+| Benefit orchestration | FR-050 to FR-053 | `supabase/migrations/20260101000000_baseline_schema.sql` |
+| Identity | FR-073 to FR-074, DATA-030 to DATA-032 | `supabase/migrations/20260101000000_baseline_schema.sql` |
+| Notifications | FR-083 | `supabase/migrations/20260101000000_baseline_schema.sql` |
+| Social workers and messaging | FR-080 to FR-082 | `supabase/migrations/20260101000000_baseline_schema.sql` |
+| Invitations | API-011, DATA-033 | `supabase/migrations/20260101000000_baseline_schema.sql` |
+| Chat logs | DATA-022 to DATA-035 | `supabase/migrations/20260101000000_baseline_schema.sql` |
 
 ## 3. Future Plan Traceability
 

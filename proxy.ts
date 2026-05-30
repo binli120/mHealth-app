@@ -30,7 +30,47 @@ import { buildCspHeader, generateNonce } from "@/lib/csp/nonce"
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
+// ── Auth gate ─────────────────────────────────────────────────────────────────
+
+const PROTECTED_PREFIXES = [
+  "/customer",
+  "/application",
+  "/reviewer",
+  "/social-worker",
+  "/admin",
+]
+
+// Paths within protected segments that are publicly accessible.
+const UNPROTECTED_EXACT = new Set(["/application/type"])
+
+// Cookies that indicate an active session.
+// hc-session-hint:         7-day hint set by /api/auth/session-cookie (no auth data);
+//                          outlives the 1-hour JWT so Supabase's refresh-token flow
+//                          can run even when sb-access-token has expired.
+// sb-access-token:         Supabase JWT (1-hour TTL); checked as belt-and-suspenders.
+// hc-admin-passkey-session: admin hardware-key session (8-hour TTL).
+const SESSION_COOKIES = ["hc-session-hint", "sb-access-token", "hc-admin-passkey-session"] as const
+
+function requiresAuth(pathname: string): boolean {
+  return (
+    !UNPROTECTED_EXACT.has(pathname) &&
+    PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+  )
+}
+
 export function proxy(request: NextRequest): NextResponse {
+  const { pathname } = request.nextUrl
+
+  if (requiresAuth(pathname)) {
+    const hasSession = SESSION_COOKIES.some((name) => request.cookies.has(name))
+    if (!hasSession) {
+      const loginUrl = request.nextUrl.clone()
+      loginUrl.pathname = "/auth/login"
+      loginUrl.search = `next=${encodeURIComponent(pathname)}`
+      return NextResponse.redirect(loginUrl)
+    }
+  }
+
   const nonce = generateNonce()
   const isDev = process.env.NODE_ENV === "development"
   const csp = buildCspHeader({ nonce, isDev })

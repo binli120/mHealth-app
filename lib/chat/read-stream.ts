@@ -50,10 +50,13 @@ export interface ChatStreamResult {
  * annotation written by the server.
  *
  * Throws on `error` chunks or missing response body.
+ * If `signal` is aborted, the reader is cancelled and an `AbortError` is thrown
+ * so callers can distinguish a user-initiated cancellation from a real failure.
  */
 export async function readChatStream(
   response: Response,
   onToken: (token: string, accumulated: string) => void,
+  signal?: AbortSignal,
 ): Promise<ChatStreamResult> {
   if (!response.body) throw new Error("Response body is missing")
 
@@ -64,8 +67,13 @@ export async function readChatStream(
   let annotation: ChatStreamAnnotation | null = null
   let buffer = ""
 
+  // Cancel the reader when the caller's AbortSignal fires.
+  const onAbort = () => { void reader.cancel() }
+  signal?.addEventListener("abort", onAbort)
+
   try {
     while (true) {
+      if (signal?.aborted) break
       const { done, value } = await reader.read()
       if (done) break
 
@@ -112,6 +120,7 @@ export async function readChatStream(
       }
     }
   } finally {
+    signal?.removeEventListener("abort", onAbort)
     reader.releaseLock()
   }
 

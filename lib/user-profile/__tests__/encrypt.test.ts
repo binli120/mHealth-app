@@ -22,11 +22,11 @@ describe("lib/user-profile/encrypt", () => {
   // ── encryptField ────────────────────────────────────────────────────────────
 
   describe("encryptField", () => {
-    it("returns a colon-delimited string with four segments (v1:iv:tag:ciphertext)", () => {
+    it("returns a colon-delimited string with four segments (v2:iv:tag:ciphertext)", () => {
       const result = encryptField("hello")
       const parts = result.split(":")
       expect(parts).toHaveLength(4)
-      expect(parts[0]).toBe("v1")   // version token
+      expect(parts[0]).toBe("v2")   // version token — updated from v1 during key rotation
       expect(parts[1]).toBeTruthy() // iv
       expect(parts[2]).toBeTruthy() // auth tag
       expect(parts[3]).toBeTruthy() // ciphertext

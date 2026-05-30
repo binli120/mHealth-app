@@ -8,6 +8,15 @@
 
 // 2026 Federal Poverty Level Guidelines (48 contiguous states + DC)
 // Source: HHS 2026 Poverty Guidelines
+
+import {
+  FPL_PCT_ADULT_DISABILITY,
+  FPL_PCT_CAREPLUS,
+  FPL_PCT_CHILD_STANDARD,
+  FPL_PCT_FAMILY_ASSIST,
+  FPL_PCT_PREGNANCY_STANDARD,
+  FPL_PCT_TAX_CREDITS_UPPER,
+} from "@/lib/masshealth/constants"
 const FPL_2026_BASE = 15060  // 1 person
 const FPL_2026_PER_ADDITIONAL = 5380  // each additional person
 
@@ -164,7 +173,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
   }
 
   // ── PREGNANT (any qualified status, up to 200% FPL) ─────────────────────
-  if (data.isPregnant && isQualifiedImmigrant && fplPct <= 200) {
+  if (data.isPregnant && isQualifiedImmigrant && fplPct <= FPL_PCT_PREGNANCY_STANDARD) {
     results.push({
       code: "pregnancy_standard",
       program: 'MassHealth Standard – Pregnancy',
@@ -181,7 +190,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
 
   // ── CHILDREN UNDER 19 ────────────────────────────────────────────────────
   if (data.age < 19 && isQualifiedImmigrant) {
-    if (fplPct <= 150) {
+    if (fplPct <= FPL_PCT_CHILD_STANDARD) {
       results.push({
         code: "child_standard",
         program: 'MassHealth Standard',
@@ -194,7 +203,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
         color: 'green',
         priority: 1,
       })
-    } else if (fplPct <= 300) {
+    } else if (fplPct <= FPL_PCT_FAMILY_ASSIST) {
       results.push({
         code: "family_assistance_chip",
         program: 'MassHealth Family Assistance (CHIP)',
@@ -228,7 +237,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
   if (data.age >= 19 && data.age <= 64 && isQualifiedImmigrant) {
 
     // Adults with disability/SSI at ≤133% FPL → MassHealth Standard
-    if (data.hasDisability && fplPct <= 133) {
+    if (data.hasDisability && fplPct <= FPL_PCT_ADULT_DISABILITY) {
       results.push({
         code: "adult_disability_standard",
         program: 'MassHealth Standard',
@@ -245,7 +254,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
 
     // MassHealth CarePlus — ACA Medicaid expansion for adults 19–64
     // 133% FPL + 5% income disregard = effectively 138%
-    if (!data.hasMedicare && fplPct <= 138 && !results.some(r => r.program === 'MassHealth Standard')) {
+    if (!data.hasMedicare && fplPct <= FPL_PCT_CAREPLUS && !results.some(r => r.program === 'MassHealth Standard')) {
       results.push({
         code: "careplus",
         program: 'MassHealth CarePlus',
@@ -261,7 +270,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
     }
 
     // ConnectorCare — subsidized marketplace, 139–300% FPL
-    if (!data.hasMedicare && fplPct > 138 && fplPct <= 300) {
+    if (!data.hasMedicare && fplPct > FPL_PCT_CAREPLUS && fplPct <= FPL_PCT_FAMILY_ASSIST) {
       results.push({
         code: "connectorcare",
         program: 'ConnectorCare',
@@ -277,7 +286,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
     }
 
     // Federal premium tax credits, 300–400% FPL (or higher if extended)
-    if (!data.hasMedicare && fplPct > 300 && fplPct <= 500) {
+    if (!data.hasMedicare && fplPct > FPL_PCT_FAMILY_ASSIST && fplPct <= FPL_PCT_TAX_CREDITS_UPPER) {
       results.push({
         code: "federal_tax_credits",
         program: 'Health Connector with Federal Tax Credits',
@@ -293,7 +302,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
     }
 
     // Above subsidy threshold
-    if (!data.hasMedicare && fplPct > 500) {
+    if (!data.hasMedicare && fplPct > FPL_PCT_TAX_CREDITS_UPPER) {
       results.push({
         code: "employer_or_connector",
         program: 'Health Connector or Employer Plans',
@@ -325,7 +334,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
     }
 
     // Employer insurance note
-    if (data.hasEmployerInsurance && fplPct > 138) {
+    if (data.hasEmployerInsurance && fplPct > FPL_PCT_CAREPLUS) {
       results.push({
         code: "employer_sponsored_insurance",
         program: 'Employer-Sponsored Insurance',

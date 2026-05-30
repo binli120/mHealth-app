@@ -54,7 +54,7 @@ describe("mergeAndSaveAgentMemory", () => {
     await mergeAndSaveAgentMemory(USER_ID, { extractedFacts: { age: 30 } })
 
     const { sql, userId } = lastCall()
-    expect(sql).toMatch(/INSERT INTO user_agent_memory/i)
+    expect(sql).toMatch(/INSERT INTO public\.user_agent_memory/i)
     expect(sql).toMatch(/ON CONFLICT.*DO UPDATE/i)
     expect(userId).toBe(USER_ID)
   })

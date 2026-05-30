@@ -15,7 +15,7 @@ export type {
   ApplicationBundle,
   BenefitProgramId,
   BenefitCategory,
-  EligibilityStatus,
+  BenefitEligibilityStatus,
   EmploymentStatus,
   HousingStatus,
   TaxFilingStatus,

@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import type { PrivacyFrontmatter } from "@/lib/privacy/types"
 
 export function PrintHeader({ frontmatter }: { frontmatter: PrivacyFrontmatter }) {

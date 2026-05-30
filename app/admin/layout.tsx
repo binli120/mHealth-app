@@ -3,83 +3,29 @@
 /**
  * @author: Bin Lee
  * @email: blee@healthcompass.cloud
+ *
+ * Admin layout shell.
+ *
+ * Responsibilities kept here:
+ *   • Auth resolution (Supabase session → MFA check → admin role probe)
+ *   • Sidebar + mobile-overlay visibility state
+ *   • Dev "grant admin" action
+ *
+ * UI concerns delegated to sub-components:
+ *   • AdminAuthGate  — loading / not-admin screens
+ *   • AdminSidebar   — nav + MFA enroll + passkey + logout
+ *   • (MFA and passkey logic live inside AdminSidebar's sub-components)
  */
 
 import { useEffect, useState } from "react"
-import { startRegistration } from "@simplewebauthn/browser"
 import { useRouter, usePathname } from "next/navigation"
-import Link from "next/link"
+import { Menu, Shield } from "lucide-react"
 import { getSafeSupabaseSession, getSupabaseClient } from "@/lib/supabase/client"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { IdleTimeoutGuard } from "@/components/shared/IdleTimeoutGuard"
-import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import {
-  LayoutDashboard,
-  Users,
-  Building2,
-  UserCheck,
-  LogOut,
-  Shield,
-  Menu,
-  X,
-  AlertCircle,
-  Loader2,
-  BarChart2,
-  Download,
-  KeyRound,
-  ShieldCheck,
-  ShieldPlus,
-  Check,
-  type LucideIcon,
-} from "lucide-react"
-import { Input } from "@/components/ui/input"
-
-type NavItem = {
-  href: string
-  label: string
-  icon: LucideIcon
-  exact?: boolean
-}
-
-type NavGroup = {
-  title: string | null   // null = no section header (top-level)
-  items: NavItem[]
-}
-
-const NAV_GROUPS: NavGroup[] = [
-  {
-    title: null,
-    items: [
-      { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-    ],
-  },
-  {
-    title: "People & Access",
-    items: [
-      { href: "/admin/users",          label: "Users",          icon: Users },
-      { href: "/admin/companies",      label: "Companies",      icon: Building2 },
-      { href: "/admin/social-workers", label: "Social Workers", icon: UserCheck },
-      { href: "/admin/roles",          label: "Roles",          icon: KeyRound },
-    ],
-  },
-  {
-    title: "Analytics & Reports",
-    items: [
-      { href: "/admin/analytics", label: "Analytics", icon: BarChart2 },
-      { href: "/admin/reports",   label: "Reports",   icon: Download },
-    ],
-  },
-  {
-    title: "System",
-    items: [
-      { href: "/admin/phi-audit", label: "PHI Audit Log", icon: ShieldCheck },
-    ],
-  },
-]
-
-type AuthState = "loading" | "unauthenticated" | "not-admin" | "ready"
-type MfaSetupStep = "idle" | "qr" | "verifying"
+import { AdminAuthGate, type AdminAuthState } from "@/components/admin/admin-auth-gate"
+import { AdminSidebar } from "@/components/admin/admin-sidebar"
 
 interface AuthMeResponse {
   ok?: boolean
@@ -87,43 +33,36 @@ interface AuthMeResponse {
   email?: string | null
 }
 
-interface MfaEnrollData {
-  factorId: string
-  qrCode: string
-  secret: string
-}
-
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
+
+  // ── Auth state ──────────────────────────────────────────────────────────────
+  const [authState, setAuthState] = useState<AdminAuthState>("loading")
+  const [adminEmail, setAdminEmail] = useState<string | null>(null)
+  const [granting, setGranting] = useState(false)
+  const [mfaHasFactor, setMfaHasFactor] = useState(false)
+
+  // ── Sidebar visibility ──────────────────────────────────────────────────────
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true)
-  const [adminEmail, setAdminEmail] = useState<string | null>(null)
-  const [authState, setAuthState] = useState<AuthState>("loading")
-  const [granting, setGranting] = useState(false)
-  const [registeringPasskey, setRegisteringPasskey] = useState(false)
-  const [mfaHasFactor, setMfaHasFactor] = useState(false)
-  const [mfaSetupStep, setMfaSetupStep] = useState<MfaSetupStep>("idle")
-  const [mfaEnrollData, setMfaEnrollData] = useState<MfaEnrollData | null>(null)
-  const [mfaCode, setMfaCode] = useState("")
-  const [mfaError, setMfaError] = useState("")
 
+  // ── Auth resolution ─────────────────────────────────────────────────────────
   useEffect(() => {
     getSafeSupabaseSession()
       .then(async ({ session }) => {
         if (!session) {
+          // Passkey / proxy-auth path: validate via /api/auth/me
           const res = await authenticatedFetch("/api/auth/me", { cache: "no-store" })
           if (!res.ok) {
             router.replace("/auth/login?next=/admin")
             return
           }
-
           const payload = (await res.json().catch(() => ({}))) as AuthMeResponse
           if (!payload.roles?.includes("admin")) {
             setAuthState("not-admin")
             return
           }
-
           setAdminEmail(payload.email ?? null)
           setAuthState("ready")
           return
@@ -131,7 +70,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         setAdminEmail(session.user.email ?? null)
 
-        // For Supabase sessions, enforce MFA if admin has a TOTP factor enrolled.
+        // Enforce MFA challenge if the user has a TOTP factor enrolled.
         const supabase = getSupabaseClient()
         const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
         if (aalData?.nextLevel === "aal2" && aalData.currentLevel !== "aal2") {
@@ -139,14 +78,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           return
         }
 
-        // Track whether MFA is already set up (to show correct sidebar button state).
+        // Track whether MFA is already enrolled (for the sidebar button label).
         const { data: factorsData } = await supabase.auth.mfa.listFactors()
         setMfaHasFactor((factorsData?.totp?.length ?? 0) > 0)
 
-        // Verify admin role by probing the stats endpoint
+        // Verify admin role by probing the stats endpoint.
         const res = await authenticatedFetch("/api/admin/stats")
         if (res.status === 403) {
-          const body = (await res.json().catch(() => ({}))) as { mfa_required?: boolean }
+          const body = (await res.json().catch(() => ({}))) as {
+            mfa_required?: boolean
+            mfa_enrollment_required?: boolean
+          }
+          if (body.mfa_enrollment_required) {
+            router.replace("/setup-mfa?next=/admin")
+            return
+          }
           if (body.mfa_required) {
             router.replace("/auth/mfa?next=/admin")
             return
@@ -161,14 +107,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       })
   }, [router])
 
+  // ── Handlers ────────────────────────────────────────────────────────────────
   const handleGrantAdmin = async () => {
     setGranting(true)
     try {
       const res = await authenticatedFetch("/api/auth/dev-grant-admin", { method: "POST" })
-      const data = await res.json()
-      if (data.ok) {
-        setAuthState("ready")
-      }
+      const data = (await res.json()) as { ok?: boolean }
+      if (data.ok) setAuthState("ready")
     } finally {
       setGranting(false)
     }
@@ -176,330 +121,72 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const handleLogout = async () => {
     await Promise.allSettled([
-      (async () => {
-        await getSupabaseClient().auth.signOut()
-      })(),
+      getSupabaseClient().auth.signOut(),
       fetch("/api/auth/passkey/logout", { method: "POST" }),
     ])
     router.replace("/auth/login")
   }
 
-  const handleRegisterPasskey = async () => {
-    setRegisteringPasskey(true)
-
-    try {
-      const optionsResponse = await authenticatedFetch("/api/auth/passkey/register/options", {
-        method: "POST",
-      })
-      const optionsErrorResponse = optionsResponse.clone()
-      const optionsPayload = (await optionsResponse.json().catch(() => ({}))) as {
-        ok?: boolean
-        error?: string
-        options?: Parameters<typeof startRegistration>[0]["optionsJSON"]
-      }
-      if (!optionsResponse.ok || !optionsPayload.ok || !optionsPayload.options) {
-        window.alert(
-          optionsPayload.error ||
-          (await readApiError(optionsErrorResponse, "Unable to start passkey registration.")),
-        )
-        return
-      }
-
-      const response = await startRegistration({ optionsJSON: optionsPayload.options })
-      const verifyResponse = await authenticatedFetch("/api/auth/passkey/register/verify", {
-        method: "POST",
-        body: JSON.stringify({ response, name: "Admin passkey" }),
-      })
-      const verifyErrorResponse = verifyResponse.clone()
-      const verifyPayload = (await verifyResponse.json().catch(() => ({}))) as {
-        ok?: boolean
-        error?: string
-      }
-      if (!verifyResponse.ok || !verifyPayload.ok) {
-        window.alert(verifyPayload.error || (await readApiError(verifyErrorResponse, "Unable to save passkey.")))
-        return
-      }
-
-      window.alert("Admin passkey registered.")
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to register passkey."
-      window.alert(message)
-    } finally {
-      setRegisteringPasskey(false)
-    }
-  }
-
-  const handleSetupMfa = async () => {
-    const supabase = getSupabaseClient()
-    const { data, error } = await supabase.auth.mfa.enroll({
-      factorType: "totp",
-      friendlyName: "Admin 2FA",
-    })
-    if (error || !data) {
-      window.alert(error?.message ?? "Failed to start 2FA setup.")
-      return
-    }
-    setMfaEnrollData({ factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret })
-    setMfaCode("")
-    setMfaError("")
-    setMfaSetupStep("qr")
-  }
-
-  const handleVerifyMfaEnrollment = async () => {
-    if (!mfaEnrollData || mfaCode.length !== 6) return
-    setMfaSetupStep("verifying")
-
-    const supabase = getSupabaseClient()
-    const { error } = await supabase.auth.mfa.challengeAndVerify({
-      factorId: mfaEnrollData.factorId,
-      code: mfaCode,
-    })
-
-    if (error) {
-      setMfaError("Invalid code. Please try again.")
-      setMfaSetupStep("qr")
-      return
-    }
-
-    setMfaHasFactor(true)
-    setMfaSetupStep("idle")
-    setMfaEnrollData(null)
-    setMfaCode("")
-  }
-
-  const cancelMfaSetup = () => {
-    setMfaSetupStep("idle")
-    setMfaEnrollData(null)
-    setMfaCode("")
-    setMfaError("")
-  }
-
-  const readApiError = async (response: Response, fallback: string) => {
-    const payload = (await response.clone().json().catch(() => null)) as { error?: string } | null
-    if (payload?.error) return payload.error
-
-    const text = await response.text().catch(() => "")
-    return text.trim() || fallback
-  }
-
-  const isActive = (href: string, exact?: boolean) => {
-    if (exact) return pathname === href
-    return pathname.startsWith(href)
-  }
-
-  if (authState === "loading") {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">
-        <Loader2 className="mr-2 size-5 animate-spin" /> Loading...
-      </div>
-    )
-  }
-
-  if (authState === "not-admin") {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <div className="w-full max-w-sm rounded-lg border bg-card p-8 text-center shadow-sm">
-          <AlertCircle className="mx-auto mb-4 size-10 text-warning" />
-          <h2 className="mb-2 text-lg font-semibold text-foreground">Admin Role Required</h2>
-          <p className="mb-1 text-sm text-muted-foreground">
-            Logged in as: <span className="font-medium text-foreground">{adminEmail}</span>
-          </p>
-          <p className="mb-6 text-sm text-muted-foreground">
-            This account does not have the admin role.
-          </p>
-          <Button
-            onClick={handleGrantAdmin}
-            disabled={granting}
-            className="mb-3 w-full"
-          >
-            {granting ? <Loader2 className="size-4 animate-spin" /> : <Shield className="size-4" />}
-            Grant Admin Role (Dev Only)
-          </Button>
-          <Button onClick={handleLogout} variant="ghost" size="sm">
-            Sign out
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="flex min-h-svh bg-background">
-      <IdleTimeoutGuard />
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-20 bg-black/45 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+    <AdminAuthGate
+      authState={authState}
+      adminEmail={adminEmail}
+      granting={granting}
+      onGrantAdmin={() => void handleGrantAdmin()}
+      onLogout={() => void handleLogout()}
+    >
+      <div className="flex min-h-svh bg-background">
+        <IdleTimeoutGuard />
 
-      {/* Sidebar */}
-      <aside
-        aria-label="Admin sidebar"
-        className={cn(
-          "fixed left-0 top-0 z-30 flex h-svh w-72 transform flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-xl transition-transform duration-200 lg:sticky lg:z-auto lg:shadow-none",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full",
-          desktopSidebarOpen ? "lg:translate-x-0" : "lg:hidden",
-        )}
-      >
-        <div className="flex items-center gap-3 border-b border-sidebar-border px-5 py-4">
-          <div className="flex size-9 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-            <Shield className="size-5" />
-          </div>
-          <div>
-            <div className="text-sm font-semibold leading-tight">HealthCompass MA</div>
-            <div className="text-xs text-sidebar-foreground/65">Admin Portal</div>
-          </div>
-          <button
-            className="ml-auto rounded-md p-1 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground lg:hidden"
+        {/* Mobile overlay */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-20 bg-black/45 lg:hidden"
             onClick={() => setSidebarOpen(false)}
-            aria-label="Close admin menu"
+          />
+        )}
+
+        <AdminSidebar
+          adminEmail={adminEmail}
+          mfaHasFactor={mfaHasFactor}
+          onMfaSuccess={() => setMfaHasFactor(true)}
+          onLogout={() => void handleLogout()}
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          desktopSidebarOpen={desktopSidebarOpen}
+          setDesktopSidebarOpen={setDesktopSidebarOpen}
+        />
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* Top bar — visible only when sidebar is collapsed */}
+          <header
+            className={cn(
+              "sticky top-0 z-10 flex items-center gap-3 border-b bg-card/95 px-4 py-3 backdrop-blur",
+              desktopSidebarOpen ? "lg:hidden" : "lg:flex",
+            )}
           >
-            <X className="size-5" />
-          </button>
-          <button
-            className="ml-auto hidden rounded-md p-1 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground lg:inline-flex"
-            onClick={() => setDesktopSidebarOpen(false)}
-            aria-label="Hide admin sidebar"
-            title="Hide sidebar"
-          >
-            <X className="size-5" />
-          </button>
-        </div>
-
-        <nav className="flex-1 overflow-y-auto px-3 py-4">
-          {NAV_GROUPS.map((group, gi) => (
-            <div key={gi} className={gi > 0 ? "mt-5" : ""}>
-              {group.title && (
-                <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/45 select-none">
-                  {group.title}
-                </p>
-              )}
-              {group.items.map(({ href, label, icon: Icon, exact }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  onClick={() => setSidebarOpen(false)}
-                  className={cn(
-                    "mb-0.5 flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-                    isActive(href, exact)
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                      : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                  )}
-                >
-                  <Icon className="size-4 shrink-0" />
-                  {label}
-                </Link>
-              ))}
-            </div>
-          ))}
-        </nav>
-
-        <div className="border-t border-sidebar-border px-3 pb-4 pt-4">
-          {adminEmail && (
-            <p className="mb-2 truncate px-3 text-xs text-sidebar-foreground/55">{adminEmail}</p>
-          )}
-
-          {/* MFA setup — inline enrollment form when active */}
-          {mfaSetupStep !== "idle" && mfaEnrollData ? (
-            <div className="mb-2 rounded-md border border-sidebar-border bg-sidebar-accent/30 p-3">
-              <p className="mb-2 text-xs font-semibold text-sidebar-foreground">Set up 2FA</p>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={mfaEnrollData.qrCode} alt="Scan with your authenticator app" className="mb-1 w-full rounded" />
-              <p className="mb-2 break-all text-[10px] text-sidebar-foreground/60">
-                {mfaEnrollData.secret}
-              </p>
-              <Input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]{6}"
-                maxLength={6}
-                placeholder="000000"
-                value={mfaCode}
-                onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                className="mb-2 h-8 text-center text-base tracking-[0.4em]"
-                autoFocus
-              />
-              {mfaError && <p className="mb-2 text-xs text-destructive">{mfaError}</p>}
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  className="flex-1"
-                  disabled={mfaCode.length !== 6 || mfaSetupStep === "verifying"}
-                  onClick={() => void handleVerifyMfaEnrollment()}
-                >
-                  {mfaSetupStep === "verifying" ? (
-                    <Loader2 className="size-3 animate-spin" />
-                  ) : (
-                    <Check className="size-3" />
-                  )}
-                  Confirm
-                </Button>
-                <Button size="sm" variant="ghost" onClick={cancelMfaSetup}>
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          ) : (
             <button
-              onClick={() => void handleSetupMfa()}
-              className="mb-1 flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              onClick={() => {
+                setSidebarOpen(true)
+                setDesktopSidebarOpen(true)
+              }}
+              className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label="Open admin menu"
             >
-              {mfaHasFactor ? (
-                <ShieldCheck className="size-4 text-green-500" />
-              ) : (
-                <ShieldPlus className="size-4" />
-              )}
-              {mfaHasFactor ? "2FA Enabled" : "Set up 2FA"}
+              <Menu className="size-5" />
             </button>
-          )}
+            <div className="flex items-center gap-2">
+              <Shield className="size-4 text-primary" />
+              <span className="text-sm font-semibold text-foreground">Admin Portal</span>
+            </div>
+          </header>
 
-          <button
-            onClick={() => void handleRegisterPasskey()}
-            disabled={registeringPasskey}
-            className="mb-1 flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <KeyRound className="size-4" />
-            {registeringPasskey ? "Adding Passkey..." : "Add Passkey"}
-          </button>
-          <button
-            onClick={() => void handleLogout()}
-            className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          >
-            <LogOut className="size-4" />
-            Sign Out
-          </button>
+          <main className="flex-1 overflow-auto px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
+            {children}
+          </main>
         </div>
-      </aside>
-
-      {/* Main content */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        {/* Top bar */}
-        <header
-          className={cn(
-            "sticky top-0 z-10 flex items-center gap-3 border-b bg-card/95 px-4 py-3 backdrop-blur",
-            desktopSidebarOpen ? "lg:hidden" : "lg:flex",
-          )}
-        >
-          <button
-            onClick={() => {
-              setSidebarOpen(true)
-              setDesktopSidebarOpen(true)
-            }}
-            className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-            aria-label="Open admin menu"
-          >
-            <Menu className="size-5" />
-          </button>
-          <div className="flex items-center gap-2">
-            <Shield className="size-4 text-primary" />
-            <span className="text-sm font-semibold text-foreground">Admin Portal</span>
-          </div>
-        </header>
-
-        <main className="flex-1 overflow-auto px-4 py-5 sm:px-6 lg:px-8 lg:py-8">{children}</main>
       </div>
-    </div>
+    </AdminAuthGate>
   )
 }

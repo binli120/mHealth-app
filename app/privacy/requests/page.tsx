@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import type { Metadata } from "next"
 import Link from "next/link"
 import { ArrowLeft, FileText, Mail, Send, ShieldCheck } from "lucide-react"

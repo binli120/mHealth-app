@@ -8,6 +8,10 @@ import { NextResponse } from "next/server"
 import { getSupabaseServerClient } from "@/lib/supabase/server"
 
 const DEFAULT_ACCESS_TOKEN_MAX_AGE = 60 * 60
+// Long-lived hint cookie checked by the proxy to allow the Supabase refresh-token
+// flow to run even when the 1-hour JWT cookie has expired.  Carries no auth data.
+const SESSION_HINT_COOKIE = "hc-session-hint"
+const SESSION_HINT_MAX_AGE = 7 * 24 * 60 * 60 // 7 days — matches Supabase refresh-token lifetime
 
 function getJwtMaxAge(token: string): number {
   try {
@@ -54,24 +58,40 @@ export async function POST(request: Request) {
     )
   }
 
+  const isSecure = process.env.NODE_ENV === "production"
   const response = NextResponse.json({ ok: true })
   response.cookies.set("sb-access-token", accessToken, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: isSecure,
     path: "/",
     maxAge: getJwtMaxAge(accessToken),
+  })
+  response.cookies.set(SESSION_HINT_COOKIE, "1", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: isSecure,
+    path: "/",
+    maxAge: SESSION_HINT_MAX_AGE,
   })
 
   return response
 }
 
 export async function DELETE() {
+  const isSecure = process.env.NODE_ENV === "production"
   const response = NextResponse.json({ ok: true })
   response.cookies.set("sb-access-token", "", {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: isSecure,
+    path: "/",
+    maxAge: 0,
+  })
+  response.cookies.set(SESSION_HINT_COOKIE, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: isSecure,
     path: "/",
     maxAge: 0,
   })

@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * Client-side AES-256-GCM encryption using the browser Web Crypto API.
  * This module must only be imported in client components (never server-only code).
  *

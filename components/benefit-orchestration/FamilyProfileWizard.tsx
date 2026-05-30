@@ -29,6 +29,7 @@ import {
   UTILITY_OPTIONS,
 } from "@/lib/constants/form-options"
 import type {
+  BenefitStack,
   FamilyProfile,
   HouseholdMemberProfile,
   IncomeBreakdown,
@@ -126,7 +127,7 @@ const defaultProfile = (): Omit<FamilyProfile, "householdSize" | "childrenUnder5
 
 interface FamilyProfileWizardProps {
   initialProfile?: Partial<FamilyProfile>
-  onComplete: (stack: unknown) => void
+  onComplete: (stack: BenefitStack) => void
   loading?: boolean
 }
 

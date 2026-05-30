@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
+/**
  * PHI resume token — split, encrypt, serialize, and restore wizard state PHI.
  *
  * Token format (base64-encoded JSON):

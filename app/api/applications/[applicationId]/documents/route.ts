@@ -20,6 +20,7 @@ import {
   buildStoragePath,
 } from "@/lib/supabase/storage"
 import { logServerError } from "@/lib/server/logger"
+import { checkRateLimitAsync, documentUploadLimiter } from "@/lib/server/rate-limit"
 import { validateUpload } from "@/lib/uploads/validate"
 import { createAndUploadDocumentArtifacts } from "@/lib/uploads/document-artifacts"
 import { validateUploadedDocument } from "@/lib/masshealth/document-validation-workflow"
@@ -105,6 +106,9 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     const authResult = await requireAuthenticatedUser(request)
     if (!authResult.ok) return authResult.response
+
+    const rlResponse = await checkRateLimitAsync(documentUploadLimiter, `doc-upload:${authResult.userId}`)
+    if (rlResponse) return rlResponse
 
     const { applicationId } = await context.params
     if (!UUID_PATTERN.test(applicationId)) {

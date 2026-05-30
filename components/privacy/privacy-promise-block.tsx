@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import Link from "next/link"
 import { ShieldCheck, Scale, ChevronRight, FileText } from "lucide-react"
 

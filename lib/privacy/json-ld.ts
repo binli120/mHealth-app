@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 import type { PrivacyFrontmatter } from "./types"
 
 export function buildPrivacyJsonLd(frontmatter: PrivacyFrontmatter) {
