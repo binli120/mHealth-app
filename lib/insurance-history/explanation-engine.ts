@@ -87,15 +87,12 @@ export function applyRulesTemplate(
 
   const cf = computeChangeFactor(current, prior)
 
-  const significantFactors = [
-    cf.pregnancy,
-    cf.medicare,
-    cf.gainedEmployer,
-    cf.lostEmployer,
-    cf.fplDelta != null && cf.fplDelta !== 0 && !cf.gainedEmployer && !cf.lostEmployer && !cf.pregnancy && !cf.medicare,
-    cf.householdDelta != null && cf.householdDelta !== 0 && !cf.pregnancy,
-  ].filter(Boolean).length
-
+  let significantFactors = 0
+  if (cf.pregnancy) significantFactors++
+  if (cf.medicare) significantFactors++
+  if (cf.gainedEmployer || cf.lostEmployer) significantFactors++
+  if (cf.fplDelta != null && cf.fplDelta !== 0) significantFactors++
+  if (cf.householdDelta != null && cf.householdDelta !== 0) significantFactors++
   if (significantFactors > 1) return null
 
   if (cf.pregnancy) {
@@ -160,5 +157,5 @@ export function buildLlmPrompt(
 
 Previous coverage (${prior.coverageYear}): ${prior.planName}, FPL: ${prior.fplPercent ?? "unknown"}%, income: $${prior.annualIncome ?? "unknown"}/year, household: ${prior.householdSize ?? "unknown"}
 Current coverage (${current.coverageYear}): ${current.planName}, FPL: ${current.fplPercent ?? "unknown"}%, income: $${current.annualIncome ?? "unknown"}/year, household: ${current.householdSize ?? "unknown"}
-Change factors: income delta $${cf.incomeDelta ?? "unknown"}, FPL delta ${cf.fplDelta ?? "unknown"}%, household delta ${cf.householdDelta ?? 0}`
+Change factors: income delta $${cf.incomeDelta ?? "unknown"}, FPL delta ${cf.fplDelta ?? "unknown"}%, household delta ${cf.householdDelta ?? "unknown"}`
 }
