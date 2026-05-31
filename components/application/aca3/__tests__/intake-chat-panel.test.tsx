@@ -116,6 +116,26 @@ describe("IntakeChatPanel", () => {
     expect(screen.getByText("Saving…")).toBeInTheDocument()
   })
 
+  it("shows date format guidance for date widgets", () => {
+    renderPanel({
+      widgetSpec: { kind: "date" },
+      onWidgetAnswer: vi.fn(),
+    })
+
+    expect(screen.getByText(/use mm\/dd\/yyyy/i)).toBeInTheDocument()
+  })
+
+  it("shows a skip affordance for optional multi-select widgets", () => {
+    const onWidgetAnswer = vi.fn()
+    renderPanel({
+      widgetSpec: { kind: "multi_select", options: ["A", "B"], optional: true },
+      onWidgetAnswer,
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: /none of these apply/i }))
+    expect(onWidgetAnswer).toHaveBeenCalledWith("None")
+  })
+
   it("renders the auto-play switch", () => {
     renderPanel()
     expect(screen.getByRole("switch")).toBeInTheDocument()

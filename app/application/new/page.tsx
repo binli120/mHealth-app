@@ -15,6 +15,7 @@ import type { ApplicationEntryMode } from "@/lib/applications/types"
 import type { ApplicationFormData } from "@/lib/redux/features/application-slice"
 import { useAppSelector } from "@/lib/redux/hooks"
 import { getApplicationTypeLabel } from "@/lib/masshealth/application-types"
+import { createUuid } from "@/lib/utils/random-id"
 import { UserRound } from "lucide-react"
 import type { UserProfile } from "@/lib/user-profile/types"
 
@@ -72,6 +73,8 @@ function NewApplicationPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const queryApplicationId = searchParams.get("applicationId")?.trim()
+  const [newApplicationId] = useState(() => createUuid())
+  const effectiveApplicationId = queryApplicationId || newApplicationId
   const requestedMode = searchParams.get("mode")
   const prefillKey = searchParams.get("prefillKey")
   // When a social worker opens the form on behalf of a patient
@@ -150,7 +153,7 @@ function NewApplicationPageContent() {
         >
           {prefillFormData ? (
             <ApplicationAssistant
-              applicationId={queryApplicationId || undefined}
+              applicationId={effectiveApplicationId}
               actingForPatientId={actingForPatientId}
               prefillFormData={prefillFormData}
               onSwitchToWizard={() => setEntryMode("wizard")}
@@ -167,7 +170,7 @@ function NewApplicationPageContent() {
 
         <TabsContent value="wizard" className="mt-4">
           <FormWizard
-            applicationId={queryApplicationId || undefined}
+            applicationId={effectiveApplicationId}
             actingForPatientId={actingForPatientId}
             prefillFormData={wizardPrefill}
           />

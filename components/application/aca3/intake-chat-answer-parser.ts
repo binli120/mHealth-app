@@ -185,11 +185,53 @@ const RELATIONSHIP_SYNONYMS: Record<string, string> = {
 
 // ── Option value normalizer ───────────────────────────────────────────────────
 
+const SUPPLEMENTAL_FIELD_OPTIONS: Record<string, { mode: "single" | "multi"; options: string[] }> = {
+  immigration_status_type: {
+    mode: "multi",
+    options: [
+      "Lawful Permanent Resident (Green Card holder)",
+      "Refugee",
+      "Asylee",
+      "Temporary Protected Status (TPS)",
+      "Cuban/Haitian Entrant",
+      "Amerasian",
+      "Battered spouse, child, or parent (VAWA)",
+      "Other qualified noncitizen",
+      "Undocumented / No qualifying status",
+    ],
+  },
+  immigration_doc_type: {
+    mode: "single",
+    options: [
+      "Permanent Resident Card (I-551)",
+      "Employment Authorization Document (EAD)",
+      "Refugee Travel Document",
+      "Arrival/Departure Record (I-94)",
+      "Other immigration document",
+    ],
+  },
+}
+
+export function getSupplementalOptionsForField(fieldId: string): string[] {
+  return SUPPLEMENTAL_FIELD_OPTIONS[fieldId]?.options ?? []
+}
+
+export function getSupplementalOptionModeForField(fieldId: string): "single" | "multi" | null {
+  return SUPPLEMENTAL_FIELD_OPTIONS[fieldId]?.mode ?? null
+}
+
 export function normalizeOptionValue(input: string, options: string[] | undefined): string {
   const source = input.trim()
 
   if (!options || options.length === 0) {
     return source
+  }
+
+  if (/^\d+$/.test(source)) {
+    const idx = Number.parseInt(source, 10) - 1
+    if (idx >= 0 && idx < options.length) {
+      return options[idx]
+    }
   }
 
   const yesNo = normalizeYesNo(source)
@@ -311,6 +353,8 @@ export function formatQuestionPrompt(question: IntakeQuestion): string {
   const field = question.field
   const personPrefix = question.scope === "person" ? `Person ${Number(question.personIndex ?? 0) + 1}: ` : ""
   const baseLabel = FRIENDLY_QUESTION_OVERRIDES[field.id] ?? field.label
+  const supplementalOptions = getSupplementalOptionsForField(field.id)
+  const supplementalMode = getSupplementalOptionModeForField(field.id)
 
   if (question.complex?.kind === "repeatable_count") {
     const maxEntries = question.complex.parentField.max_entries ?? 2
@@ -333,8 +377,18 @@ export function formatQuestionPrompt(question: IntakeQuestion): string {
     return `${personPrefix}${baseLabel}${hint}`
   }
 
-  if (field.options && field.options.length > 0) {
-    return `${personPrefix}${baseLabel} Options: ${field.options.join(", ")}. What is your answer?`
+  const fieldOptions = field.options && field.options.length > 0 ? field.options : supplementalOptions
+  if (fieldOptions.length > 0) {
+    if (supplementalMode === "multi") {
+      const numbered = fieldOptions.map((opt, i) => `${i + 1}. ${opt}`).join("\n")
+      return `${personPrefix}${baseLabel}\n${numbered}\nChoose one or more. Enter number(s) separated by commas, or type your answer.`
+    }
+
+    return `${personPrefix}${baseLabel} Options: ${fieldOptions.join(", ")}. What is your answer?`
+  }
+
+  if (field.type === "date") {
+    return `${personPrefix}${baseLabel} Use MM/DD/YYYY, or choose a date.`
   }
 
   if (baseLabel.endsWith("?")) {
@@ -408,6 +462,9 @@ export function parseAnswerValue(field: SchemaField, input: string): FieldValue 
       return parsed
     }
     case "checkbox_group":
+      if (isNoValueResponse || normalized === "none of these apply") {
+        return []
+      }
       return parseCheckboxGroupValues(raw, field.options)
     case "radio":
     case "select":
@@ -445,6 +502,15 @@ export function parseAnswerValue(field: SchemaField, input: string): FieldValue 
     default: {
       if (isNoValueResponse) {
         return ""
+      }
+      const supplementalOptions = getSupplementalOptionsForField(field.id)
+      const supplementalMode = getSupplementalOptionModeForField(field.id)
+      if (supplementalOptions.length > 0) {
+        if (supplementalMode === "multi") {
+          return parseCheckboxGroupValues(raw, supplementalOptions).join(", ")
+        }
+
+        return normalizeOptionValue(raw, supplementalOptions)
       }
       // Resolve numeric shorthand for fields with a hardcoded numbered prompt.
       if (field.id === "ethnicity" && /^\d+$/.test(raw)) {

@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   applicationAssistant: vi.fn(() => <div data-testid="application-assistant" />),
   formWizard: vi.fn(() => <div data-testid="form-wizard" />),
   intakeChat: vi.fn(() => <div data-testid="intake-chat" />),
+  createUuid: vi.fn(() => "generated-app-id"),
   useSearchParams: vi.fn(),
   useRouter: vi.fn(() => ({ push: vi.fn(), back: vi.fn() })),
 }))
@@ -34,6 +35,10 @@ vi.mock("@/components/application/aca3/intake-chat", () => ({
 
 vi.mock("@/components/application/aca3/form-wizard", () => ({
   FormWizard: mocks.formWizard,
+}))
+
+vi.mock("@/lib/utils/random-id", () => ({
+  createUuid: mocks.createUuid,
 }))
 
 import NewApplicationPage from "@/app/application/new/page"
@@ -63,6 +68,9 @@ describe("new application page", () => {
     renderPage()
 
     await waitFor(() => expect(mocks.intakeChat).toHaveBeenCalled())
+    expect(mocks.intakeChat.mock.calls.at(-1)?.[0]).toMatchObject({
+      applicationId: "generated-app-id",
+    })
     expect(mocks.formWizard).not.toHaveBeenCalled()
     expect(mocks.applicationAssistant).not.toHaveBeenCalled()
   })
@@ -181,5 +189,23 @@ describe("new application page", () => {
     await userEvent.click(screen.getByRole("tab", { name: /form wizard/i }))
     expect(screen.getByTestId("form-wizard")).toBeVisible()
     expect(screen.getByTestId("intake-chat")).not.toBeVisible()
+  })
+
+  it("uses the same fresh application id for new chat and wizard tabs", async () => {
+    mocks.useSearchParams.mockReturnValue(new URLSearchParams())
+
+    renderPage()
+
+    await waitFor(() => expect(mocks.intakeChat).toHaveBeenCalled())
+    expect(mocks.intakeChat.mock.calls.at(-1)?.[0]).toMatchObject({
+      applicationId: "generated-app-id",
+    })
+
+    await userEvent.click(screen.getByRole("tab", { name: /form wizard/i }))
+
+    await waitFor(() => expect(mocks.formWizard).toHaveBeenCalled())
+    expect(mocks.formWizard.mock.calls.at(-1)?.[0]).toMatchObject({
+      applicationId: "generated-app-id",
+    })
   })
 })

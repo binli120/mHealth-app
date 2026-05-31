@@ -85,7 +85,7 @@ export function ReviewPdfStep({
 
   if (reviewMode === "edit") {
     return (
-      <StepContainer title="Review PDF (Edit Mode)" description="Choose a section to edit, then save to regenerate the PDF preview.">
+      <StepContainer title="Review PDF (Edit Mode)" description="Choose a section to edit, then regenerate the PDF preview.">
         <div className="space-y-4">
           {sections.map((section) => (
             <Card key={`review-edit-${section.step}`}>
@@ -121,10 +121,10 @@ export function ReviewPdfStep({
             {isGeneratingPdf ? (
               <span className="inline-flex items-center gap-2">
                 <Spinner className="size-4" />
-                Saving...
+                Regenerating...
               </span>
             ) : (
-              "Save & Regenerate PDF"
+              "Regenerate PDF"
             )}
           </Button>
           <Button type="button" variant="outline" onClick={() => onSetReviewMode("pdf")}>

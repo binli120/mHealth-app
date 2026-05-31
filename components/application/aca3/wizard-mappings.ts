@@ -24,10 +24,73 @@ import {
   type EligibilityIncomeInput,
 } from "@/lib/masshealth/aca3-eligibility-engine"
 import type { MassHealthAcaPayload } from "@/lib/pdf/masshealth-aca-payload"
-import type { FormRecord, WizardData } from "./types"
+import type { FieldValue, FormRecord, WizardData } from "./types"
 import { clampPersonCount, makeDefaultPersonState } from "./wizard-reducer"
 
 // ── PDF payload ───────────────────────────────────────────────────────────────
+
+export interface Aca3AnalysisWorkflowPerson {
+  personNumber: number
+  ss_identity: FormRecord
+  ss_demographics: FormRecord
+  ss_ssn: FormRecord
+  ss_tax: FormRecord
+  ss_coverage: FormRecord
+  ss_income: FormRecord
+}
+
+export interface Aca3AnalysisWorkflowData {
+  form_id: "ACA-3"
+  form_version: "03/25"
+  attestation: boolean
+  assisterEnabled: boolean
+  pre_application: FormRecord
+  enrollment_assister: FormRecord
+  step1_contact: FormRecord
+  persons: Aca3AnalysisWorkflowPerson[]
+}
+
+function cloneFormRecord(record: FormRecord): FormRecord {
+  return { ...record }
+}
+
+function setIfMissing(record: FormRecord, key: string, value: FieldValue | undefined): void {
+  if (record[key] === undefined || record[key] === null || record[key] === "") {
+    if (value !== undefined && value !== null && value !== "") {
+      record[key] = value
+    }
+  }
+}
+
+export function mapWizardToAnalysisWorkflowData(data: WizardData): Aca3AnalysisWorkflowData {
+  return {
+    form_id: "ACA-3",
+    form_version: "03/25",
+    attestation: data.attestation,
+    assisterEnabled: data.assisterEnabled,
+    pre_application: cloneFormRecord(data.preApp),
+    enrollment_assister: data.assisterEnabled ? cloneFormRecord(data.assister) : {},
+    step1_contact: cloneFormRecord(data.contact),
+    persons: data.persons.map((person, index) => {
+      const identity = cloneFormRecord(person.identity)
+
+      if (index === 0) {
+        setIfMissing(identity, "name", data.contact.p1_name)
+        setIfMissing(identity, "dob", data.contact.p1_dob)
+      }
+
+      return {
+        personNumber: index + 1,
+        ss_identity: identity,
+        ss_demographics: cloneFormRecord(person.demographics),
+        ss_ssn: cloneFormRecord(person.ssn),
+        ss_tax: cloneFormRecord(person.tax),
+        ss_coverage: cloneFormRecord(person.coverage),
+        ss_income: cloneFormRecord(person.income),
+      }
+    }),
+  }
+}
 
 export function mapWizardToPdfPayload(data: WizardData): MassHealthAcaPayload {
   const primary = data.persons[0] ?? makeDefaultPersonState(0)

@@ -70,6 +70,8 @@ import {
   buildProfileFilledLabels,
   formatDisplayValue,
   formatQuestionPrompt,
+  getSupplementalOptionModeForField,
+  getSupplementalOptionsForField,
   isDeclineAnswer,
   normalizeFlexibleDateInput,
   parseAnswerValue,
@@ -601,10 +603,6 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
       data: WizardData,
       opts?: { skippedIds?: Set<string>; answeredCount?: number; totalCount?: number; targetStep?: number },
     ) => {
-      if (Date.now() < draftSaveBackoffUntilRef.current) {
-        return
-      }
-
       // Don't save at all if no questions have been answered yet. An
       // answeredCount of 0 means the chat just initialised / resumed and
       // hasn't collected real data — saving would stomp any existing
@@ -626,8 +624,11 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
       const wizardState = {
         ...createDraftWizardState(data, chatStep),
         chatSkippedIds: opts?.skippedIds ? [...opts.skippedIds] : [],
+        persistedAt: new Date().toISOString(),
       }
 
+      // Always update local storage and Redux so the wizard always reflects
+      // the latest chat data even when the server save is backed off.
       try {
         window.localStorage.setItem(
           getFormCacheKey(resolvedApplicationId),
@@ -645,6 +646,11 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
       )
 
       if (resolvedApplicationId === DEFAULT_APPLICATION_ID) {
+        return
+      }
+
+      // Server save is best-effort; backoff only suppresses the network call.
+      if (Date.now() < draftSaveBackoffUntilRef.current) {
         return
       }
 
@@ -695,7 +701,7 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
         skippedIds,
         answeredCount: refreshedAnswered.size,
         totalCount: refreshedQuestions.length,
-        targetStep: 9,
+        targetStep: 8,
       })
       setMessages((previous) => [
         ...previous,
@@ -1131,15 +1137,26 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
   const widgetSpec = useMemo((): WidgetSpec | null => {
     if (!currentQuestion || !intakeStarted) return null
     const { field } = currentQuestion
+    const contextValues = buildContextValuesForQuestion(wizardData, currentQuestion)
+    const isRequired = isRequiredInCurrentContext(field, contextValues)
     if (field.type === "checkbox") return { kind: "yes_no" }
     if (field.type === "date") return { kind: "date" }
     if (field.type === "phone") return { kind: "phone" }
     if (field.type === "ssn") return { kind: "ssn" }
     if (field.type === "checkbox_group" && field.options?.length) {
-      return { kind: "multi_select", options: field.options }
+      return { kind: "multi_select", options: field.options, optional: !isRequired }
     }
     if ((field.type === "radio" || field.type === "select") && field.options?.length) {
       return { kind: "single_select", options: field.options }
+    }
+    const supplementalOptions = getSupplementalOptionsForField(field.id)
+    const supplementalMode = getSupplementalOptionModeForField(field.id)
+    if (supplementalOptions.length > 0) {
+      return {
+        kind: supplementalMode === "multi" ? "multi_select" : "single_select",
+        options: supplementalOptions,
+        ...(supplementalMode === "multi" ? { optional: !isRequired } : {}),
+      }
     }
     if (field.id === "ethnicity") {
       return {
@@ -1148,7 +1165,7 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
       }
     }
     return null
-  }, [currentQuestion, intakeStarted])
+  }, [currentQuestion, intakeStarted, wizardData])
 
   const currentWizardStateForDialog = useMemo<WizardState>(
     () => createDraftWizardState(wizardData),

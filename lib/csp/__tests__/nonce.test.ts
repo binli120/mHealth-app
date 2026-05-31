@@ -120,9 +120,9 @@ describe("buildCspHeader — style-src", () => {
 })
 
 describe("buildCspHeader — restrictive directives", () => {
-  it("sets frame-src to 'none'", () => {
+  it("allows same-origin and blob frames for generated PDF previews", () => {
     const csp = buildCspHeader({ nonce: "n1" })
-    expect(csp).toContain("frame-src 'none'")
+    expect(csp).toContain("frame-src 'self' blob:")
   })
 
   it("sets object-src to 'none'", () => {

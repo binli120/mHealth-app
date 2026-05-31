@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils"
 export type WidgetSpec =
   | { kind: "yes_no" }
   | { kind: "single_select"; options: string[] }
-  | { kind: "multi_select"; options: string[] }
+  | { kind: "multi_select"; options: string[]; optional?: boolean }
   | { kind: "date" }
   | { kind: "phone" }
   | { kind: "ssn" }
@@ -67,10 +67,12 @@ function SingleSelectWidget({
   options,
   onAnswer,
   disabled,
+  optional,
 }: {
   options: string[]
   onAnswer: (v: string) => void
   disabled?: boolean
+  optional?: boolean
 }) {
   return (
     <div className="flex flex-wrap gap-1.5">
@@ -94,10 +96,12 @@ function MultiSelectWidget({
   options,
   onAnswer,
   disabled,
+  optional,
 }: {
   options: string[]
   onAnswer: (v: string) => void
   disabled?: boolean
+  optional?: boolean
 }) {
   const [selected, setSelected] = useState<Set<number>>(new Set())
 
@@ -149,6 +153,11 @@ function MultiSelectWidget({
           Confirm {selected.size} selection{selected.size > 1 ? "s" : ""}
         </Button>
       )}
+      {optional && selected.size === 0 && (
+        <Button size="sm" type="button" variant="outline" onClick={() => onAnswer("None")} disabled={disabled}>
+          None of these apply
+        </Button>
+      )}
     </div>
   )
 }
@@ -164,12 +173,15 @@ function DateWidget({ onAnswer, disabled }: { onAnswer: (v: string) => void; dis
   }
 
   return (
-    <input
-      type="date"
-      onChange={handleChange}
-      disabled={disabled}
-      className="rounded-md border bg-background px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-    />
+    <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+      Use MM/DD/YYYY, or choose a date.
+      <input
+        type="date"
+        onChange={handleChange}
+        disabled={disabled}
+        className="w-fit rounded-md border bg-background px-3 py-1.5 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+      />
+    </label>
   )
 }
 
@@ -230,7 +242,12 @@ export function IntakeQuestionWidget({ spec, onAnswer, disabled }: IntakeQuestio
         <SingleSelectWidget options={spec.options} onAnswer={onAnswer} disabled={disabled} />
       )}
       {spec.kind === "multi_select" && (
-        <MultiSelectWidget options={spec.options} onAnswer={onAnswer} disabled={disabled} />
+        <MultiSelectWidget
+          options={spec.options}
+          onAnswer={onAnswer}
+          disabled={disabled}
+          optional={spec.optional}
+        />
       )}
       {spec.kind === "date" && <DateWidget onAnswer={onAnswer} disabled={disabled} />}
       {spec.kind === "phone" && <PhoneWidget onAnswer={onAnswer} disabled={disabled} />}

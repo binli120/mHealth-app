@@ -135,7 +135,7 @@ export function buildCspHeader(opts: CspOptions): string {
     // PDF.js web worker runs as a blob: URL
     "worker-src blob:",
 
-    "frame-src 'none'",
+    "frame-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

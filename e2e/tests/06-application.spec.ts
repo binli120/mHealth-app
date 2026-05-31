@@ -15,9 +15,19 @@ const DOCUMENT_UPLOAD_FILE = path.join(__dirname, "../../public/placeholder.jpg"
 test.describe("Application Flow", () => {
   let applicationPage: ApplicationPage
 
-  test.beforeEach(({ page }) => {
+  test.beforeEach(async ({ page }) => {
     test.skip(!hasSupabaseAuthState(AUTH_FILE), "No auth session — create a test user in the Supabase dashboard to run these tests")
     applicationPage = new ApplicationPage(page)
+    // The fill endpoint proxies to an external analysis service not available in E2E.
+    // Return a minimal valid-ish PDF so the wizard PDF preview step works end-to-end.
+    await page.route("**/api/forms/aca-3-0325/fill", async (route) => {
+      const minimalPdf = Buffer.from("%PDF-1.4\n%%EOF\n")
+      await route.fulfill({
+        status: 200,
+        headers: { "Content-Type": "application/pdf" },
+        body: minimalPdf,
+      })
+    })
   })
 
   test("selecting an application type creates a draft and opens AI assistant mode", async () => {
