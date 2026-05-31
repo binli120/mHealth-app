@@ -160,7 +160,8 @@ function NewApplicationPageContent() {
             />
           ) : (
             <IntakeChat
-              applicationId={queryApplicationId || undefined}
+              applicationId={effectiveApplicationId}
+              skipServerDraft={!queryApplicationId}
               actingForPatientId={actingForPatientId}
               onSwitchToWizard={() => setEntryMode("wizard")}
               onSaveAndExit={() => router.push("/customer/dashboard")}

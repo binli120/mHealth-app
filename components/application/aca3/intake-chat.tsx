@@ -89,6 +89,8 @@ interface ChatApiResponse {
 interface IntakeChatProps {
   applicationId?: string
   actingForPatientId?: string
+  /** When true, skip fetching an existing server draft on mount (e.g. for brand-new applications). */
+  skipServerDraft?: boolean
   onSwitchToWizard: () => void
   onSaveAndExit?: () => void
 }
@@ -317,7 +319,7 @@ export { findNextPendingQuestion as findNextPendingIntakeQuestion } from "./inta
 export { getWizardStepForIntakeProgress } from "./intake-chat-question-builder"
 export { writeValue as writeIntakeQuestionValue } from "./intake-chat-question-builder"
 
-export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard, onSaveAndExit }: IntakeChatProps) {
+export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft, onSwitchToWizard, onSaveAndExit }: IntakeChatProps) {
   const router = useRouter()
   const dispatch = useAppDispatch()
   const selectedLanguage = useAppSelector((state) => state.app.language)
@@ -426,7 +428,7 @@ export function IntakeChat({ applicationId, actingForPatientId, onSwitchToWizard
     }
 
     // Fall back to server draft.
-    if (resolvedApplicationId === DEFAULT_APPLICATION_ID) {
+    if (resolvedApplicationId === DEFAULT_APPLICATION_ID || skipServerDraft) {
       setHydrationPending(false)
       return
     }
