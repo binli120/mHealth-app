@@ -105,6 +105,7 @@ export async function createCoverageRecord(input: CreateCoverageRecordInput): Pr
       input.notes ?? null,
     ],
   )
+  if (!result.rows[0]) throw new Error("Failed to create coverage record")
   return rowToCoverageRecord(result.rows[0])
 }
 
@@ -188,6 +189,7 @@ export async function saveExplanation(input: SaveExplanationInput): Promise<Insu
       input.generatedBy,
     ],
   )
+  if (!result.rows[0]) throw new Error("Failed to save explanation")
   return rowToExplanation(result.rows[0])
 }
 
