@@ -35,7 +35,7 @@ describe("prescreener i18n", () => {
   })
 
   it("localizes eligibility results for Spanish", () => {
-    const data = makeData({ annualIncome: 15060 })
+    const data = makeData({ annualIncome: 15960 })
     const report = runEligibilityCheck(data)
     const localized = localizeEligibilityReport(report, data, "es")
 

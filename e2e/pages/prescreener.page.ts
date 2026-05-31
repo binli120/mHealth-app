@@ -39,12 +39,12 @@ export class PrescreenerPage {
 
   async assertStartApplicationButtonVisible() {
     await expect(
-      this.page.getByRole("link", { name: /start.*application|apply now/i }),
+      this.page.getByRole("link", { name: /start.*application/i }),
     ).toBeVisible({ timeout: 10_000 })
   }
 
   async clickStartApplication() {
-    await this.page.getByRole("link", { name: /start.*application|apply now/i }).click()
+    await this.page.getByRole("link", { name: /start.*application/i }).click()
   }
 
   /**

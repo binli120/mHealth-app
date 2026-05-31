@@ -17,35 +17,35 @@ import {
 
 describe("getAnnualFPL (2026)", () => {
   it("returns $15,060 for household of 1", () => {
-    expect(getAnnualFPL(1)).toBe(15060)
+    expect(getAnnualFPL(1)).toBe(15960)
   })
 
   it("returns $20,440 for household of 2", () => {
-    expect(getAnnualFPL(2)).toBe(20440)
+    expect(getAnnualFPL(2)).toBe(21640)
   })
 
   it("returns $25,820 for household of 3", () => {
-    expect(getAnnualFPL(3)).toBe(25820)
+    expect(getAnnualFPL(3)).toBe(27320)
   })
 
   it("returns $31,200 for household of 4", () => {
-    expect(getAnnualFPL(4)).toBe(31200)
+    expect(getAnnualFPL(4)).toBe(33000)
   })
 
   it("handles size 0 gracefully (clamps to 1)", () => {
-    expect(getAnnualFPL(0)).toBe(15060)
+    expect(getAnnualFPL(0)).toBe(15960)
   })
 })
 
 describe("getMonthlyFPL", () => {
   it("returns the monthly equivalent of annual FPL for size 1", () => {
-    expect(getMonthlyFPL(1)).toBe(Math.round(15060 / 12))
+    expect(getMonthlyFPL(1)).toBe(Math.round(15960 / 12))
   })
 })
 
 describe("getIncomeAsFPLPercent", () => {
   it("returns 100% when income equals 1-person FPL", () => {
-    expect(getIncomeAsFPLPercent(15060, 1)).toBe(100)
+    expect(getIncomeAsFPLPercent(15960, 1)).toBe(100)
   })
 
   it("returns 0% when income is 0", () => {
@@ -54,7 +54,7 @@ describe("getIncomeAsFPLPercent", () => {
 
   it("returns ~138% at CarePlus threshold for 1 person", () => {
     // 138% of $15,060 = $20,783
-    const income = Math.round(15060 * 1.38)
+    const income = Math.round(15960 * 1.38)
     expect(getIncomeAsFPLPercent(income, 1)).toBe(138)
   })
 })
@@ -65,7 +65,7 @@ describe("FPL_TABLE_2026", () => {
   })
 
   it("row 1 has correct annual FPL", () => {
-    expect(FPL_TABLE_2026[0].annualFPL).toBe(15060)
+    expect(FPL_TABLE_2026[0].annualFPL).toBe(15960)
   })
 
   it("each row has expected keys", () => {
@@ -126,7 +126,7 @@ describe("runEligibilityCheck — Undocumented resident", () => {
 
 describe("runEligibilityCheck — Pregnant adult (≤200% FPL)", () => {
   it("qualifies for MassHealth Standard Pregnancy at 150% FPL", () => {
-    const income = Math.round(15060 * 1.5) // 150% FPL for size 1
+    const income = Math.round(15960 * 1.5) // 150% FPL for size 1
     const report = runEligibilityCheck(
       makeData({ isPregnant: true, annualIncome: income, householdSize: 1 })
     )
@@ -135,7 +135,7 @@ describe("runEligibilityCheck — Pregnant adult (≤200% FPL)", () => {
   })
 
   it("does NOT qualify for pregnancy Standard above 200% FPL", () => {
-    const income = Math.round(15060 * 2.5) // 250% FPL
+    const income = Math.round(15960 * 2.5) // 250% FPL
     const report = runEligibilityCheck(
       makeData({ isPregnant: true, annualIncome: income, householdSize: 1 })
     )
@@ -146,14 +146,14 @@ describe("runEligibilityCheck — Pregnant adult (≤200% FPL)", () => {
 describe("runEligibilityCheck — Children under 19", () => {
   it("child at 100% FPL qualifies for MassHealth Standard", () => {
     const report = runEligibilityCheck(
-      makeData({ age: 10, annualIncome: 15060, householdSize: 1 })
+      makeData({ age: 10, annualIncome: 15960, householdSize: 1 })
     )
     expect(report.results[0].program).toBe("MassHealth Standard")
     expect(report.results[0].status).toBe("likely")
   })
 
   it("child at 200% FPL qualifies for CHIP (Family Assistance)", () => {
-    const income = Math.round(15060 * 2.0) // 200% FPL
+    const income = Math.round(15960 * 2.0) // 200% FPL
     const report = runEligibilityCheck(
       makeData({ age: 8, annualIncome: income, householdSize: 1 })
     )
@@ -161,7 +161,7 @@ describe("runEligibilityCheck — Children under 19", () => {
   })
 
   it("child at 350% FPL gets Health Connector suggestion", () => {
-    const income = Math.round(15060 * 3.5) // 350% FPL
+    const income = Math.round(15960 * 3.5) // 350% FPL
     const report = runEligibilityCheck(
       makeData({ age: 15, annualIncome: income, householdSize: 1 })
     )
@@ -172,7 +172,7 @@ describe("runEligibilityCheck — Children under 19", () => {
 describe("runEligibilityCheck — Adults 19–64", () => {
   it("qualifies for CarePlus at 100% FPL (no Medicare)", () => {
     const report = runEligibilityCheck(
-      makeData({ age: 30, annualIncome: 15060, householdSize: 1, hasMedicare: false })
+      makeData({ age: 30, annualIncome: 15960, householdSize: 1, hasMedicare: false })
     )
     expect(report.results[0].program).toBe("MassHealth CarePlus")
     expect(report.results[0].status).toBe("likely")
@@ -180,7 +180,7 @@ describe("runEligibilityCheck — Adults 19–64", () => {
 
   it("qualifies for CarePlus at exactly 138% FPL threshold", () => {
     // 138% of $15,060 = $20,783 → getIncomeAsFPLPercent = 138%
-    const income = Math.round(15060 * 1.38)
+    const income = Math.round(15960 * 1.38)
     const report = runEligibilityCheck(
       makeData({ age: 40, annualIncome: income, householdSize: 1, hasMedicare: false })
     )
@@ -188,7 +188,7 @@ describe("runEligibilityCheck — Adults 19–64", () => {
   })
 
   it("qualifies for ConnectorCare at 200% FPL", () => {
-    const income = Math.round(15060 * 2.0) // 200% FPL
+    const income = Math.round(15960 * 2.0) // 200% FPL
     const report = runEligibilityCheck(
       makeData({ age: 35, annualIncome: income, householdSize: 1, hasMedicare: false })
     )
@@ -196,7 +196,7 @@ describe("runEligibilityCheck — Adults 19–64", () => {
   })
 
   it("qualifies for ConnectorCare at 300% FPL (upper bound)", () => {
-    const income = Math.round(15060 * 3.0) // exactly 300% FPL
+    const income = Math.round(15960 * 3.0) // exactly 300% FPL
     const report = runEligibilityCheck(
       makeData({ age: 45, annualIncome: income, householdSize: 1, hasMedicare: false })
     )
@@ -204,7 +204,7 @@ describe("runEligibilityCheck — Adults 19–64", () => {
   })
 
   it("gets tax credit plans at 350% FPL (above ConnectorCare)", () => {
-    const income = Math.round(15060 * 3.5)
+    const income = Math.round(15960 * 3.5)
     const report = runEligibilityCheck(
       makeData({ age: 50, annualIncome: income, householdSize: 1, hasMedicare: false })
     )
@@ -214,7 +214,7 @@ describe("runEligibilityCheck — Adults 19–64", () => {
   })
 
   it("gets unsubsidized plans above 500% FPL", () => {
-    const income = Math.round(15060 * 6)
+    const income = Math.round(15960 * 6)
     const report = runEligibilityCheck(
       makeData({ age: 55, annualIncome: income, householdSize: 1, hasMedicare: false })
     )
@@ -224,7 +224,7 @@ describe("runEligibilityCheck — Adults 19–64", () => {
   })
 
   it("disabled adult at 130% FPL qualifies for Standard (not CarePlus)", () => {
-    const income = Math.round(15060 * 1.3)
+    const income = Math.round(15960 * 1.3)
     const report = runEligibilityCheck(
       makeData({ age: 40, annualIncome: income, householdSize: 1, hasDisability: true })
     )
@@ -233,7 +233,7 @@ describe("runEligibilityCheck — Adults 19–64", () => {
 
   it("Medicare recipient at 100% FPL gets Medicare Savings Program", () => {
     const report = runEligibilityCheck(
-      makeData({ age: 60, annualIncome: 15060, householdSize: 1, hasMedicare: true })
+      makeData({ age: 60, annualIncome: 15960, householdSize: 1, hasMedicare: true })
     )
     expect(report.results.some((r) => r.program === "Medicare Savings Program")).toBe(true)
   })
@@ -241,7 +241,7 @@ describe("runEligibilityCheck — Adults 19–64", () => {
 
 describe("runEligibilityCheck — Seniors 65+", () => {
   it("dual eligible: 65+ with Medicare at 80% FPL gets Standard + Medicare Savings", () => {
-    const income = Math.round(15060 * 0.8)
+    const income = Math.round(15960 * 0.8)
     const report = runEligibilityCheck(
       makeData({ age: 70, annualIncome: income, householdSize: 1, hasMedicare: true })
     )
@@ -251,7 +251,7 @@ describe("runEligibilityCheck — Seniors 65+", () => {
   })
 
   it("senior at 120% FPL gets Medicare Savings Program (not Standard)", () => {
-    const income = Math.round(15060 * 1.2)
+    const income = Math.round(15960 * 1.2)
     const report = runEligibilityCheck(
       makeData({ age: 68, annualIncome: income, householdSize: 1, hasMedicare: true })
     )
@@ -261,7 +261,7 @@ describe("runEligibilityCheck — Seniors 65+", () => {
   })
 
   it("senior at 200% FPL (above MSP limit) gets Medigap suggestion", () => {
-    const income = Math.round(15060 * 2.0)
+    const income = Math.round(15960 * 2.0)
     const report = runEligibilityCheck(
       makeData({ age: 72, annualIncome: income, householdSize: 1, hasMedicare: true })
     )
@@ -273,14 +273,14 @@ describe("runEligibilityCheck — Seniors 65+", () => {
 
 describe("runEligibilityCheck — FPL % in report", () => {
   it("reports fplPercent correctly", () => {
-    const report = runEligibilityCheck(makeData({ annualIncome: 15060, householdSize: 1 }))
+    const report = runEligibilityCheck(makeData({ annualIncome: 15960, householdSize: 1 }))
     expect(report.fplPercent).toBe(100)
   })
 
   it("report includes annualFPL and monthlyFPL", () => {
     const report = runEligibilityCheck(makeData({ householdSize: 2 }))
-    expect(report.annualFPL).toBe(20440)
-    expect(report.monthlyFPL).toBe(Math.round(20440 / 12))
+    expect(report.annualFPL).toBe(21640)
+    expect(report.monthlyFPL).toBe(Math.round(21640 / 12))
   })
 
   it("report always includes a non-empty summary string", () => {

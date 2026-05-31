@@ -17,6 +17,7 @@ import {
   getIncomeAsFPLPercent,
   FPL_TABLE_2026,
 } from "@/lib/benefit-orchestration/fpl-utils"
+import { FPL_DATA_SOURCE, FPL_TABLE_2026 as FPL_CONSTANTS, FPL_INCREMENT_AFTER_4 } from "@/lib/masshealth/constants"
 import type { FamilyProfile, IncomeBreakdown, HouseholdMemberProfile } from "@/lib/benefit-orchestration/types"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -76,16 +77,16 @@ function profile(overrides: Partial<FamilyProfile> = {}): FamilyProfile {
 // ── Re-exports from eligibility-engine ───────────────────────────────────────
 
 describe("re-exported FPL functions", () => {
-  it("getAnnualFPL(1) returns 15060", () => {
-    expect(getAnnualFPL(1)).toBe(15_060)
+  it("getAnnualFPL(1) returns 15960", () => {
+    expect(getAnnualFPL(1)).toBe(15_960)
   })
 
-  it("getMonthlyFPL(1) equals round(15060/12)", () => {
-    expect(getMonthlyFPL(1)).toBe(Math.round(15_060 / 12))
+  it("getMonthlyFPL(1) equals round(15960/12)", () => {
+    expect(getMonthlyFPL(1)).toBe(Math.round(15_960 / 12))
   })
 
-  it("getIncomeAsFPLPercent(15060, 1) equals 100", () => {
-    expect(getIncomeAsFPLPercent(15_060, 1)).toBe(100)
+  it("getIncomeAsFPLPercent(15960, 1) equals 100", () => {
+    expect(getIncomeAsFPLPercent(15_960, 1)).toBe(100)
   })
 
   it("FPL_TABLE_2026 has 8 entries", () => {
@@ -281,5 +282,46 @@ describe("computeMAGIMonthly", () => {
 
   it("returns 0 for no income profile", () => {
     expect(computeMAGIMonthly(profile())).toBe(0)
+  })
+})
+
+// ── FPL data-staleness guard ──────────────────────────────────────────────────
+// These tests fail when the hardcoded FPL constants drift from official HHS
+// values, or when the data year falls behind the current calendar year.
+// Update FPL_DATA_SOURCE, FPL_TABLE_2026, and FPL_INCREMENT_AFTER_4 in
+// lib/masshealth/constants.ts each January when HHS publishes new guidelines.
+
+describe("FPL constants staleness guard", () => {
+  it("dataYear matches the current calendar year", () => {
+    const currentYear = new Date().getFullYear()
+    expect(FPL_DATA_SOURCE.dataYear).toBe(currentYear)
+  })
+
+  it("1-person FPL matches official HHS 2026 guideline ($15,960)", () => {
+    expect(FPL_CONSTANTS[1]).toBe(15960)
+  })
+
+  it("2-person FPL matches official HHS 2026 guideline ($21,640)", () => {
+    expect(FPL_CONSTANTS[2]).toBe(21640)
+  })
+
+  it("3-person FPL matches official HHS 2026 guideline ($27,320)", () => {
+    expect(FPL_CONSTANTS[3]).toBe(27320)
+  })
+
+  it("4-person FPL matches official HHS 2026 guideline ($33,000)", () => {
+    expect(FPL_CONSTANTS[4]).toBe(33000)
+  })
+
+  it("per-person increment matches official HHS 2026 guideline ($5,680)", () => {
+    expect(FPL_INCREMENT_AFTER_4).toBe(5680)
+  })
+
+  it("eligibility-engine getAnnualFPL is consistent with constants table", () => {
+    for (const size of [1, 2, 3, 4] as const) {
+      expect(getAnnualFPL(size)).toBe(FPL_CONSTANTS[size])
+    }
+    // size 5: 33000 + 5680 = 38680
+    expect(getAnnualFPL(5)).toBe(FPL_CONSTANTS[4] + FPL_INCREMENT_AFTER_4)
   })
 })

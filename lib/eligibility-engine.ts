@@ -17,8 +17,8 @@ import {
   FPL_PCT_PREGNANCY_STANDARD,
   FPL_PCT_TAX_CREDITS_UPPER,
 } from "@/lib/masshealth/constants"
-const FPL_2026_BASE = 15060  // 1 person
-const FPL_2026_PER_ADDITIONAL = 5380  // each additional person
+const FPL_2026_BASE = 15960  // 1 person — HHS ASPE Jan 15 2026
+const FPL_2026_PER_ADDITIONAL = 5680  // each additional person
 
 export function getAnnualFPL(householdSize: number): number {
   const size = Math.max(1, householdSize)
