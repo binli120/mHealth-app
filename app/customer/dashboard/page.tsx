@@ -69,6 +69,7 @@ import { STATUS_META } from "./page.constants"
 import { buildDashboardGreeting, getApplicationTypeLabel } from "./page.utils"
 import { DashboardTour } from "./dashboard-tour"
 import { UploadToApplicationDialog } from "@/components/dashboard/UploadToApplicationDialog"
+import { InsuranceSummaryCard } from "@/components/insurance-history/insurance-summary-card"
 
 interface DashboardWidgetTooltipProps {
   children: ReactNode
@@ -520,6 +521,9 @@ export default function CustomerDashboardPage() {
               </Card>
             </Link>
           </DashboardWidgetTooltip>
+          <div className="h-full lg:col-span-4">
+            <InsuranceSummaryCard latest={null} />
+          </div>
         </div>
 
         <div className="grid gap-8 lg:grid-cols-3">
