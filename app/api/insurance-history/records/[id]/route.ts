@@ -9,22 +9,23 @@ import { deleteCoverageRecord, getCoverageRecord, updateCoverageRecord } from "@
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    if (!UUID_RE.test(params.id)) {
+    const { id } = await params
+    if (!UUID_RE.test(id)) {
       return NextResponse.json({ ok: false, error: "Invalid id" }, { status: 400 })
     }
     const authResult = await requireAuthenticatedUser(request)
     if (!authResult.ok) return authResult.response
 
-    const record = await getCoverageRecord(params.id, authResult.userId)
+    const record = await getCoverageRecord(id, authResult.userId)
     if (!record) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 })
     if (record.source === "platform") {
       return NextResponse.json({ ok: false, error: "Platform records cannot be edited" }, { status: 403 })
     }
 
     const body = await request.json().catch(() => ({}))
-    const updated = await updateCoverageRecord(params.id, authResult.userId, {
+    const updated = await updateCoverageRecord(id, authResult.userId, {
       planName: body.planName,
       programCode: body.programCode,
       premiumMonthly: body.premiumMonthly,
@@ -40,21 +41,22 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    if (!UUID_RE.test(params.id)) {
+    const { id } = await params
+    if (!UUID_RE.test(id)) {
       return NextResponse.json({ ok: false, error: "Invalid id" }, { status: 400 })
     }
     const authResult = await requireAuthenticatedUser(request)
     if (!authResult.ok) return authResult.response
 
-    const record = await getCoverageRecord(params.id, authResult.userId)
+    const record = await getCoverageRecord(id, authResult.userId)
     if (!record) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 })
     if (record.source === "platform") {
       return NextResponse.json({ ok: false, error: "Platform records cannot be deleted" }, { status: 403 })
     }
 
-    await deleteCoverageRecord(params.id, authResult.userId)
+    await deleteCoverageRecord(id, authResult.userId)
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error("[insurance-history/records DELETE]", err)
