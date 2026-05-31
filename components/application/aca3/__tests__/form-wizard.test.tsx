@@ -292,15 +292,12 @@ describe("FormWizard", () => {
       }),
     )
 
+    const pdfBlob = new Blob([new Uint8Array([37, 80, 68, 70])], { type: "application/pdf" })
     vi.mocked(authenticatedFetch).mockImplementation(async (url, init) => {
       const requestUrl = String(url)
       if (requestUrl === "/api/forms/aca-3-0325/fill" && init?.method === "POST") {
-        return new Response(new Blob([new Uint8Array([37, 80, 68, 70])], { type: "application/pdf" }), {
-          status: 200,
-          headers: { "content-type": "application/pdf" },
-        })
+        return { ok: true, status: 200, blob: async () => pdfBlob } as unknown as Response
       }
-
       return { ok: false, status: 404, json: async () => ({}) } as Response
     })
 
