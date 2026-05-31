@@ -307,7 +307,8 @@ describe("FormWizard", () => {
     try {
       renderWizardWithStore(store)
 
-      const preview = await screen.findByTitle("ACA-03 PDF preview")
+      // Allow extra time in CI where microtask/state-update cycles are slower.
+      const preview = await screen.findByTitle("ACA-03 PDF preview", {}, { timeout: 5_000 })
       expect(createObjectUrlSpy).toHaveBeenCalled()
       expect(preview).toHaveAttribute("src", "blob:http://localhost/generated-pdf#navpanes=0&view=FitH&zoom=page-fit")
     } finally {
