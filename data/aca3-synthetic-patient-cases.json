@@ -139,7 +139,7 @@
       "married": false,
       "taxDependents": 0,
       "unbornChildren": 0,
-      "annualIncome": 20933,
+      "annualIncome": 22184,
       "computedHouseholdSize": 1,
       "notes": ["Adult boundary sweep for CarePlus vs Connector"]
     },
@@ -157,7 +157,7 @@
       "disabled": false,
       "medicalVerification": true,
       "hasOtherInsurance": false,
-      "income": { "wages": 20933 },
+      "income": { "wages": 22184 },
       "verification": {
         "ssnVerified": true,
         "incomeVerified": true,
@@ -397,7 +397,7 @@
       "married": false,
       "taxDependents": 2,
       "unbornChildren": 0,
-      "annualIncome": 35890,
+      "annualIncome": 37975,
       "computedHouseholdSize": 3,
       "notes": ["Household-size-sensitive adult case"]
     },
@@ -415,7 +415,7 @@
       "disabled": false,
       "medicalVerification": true,
       "hasOtherInsurance": false,
-      "income": { "wages": 35890 },
+      "income": { "wages": 37975 },
       "verification": {
         "ssnVerified": true,
         "incomeVerified": true,
@@ -612,7 +612,7 @@
       "married": true,
       "taxDependents": 0,
       "unbornChildren": 0,
-      "annualIncome": 28412,
+      "annualIncome": 30080,
       "computedHouseholdSize": 2,
       "notes": ["Married household boundary sweep"]
     },
@@ -630,7 +630,7 @@
       "disabled": false,
       "medicalVerification": true,
       "hasOtherInsurance": false,
-      "income": { "wages": 28412 },
+      "income": { "wages": 30080 },
       "verification": {
         "ssnVerified": true,
         "incomeVerified": true,
@@ -741,7 +741,7 @@
       "married": false,
       "taxDependents": 2,
       "unbornChildren": 0,
-      "annualIncome": 38988,
+      "annualIncome": 41253,
       "computedHouseholdSize": 3,
       "notes": ["Child threshold sweep for Standard vs Family Assistance vs Connector"]
     },
@@ -759,7 +759,7 @@
       "disabled": false,
       "medicalVerification": true,
       "hasOtherInsurance": false,
-      "income": { "wages": 38988 },
+      "income": { "wages": 41253 },
       "verification": {
         "ssnVerified": true,
         "incomeVerified": true,
@@ -827,7 +827,7 @@
       "married": false,
       "taxDependents": 2,
       "unbornChildren": 0,
-      "annualIncome": 77718,
+      "annualIncome": 82233,
       "computedHouseholdSize": 3,
       "notes": ["Child threshold sweep for Standard vs Family Assistance vs Connector"]
     },
@@ -845,7 +845,7 @@
       "disabled": false,
       "medicalVerification": true,
       "hasOtherInsurance": false,
-      "income": { "wages": 77718 },
+      "income": { "wages": 82233 },
       "verification": {
         "ssnVerified": true,
         "incomeVerified": true,
@@ -999,7 +999,7 @@
       "married": false,
       "taxDependents": 0,
       "unbornChildren": 1,
-      "annualIncome": 41084,
+      "annualIncome": 43496,
       "computedHouseholdSize": 2,
       "notes": ["Pregnancy threshold sweep"]
     },
@@ -1017,7 +1017,7 @@
       "disabled": false,
       "medicalVerification": true,
       "hasOtherInsurance": false,
-      "income": { "wages": 41084 },
+      "income": { "wages": 43496 },
       "verification": {
         "ssnVerified": true,
         "incomeVerified": true,

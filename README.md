@@ -1032,6 +1032,30 @@ Secrets added to GitHub environment **Variables** (not **Secrets**) use a differ
 
 ---
 
+## Annual FPL Update Procedure
+
+The eligibility engine uses hardcoded HHS Federal Poverty Level (FPL) guidelines. HHS publishes new guidelines each January; they must be updated manually before they are used in eligibility decisions.
+
+**Current data:** 2026 HHS Poverty Guidelines — verified 2026-01-15 ([source](https://aspe.hhs.gov/topics/poverty-economic-mobility/poverty-guidelines))
+
+| Household size | Annual FPL |
+|---|---|
+| 1 | $15,960 |
+| 2 | $21,640 |
+| 3 | $27,320 |
+| 4 | $33,000 |
+| +1 (each additional) | $5,680 |
+
+**To update for a new year:**
+
+1. Check [HHS ASPE](https://aspe.hhs.gov/topics/poverty-economic-mobility/poverty-guidelines) for the new guidelines (published each January).
+2. Update the constants in [`lib/masshealth/constants.ts`](lib/masshealth/constants.ts): `FPL_TABLE_2026`, `FPL_INCREMENT_AFTER_4`, and `FPL_DATA_SOURCE.dataYear`/`lastVerified`.
+3. Update the mirrored constants in [`lib/eligibility-engine.ts`](lib/eligibility-engine.ts): `FPL_2026_BASE` and `FPL_2026_PER_ADDITIONAL`.
+4. Update the income amounts in [`data/aca3-synthetic-patient-cases.json`](data/aca3-synthetic-patient-cases.json) for boundary-sweep cases (those whose `caseId` includes an FPL percentage like `139-fpl`).
+5. Run `pnpm test` — the staleness guard in `lib/benefit-orchestration/__tests__/fpl-utils.test.ts` will fail if `dataYear` doesn't match the current calendar year, confirming the update is complete.
+
+---
+
 ## License
 
 Copyright © 2026 HealthCompass MA. All rights reserved.

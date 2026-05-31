@@ -83,7 +83,7 @@ beforeEach(() => {
     hasEmployerInsurance: false, citizenshipStatus: "citizen",
   })
   vi.mocked(runEligibilityCheck).mockReturnValue({
-    fplPercent: 143, annualFPL: 31200, summary: "Likely eligible for CarePlus",
+    fplPercent: 143, annualFPL: 33000, summary: "Likely eligible for CarePlus",
     results: [{ program: "MassHealth CarePlus", status: "likely", tagline: "Free health insurance", actionLabel: "Apply", actionHref: "/apply", color: "green" }],
   } as never)
   vi.mocked(retrieveRelevantChunks).mockResolvedValue([])

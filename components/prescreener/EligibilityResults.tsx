@@ -13,6 +13,7 @@ import Link from "next/link"
 import { ConversationBubble } from "@/components/shared/ConversationBubble"
 import { Button } from "@/components/ui/button"
 import {
+  AlertTriangle,
   ChevronRight,
   ExternalLink,
   Heart,
@@ -20,6 +21,7 @@ import {
 } from "lucide-react"
 import type { EligibilityReport, ScreenerData } from "@/lib/eligibility-engine"
 import { FPL_TABLE_2026 } from "@/lib/eligibility-engine"
+import { FPL_DATA_SOURCE } from "@/lib/masshealth/constants"
 import { colorConfig } from "@/app/prescreener/page.utils"
 import type { ChatMessage } from "@/app/prescreener/page.types"
 import {
@@ -94,6 +96,37 @@ export function FPLReferenceTable({
       </div>
       <p className="mt-2 text-xs text-muted-foreground text-center">
         {copy.yourIncomeAt(fplPct)}
+      </p>
+      {/* Data source attribution + staleness warning */}
+      {new Date().getFullYear() > FPL_DATA_SOURCE.dataYear && (
+        <div className="mt-3 flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>
+            These figures are based on {FPL_DATA_SOURCE.dataYear} HHS guidelines and may not reflect
+            the current year. Please{" "}
+            <a
+              href={FPL_DATA_SOURCE.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-amber-900"
+            >
+              verify with HHS
+            </a>{" "}
+            for the latest numbers.
+          </span>
+        </div>
+      )}
+      <p className="mt-2 text-center text-xs text-muted-foreground">
+        Source:{" "}
+        <a
+          href={FPL_DATA_SOURCE.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-foreground"
+        >
+          HHS ASPE {FPL_DATA_SOURCE.dataYear} Poverty Guidelines
+        </a>{" "}
+        · Verified {FPL_DATA_SOURCE.lastVerified}
       </p>
     </div>
   )

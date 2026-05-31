@@ -20,8 +20,8 @@ import { baseProfile, childMember, emptyAssets } from './fixtures'
 import type { IncomeBreakdown } from '../../../lib/benefit-orchestration/types'
 
 // 2026 FPL constants
-const FPL_BASE = 15060
-const FPL_PER_ADDITIONAL = 5380
+const FPL_BASE = 15960
+const FPL_PER_ADDITIONAL = 5680
 
 describe('getAnnualFPL', () => {
   it('returns base FPL for 1-person household', () => {

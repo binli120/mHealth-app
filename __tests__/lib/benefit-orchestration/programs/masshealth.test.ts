@@ -13,7 +13,7 @@ import { baseProfile, childMember, emptyIncome } from '../fixtures'
 
 /** Monthly wages for a given FPL% for a 1-person household (MAGI = wages only) */
 function monthlyWagesAtFpl(fplPct: number) {
-  const annualFPL = 15060
+  const annualFPL = 15960
   return Math.round((annualFPL * fplPct) / 100 / 12)
 }
 
@@ -82,10 +82,10 @@ describe('evaluateMassHealth — children', () => {
   })
 
   it('returns Family Assistance (CHIP) for children at 150–300% FPL MAGI', () => {
-    // 2-person household annual FPL = 15060 + 5380 = 20440
-    // 200% = 40880/yr = 3407/mo
+    // 2-person household annual FPL = 15960 + 5680 = 21640
+    // 200% = 43280/yr = 3607/mo
     const child = childMember(5)
-    const twoPersonFPL = 15060 + 5380
+    const twoPersonFPL = 15960 + 5680
     const wages = Math.round((twoPersonFPL * 2.0) / 12) // exactly 200% annual FPL → monthly
     const profile = baseProfile({
       householdMembers: [child],

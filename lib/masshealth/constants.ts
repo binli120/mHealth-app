@@ -16,17 +16,26 @@ export const MASSHEALTH_TTY_DIRECT = "1-800-497-4648"
 export const MASSHEALTH_SERVICE_HOURS = "Monday-Friday, 8:00 a.m.-5:00 p.m."
 
 // ── ACA-3 eligibility: Federal Poverty Level (FY 2026) ────────────────────────
+// Source: HHS ASPE, 79 Fed. Reg. 3593 (Jan. 15, 2026)
+// https://aspe.hhs.gov/topics/poverty-economic-mobility/poverty-guidelines
+
+/** Metadata for the FPL dataset — update whenever constants below change. */
+export const FPL_DATA_SOURCE = {
+  dataYear: 2026,
+  lastVerified: '2026-01-15',
+  sourceUrl: 'https://aspe.hhs.gov/topics/poverty-economic-mobility/poverty-guidelines',
+} as const
 
 /** FPL base amounts indexed by household size (1–4 persons). */
 export const FPL_TABLE_2026: Record<number, number> = {
-  1: 15060,
-  2: 20440,
-  3: 25820,
-  4: 31200,
+  1: 15960,
+  2: 21640,
+  3: 27320,
+  4: 33000,
 }
 
 /** Additional FPL dollars per person beyond household size 4. */
-export const FPL_INCREMENT_AFTER_4 = 5380
+export const FPL_INCREMENT_AFTER_4 = 5680
 
 // ── MassHealth / ACA program FPL eligibility thresholds (% of FPL) ───────────
 //

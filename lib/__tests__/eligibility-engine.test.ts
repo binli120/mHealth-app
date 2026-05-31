@@ -17,13 +17,13 @@ import type { ScreenerData } from "@/lib/eligibility-engine"
 
 describe("getAnnualFPL", () => {
   it("returns base amount for household of 1", () => {
-    expect(getAnnualFPL(1)).toBe(15_060)
+    expect(getAnnualFPL(1)).toBe(15_960)
   })
 
-  it("adds $5,380 per additional person", () => {
-    expect(getAnnualFPL(2)).toBe(20_440)
-    expect(getAnnualFPL(4)).toBe(31_200)
-    expect(getAnnualFPL(8)).toBe(15_060 + 7 * 5_380) // 52,720
+  it("adds $5,680 per additional person", () => {
+    expect(getAnnualFPL(2)).toBe(21_640)
+    expect(getAnnualFPL(4)).toBe(33_000)
+    expect(getAnnualFPL(8)).toBe(15_960 + 7 * 5_680) // 55,720
   })
 
   it("clamps to 1 for household of 0 or negative", () => {
@@ -34,14 +34,14 @@ describe("getAnnualFPL", () => {
 
 describe("getMonthlyFPL", () => {
   it("returns annual FPL divided by 12, rounded", () => {
-    expect(getMonthlyFPL(1)).toBe(Math.round(15_060 / 12))
-    expect(getMonthlyFPL(4)).toBe(Math.round(31_200 / 12))
+    expect(getMonthlyFPL(1)).toBe(Math.round(15_960 / 12))
+    expect(getMonthlyFPL(4)).toBe(Math.round(33_000 / 12))
   })
 })
 
 describe("getIncomeAsFPLPercent", () => {
   it("returns 100 when income equals FPL", () => {
-    expect(getIncomeAsFPLPercent(15_060, 1)).toBe(100)
+    expect(getIncomeAsFPLPercent(15_960, 1)).toBe(100)
   })
 
   it("returns 0 for zero income", () => {
@@ -54,8 +54,8 @@ describe("getIncomeAsFPLPercent", () => {
   })
 
   it("rounds to nearest integer", () => {
-    // 50% of FPL for HH1 = 7530 → 50%
-    expect(getIncomeAsFPLPercent(7_530, 1)).toBe(50)
+    // 50% of FPL for HH1 = 7980 → 50%
+    expect(getIncomeAsFPLPercent(7_980, 1)).toBe(50)
   })
 })
 
@@ -113,9 +113,9 @@ describe("runEligibilityCheck — non-MA resident", () => {
   })
 
   it("still calculates FPL fields correctly", () => {
-    const report = runEligibilityCheck(base({ livesInMA: false, annualIncome: 15_060, householdSize: 1 }))
+    const report = runEligibilityCheck(base({ livesInMA: false, annualIncome: 15_960, householdSize: 1 }))
     expect(report.fplPercent).toBe(100)
-    expect(report.annualFPL).toBe(15_060)
+    expect(report.annualFPL).toBe(15_960)
   })
 
   it("summary mentions Massachusetts", () => {
