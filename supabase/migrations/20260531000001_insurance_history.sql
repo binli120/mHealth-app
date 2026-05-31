@@ -46,3 +46,6 @@ CREATE POLICY "users_own_explanations"
       SELECT id FROM public.insurance_coverage_records WHERE user_id = auth.uid()
     )
   );
+
+CREATE INDEX IF NOT EXISTS idx_insurance_coverage_records_user_id
+  ON public.insurance_coverage_records(user_id);
