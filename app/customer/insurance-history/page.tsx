@@ -1,83 +1,34 @@
-// app/customer/insurance-history/page.tsx
 /**
  * @author: Bin Lee
  * @email: blee@healthcompass.cloud
  */
 
-import { redirect } from "next/navigation"
-import { getSupabaseServerClient } from "@/lib/supabase/server"
-import {
-  listCoverageRecords,
-  getExplanation,
-  saveExplanation,
-} from "@/lib/db/insurance-history"
-import {
-  applyRulesTemplate,
-  buildLlmPrompt,
-  computeChangeFactor,
-  FALLBACK_EXPLANATION,
-} from "@/lib/insurance-history/explanation-engine"
+"use client"
+
+import { useCallback } from "react"
+import { useAsyncData } from "@/hooks/use-async-data"
+import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { InsuranceTimeline } from "@/components/insurance-history/insurance-timeline"
 import type { CoverageRecordWithExplanation } from "@/lib/insurance-history/types"
-import Anthropic from "@anthropic-ai/sdk"
 
-const anthropic = new Anthropic()
+interface RecordsApiResponse {
+  ok: boolean
+  records?: CoverageRecordWithExplanation[]
+  error?: string
+}
 
-export default async function InsuranceHistoryPage() {
-  const supabase = await getSupabaseServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+export default function InsuranceHistoryPage() {
+  const fetcher = useCallback(async () => {
+    const res = await authenticatedFetch("/api/insurance-history/records-with-explanations", {
+      method: "GET",
+      cache: "no-store",
+    })
+    const payload = (await res.json().catch(() => ({}))) as RecordsApiResponse
+    if (!res.ok || !payload.ok) throw new Error(payload.error ?? "Failed to load insurance history")
+    return payload.records ?? []
+  }, [])
 
-  if (!user) redirect("/auth/login")
-
-  const records = await listCoverageRecords(user.id)
-
-  const items: CoverageRecordWithExplanation[] = await Promise.all(
-    records.map(async (record, index) => {
-      const prior = records[index + 1] ?? null
-
-      let explanation = await getExplanation(record.id)
-
-      if (!explanation) {
-        const cf = computeChangeFactor(record, prior)
-        const rulesText = applyRulesTemplate(record, prior)
-
-        let explanationText: string
-        let generatedBy: "rules" | "llm" = "rules"
-
-        if (rulesText !== null) {
-          explanationText = rulesText
-        } else if (prior) {
-          try {
-            const prompt = buildLlmPrompt(record, prior, cf)
-            const msg = await anthropic.messages.create({
-              model: "claude-haiku-4-5-20251001",
-              max_tokens: 256,
-              messages: [{ role: "user", content: prompt }],
-            })
-            const content = msg.content[0]
-            explanationText = content.type === "text" ? content.text.trim() : FALLBACK_EXPLANATION
-            generatedBy = "llm"
-          } catch {
-            explanationText = FALLBACK_EXPLANATION
-          }
-        } else {
-          explanationText = FALLBACK_EXPLANATION
-        }
-
-        explanation = await saveExplanation({
-          coverageRecordId: record.id,
-          priorRecordId: prior?.id ?? null,
-          changeFactors: cf,
-          explanationText,
-          generatedBy,
-        })
-      }
-
-      return { record, explanation }
-    }),
-  )
+  const { data, isLoading, error } = useAsyncData<CoverageRecordWithExplanation[]>(fetcher)
 
   return (
     <main className="max-w-2xl mx-auto px-4 py-8">
@@ -87,7 +38,25 @@ export default async function InsuranceHistoryPage() {
           Your coverage history and why it changed each year.
         </p>
       </div>
-      <InsuranceTimeline items={items} />
+      {isLoading && (
+        <div className="space-y-6">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-full bg-muted animate-pulse flex-shrink-0" />
+              <div className="flex-1 border rounded-lg p-4 space-y-2">
+                <div className="h-4 w-40 bg-muted rounded animate-pulse" />
+                <div className="h-3 w-24 bg-muted rounded animate-pulse" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {error && (
+        <p className="text-sm text-destructive">{error}</p>
+      )}
+      {!isLoading && !error && (
+        <InsuranceTimeline items={data ?? []} />
+      )}
     </main>
   )
 }
