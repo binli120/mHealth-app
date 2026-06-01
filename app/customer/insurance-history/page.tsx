@@ -5,11 +5,9 @@
 
 "use client"
 
-import { useCallback, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useCallback } from "react"
 import { useAsyncData } from "@/hooks/use-async-data"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
-import { getSafeSupabaseUser } from "@/lib/supabase/client"
 import { InsuranceTimeline } from "@/components/insurance-history/insurance-timeline"
 import type { CoverageRecordWithExplanation } from "@/lib/insurance-history/types"
 
@@ -20,14 +18,6 @@ interface RecordsApiResponse {
 }
 
 export default function InsuranceHistoryPage() {
-  const router = useRouter()
-
-  // Redirect to login if no valid session
-  useEffect(() => {
-    getSafeSupabaseUser().then(({ user }) => {
-      if (!user) router.replace("/auth/login")
-    })
-  }, [router])
 
   const fetcher = useCallback(async () => {
     const res = await authenticatedFetch("/api/insurance-history/records-with-explanations", {
