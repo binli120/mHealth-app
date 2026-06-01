@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { getMessage } from "@/lib/i18n/messages"
 import type { SupportedLanguage } from "@/lib/i18n/languages"
+import { formatCurrency, parseCurrency } from "@/lib/utils/input-format"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import type { CoverageRecord } from "@/lib/insurance-history/types"
 
@@ -114,9 +115,9 @@ export function CoverageForm({ record, existingYears, onClose, onSaved, language
     coverageYear: record ? String(record.coverageYear) : String(currentYear),
     selectedPlanCode: selected,
     customPlanName: custom,
-    premiumMonthly: record?.premiumMonthly != null ? String(record.premiumMonthly) : "",
+    premiumMonthly: record?.premiumMonthly != null ? formatCurrency(String(record.premiumMonthly)) : "",
     householdSize: record?.householdSize != null ? String(record.householdSize) : "",
-    annualIncome: record?.annualIncome != null ? String(record.annualIncome) : "",
+    annualIncome: record?.annualIncome != null ? formatCurrency(String(record.annualIncome)) : "",
     notes: record?.notes ?? "",
   })
   const [error, setError] = useState<string | null>(null)
@@ -158,9 +159,9 @@ export function CoverageForm({ record, existingYears, onClose, onSaved, language
         coverageYear: year,
         planName,
         programCode: resolvedProgramCode(),
-        premiumMonthly: form.premiumMonthly ? parseFloat(form.premiumMonthly) : null,
+        premiumMonthly: form.premiumMonthly ? parseCurrency(form.premiumMonthly) : null,
         householdSize: form.householdSize ? parseInt(form.householdSize, 10) : null,
-        annualIncome: form.annualIncome ? parseFloat(form.annualIncome) : null,
+        annualIncome: form.annualIncome ? parseCurrency(form.annualIncome) : null,
         notes: form.notes || null,
       }
 
@@ -254,19 +255,14 @@ export function CoverageForm({ record, existingYears, onClose, onSaved, language
 
           <div className="space-y-1">
             <Label htmlFor="premium">{getMessage(language, "insuranceHistoryPremium")}</Label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm select-none">$</span>
-              <Input
-                id="premium"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-                value={form.premiumMonthly}
-                onChange={setField("premiumMonthly")}
-                className="pl-7"
-              />
-            </div>
+            <Input
+              id="premium"
+              type="text"
+              inputMode="decimal"
+              placeholder="$0.00"
+              value={form.premiumMonthly}
+              onChange={(e) => setForm((f) => ({ ...f, premiumMonthly: formatCurrency(e.target.value) }))}
+            />
           </div>
           <div className="space-y-1">
             <Label htmlFor="household">{getMessage(language, "insuranceHistoryHousehold")}</Label>
@@ -283,11 +279,11 @@ export function CoverageForm({ record, existingYears, onClose, onSaved, language
             <Label htmlFor="income">{getMessage(language, "insuranceHistoryIncome")}</Label>
             <Input
               id="income"
-              type="number"
-              min="0"
-              placeholder="0"
+              type="text"
+              inputMode="decimal"
+              placeholder="$0"
               value={form.annualIncome}
-              onChange={setField("annualIncome")}
+              onChange={(e) => setForm((f) => ({ ...f, annualIncome: formatCurrency(e.target.value) }))}
             />
           </div>
           <div className="space-y-1">
