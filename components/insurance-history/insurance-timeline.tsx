@@ -22,11 +22,16 @@ interface InsuranceTimelineProps {
   language?: SupportedLanguage
 }
 
-export function InsuranceTimeline({ items, isLoading, loadError, language = "en" }: InsuranceTimelineProps) {
+export function InsuranceTimeline({ items: initialItems, isLoading, loadError, language = "en" }: InsuranceTimelineProps) {
+  const [items, setItems] = useState(initialItems)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [addingNew, setAddingNew] = useState(false)
 
   const editRecord = editingId ? items.find((i) => i.record.id === editingId)?.record : null
+
+  function handleDeleted(id: string) {
+    setItems((prev) => prev.filter((i) => i.record.id !== id))
+  }
 
   return (
     <div className="space-y-0">
@@ -64,6 +69,7 @@ export function InsuranceTimeline({ items, isLoading, loadError, language = "en"
             isFirst={index === 0}
             isLast={index === items.length - 1}
             onEdit={setEditingId}
+            onDeleted={handleDeleted}
             language={language}
           />
         ))
@@ -81,7 +87,7 @@ export function InsuranceTimeline({ items, isLoading, loadError, language = "en"
             setEditingId(null)
             window.location.reload()
           }}
-          existingYears={items.map((i) => i.record.coverageYear)}
+          existingYears={items.map((i) => i.record.coverageYear).filter((y) => editRecord?.coverageYear !== y)}
           language={language}
         />
       )}
