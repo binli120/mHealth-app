@@ -14,6 +14,15 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -21,6 +30,61 @@ import { getMessage } from "@/lib/i18n/messages"
 import type { SupportedLanguage } from "@/lib/i18n/languages"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import type { CoverageRecord } from "@/lib/insurance-history/types"
+
+// Common MA coverage plans grouped by type
+const PLAN_OPTIONS: { group: string; plans: { label: string; code: string }[] }[] = [
+  {
+    group: "MassHealth (Medicaid)",
+    plans: [
+      { label: "MassHealth CarePlus", code: "careplus" },
+      { label: "MassHealth Standard", code: "masshealth_standard" },
+      { label: "MassHealth Standard – Pregnancy", code: "pregnancy_standard" },
+      { label: "MassHealth Standard (Dual Eligible)", code: "dual_eligible_standard" },
+      { label: "MassHealth Family Assistance (CHIP)", code: "family_assistance_chip" },
+      { label: "MassHealth CommonHealth", code: "masshealth_commonhealth" },
+      { label: "MassHealth Limited", code: "masshealth_limited" },
+    ],
+  },
+  {
+    group: "Health Connector",
+    plans: [
+      { label: "ConnectorCare Plan 1", code: "connectorcare_1" },
+      { label: "ConnectorCare Plan 2", code: "connectorcare_2" },
+      { label: "ConnectorCare Plan 3", code: "connectorcare_3" },
+      { label: "Health Connector with Federal Tax Credits", code: "federal_tax_credits" },
+      { label: "Health Connector (Unsubsidized)", code: "employer_or_connector" },
+      { label: "Health Connector Plans (Children)", code: "health_connector_child_plans" },
+    ],
+  },
+  {
+    group: "Medicare",
+    plans: [
+      { label: "Medicare Part A & B", code: "medicare" },
+      { label: "Medicare Advantage (Part C)", code: "medicare_advantage" },
+      { label: "Medicare Savings Program", code: "medicare_savings_program_adult" },
+      { label: "Medicare Supplement (Medigap)", code: "medigap_plans" },
+    ],
+  },
+  {
+    group: "Employer & Marketplace",
+    plans: [
+      { label: "Employer-Sponsored Insurance", code: "employer_sponsored_insurance" },
+      { label: "ACA Marketplace Plan (Bronze)", code: "marketplace_bronze" },
+      { label: "ACA Marketplace Plan (Silver)", code: "marketplace_silver" },
+      { label: "ACA Marketplace Plan (Gold)", code: "marketplace_gold" },
+    ],
+  },
+]
+
+const ALL_PLANS = PLAN_OPTIONS.flatMap((g) => g.plans)
+const OTHER_VALUE = "__other__"
+
+function resolvePlanName(planName: string): { selected: string; custom: string } {
+  const match = ALL_PLANS.find((p) => p.label === planName)
+  if (match) return { selected: match.code, custom: "" }
+  if (planName) return { selected: OTHER_VALUE, custom: planName }
+  return { selected: "", custom: "" }
+}
 
 interface CoverageFormProps {
   record: CoverageRecord | null
@@ -32,7 +96,8 @@ interface CoverageFormProps {
 
 interface FormState {
   coverageYear: string
-  planName: string
+  selectedPlanCode: string
+  customPlanName: string
   premiumMonthly: string
   householdSize: string
   annualIncome: string
@@ -43,9 +108,12 @@ export function CoverageForm({ record, existingYears, onClose, onSaved, language
   const isEditing = record !== null
   const currentYear = new Date().getFullYear()
 
+  const { selected, custom } = resolvePlanName(record?.planName ?? "")
+
   const [form, setForm] = useState<FormState>({
     coverageYear: record ? String(record.coverageYear) : String(currentYear),
-    planName: record?.planName ?? "",
+    selectedPlanCode: selected,
+    customPlanName: custom,
     premiumMonthly: record?.premiumMonthly != null ? String(record.premiumMonthly) : "",
     householdSize: record?.householdSize != null ? String(record.householdSize) : "",
     annualIncome: record?.annualIncome != null ? String(record.annualIncome) : "",
@@ -54,9 +122,19 @@ export function CoverageForm({ record, existingYears, onClose, onSaved, language
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  function set(field: keyof FormState) {
+  function setField(field: keyof FormState) {
     return (e: React.ChangeEvent<HTMLInputElement>) =>
       setForm((f) => ({ ...f, [field]: e.target.value }))
+  }
+
+  function resolvedPlanName(): string {
+    if (form.selectedPlanCode === OTHER_VALUE) return form.customPlanName.trim()
+    return ALL_PLANS.find((p) => p.code === form.selectedPlanCode)?.label ?? ""
+  }
+
+  function resolvedProgramCode(): string | null {
+    if (form.selectedPlanCode === OTHER_VALUE || !form.selectedPlanCode) return null
+    return form.selectedPlanCode
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -68,7 +146,8 @@ export function CoverageForm({ record, existingYears, onClose, onSaved, language
       setError(getMessage(language, "insuranceHistoryDuplicateYear").replace("{year}", String(year)))
       return
     }
-    if (!form.planName.trim()) {
+    const planName = resolvedPlanName()
+    if (!planName) {
       setError(getMessage(language, "insuranceHistoryPlanRequired"))
       return
     }
@@ -77,7 +156,8 @@ export function CoverageForm({ record, existingYears, onClose, onSaved, language
     try {
       const body = {
         coverageYear: year,
-        planName: form.planName.trim(),
+        planName,
+        programCode: resolvedProgramCode(),
         premiumMonthly: form.premiumMonthly ? parseFloat(form.premiumMonthly) : null,
         householdSize: form.householdSize ? parseInt(form.householdSize, 10) : null,
         annualIncome: form.annualIncome ? parseFloat(form.annualIncome) : null,
@@ -124,21 +204,54 @@ export function CoverageForm({ record, existingYears, onClose, onSaved, language
               min="1990"
               max={currentYear}
               value={form.coverageYear}
-              onChange={set("coverageYear")}
+              onChange={setField("coverageYear")}
               disabled={isEditing}
               required
             />
           </div>
+
           <div className="space-y-1">
-            <Label htmlFor="plan-name">{getMessage(language, "insuranceHistoryPlanName")} *</Label>
-            <Input
-              id="plan-name"
-              placeholder={getMessage(language, "insuranceHistoryPlanNamePlaceholder")}
-              value={form.planName}
-              onChange={set("planName")}
-              required
-            />
+            <Label>{getMessage(language, "insuranceHistoryPlanName")} *</Label>
+            <Select
+              value={form.selectedPlanCode}
+              onValueChange={(val) => setForm((f) => ({ ...f, selectedPlanCode: val, customPlanName: "" }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={getMessage(language, "insuranceHistoryPlanNamePlaceholder")} />
+              </SelectTrigger>
+              <SelectContent>
+                {PLAN_OPTIONS.map((group) => (
+                  <SelectGroup key={group.group}>
+                    <SelectLabel>{group.group}</SelectLabel>
+                    {group.plans.map((plan) => (
+                      <SelectItem key={plan.code} value={plan.code}>
+                        {plan.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ))}
+                <SelectGroup>
+                  <SelectLabel>Other</SelectLabel>
+                  <SelectItem value={OTHER_VALUE}>Other / Not listed</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
+
+          {form.selectedPlanCode === OTHER_VALUE && (
+            <div className="space-y-1">
+              <Label htmlFor="custom-plan">Plan name *</Label>
+              <Input
+                id="custom-plan"
+                placeholder="Enter plan name"
+                value={form.customPlanName}
+                onChange={setField("customPlanName")}
+                autoFocus
+                required
+              />
+            </div>
+          )}
+
           <div className="space-y-1">
             <Label htmlFor="premium">{getMessage(language, "insuranceHistoryPremium")}</Label>
             <Input
@@ -148,7 +261,7 @@ export function CoverageForm({ record, existingYears, onClose, onSaved, language
               step="0.01"
               placeholder="0.00"
               value={form.premiumMonthly}
-              onChange={set("premiumMonthly")}
+              onChange={setField("premiumMonthly")}
             />
           </div>
           <div className="space-y-1">
@@ -159,7 +272,7 @@ export function CoverageForm({ record, existingYears, onClose, onSaved, language
               min="1"
               placeholder="1"
               value={form.householdSize}
-              onChange={set("householdSize")}
+              onChange={setField("householdSize")}
             />
           </div>
           <div className="space-y-1">
@@ -170,7 +283,7 @@ export function CoverageForm({ record, existingYears, onClose, onSaved, language
               min="0"
               placeholder="0"
               value={form.annualIncome}
-              onChange={set("annualIncome")}
+              onChange={setField("annualIncome")}
             />
           </div>
           <div className="space-y-1">
@@ -179,7 +292,7 @@ export function CoverageForm({ record, existingYears, onClose, onSaved, language
               id="notes"
               placeholder={getMessage(language, "insuranceHistoryNotesPlaceholder")}
               value={form.notes}
-              onChange={set("notes")}
+              onChange={setField("notes")}
             />
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
