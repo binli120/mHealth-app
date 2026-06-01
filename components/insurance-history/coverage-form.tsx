@@ -254,15 +254,19 @@ export function CoverageForm({ record, existingYears, onClose, onSaved, language
 
           <div className="space-y-1">
             <Label htmlFor="premium">{getMessage(language, "insuranceHistoryPremium")}</Label>
-            <Input
-              id="premium"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              value={form.premiumMonthly}
-              onChange={setField("premiumMonthly")}
-            />
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm select-none">$</span>
+              <Input
+                id="premium"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                value={form.premiumMonthly}
+                onChange={setField("premiumMonthly")}
+                className="pl-7"
+              />
+            </div>
           </div>
           <div className="space-y-1">
             <Label htmlFor="household">{getMessage(language, "insuranceHistoryHousehold")}</Label>
