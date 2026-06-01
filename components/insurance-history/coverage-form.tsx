@@ -8,12 +8,12 @@
 
 import { useState } from "react"
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-} from "@/components/ui/sheet"
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -106,16 +106,16 @@ export function CoverageForm({ record, existingYears, onClose, onSaved, language
   }
 
   return (
-    <Sheet open onOpenChange={(open) => { if (!open) onClose() }}>
-      <SheetContent side="right" className="w-full sm:max-w-md">
-        <SheetHeader>
-          <SheetTitle>
+    <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>
             {isEditing
               ? getMessage(language, "insuranceHistoryEditDrawerTitle")
               : getMessage(language, "insuranceHistoryAddDrawerTitle")}
-          </SheetTitle>
-        </SheetHeader>
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          </DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
             <Label htmlFor="coverage-year">{getMessage(language, "insuranceHistoryCoverageYear")} *</Label>
             <Input
@@ -183,8 +183,8 @@ export function CoverageForm({ record, existingYears, onClose, onSaved, language
             />
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
-          <SheetFooter className="pt-2">
-            <Button type="button" variant="ghost" onClick={onClose} disabled={saving}>
+          <DialogFooter className="pt-2">
+            <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
               {getMessage(language, "insuranceHistoryCancel")}
             </Button>
             <Button type="submit" disabled={saving}>
@@ -194,9 +194,9 @@ export function CoverageForm({ record, existingYears, onClose, onSaved, language
                   ? getMessage(language, "insuranceHistorySave")
                   : getMessage(language, "insuranceHistoryAddRecord")}
             </Button>
-          </SheetFooter>
+          </DialogFooter>
         </form>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   )
 }
