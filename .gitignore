@@ -24,6 +24,7 @@ storybook-static/
 debug-storybook.log
 .claude/
 .refact/
+.superpowers/
 
 # Test coverage output
 coverage/
