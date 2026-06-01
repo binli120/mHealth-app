@@ -5,9 +5,11 @@
 
 "use client"
 
-import { useCallback } from "react"
+import { useCallback, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useAsyncData } from "@/hooks/use-async-data"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { getSafeSupabaseUser } from "@/lib/supabase/client"
 import { InsuranceTimeline } from "@/components/insurance-history/insurance-timeline"
 import type { CoverageRecordWithExplanation } from "@/lib/insurance-history/types"
 
@@ -18,6 +20,15 @@ interface RecordsApiResponse {
 }
 
 export default function InsuranceHistoryPage() {
+  const router = useRouter()
+
+  // Redirect to login if no valid session
+  useEffect(() => {
+    getSafeSupabaseUser().then(({ user }) => {
+      if (!user) router.replace("/auth/login")
+    })
+  }, [router])
+
   const fetcher = useCallback(async () => {
     const res = await authenticatedFetch("/api/insurance-history/records-with-explanations", {
       method: "GET",
@@ -38,25 +49,11 @@ export default function InsuranceHistoryPage() {
           Your coverage history and why it changed each year.
         </p>
       </div>
-      {isLoading && (
-        <div className="space-y-6">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-full bg-muted animate-pulse flex-shrink-0" />
-              <div className="flex-1 border rounded-lg p-4 space-y-2">
-                <div className="h-4 w-40 bg-muted rounded animate-pulse" />
-                <div className="h-3 w-24 bg-muted rounded animate-pulse" />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      {error && (
-        <p className="text-sm text-destructive">{error}</p>
-      )}
-      {!isLoading && !error && (
-        <InsuranceTimeline items={data ?? []} />
-      )}
+      <InsuranceTimeline
+        items={data ?? []}
+        isLoading={isLoading}
+        loadError={error}
+      />
     </main>
   )
 }
