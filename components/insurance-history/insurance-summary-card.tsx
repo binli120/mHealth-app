@@ -18,10 +18,10 @@ interface InsuranceSummaryCardProps {
 
 export function InsuranceSummaryCard({ latest }: InsuranceSummaryCardProps) {
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <History className="w-4 h-4 text-blue-600" />
+    <Card className="border-border bg-card hover:shadow-md transition-shadow">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base text-card-foreground">
+          <History className="h-5 w-5 text-primary" />
           Insurance History
         </CardTitle>
       </CardHeader>
@@ -29,30 +29,30 @@ export function InsuranceSummaryCard({ latest }: InsuranceSummaryCardProps) {
         {latest ? (
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-sm">{latest.record.planName}</span>
-              <Badge variant="outline" className="text-xs">
+              <span className="font-medium text-card-foreground">{latest.record.planName}</span>
+              <Badge variant="outline">
                 {latest.record.coverageYear}
               </Badge>
             </div>
             {latest.record.premiumMonthly != null && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 ${latest.record.premiumMonthly.toFixed(0)}/mo premium
               </p>
             )}
             {latest.explanation && (
-              <p className="text-xs text-blue-700 dark:text-blue-400 line-clamp-2">
+              <p className="text-sm text-muted-foreground line-clamp-2">
                 {latest.explanation.explanationText.split(".")[0]}.
               </p>
             )}
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">No coverage history on file yet.</p>
+          <p className="text-sm text-muted-foreground">No coverage history on file yet.</p>
         )}
         <Link
           href="/customer/insurance-history"
-          className="mt-3 flex items-center gap-1 text-xs text-blue-600 hover:underline font-medium"
+          className="mt-3 flex items-center gap-1 text-sm text-primary hover:underline font-medium"
         >
-          View full history <ChevronRight className="w-3 h-3" />
+          View full history <ChevronRight className="h-4 w-4" />
         </Link>
       </CardContent>
     </Card>
