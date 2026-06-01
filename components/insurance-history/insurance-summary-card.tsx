@@ -7,9 +7,8 @@
 "use client"
 
 import Link from "next/link"
-import { ChevronRight, History } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { History } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
 import type { CoverageRecordWithExplanation } from "@/lib/insurance-history/types"
 
 interface InsuranceSummaryCardProps {
@@ -17,44 +16,27 @@ interface InsuranceSummaryCardProps {
 }
 
 export function InsuranceSummaryCard({ latest }: InsuranceSummaryCardProps) {
+  const description = latest
+    ? latest.record.planName +
+      (latest.record.coverageYear ? ` · ${latest.record.coverageYear}` : "") +
+      (latest.record.premiumMonthly != null
+        ? ` · $${latest.record.premiumMonthly.toFixed(0)}/mo`
+        : "")
+    : "No coverage history on file yet."
+
   return (
-    <Card className="border-border bg-card hover:shadow-md transition-shadow">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base text-card-foreground">
-          <History className="h-5 w-5 text-primary" />
-          Insurance History
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {latest ? (
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-card-foreground">{latest.record.planName}</span>
-              <Badge variant="outline">
-                {latest.record.coverageYear}
-              </Badge>
-            </div>
-            {latest.record.premiumMonthly != null && (
-              <p className="text-sm text-muted-foreground">
-                ${latest.record.premiumMonthly.toFixed(0)}/mo premium
-              </p>
-            )}
-            {latest.explanation && (
-              <p className="text-sm text-muted-foreground line-clamp-2">
-                {latest.explanation.explanationText.split(".")[0]}.
-              </p>
-            )}
+    <Link href="/customer/insurance-history" className="h-full">
+      <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
+        <CardContent className="flex items-center gap-4 p-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+            <History className="h-5 w-5 text-primary" />
           </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">No coverage history on file yet.</p>
-        )}
-        <Link
-          href="/customer/insurance-history"
-          className="mt-3 flex items-center gap-1 text-sm text-primary hover:underline font-medium"
-        >
-          View full history <ChevronRight className="h-4 w-4" />
-        </Link>
-      </CardContent>
-    </Card>
+          <div>
+            <p className="font-medium text-card-foreground">Insurance History</p>
+            <p className="text-sm text-muted-foreground">{description}</p>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
   )
 }
