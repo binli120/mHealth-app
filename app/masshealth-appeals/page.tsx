@@ -5,7 +5,7 @@
 
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, useReducer } from "react"
 import { useRouter } from "next/navigation"
 import {
   Scale,
@@ -101,7 +101,8 @@ export default function MassHealthAppealsPage() {
   // Step 1 — research form
   const [categories, setCategories] = useState<AppealCategoryEntry[]>([])
   const [categoriesDegradedMessage, setCategoriesDegradedMessage] = useState<string | null>(null)
-  const [denialText, setDenialText] = useState("")
+  const [denialText, dispatchDenialText] = useReducer((_prev: string, next: string) => next, "")
+  const setDenialText = dispatchDenialText
   const [selectedCategory, setSelectedCategory] = useState<string>("")
   const {
     state: documentState,

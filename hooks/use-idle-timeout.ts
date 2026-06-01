@@ -5,7 +5,7 @@
 
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useReducer, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { clearSessionCookie } from "@/lib/supabase/session-cookie"
@@ -97,10 +97,8 @@ export function useIdleTimeout({
     warningMs: warningMsOverride,
   })
 
-  const [isWarning, setIsWarning] = useState(false)
-  const [secondsRemaining, setSecondsRemaining] = useState(
-    Math.round(warningMs / 1000),
-  )
+  const [isWarning, setIsWarning] = useReducer((_prev: boolean, next: boolean) => next, false)
+  const [secondsRemaining, setSecondsRemaining] = useReducer((_prev: number, next: number) => next, Math.round(warningMs / 1000))
 
   // Mutable refs — never trigger re-renders
   const logoutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)

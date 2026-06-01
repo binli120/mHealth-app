@@ -24,6 +24,7 @@
 import {
   useCallback,
   useEffect,
+  useReducer,
   useRef,
   useState,
 } from "react"
@@ -313,7 +314,7 @@ export function IncomeEvidenceChecklist({
 }: IncomeEvidenceChecklistProps) {
   const [requirements, setRequirements] = useState<IncomeEvidenceRequirement[]>([])
   const [caseStatus, setCaseStatus]     = useState<string>("pending_documents")
-  const [loading, setLoading]           = useState(true)
+  const [loading, setLoading]           = useReducer((_prev: boolean, next: boolean) => next, true)
   const [error, setError]               = useState<string | null>(null)
 
   const fetchCase = useCallback(async () => {

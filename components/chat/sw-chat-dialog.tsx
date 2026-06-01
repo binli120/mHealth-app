@@ -17,7 +17,7 @@
 
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useReducer, useState } from "react"
 import { ArrowLeft, Bell, Loader2, MessageSquare, UserCheck, X } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -53,10 +53,10 @@ export function SwChatDialog() {
   const [activePatient, setActivePatient] = useState<{ userId: string; name: string } | null>(null)
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-  const [threads, setThreads]             = useState<MessageThread[]>([])
-  const [pendingCount, setPendingCount]   = useState(0)
-  const [totalUnread, setTotalUnread]     = useState(0)
-  const [loadingThreads, setLoadingThreads] = useState(false)
+  const [threads, setThreads]             = useReducer((_prev: MessageThread[], next: MessageThread[]) => next, [] as MessageThread[])
+  const [pendingCount, setPendingCount]   = useReducer((_prev: number, next: number) => next, 0)
+  const [totalUnread, setTotalUnread]     = useReducer((_prev: number, next: number) => next, 0)
+  const [loadingThreads, setLoadingThreads] = useReducer((_prev: boolean, next: boolean) => next, false)
   const [messageCache, setMessageCache]   = useState<Record<string, DirectMessage[]>>({})
 
   // Resolve current user once
@@ -318,7 +318,7 @@ export function SwChatDialog() {
                 <ScrollArea className="flex-1 px-3 py-2">
                   <EngagementRequestsPanel
                     onAccepted={() => {
-                      setPendingCount((c) => Math.max(0, c - 1))
+                      setPendingCount(Math.max(0, pendingCount - 1))
                       void fetchThreads()
                       setTab("messages")
                     }}

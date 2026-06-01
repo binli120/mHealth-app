@@ -5,7 +5,7 @@
 
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useReducer, useState } from "react"
 import Link from "next/link"
 import {
   Users,
@@ -41,14 +41,32 @@ import type { SectionId, UserProfileApiResponse } from "./page.types"
 export default function CustomerProfilePage() {
   const dispatch = useAppDispatch()
   const reduxProfile = useAppSelector((state) => state.userProfile.profile)
-  const [profile, setLocalProfile] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  type ProfileState = { profile: UserProfile | null; loading: boolean; error: string | null }
+  type ProfileAction =
+    | { type: 'set'; profile: UserProfile | null; loading: boolean }
+    | { type: 'error'; error: string }
+    | { type: 'loading' }
+  const [profileState, dispatchProfile] = useReducer(
+    (state: ProfileState, action: ProfileAction): ProfileState => {
+      switch (action.type) {
+        case 'loading': return { ...state, loading: true, error: null }
+        case 'set': return { profile: action.profile, loading: action.loading, error: null }
+        case 'error': return { ...state, loading: false, error: action.error }
+        default: return state
+      }
+    },
+    { profile: null, loading: true, error: null },
+  )
+  const profile = profileState.profile
+  const loading = profileState.loading
+  const error = profileState.error
+  const setLocalProfile = (p: UserProfile | null) => dispatchProfile({ type: 'set', profile: p, loading: false })
+  const setLoading = (v: boolean) => dispatchProfile({ type: 'set', profile: profileState.profile, loading: v })
+  const setError = (e: string | null) => e ? dispatchProfile({ type: 'error', error: e }) : dispatchProfile({ type: 'set', profile: profileState.profile, loading: false })
   const [activeSection, setActiveSection] = useState<SectionId>("personal")
 
   const loadProfile = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+    dispatchProfile({ type: 'loading' })
     try {
       const res = await authenticatedFetch("/api/user-profile", {
         method: "GET",
@@ -58,13 +76,11 @@ export default function CustomerProfilePage() {
       if (!res.ok || !payload.ok || !payload.profile) {
         throw new Error(payload.error ?? "Failed to load profile.")
       }
-      setLocalProfile(payload.profile)
+      dispatchProfile({ type: 'set', profile: payload.profile, loading: false })
       dispatch(setProfile(payload.profile))
       dispatch(setLanguage(payload.profile.profileData.preferredLanguage))
     } catch (err) {
-      setError(toUserFacingError(err, { fallback: "Failed to load profile.", context: "profile" }))
-    } finally {
-      setLoading(false)
+      dispatchProfile({ type: 'error', error: toUserFacingError(err, { fallback: "Failed to load profile.", context: "profile" }) })
     }
   }, [dispatch])
 
@@ -73,14 +89,13 @@ export default function CustomerProfilePage() {
   // refresh so edits made server-side by another session are reflected.
   useEffect(() => {
     if (reduxProfile) {
-      setLocalProfile(reduxProfile)
-      setLoading(false)
+      dispatchProfile({ type: 'set', profile: reduxProfile, loading: false })
       // Background refresh — don't show spinner since we already have data
       void authenticatedFetch("/api/user-profile", { method: "GET", cache: "no-store" })
         .then((res) => res.json().catch(() => ({})))
         .then((payload: UserProfileApiResponse) => {
           if (payload.ok && payload.profile) {
-            setLocalProfile(payload.profile)
+            dispatchProfile({ type: 'set', profile: payload.profile, loading: false })
             dispatch(setProfile(payload.profile))
             dispatch(setLanguage(payload.profile.profileData.preferredLanguage))
           }
@@ -93,13 +108,13 @@ export default function CustomerProfilePage() {
   }, [])
 
   const handleSectionSave = (updated: Partial<UserProfile>) => {
-    setLocalProfile((prev) => {
-      const next = prev ? { ...prev, ...updated } : prev
+    const next = profile ? { ...profile, ...updated } : profile
+    if (next) {
+      setLocalProfile(next)
       // Keep Redux in sync so the dashboard navbar avatar updates immediately
       // without requiring a page reload or a separate profile fetch.
-      if (next) dispatch(setProfile(next))
-      return next
-    })
+      dispatch(setProfile(next))
+    }
   }
 
   return (

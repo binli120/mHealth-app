@@ -11,6 +11,7 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
 } from "react"
@@ -223,7 +224,11 @@ export function ApplicationAssistant({
   // localFields is updated immediately when extraction returns, so the sidebar
   // and progress bar always reflect the latest data without waiting for the
   // Redux round-trip.  Redux is still updated for persistence.
-  const [localFields, setLocalFields] = useState<Partial<ApplicationFormData>>({})
+  const [localFields, setLocalFields] = useReducer(
+    (prev: Partial<ApplicationFormData>, next: Partial<ApplicationFormData> | ((p: Partial<ApplicationFormData>) => Partial<ApplicationFormData>)) =>
+      typeof next === 'function' ? next(prev) : { ...prev, ...next },
+    {},
+  )
 
   // Redux snapshot — used as the baseline when loading a pre-existing draft.
   const savedFormData = useAppSelector(
@@ -237,7 +242,11 @@ export function ApplicationAssistant({
   )
   const formDataRef = useRef<ApplicationFormData>(formData)
 
-  const [messages, setMessages] = useState<AssistantMessage[]>([])
+  const [messages, setMessages] = useReducer(
+    (prev: AssistantMessage[], next: AssistantMessage[] | ((p: AssistantMessage[]) => AssistantMessage[])) =>
+      typeof next === 'function' ? next(prev) : next,
+    [],
+  )
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isListening, setIsListening] = useState(false)
@@ -247,14 +256,19 @@ export function ApplicationAssistant({
   const [isAssistantDraftHydrated, setIsAssistantDraftHydrated] = useState(false)
   const [noHouseholdMembers, setNoHouseholdMembers] = useState(false)
   const [noIncome, setNoIncome] = useState(false)
-  const [expandedSections, setExpandedSections] = useState<Set<FormSection>>(new Set(["personal"]))
-  const [documentsTriggered, setDocumentsTriggered] = useState(false)
+  const [expandedSections, setExpandedSections] = useReducer(
+    (prev: Set<FormSection>, next: Set<FormSection> | ((p: Set<FormSection>) => Set<FormSection>)) =>
+      typeof next === 'function' ? next(prev) : next,
+    new Set<FormSection>(["personal"]),
+  )
+  const [documentsTriggered, setDocumentsTriggered] = useReducer((_prev: boolean, next: boolean) => next, false)
 
   // "pending"    — waiting for user's yes/no on profile pre-fill
   // "confirming" — reserved for future server-assisted pre-fill continuation
   // "accepted"   — LLM responded after pre-fill; normal chat mode
   // "declined"   — user said no, or no profile exists; start fresh / normal chat mode
-  const [profileFillMode, setProfileFillMode] = useState<"pending" | "confirming" | "accepted" | "declined">("declined")
+  type ProfileFillMode = "pending" | "confirming" | "accepted" | "declined"
+  const [profileFillMode, setProfileFillMode] = useReducer((_prev: ProfileFillMode, next: ProfileFillMode) => next, "declined" as ProfileFillMode)
 
   const recognitionRef = useRef<{ stop: () => void } | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -265,7 +279,7 @@ export function ApplicationAssistant({
 
   // ── Text-to-speech ─────────────────────────────────────────────────────────
   const { speak, stop: stopSpeaking, speaking, supported: ttsSupported } = useSpeechSynthesis()
-  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null)
+  const [speakingMessageId, setSpeakingMessageId] = useReducer((_prev: string | null, next: string | null) => next, null)
 
   const handleSpeak = useCallback(
     (messageId: string, text: string) => {

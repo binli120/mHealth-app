@@ -5,7 +5,7 @@
 
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useReducer, useRef, useState } from "react"
 import { CalendarIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -91,9 +91,18 @@ export function AddressGroupField({
   personNumber,
   errorKey,
 }: AddressGroupFieldProps) {
-  const [isValidating, setIsValidating] = useState(false)
-  const [validationMessage, setValidationMessage] = useState<string | null>(null)
-  const [validationTone, setValidationTone] = useState<"success" | "warning" | "error" | null>(null)
+  type ValidationTone = "success" | "warning" | "error" | null
+  type ValidationState = { isValidating: boolean; validationMessage: string | null; validationTone: ValidationTone }
+  const [validationState, dispatchValidation] = useReducer(
+    (state: ValidationState, update: Partial<ValidationState>) => ({ ...state, ...update }),
+    { isValidating: false, validationMessage: null, validationTone: null },
+  )
+  const isValidating = validationState.isValidating
+  const validationMessage = validationState.validationMessage
+  const validationTone = validationState.validationTone
+  const setIsValidating = (v: boolean) => dispatchValidation({ isValidating: v })
+  const setValidationMessage = (v: string | null) => dispatchValidation({ validationMessage: v })
+  const setValidationTone = (v: ValidationTone) => dispatchValidation({ validationTone: v })
   const lastRequestedKeyRef = useRef("")
   const setValueRef = useRef(setValue)
 

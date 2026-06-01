@@ -5,7 +5,7 @@
 
 "use client"
 
-import { type FormEvent, useEffect, useMemo, useRef, useState } from "react"
+import { type FormEvent, useEffect, useMemo, useReducer, useRef, useState } from "react"
 import { ExternalLink, ListChecks, Loader2, LogIn, MessageCircle, RotateCcw, SendHorizontal, ShieldCheck, UserSearch, Volume2, VolumeX, X } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -218,13 +218,19 @@ export function MassHealthChatWidget() {
   )
 
   // Regular chat messages
-  const [messages, setMessages] = useState<WidgetMessage[]>([
-    createAssistantMessage(greeting, "chatGreeting"),
-  ])
+  const [messages, setMessages] = useReducer(
+    (prev: WidgetMessage[], next: WidgetMessage[] | ((p: WidgetMessage[]) => WidgetMessage[])) =>
+      typeof next === 'function' ? next(prev) : next,
+    undefined,
+    () => [createAssistantMessage(greeting, "chatGreeting")],
+  )
   // Benefit advisor messages (separate history)
-  const [advisorMessages, setAdvisorMessages] = useState<WidgetMessage[]>([
-    createAssistantMessage(advisorGreeting, "advisorGreeting"),
-  ])
+  const [advisorMessages, setAdvisorMessages] = useReducer(
+    (prev: WidgetMessage[], next: WidgetMessage[] | ((p: WidgetMessage[]) => WidgetMessage[])) =>
+      typeof next === 'function' ? next(prev) : next,
+    undefined,
+    () => [createAssistantMessage(advisorGreeting, "advisorGreeting")],
+  )
 
   const [draft, setDraft] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -232,7 +238,7 @@ export function MassHealthChatWidget() {
   const bottomAnchorRef = useAutoScroll([messages, advisorMessages, isLoading, open, view])
   const { speak, stop, speaking, supported: ttsSupported } = useSpeechSynthesis()
   // Track which message is currently being read aloud
-  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null)
+  const [speakingMessageId, setSpeakingMessageId] = useReducer((_prev: string | null, next: string | null) => next, null)
 
   const handleSpeak = (messageId: string, text: string) => {
     if (speakingMessageId === messageId) {

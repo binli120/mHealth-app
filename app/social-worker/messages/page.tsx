@@ -7,7 +7,7 @@
 
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useReducer, useState } from "react"
 import Link from "next/link"
 import { Bell, Loader2, MessageSquare, UserCheck } from "lucide-react"
 
@@ -23,9 +23,12 @@ import type { MessageThread, Tab } from "./page.types"
 
 export default function SwMessagesPage() {
   const [tab, setTab] = useState<Tab>("requests")
-  const [threads, setThreads] = useState<MessageThread[]>([])
-  const [loadingThreads, setLoadingThreads] = useState(true)
-  const [pendingCount, setPendingCount] = useState(0)
+  const [threads, setThreads] = useReducer((_prev: MessageThread[], next: MessageThread[]) => next, [] as MessageThread[])
+  const [loadingThreads, setLoadingThreads] = useReducer((_prev: boolean, next: boolean) => next, true)
+  const [pendingCount, setPendingCount] = useReducer(
+    (prev: number, next: number | ((p: number) => number)) => typeof next === 'function' ? next(prev) : next,
+    0,
+  )
 
   const fetchThreads = useCallback(async () => {
     setLoadingThreads(true)

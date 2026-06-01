@@ -5,7 +5,7 @@
 
 "use client"
 
-import { use, useCallback, useEffect, useMemo, useState } from "react"
+import { use, useCallback, useEffect, useMemo, useReducer } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -35,9 +35,27 @@ import {
 export default function StatusDetailPage({ params }: PageProps) {
   const language = useAppSelector((state) => state.app.language)
   const { id } = use(params)
-  const [record, setRecord] = useState<ApplicationDraftRecord | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  type RecordState = { record: ApplicationDraftRecord | null; isLoading: boolean; loadError: string | null }
+  type RecordAction =
+    | { type: 'loading' }
+    | { type: 'success'; record: ApplicationDraftRecord }
+    | { type: 'error'; error: string }
+    | { type: 'notfound' }
+  const [recordState, dispatchRecord] = useReducer(
+    (_state: RecordState, action: RecordAction): RecordState => {
+      switch (action.type) {
+        case 'loading': return { record: null, isLoading: true, loadError: null }
+        case 'success': return { record: action.record, isLoading: false, loadError: null }
+        case 'error': return { record: null, isLoading: false, loadError: action.error }
+        case 'notfound': return { record: null, isLoading: false, loadError: null }
+        default: return _state
+      }
+    },
+    { record: null, isLoading: true, loadError: null },
+  )
+  const record = recordState.record
+  const isLoading = recordState.isLoading
+  const loadError = recordState.loadError
 
   const statusConfig = useMemo<Record<ApplicationStatus, {
     label: string
@@ -57,8 +75,7 @@ export default function StatusDetailPage({ params }: PageProps) {
   )
 
   const loadRecord = useCallback(async () => {
-    setIsLoading(true)
-    setLoadError(null)
+    dispatchRecord({ type: 'loading' })
     try {
       const response = await authenticatedFetch(`/api/applications/${id}/draft`, {
         method: "GET",
@@ -70,12 +87,9 @@ export default function StatusDetailPage({ params }: PageProps) {
         throw new Error(payload.error || getMessage(language, "statusDetailNotFound"))
       }
 
-      setRecord(payload.record)
+      dispatchRecord({ type: 'success', record: payload.record })
     } catch (error) {
-      setLoadError(toUserFacingError(error, getMessage(language, "statusDetailNotFound")))
-      setRecord(null)
-    } finally {
-      setIsLoading(false)
+      dispatchRecord({ type: 'error', error: toUserFacingError(error, getMessage(language, "statusDetailNotFound")) })
     }
   }, [id, language])
 

@@ -63,13 +63,18 @@ function Carousel({
     },
     plugins,
   )
-  const [canScrollPrev, setCanScrollPrev] = React.useState(false)
-  const [canScrollNext, setCanScrollNext] = React.useState(false)
+  const [scrollState, dispatchScroll] = React.useReducer(
+    (_state: { canScrollPrev: boolean; canScrollNext: boolean }, api: CarouselApi) =>
+      api
+        ? { canScrollPrev: api.canScrollPrev(), canScrollNext: api.canScrollNext() }
+        : { canScrollPrev: false, canScrollNext: false },
+    { canScrollPrev: false, canScrollNext: false },
+  )
+  const canScrollPrev = scrollState.canScrollPrev
+  const canScrollNext = scrollState.canScrollNext
 
   const onSelect = React.useCallback((api: CarouselApi) => {
-    if (!api) return
-    setCanScrollPrev(api.canScrollPrev())
-    setCanScrollNext(api.canScrollNext())
+    dispatchScroll(api)
   }, [])
 
   const scrollPrev = React.useCallback(() => {

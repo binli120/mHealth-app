@@ -14,6 +14,7 @@ import {
   type FormEvent,
   useCallback,
   useEffect,
+  useReducer,
   useRef,
   useState,
 } from "react"
@@ -458,9 +459,14 @@ export function SwDirectChatPanel({
   onBack,
   showHeader = true,
 }: SwDirectChatPanelProps) {
-  const [messages, setMessages] = useState<DirectMessage[]>(initialMessages ?? [])
+  const [messages, setMessages] = useReducer(
+    (prev: DirectMessage[], next: DirectMessage[] | ((p: DirectMessage[]) => DirectMessage[])) =>
+      typeof next === 'function' ? next(prev) : next,
+    undefined,
+    () => initialMessages ?? [],
+  )
   // Only show the loading spinner when we have no cached messages to display
-  const [loading, setLoading] = useState(!initialMessages?.length)
+  const [loading, setLoading] = useReducer((_prev: boolean, next: boolean) => next, !initialMessages?.length)
   const [sending, setSending] = useState(false)
   const [draft, setDraft] = useState("")
   const [voiceLang, setVoiceLang] = useState("en-US")

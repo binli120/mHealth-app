@@ -5,7 +5,7 @@
 
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useReducer, useRef, useState } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -367,7 +367,7 @@ export function DocumentUploader({
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>("idle")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [document, setDocument] = useState<UploadedDocument | null>(null)
-  const [validationStage, setValidationStage] = useState<ValidationStage>("saving")
+  const [validationStage, setValidationStage] = useReducer((_prev: ValidationStage, next: ValidationStage) => next, "saving" as ValidationStage)
   const [isDragging, setIsDragging] = useState(false)
   const [isRemoving, setIsRemoving] = useState(false)
   const [qrDialogOpen, setQrDialogOpen] = useState(false)

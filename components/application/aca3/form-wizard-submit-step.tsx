@@ -5,7 +5,7 @@
 
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useReducer, useRef, useState } from "react"
 import { CheckCircle2, ChevronDown, FileCheck2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -55,7 +55,7 @@ export function ValidateAndSubmitStep({ onBackToReview, onGoToStep }: ValidateAn
   const [animatedRules, setAnimatedRules] = useState<AnimatedRuleResult[]>([])
   const [hasRunValidation, setHasRunValidation] = useState(false)
   const [isRunningValidation, setIsRunningValidation] = useState(false)
-  const [rulePanelOpen, setRulePanelOpen] = useState(true)
+  const [rulePanelOpen, setRulePanelOpen] = useReducer((_prev: boolean, next: boolean) => next, true)
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false)
   const [submitAcknowledged, setSubmitAcknowledged] = useState(false)
   const runTokenRef = useRef(0)

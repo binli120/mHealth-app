@@ -7,7 +7,7 @@
 
 "use client"
 
-import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react"
+import { useCallback, useEffect, useReducer, useRef, useState, type ChangeEvent, type FormEvent } from "react"
 import Link from "next/link"
 import {
   ArrowLeft,
@@ -90,9 +90,13 @@ function MessageBubble({ message, isOwn }: MessageBubbleProps) {
 export default function SwPatientConversationPage({ params }: PageParams) {
   const [patientId, setPatientId] = useState<string | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-  const [patientName, setPatientName] = useState<string | null>(null)
-  const [messages, setMessages] = useState<DirectMessage[]>([])
-  const [loading, setLoading] = useState(true)
+  const [patientName, setPatientName] = useReducer((_prev: string | null, next: string | null) => next, null)
+  const [messages, setMessages] = useReducer(
+    (prev: DirectMessage[], next: DirectMessage[] | ((p: DirectMessage[]) => DirectMessage[])) =>
+      typeof next === 'function' ? next(prev) : next,
+    [],
+  )
+  const [loading, setLoading] = useReducer((_prev: boolean, next: boolean) => next, true)
   const [sending, setSending] = useState(false)
   const [draft, setDraft] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)

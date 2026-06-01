@@ -5,7 +5,7 @@
 
 "use client"
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useMemo, useReducer, useState, type ReactNode } from "react"
 import { useAsyncData } from "@/hooks/use-async-data"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -101,7 +101,7 @@ export default function CustomerDashboardPage() {
   const [loginGreetingDate] = useState(() => new Date())
 
   // Social worker access state
-  const [socialWorkers, setSocialWorkers] = useState<Array<{
+  type SocialWorker = {
     access_id: string
     sw_user_id: string
     email: string
@@ -109,7 +109,11 @@ export default function CustomerDashboardPage() {
     last_name: string | null
     company_name: string
     granted_at: string
-  }>>([])
+  }
+  const [socialWorkers, setSocialWorkers] = useReducer(
+    (_prev: SocialWorker[], next: SocialWorker[]) => next,
+    [],
+  )
   const [swModalOpen, setSwModalOpen] = useState(false)
   const [swSearchEmail, setSwSearchEmail] = useState("")
   const [swSearchLoading, setSwSearchLoading] = useState(false)
