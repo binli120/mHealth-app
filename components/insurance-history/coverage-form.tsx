@@ -17,6 +17,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { getMessage } from "@/lib/i18n/messages"
+import type { SupportedLanguage } from "@/lib/i18n/languages"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import type { CoverageRecord } from "@/lib/insurance-history/types"
 
@@ -25,6 +27,7 @@ interface CoverageFormProps {
   existingYears: number[]
   onClose: () => void
   onSaved: () => void
+  language: SupportedLanguage
 }
 
 interface FormState {
@@ -36,7 +39,7 @@ interface FormState {
   notes: string
 }
 
-export function CoverageForm({ record, existingYears, onClose, onSaved }: CoverageFormProps) {
+export function CoverageForm({ record, existingYears, onClose, onSaved, language }: CoverageFormProps) {
   const isEditing = record !== null
   const currentYear = new Date().getFullYear()
 
@@ -62,11 +65,11 @@ export function CoverageForm({ record, existingYears, onClose, onSaved }: Covera
 
     const year = parseInt(form.coverageYear, 10)
     if (!isEditing && existingYears.includes(year)) {
-      setError(`A record for ${year} already exists. Use the edit button on that entry instead.`)
+      setError(getMessage(language, "insuranceHistoryDuplicateYear").replace("{year}", String(year)))
       return
     }
     if (!form.planName.trim()) {
-      setError("Plan name is required.")
+      setError(getMessage(language, "insuranceHistoryPlanRequired"))
       return
     }
 
@@ -93,7 +96,7 @@ export function CoverageForm({ record, existingYears, onClose, onSaved }: Covera
       })
       const payload = await res.json().catch(() => ({}))
       if (!res.ok || !payload.ok) {
-        setError(payload.error ?? "Failed to save record.")
+        setError(payload.error ?? getMessage(language, "insuranceHistoryError"))
         return
       }
       onSaved()
@@ -106,11 +109,15 @@ export function CoverageForm({ record, existingYears, onClose, onSaved }: Covera
     <Sheet open onOpenChange={(open) => { if (!open) onClose() }}>
       <SheetContent side="right" className="w-full sm:max-w-md">
         <SheetHeader>
-          <SheetTitle>{isEditing ? "Edit coverage record" : "Add past coverage"}</SheetTitle>
+          <SheetTitle>
+            {isEditing
+              ? getMessage(language, "insuranceHistoryEditDrawerTitle")
+              : getMessage(language, "insuranceHistoryAddDrawerTitle")}
+          </SheetTitle>
         </SheetHeader>
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div className="space-y-1">
-            <Label htmlFor="coverage-year">Coverage year *</Label>
+            <Label htmlFor="coverage-year">{getMessage(language, "insuranceHistoryCoverageYear")} *</Label>
             <Input
               id="coverage-year"
               type="number"
@@ -123,17 +130,17 @@ export function CoverageForm({ record, existingYears, onClose, onSaved }: Covera
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="plan-name">Plan name *</Label>
+            <Label htmlFor="plan-name">{getMessage(language, "insuranceHistoryPlanName")} *</Label>
             <Input
               id="plan-name"
-              placeholder="e.g. MassHealth CarePlus, ConnectorCare Plan 2"
+              placeholder={getMessage(language, "insuranceHistoryPlanNamePlaceholder")}
               value={form.planName}
               onChange={set("planName")}
               required
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="premium">Monthly premium ($)</Label>
+            <Label htmlFor="premium">{getMessage(language, "insuranceHistoryPremium")}</Label>
             <Input
               id="premium"
               type="number"
@@ -145,7 +152,7 @@ export function CoverageForm({ record, existingYears, onClose, onSaved }: Covera
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="household">Household size</Label>
+            <Label htmlFor="household">{getMessage(language, "insuranceHistoryHousehold")}</Label>
             <Input
               id="household"
               type="number"
@@ -156,7 +163,7 @@ export function CoverageForm({ record, existingYears, onClose, onSaved }: Covera
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="income">Annual income ($)</Label>
+            <Label htmlFor="income">{getMessage(language, "insuranceHistoryIncome")}</Label>
             <Input
               id="income"
               type="number"
@@ -167,10 +174,10 @@ export function CoverageForm({ record, existingYears, onClose, onSaved }: Covera
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="notes">Notes (optional)</Label>
+            <Label htmlFor="notes">{getMessage(language, "insuranceHistoryNotes")}</Label>
             <Input
               id="notes"
-              placeholder="Any additional details"
+              placeholder={getMessage(language, "insuranceHistoryNotesPlaceholder")}
               value={form.notes}
               onChange={set("notes")}
             />
@@ -178,10 +185,14 @@ export function CoverageForm({ record, existingYears, onClose, onSaved }: Covera
           {error && <p className="text-sm text-destructive">{error}</p>}
           <SheetFooter className="pt-2">
             <Button type="button" variant="ghost" onClick={onClose} disabled={saving}>
-              Cancel
+              {getMessage(language, "insuranceHistoryCancel")}
             </Button>
             <Button type="submit" disabled={saving}>
-              {saving ? "Saving…" : isEditing ? "Save changes" : "Add record"}
+              {saving
+                ? getMessage(language, "insuranceHistorySaving")
+                : isEditing
+                  ? getMessage(language, "insuranceHistorySave")
+                  : getMessage(language, "insuranceHistoryAddRecord")}
             </Button>
           </SheetFooter>
         </form>

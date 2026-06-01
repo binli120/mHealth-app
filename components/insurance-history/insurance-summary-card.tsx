@@ -9,20 +9,23 @@
 import Link from "next/link"
 import { History } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
+import { getMessage } from "@/lib/i18n/messages"
+import type { SupportedLanguage } from "@/lib/i18n/languages"
 import type { CoverageRecordWithExplanation } from "@/lib/insurance-history/types"
 
 interface InsuranceSummaryCardProps {
   latest: CoverageRecordWithExplanation | null
+  language?: SupportedLanguage
 }
 
-export function InsuranceSummaryCard({ latest }: InsuranceSummaryCardProps) {
+export function InsuranceSummaryCard({ latest, language = "en" }: InsuranceSummaryCardProps) {
   const description = latest
     ? latest.record.planName +
       (latest.record.coverageYear ? ` · ${latest.record.coverageYear}` : "") +
       (latest.record.premiumMonthly != null
         ? ` · $${latest.record.premiumMonthly.toFixed(0)}/mo`
         : "")
-    : "No coverage history on file yet."
+    : getMessage(language, "insuranceHistoryNoCoverage")
 
   return (
     <Link href="/customer/insurance-history" className="h-full">
@@ -32,7 +35,7 @@ export function InsuranceSummaryCard({ latest }: InsuranceSummaryCardProps) {
             <History className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <p className="font-medium text-card-foreground">Insurance History</p>
+            <p className="font-medium text-card-foreground">{getMessage(language, "insuranceHistoryTitle")}</p>
             <p className="text-sm text-muted-foreground">{description}</p>
           </div>
         </CardContent>

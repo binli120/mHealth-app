@@ -10,6 +10,8 @@ import { useState } from "react"
 import { Pencil, ChevronDown, ChevronUp, FileText, UserCheck, Bot } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { getMessage } from "@/lib/i18n/messages"
+import type { SupportedLanguage } from "@/lib/i18n/languages"
 import type { CoverageRecordWithExplanation } from "@/lib/insurance-history/types"
 
 const PROGRAM_COLORS: Record<string, string> = {
@@ -28,24 +30,30 @@ function bubbleColor(programCode: string | null): string {
   return PROGRAM_COLORS[programCode ?? ""] ?? "bg-gray-400"
 }
 
-const SOURCE_LABELS: Record<string, { label: string; icon: React.ReactNode }> = {
-  platform: { label: "From your application", icon: <FileText className="w-3 h-3" /> },
-  self_reported: { label: "You added this", icon: <UserCheck className="w-3 h-3" /> },
-  document_extracted: { label: "Extracted from document", icon: <Bot className="w-3 h-3" /> },
-}
-
 interface TimelineEntryProps {
   item: CoverageRecordWithExplanation
   isFirst: boolean
   isLast: boolean
   onEdit: (id: string) => void
+  language: SupportedLanguage
 }
 
-export function TimelineEntry({ item, isFirst, isLast, onEdit }: TimelineEntryProps) {
+export function TimelineEntry({ item, isFirst, isLast, onEdit, language }: TimelineEntryProps) {
   const [expanded, setExpanded] = useState(isFirst)
   const { record, explanation } = item
   const color = bubbleColor(record.programCode)
-  const sourceInfo = SOURCE_LABELS[record.source]
+
+  const sourceLabel = {
+    platform: getMessage(language, "insuranceHistorySourcePlatform"),
+    self_reported: getMessage(language, "insuranceHistorySelfReported"),
+    document_extracted: getMessage(language, "insuranceHistoryDocExtracted"),
+  }[record.source]
+
+  const sourceIcon = {
+    platform: <FileText className="w-3 h-3" />,
+    self_reported: <UserCheck className="w-3 h-3" />,
+    document_extracted: <Bot className="w-3 h-3" />,
+  }[record.source]
 
   return (
     <div className="flex items-start gap-4">
@@ -72,8 +80,8 @@ export function TimelineEntry({ item, isFirst, isLast, onEdit }: TimelineEntryPr
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               <Badge variant="secondary" className="text-xs flex items-center gap-1">
-                {sourceInfo.icon}
-                {sourceInfo.label}
+                {sourceIcon}
+                {sourceLabel}
               </Badge>
               {record.source !== "platform" && (
                 <Button
@@ -95,7 +103,7 @@ export function TimelineEntry({ item, isFirst, isLast, onEdit }: TimelineEntryPr
                 className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
                 onClick={() => setExpanded((v) => !v)}
               >
-                Why this plan?
+                {getMessage(language, "insuranceHistoryWhyThisPlan")}
                 {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
               </button>
               {expanded && (

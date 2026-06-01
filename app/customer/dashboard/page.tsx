@@ -526,7 +526,7 @@ export default function CustomerDashboardPage() {
             </Link>
           </DashboardWidgetTooltip>
           <div className="h-full lg:col-span-4">
-            <InsuranceSummaryCard latest={null} />
+            <InsuranceSummaryCard latest={null} language={language} />
           </div>
         </div>
 

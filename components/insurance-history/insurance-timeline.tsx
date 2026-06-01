@@ -9,6 +9,8 @@
 import { useState } from "react"
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { getMessage } from "@/lib/i18n/messages"
+import type { SupportedLanguage } from "@/lib/i18n/languages"
 import { TimelineEntry } from "./timeline-entry"
 import { CoverageForm } from "./coverage-form"
 import type { CoverageRecordWithExplanation } from "@/lib/insurance-history/types"
@@ -17,9 +19,10 @@ interface InsuranceTimelineProps {
   items: CoverageRecordWithExplanation[]
   isLoading?: boolean
   loadError?: string | null
+  language?: SupportedLanguage
 }
 
-export function InsuranceTimeline({ items, isLoading, loadError }: InsuranceTimelineProps) {
+export function InsuranceTimeline({ items, isLoading, loadError, language = "en" }: InsuranceTimelineProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [addingNew, setAddingNew] = useState(false)
 
@@ -28,10 +31,10 @@ export function InsuranceTimeline({ items, isLoading, loadError }: InsuranceTime
   return (
     <div className="space-y-0">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-lg font-semibold">Coverage Timeline</h2>
+        <h2 className="text-lg font-semibold">{getMessage(language, "insuranceHistoryTimelineTitle")}</h2>
         <Button size="sm" variant="outline" onClick={() => setAddingNew(true)}>
           <Plus className="w-4 h-4 mr-1" />
-          Add past coverage
+          {getMessage(language, "insuranceHistoryAddPast")}
         </Button>
       </div>
 
@@ -51,7 +54,7 @@ export function InsuranceTimeline({ items, isLoading, loadError }: InsuranceTime
         <p className="text-sm text-destructive py-4">{loadError}</p>
       ) : items.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground text-sm">
-          No coverage records yet. Add your first one to get started.
+          {getMessage(language, "insuranceHistoryEmpty")}
         </div>
       ) : (
         items.map((item, index) => (
@@ -61,6 +64,7 @@ export function InsuranceTimeline({ items, isLoading, loadError }: InsuranceTime
             isFirst={index === 0}
             isLast={index === items.length - 1}
             onEdit={setEditingId}
+            language={language}
           />
         ))
       )}
@@ -78,6 +82,7 @@ export function InsuranceTimeline({ items, isLoading, loadError }: InsuranceTime
             window.location.reload()
           }}
           existingYears={items.map((i) => i.record.coverageYear)}
+          language={language}
         />
       )}
     </div>

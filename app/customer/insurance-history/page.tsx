@@ -6,8 +6,13 @@
 "use client"
 
 import { useCallback } from "react"
+import Link from "next/link"
+import { ArrowLeft } from "lucide-react"
 import { useAsyncData } from "@/hooks/use-async-data"
+import { useAppSelector } from "@/lib/redux/hooks"
+import { getMessage } from "@/lib/i18n/messages"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { ShieldHeartIcon } from "@/lib/icons"
 import { InsuranceTimeline } from "@/components/insurance-history/insurance-timeline"
 import type { CoverageRecordWithExplanation } from "@/lib/insurance-history/types"
 
@@ -18,6 +23,7 @@ interface RecordsApiResponse {
 }
 
 export default function InsuranceHistoryPage() {
+  const language = useAppSelector((state) => state.app.language)
 
   const fetcher = useCallback(async () => {
     const res = await authenticatedFetch("/api/insurance-history/records-with-explanations", {
@@ -25,25 +31,48 @@ export default function InsuranceHistoryPage() {
       cache: "no-store",
     })
     const payload = (await res.json().catch(() => ({}))) as RecordsApiResponse
-    if (!res.ok || !payload.ok) throw new Error(payload.error ?? "Failed to load insurance history")
+    if (!res.ok || !payload.ok) throw new Error(payload.error ?? getMessage(language, "insuranceHistoryError"))
     return payload.records ?? []
-  }, [])
+  }, [language])
 
   const { data, isLoading, error } = useAsyncData<CoverageRecordWithExplanation[]>(fetcher)
 
   return (
-    <main className="max-w-2xl mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Insurance History</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Your coverage history and why it changed each year.
-        </p>
-      </div>
-      <InsuranceTimeline
-        items={data ?? []}
-        isLoading={isLoading}
-        loadError={error}
-      />
-    </main>
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
+          <Link
+            href="/customer/dashboard"
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span className="text-sm">{getMessage(language, "insuranceHistoryBackToDashboard")}</span>
+          </Link>
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+              <ShieldHeartIcon color="currentColor" className="h-4 w-4 text-primary-foreground" />
+            </div>
+            <span className="font-semibold text-foreground">HealthCompass MA</span>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-2xl px-4 py-8">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-foreground md:text-3xl">
+            {getMessage(language, "insuranceHistoryTitle")}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {getMessage(language, "insuranceHistorySubtitle")}
+          </p>
+        </div>
+        <InsuranceTimeline
+          items={data ?? []}
+          isLoading={isLoading}
+          loadError={error}
+          language={language}
+        />
+      </main>
+    </div>
   )
 }
