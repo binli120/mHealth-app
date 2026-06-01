@@ -5,7 +5,7 @@
 
 "use client"
 
-import { useEffect, useReducer, useRef, useState } from "react"
+import { useCallback, useEffect, useReducer, useRef, useState } from "react"
 import { CalendarIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -102,7 +102,7 @@ export function AddressGroupField({
   const validationTone = validationState.validationTone
   const setIsValidating = (v: boolean) => dispatchValidation({ isValidating: v })
   const setValidationMessage = (v: string | null) => dispatchValidation({ validationMessage: v })
-  const setValidationTone = (v: ValidationTone) => dispatchValidation({ validationTone: v })
+  const setValidationTone = useCallback((v: ValidationTone) => dispatchValidation({ validationTone: v }), [])
   const lastRequestedKeyRef = useRef("")
   const setValueRef = useRef(setValue)
 
@@ -233,6 +233,7 @@ export function AddressGroupField({
     siblingFieldIds.stateId,
     siblingFieldIds.streetId,
     siblingFieldIds.zipId,
+    setValidationTone,
     stateValue,
     streetValue,
     zipValue,

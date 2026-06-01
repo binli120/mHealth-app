@@ -94,7 +94,6 @@ export function MfaEnrollStep({ friendlyName, language = DEFAULT_LANGUAGE, onCom
       .finally(() => { if (!cancelled) setIsEnrolling(false) })
 
     return () => { cancelled = true }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [friendlyName])
 
   // ── Copy secret to clipboard ──────────────────────────────────────────────

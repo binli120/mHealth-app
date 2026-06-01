@@ -477,7 +477,9 @@ export function SwDirectChatPanel({
   const bottomRef = useAutoScroll([messages, loading])
   const { recording, durationSec, liveTranscript, start: startRecording, stop: stopRecording, cancel: cancelRecording } = useAudioRecorder(voiceLang)
   const onMessagesChangeRef = useRef(onMessagesChange)
-  onMessagesChangeRef.current = onMessagesChange
+  useEffect(() => {
+    onMessagesChangeRef.current = onMessagesChange
+  }, [onMessagesChange])
 
   // Notify parent cache after every messages change.
   // Must be a useEffect — calling parent setState inside a child setState

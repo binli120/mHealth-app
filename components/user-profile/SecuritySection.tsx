@@ -148,11 +148,6 @@ export function SecuritySection() {
 
   // ── Load on mount ──────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    void loadTotpFactors()
-    void loadPasskeys()
-  }, [])
-
   const loadTotpFactors = async () => {
     setTotpLoading(true)
     try {
@@ -176,6 +171,13 @@ export function SecuritySection() {
       setPasskeysLoading(false)
     }
   }
+
+  useEffect(() => {
+    // Load initial data — async helpers defined outside to allow reuse in event handlers
+    void (async () => {
+      await Promise.all([loadTotpFactors(), loadPasskeys()])
+    })()
+  }, [])
 
   // ── TOTP enrollment ────────────────────────────────────────────────────────
 

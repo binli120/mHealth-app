@@ -584,6 +584,8 @@ export function ApplicationAssistant({
 
   // ── Voice input ───────────────────────────────────────────────────────────
 
+  const [inputError, setInputError] = useState<string>("")
+
   const startListening = useCallback(async () => {
     type SpeechRecognitionResultList = {
       readonly length: number
@@ -981,8 +983,6 @@ export function ApplicationAssistant({
       return next
     })
   }, [])
-
-  const [inputError, setInputError] = useState<string>("")
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {

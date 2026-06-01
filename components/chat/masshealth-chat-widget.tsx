@@ -186,6 +186,8 @@ export function MassHealthChatWidget() {
   const [swChatTarget, setSwChatTarget] = useState<{ userId: string; name: string } | null>(null)
   // Per-SW message cache so switching tabs / minimizing widget doesn't lose chat state
   const swMessageCacheRef = useRef<Record<string, DirectMessage[]>>({})
+  // Snapshot of cached messages at the moment swChatTarget changes (avoids reading ref during render)
+  const [swInitialMessages, setSwInitialMessages] = useState<DirectMessage[] | undefined>(undefined)
   // AbortController for the in-flight chat fetch — cancelled on unmount or
   // when a new message is sent before the previous one completes.
   const abortRef = useRef<AbortController | null>(null)
@@ -643,6 +645,7 @@ export function MassHealthChatWidget() {
             {view === "find_sw" && (
               <SwFinderPanel
                 onOpenChat={(userId, name) => {
+                  setSwInitialMessages(swMessageCacheRef.current[userId])
                   setSwChatTarget({ userId, name })
                   setView("sw_chat")
                 }}
@@ -653,7 +656,7 @@ export function MassHealthChatWidget() {
                 swUserId={swChatTarget.userId}
                 swName={swChatTarget.name}
                 currentUserId={currentUserId}
-                initialMessages={swMessageCacheRef.current[swChatTarget.userId]}
+                initialMessages={swInitialMessages}
                 onMessagesChange={(msgs) => {
                   swMessageCacheRef.current[swChatTarget.userId] = msgs
                 }}
