@@ -8,6 +8,7 @@
 import { type FormEvent, useEffect, useMemo, useReducer, useRef, useState } from "react"
 import { ExternalLink, ListChecks, Loader2, LogIn, MessageCircle, RotateCcw, SendHorizontal, ShieldCheck, UserSearch, Volume2, VolumeX, X } from "lucide-react"
 
+import { GlossaryText } from "@/components/glossary/GlossaryText"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -150,7 +151,7 @@ function MessageBubble({
             : "bg-secondary text-secondary-foreground",
         ].join(" ")}
       >
-        {message.content}
+        {isUser ? message.content : <GlossaryText text={message.content} />}
         {!isUser && message.eligibilityResults && (
           <EligibilityResultsBadges results={message.eligibilityResults} />
         )}
