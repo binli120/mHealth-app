@@ -28,6 +28,7 @@ import {
   KNOWLEDGE_DOCUMENTS,
 } from "@/lib/masshealth/knowledge-center"
 import { ARTICLE_PREVIEW_COUNT, VIDEO_PREVIEW_COUNT } from "./page.constants"
+import { GlossaryText } from "@/components/glossary/GlossaryText"
 
 function ShowMoreButton({
   total,
@@ -218,7 +219,7 @@ export default function KnowledgeCenterPage() {
                   />
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base">{article.title}</CardTitle>
-                    <CardDescription>{article.description}</CardDescription>
+                    <CardDescription><GlossaryText text={article.description} /></CardDescription>
                   </CardHeader>
                   <CardContent className="pt-0">
                     <Button asChild size="sm" variant="outline">
@@ -260,7 +261,7 @@ export default function KnowledgeCenterPage() {
                   <CardContent className="flex items-center justify-between gap-4 p-4">
                     <div>
                       <p className="font-medium text-card-foreground">{title}</p>
-                      <p className="text-sm text-muted-foreground">{description}</p>
+                      <p className="text-sm text-muted-foreground"><GlossaryText text={description} /></p>
                     </div>
                     <Button asChild size="icon" variant="outline" aria-label={`Download ${title}`}>
                       <a href={documentUrl} target="_blank" rel="noreferrer">

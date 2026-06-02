@@ -33,6 +33,7 @@ import {
 import { useAppSelector } from "@/lib/redux/hooks"
 import { localizeEligibilityReport } from "./prescreener-results"
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher"
+import { GlossaryText } from "@/components/glossary/GlossaryText"
 
 export default function PreScreenerPage() {
   const language = useAppSelector((state) => state.app.language)
@@ -268,7 +269,7 @@ export default function PreScreenerPage() {
       {/* Disclaimer */}
       <div className="bg-amber-50 border-b border-amber-200 px-4 py-2">
         <p className="mx-auto max-w-3xl text-xs text-amber-800 text-center">
-          <strong>{copy.estimateOnlyLead}</strong> {copy.estimateOnlyBody}
+          <strong>{copy.estimateOnlyLead}</strong> <GlossaryText text={copy.estimateOnlyBody} />
         </p>
       </div>
 

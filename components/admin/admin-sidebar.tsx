@@ -25,6 +25,7 @@ import {
   Download,
   KeyRound,
   ShieldCheck,
+  BookOpen,
   type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -64,6 +65,12 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/admin/analytics", label: "Analytics", icon: BarChart2 },
       { href: "/admin/reports",   label: "Reports",   icon: Download },
+    ],
+  },
+  {
+    title: "Content",
+    items: [
+      { href: "/admin/glossary", label: "Glossary", icon: BookOpen },
     ],
   },
   {

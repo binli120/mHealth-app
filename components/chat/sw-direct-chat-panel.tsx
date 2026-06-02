@@ -33,6 +33,7 @@ import {
   UserCheck,
 } from "lucide-react"
 
+import { GlossaryText } from "@/components/glossary/GlossaryText"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -337,7 +338,9 @@ function MessageBubble({
           ].join(" ")}
         >
           {message.messageType === "text" && (
-            <p className="whitespace-pre-wrap break-words leading-snug">{message.content}</p>
+            <p className="whitespace-pre-wrap break-words leading-snug">
+              {isOwn ? message.content : <GlossaryText text={message.content ?? ""} />}
+            </p>
           )}
 
           {message.messageType === "voice" && (

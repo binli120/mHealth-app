@@ -14,6 +14,7 @@ import { PageIntro } from "@/components/shared/PageIntro"
 import type { BenefitStack } from "@/lib/benefit-orchestration/types"
 import { getMessage } from "@/lib/i18n/messages"
 import { useAppSelector } from "@/lib/redux/hooks"
+import { GlossaryText } from "@/components/glossary/GlossaryText"
 
 export default function BenefitStackPage() {
   const language = useAppSelector((state) => state.app.language)
@@ -43,7 +44,7 @@ export default function BenefitStackPage() {
             icon={<span className="text-2xl">🏛️</span>}
             iconBg="bg-blue-100"
             title={getMessage(language, "bsPageTitle")}
-            description={getMessage(language, "bsPageDesc")}
+            description={<GlossaryText text={getMessage(language, "bsPageDesc")} />}
           />
         )}
 
