@@ -10,7 +10,7 @@
 
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useReducer, useRef, useState } from "react"
 import { X, Video, Calendar, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -39,22 +39,29 @@ export function ScheduleSessionModal({ open, onClose, preselectedPatient }: Prop
   const dispatch = useAppDispatch()
 
   const [patients, setPatients] = useState<Patient[]>([])
-  const [patientsLoading, setPatientsLoading] = useState(false)
+  const [patientsLoading, setPatientsLoading] = useReducer((_prev: boolean, next: boolean) => next, false)
 
-  const [patientUserId, setPatientUserId] = useState(preselectedPatient?.userId ?? "")
-  const [scheduledAt, setScheduledAt] = useState("")
-  const [inviteMessage, setInviteMessage] = useState("")
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  type FormState = { patientUserId: string; scheduledAt: string; inviteMessage: string; submitting: boolean }
+  const [formState, dispatchForm] = useReducer(
+    (state: FormState, update: Partial<FormState>) => ({ ...state, ...update }),
+    { patientUserId: preselectedPatient?.userId ?? "", scheduledAt: "", inviteMessage: "", submitting: false },
+  )
+  const patientUserId = formState.patientUserId
+  const scheduledAt = formState.scheduledAt
+  const inviteMessage = formState.inviteMessage
+  const submitting = formState.submitting
+  const setPatientUserId = (v: string) => dispatchForm({ patientUserId: v })
+  const setScheduledAt = (v: string) => dispatchForm({ scheduledAt: v })
+  const setInviteMessage = (v: string) => dispatchForm({ inviteMessage: v })
+  const setSubmitting = (v: boolean) => dispatchForm({ submitting: v })
+  const [error, setError] = useReducer((_prev: string | null, next: string | null) => next, null)
 
   const firstInputRef = useRef<HTMLSelectElement>(null)
 
   // Reset form when modal opens
   useEffect(() => {
     if (!open) return
-    setPatientUserId(preselectedPatient?.userId ?? "")
-    setScheduledAt("")
-    setInviteMessage("")
+    dispatchForm({ patientUserId: preselectedPatient?.userId ?? "", scheduledAt: "", inviteMessage: "" })
     setError(null)
     setPatientsLoading(true)
 

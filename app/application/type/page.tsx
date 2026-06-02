@@ -198,7 +198,7 @@ export default function ApplicationTypePage() {
       {/* Header */}
       <header className="border-b border-border bg-card px-4 py-4">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
+          <Link href="/customer/dashboard" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
             <span className="text-sm">{copy.backToHome}</span>
           </Link>

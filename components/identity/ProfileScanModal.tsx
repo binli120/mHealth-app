@@ -19,7 +19,7 @@
 
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useReducer, useRef, useState } from "react"
 import { BarcodeFormat, DecodeHintType, NotFoundException } from "@zxing/library"
 import { BrowserMultiFormatReader } from "@zxing/browser"
 import {
@@ -95,12 +95,12 @@ export function ProfileScanModal({ open, onClose, onApply }: ProfileScanModalPro
   const [mode, setMode] = useState<ScanMode>("camera")
 
   // Camera state
-  const [cameraState, setCameraState] = useState<CameraState>("scanning")
+  const [cameraState, setCameraState] = useReducer((_prev: CameraState, next: CameraState) => next, "scanning" as CameraState)
   const [barcodeFlash, setBarcodeFlash] = useState(false)
-  const [cameraError, setCameraError] = useState<string | null>(null)
-  const [parsedFields, setParsedFields] = useState<ScannedProfileFields | null>(null)
-  const [pendingRaw, setPendingRaw] = useState<string | null>(null)
-  const [parseError, setParseError] = useState<string | null>(null)
+  const [cameraError, setCameraError] = useReducer((_prev: string | null, next: string | null) => next, null)
+  const [parsedFields, setParsedFields] = useReducer((_prev: ScannedProfileFields | null, next: ScannedProfileFields | null) => next, null)
+  const [pendingRaw, setPendingRaw] = useReducer((_prev: string | null, next: string | null) => next, null)
+  const [parseError, setParseError] = useReducer((_prev: string | null, next: string | null) => next, null)
 
   // Phone state
   const [phoneState, setPhoneState] = useState<PhoneState>("idle")

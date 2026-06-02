@@ -7,7 +7,7 @@
  * @email: blee@healthcompass.cloud
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useReducer } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -27,24 +27,36 @@ export default function SWPatientDashboardPage() {
   const params = useParams()
   const patientId = params.patientId as string
 
-  const [applications, setApplications] = useState<ApplicationRecord[]>([])
-  const [patient, setPatient] = useState<PatientInfo | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  type DataState = { applications: ApplicationRecord[]; patient: PatientInfo | null; loading: boolean; error: string | null }
+  type DataAction =
+    | { type: 'loading' }
+    | { type: 'success'; applications: ApplicationRecord[]; patient: PatientInfo | null }
+    | { type: 'error'; error: string }
+  const [dataState, dispatchData] = useReducer(
+    (_state: DataState, action: DataAction): DataState => {
+      switch (action.type) {
+        case 'loading': return { applications: [], patient: null, loading: true, error: null }
+        case 'success': return { applications: action.applications, patient: action.patient, loading: false, error: null }
+        case 'error': return { applications: [], patient: null, loading: false, error: action.error }
+        default: return _state
+      }
+    },
+    { applications: [], patient: null, loading: true, error: null },
+  )
+  const applications = dataState.applications
+  const patient = dataState.patient
+  const loading = dataState.loading
+  const error = dataState.error
 
   const loadData = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+    dispatchData({ type: 'loading' })
     try {
       const res = await authenticatedFetch(`/api/social-worker/patients/${patientId}/dashboard`)
       const data = await res.json()
-      if (!data.ok) { setError(toUserFacingError(data.error, "Access denied.")); return }
-      setApplications(data.records ?? [])
-      setPatient(data.patient ?? null)
+      if (!data.ok) { dispatchData({ type: 'error', error: toUserFacingError(data.error, "Access denied.") }); return }
+      dispatchData({ type: 'success', applications: data.records ?? [], patient: data.patient ?? null })
     } catch (error) {
-      setError(toUserFacingError(error, "Failed to load patient data."))
-    } finally {
-      setLoading(false)
+      dispatchData({ type: 'error', error: toUserFacingError(error, "Failed to load patient data.") })
     }
   }, [patientId])
 

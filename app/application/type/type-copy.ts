@@ -46,7 +46,7 @@ interface TypePageCopy {
 
 const COPY: Record<SupportedLanguage, TypePageCopy> = {
   en: {
-    backToHome: "Back to Home",
+    backToHome: "Back to Dashboard",
     pageTitle: "Choose Your MassHealth Application",
     pageSubtitle: "Select the exact form you need to complete",
     eligible: "Eligible",
@@ -115,7 +115,7 @@ const COPY: Record<SupportedLanguage, TypePageCopy> = {
   },
 
   "zh-CN": {
-    backToHome: "返回主页",
+    backToHome: "返回仪表板",
     pageTitle: "选择您的 MassHealth 申请",
     pageSubtitle: "选择您需要填写的具体表格",
     eligible: "符合条件",
@@ -183,7 +183,7 @@ const COPY: Record<SupportedLanguage, TypePageCopy> = {
   },
 
   ht: {
-    backToHome: "Retounen nan Paj Prensipal",
+    backToHome: "Retounen nan Tablo de Bò",
     pageTitle: "Chwazi Aplikasyon MassHealth Ou",
     pageSubtitle: "Chwazi fòm egzak ou bezwen ranpli",
     eligible: "Elijib",
@@ -252,7 +252,7 @@ const COPY: Record<SupportedLanguage, TypePageCopy> = {
   },
 
   "pt-BR": {
-    backToHome: "Voltar ao Início",
+    backToHome: "Voltar ao Painel",
     pageTitle: "Escolha Seu Pedido MassHealth",
     pageSubtitle: "Selecione o formulário exato que você precisa preencher",
     eligible: "Elegível",
@@ -320,7 +320,7 @@ const COPY: Record<SupportedLanguage, TypePageCopy> = {
   },
 
   es: {
-    backToHome: "Volver al Inicio",
+    backToHome: "Volver al Panel",
     pageTitle: "Elija Su Solicitud de MassHealth",
     pageSubtitle: "Seleccione el formulario exacto que necesita completar",
     eligible: "Elegible",
@@ -389,7 +389,7 @@ const COPY: Record<SupportedLanguage, TypePageCopy> = {
   },
 
   vi: {
-    backToHome: "Về Trang Chủ",
+    backToHome: "Quay lại Bảng điều khiển",
     pageTitle: "Chọn Đơn MassHealth Của Bạn",
     pageSubtitle: "Chọn mẫu đơn chính xác bạn cần điền",
     eligible: "Đủ điều kiện",

@@ -9,7 +9,7 @@
 
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useReducer, useState } from "react"
 import { ShieldCheck, Copy, Check, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -41,10 +41,17 @@ export function MfaEnrollStep({ friendlyName, language = DEFAULT_LANGUAGE, onCom
 
   const [enrollData, setEnrollData] = useState<EnrolData | null>(null)
   /** API-provided error message from Supabase, or empty. */
-  const [enrollApiError, setEnrollApiError] = useState("")
-  /** True when enrolment failed without a specific API message. */
-  const [enrollGenericError, setEnrollGenericError] = useState(false)
-  const [isEnrolling, setIsEnrolling] = useState(true)
+  type EnrollState = { enrollApiError: string; enrollGenericError: boolean; isEnrolling: boolean }
+  const [enrollState, dispatchEnroll] = useReducer(
+    (state: EnrollState, update: Partial<EnrollState>) => ({ ...state, ...update }),
+    { enrollApiError: "", enrollGenericError: false, isEnrolling: true },
+  )
+  const enrollApiError = enrollState.enrollApiError
+  const enrollGenericError = enrollState.enrollGenericError
+  const isEnrolling = enrollState.isEnrolling
+  const setEnrollApiError = (v: string) => dispatchEnroll({ enrollApiError: v })
+  const setEnrollGenericError = (v: boolean) => dispatchEnroll({ enrollGenericError: v })
+  const setIsEnrolling = (v: boolean) => dispatchEnroll({ isEnrolling: v })
 
   const [code, setCode] = useState("")
   const [isVerifying, setIsVerifying] = useState(false)
@@ -87,7 +94,6 @@ export function MfaEnrollStep({ friendlyName, language = DEFAULT_LANGUAGE, onCom
       .finally(() => { if (!cancelled) setIsEnrolling(false) })
 
     return () => { cancelled = true }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [friendlyName])
 
   // ── Copy secret to clipboard ──────────────────────────────────────────────

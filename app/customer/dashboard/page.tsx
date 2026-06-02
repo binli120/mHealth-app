@@ -5,7 +5,7 @@
 
 "use client"
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useMemo, useReducer, useState, type ReactNode } from "react"
 import { useAsyncData } from "@/hooks/use-async-data"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -69,6 +69,7 @@ import { STATUS_META } from "./page.constants"
 import { buildDashboardGreeting, getApplicationTypeLabel } from "./page.utils"
 import { DashboardTour } from "./dashboard-tour"
 import { UploadToApplicationDialog } from "@/components/dashboard/UploadToApplicationDialog"
+import { InsuranceSummaryCard } from "@/components/insurance-history/insurance-summary-card"
 
 interface DashboardWidgetTooltipProps {
   children: ReactNode
@@ -100,7 +101,7 @@ export default function CustomerDashboardPage() {
   const [loginGreetingDate] = useState(() => new Date())
 
   // Social worker access state
-  const [socialWorkers, setSocialWorkers] = useState<Array<{
+  type SocialWorker = {
     access_id: string
     sw_user_id: string
     email: string
@@ -108,7 +109,11 @@ export default function CustomerDashboardPage() {
     last_name: string | null
     company_name: string
     granted_at: string
-  }>>([])
+  }
+  const [socialWorkers, setSocialWorkers] = useReducer(
+    (_prev: SocialWorker[], next: SocialWorker[]) => next,
+    [],
+  )
   const [swModalOpen, setSwModalOpen] = useState(false)
   const [swSearchEmail, setSwSearchEmail] = useState("")
   const [swSearchLoading, setSwSearchLoading] = useState(false)
@@ -520,6 +525,9 @@ export default function CustomerDashboardPage() {
               </Card>
             </Link>
           </DashboardWidgetTooltip>
+          <div className="h-full lg:col-span-4">
+            <InsuranceSummaryCard latest={null} language={language} />
+          </div>
         </div>
 
         <div className="grid gap-8 lg:grid-cols-3">

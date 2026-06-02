@@ -5,7 +5,7 @@
 
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useReducer, useRef, useState } from "react"
 import { toast } from "sonner"
 import { Camera, Trash2, ScanLine, CheckCircle2, ShieldCheck, ShieldAlert, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -112,7 +112,7 @@ export function PersonalSection({ profile, onSaved }: Props) {
   // returned by the server has been preloaded into the browser cache (so switching
   // from blob: → https: is seamless — Radix Avatar sees image.complete === true
   // and never shows the initials fallback during the transition).
-  const [previewAvatarUrl, setPreviewAvatarUrl] = useState<string | null>(null)
+  const [previewAvatarUrl, setPreviewAvatarUrl] = useReducer((_prev: string | null, next: string | null) => next, null)
 
   // When profile.avatarUrl is updated with a freshly-signed https:// URL (after a
   // successful upload), revoke the now-obsolete blob: preview.

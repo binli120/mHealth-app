@@ -23,7 +23,7 @@
 
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useReducer, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
@@ -105,7 +105,7 @@ export function SessionRoom({ sessionId, role, backHref }: Props) {
   const [loading,    setLoading]    = useState(true)
   const [loadError,  setLoadError]  = useState<string | null>(null)
   const [actionBusy, setActionBusy] = useState(false)
-  const [elapsed,    setElapsed]    = useState("")
+  const [elapsed,    setElapsed]    = useReducer((_prev: string, next: string) => next, "")
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isActive       = activeSession?.status === "active"

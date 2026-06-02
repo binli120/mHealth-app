@@ -5,7 +5,7 @@
 
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useReducer, useRef } from "react"
 
 export interface NormalizedAddress {
   streetAddress: string
@@ -54,10 +54,19 @@ export function useAddressValidation(
   const onValidatedRef = useRef(options?.onValidated)
   useEffect(() => { onValidatedRef.current = options?.onValidated }, [options?.onValidated])
 
-  const [isValidating, setIsValidating] = useState(false)
-  const [validatedKey, setValidatedKey] = useState("")
-  const [errors, setErrors] = useState<AddressValidationErrors>({})
-  const [suggestion, setSuggestion] = useState<NormalizedAddress | undefined>()
+  type ValidationState = { isValidating: boolean; validatedKey: string; errors: AddressValidationErrors; suggestion: NormalizedAddress | undefined }
+  const [validationState, dispatchValidation] = useReducer(
+    (state: ValidationState, update: Partial<ValidationState>) => ({ ...state, ...update }),
+    { isValidating: false, validatedKey: "", errors: {}, suggestion: undefined },
+  )
+  const isValidating = validationState.isValidating
+  const validatedKey = validationState.validatedKey
+  const errors = validationState.errors
+  const suggestion = validationState.suggestion
+  const setIsValidating = (v: boolean) => dispatchValidation({ isValidating: v })
+  const setValidatedKey = (v: string) => dispatchValidation({ validatedKey: v })
+  const setErrors = (v: AddressValidationErrors) => dispatchValidation({ errors: v })
+  const setSuggestion = (v: NormalizedAddress | undefined) => dispatchValidation({ suggestion: v })
 
   const line1 = address.line1.trim()
   const city = address.city.trim()

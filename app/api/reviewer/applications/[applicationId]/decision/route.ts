@@ -8,6 +8,8 @@ import { NextResponse } from "next/server"
 import { requireReviewer } from "@/lib/auth/require-reviewer"
 import { getDbPool } from "@/lib/db/server"
 import { logServerError } from "@/lib/server/logger"
+import { autoPopulateCoverageRecord } from "@/lib/db/insurance-history"
+import { getIncomeAsFPLPercent } from "@/lib/eligibility-engine"
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -130,6 +132,60 @@ export async function POST(request: Request, context: RouteContext) {
     )
 
     await client.query("COMMIT")
+
+    // Fire-and-forget: populate insurance coverage record on approval
+    if (decision === "approved") {
+      pool
+        .query<{
+          applicant_user_id: string
+          household_size: number | null
+          total_monthly_income: number | null
+          estimated_program: string | null
+        }>(
+          `
+            SELECT
+              ap.user_id AS applicant_user_id,
+              a.household_size,
+              a.total_monthly_income,
+              es.estimated_program
+            FROM public.applications a
+            LEFT JOIN public.applicants ap ON ap.id = a.applicant_id
+            LEFT JOIN LATERAL (
+              SELECT estimated_program
+              FROM public.eligibility_screenings
+              WHERE application_id = a.id
+              ORDER BY created_at DESC
+              LIMIT 1
+            ) es ON true
+            WHERE a.id = $1::uuid
+          `,
+          [applicationId],
+        )
+        .then((res) => {
+          const row = res.rows[0]
+          if (!row?.applicant_user_id) return
+          const annualIncome = row.total_monthly_income != null ? row.total_monthly_income * 12 : null
+          const householdSize = row.household_size ?? null
+          const programRaw = row.estimated_program ?? program ?? "Unknown"
+          const programCode = programRaw.toLowerCase().replace(/\s+/g, "_")
+          return autoPopulateCoverageRecord({
+            userId: row.applicant_user_id,
+            coverageYear: new Date().getFullYear(),
+            planName: programRaw,
+            programCode,
+            householdSize,
+            annualIncome,
+            fplPercent:
+              annualIncome != null && householdSize != null
+                ? getIncomeAsFPLPercent(annualIncome, householdSize)
+                : null,
+            applicationId,
+          })
+        })
+        .catch((err) => {
+          console.error("[autoPopulateCoverageRecord]", err)
+        })
+    }
 
     return NextResponse.json({ ok: true, application: updatedResult.rows[0] })
   } catch (error) {

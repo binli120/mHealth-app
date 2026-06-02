@@ -5,7 +5,7 @@
 
 "use client"
 
-import { Suspense, useEffect, useMemo, useState } from "react"
+import { Suspense, useEffect, useMemo, useReducer, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ApplicationAssistant } from "@/components/application/aca3/application-assistant"
 import { FormWizard } from "@/components/application/aca3/form-wizard"
@@ -97,12 +97,20 @@ function NewApplicationPageContent() {
     () => resolveEntryMode({ requestedMode, prefillKey, applicationId: queryApplicationId }),
     [requestedMode, prefillKey, queryApplicationId],
   )
-  const [entryMode, setEntryMode] = useState<ApplicationEntryMode>(urlEntryMode)
-  const [hasOpenedChat, setHasOpenedChat] = useState(urlEntryMode === "chat")
+  type EntryState = { entryMode: ApplicationEntryMode; hasOpenedChat: boolean }
+  const [entryState, dispatchEntry] = useReducer(
+    (state: EntryState, mode: ApplicationEntryMode): EntryState => ({
+      entryMode: mode,
+      hasOpenedChat: state.hasOpenedChat || mode === "chat",
+    }),
+    { entryMode: urlEntryMode, hasOpenedChat: urlEntryMode === "chat" },
+  )
+  const entryMode = entryState.entryMode
+  const hasOpenedChat = entryState.hasOpenedChat
+  const setEntryMode = (mode: ApplicationEntryMode) => dispatchEntry(mode)
 
   useEffect(() => {
-    if (urlEntryMode === "chat") setHasOpenedChat(true)
-    setEntryMode(urlEntryMode)
+    dispatchEntry(urlEntryMode)
   }, [urlEntryMode])
 
   const savedApplicationType = useAppSelector((state) => {
@@ -120,9 +128,7 @@ function NewApplicationPageContent() {
       <Tabs
         value={entryMode}
         onValueChange={(value) => {
-          const nextMode = value as ApplicationEntryMode
-          if (nextMode === "chat") setHasOpenedChat(true)
-          setEntryMode(nextMode)
+          setEntryMode(value as ApplicationEntryMode)
         }}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">

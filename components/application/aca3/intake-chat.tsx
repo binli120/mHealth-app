@@ -5,7 +5,7 @@
 
 "use client"
 
-import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { type FormEvent, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react"
 import {
   type IntakeChatCopy,
   IntakeChatPanel,
@@ -348,16 +348,41 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
     }
   }
 
-  const [wizardData, setWizardData] = useState<WizardData>(() => createInitialIntakeData())
-  const [answeredQuestionIds, setAnsweredQuestionIds] = useState<Set<string>>(() => new Set())
-  const [skippedQuestionIds, setSkippedQuestionIds] = useState<Set<string>>(() => new Set())
-  const [intakeStarted, setIntakeStarted] = useState(false)
-  const [hydrationPending, setHydrationPending] = useState(true)
+  type IntakeState = { wizardData: WizardData; answeredQuestionIds: Set<string>; skippedQuestionIds: Set<string>; intakeStarted: boolean }
+  type IntakeAction =
+    | { type: 'setWizardData'; wizardData: WizardData }
+    | { type: 'setAnsweredQuestionIds'; answeredQuestionIds: Set<string> }
+    | { type: 'setSkippedQuestionIds'; skippedQuestionIds: Set<string> }
+    | { type: 'setIntakeStarted'; intakeStarted: boolean }
+    | { type: 'restore'; wizardData: WizardData; answeredQuestionIds: Set<string>; skippedQuestionIds: Set<string> }
+  const [intakeState, dispatchIntake] = useReducer(
+    (state: IntakeState, action: IntakeAction): IntakeState => {
+      switch (action.type) {
+        case 'setWizardData': return { ...state, wizardData: action.wizardData }
+        case 'setAnsweredQuestionIds': return { ...state, answeredQuestionIds: action.answeredQuestionIds }
+        case 'setSkippedQuestionIds': return { ...state, skippedQuestionIds: action.skippedQuestionIds }
+        case 'setIntakeStarted': return { ...state, intakeStarted: action.intakeStarted }
+        case 'restore': return { ...state, wizardData: action.wizardData, answeredQuestionIds: action.answeredQuestionIds, skippedQuestionIds: action.skippedQuestionIds, intakeStarted: true }
+        default: return state
+      }
+    },
+    undefined,
+    () => ({ wizardData: createInitialIntakeData(), answeredQuestionIds: new Set<string>(), skippedQuestionIds: new Set<string>(), intakeStarted: false }),
+  )
+  const wizardData = intakeState.wizardData
+  const answeredQuestionIds = intakeState.answeredQuestionIds
+  const skippedQuestionIds = intakeState.skippedQuestionIds
+  const intakeStarted = intakeState.intakeStarted
+  const setWizardData = (v: WizardData) => dispatchIntake({ type: 'setWizardData', wizardData: v })
+  const setAnsweredQuestionIds = (v: Set<string>) => dispatchIntake({ type: 'setAnsweredQuestionIds', answeredQuestionIds: v })
+  const setSkippedQuestionIds = (v: Set<string>) => dispatchIntake({ type: 'setSkippedQuestionIds', skippedQuestionIds: v })
+  const setIntakeStarted = (v: boolean) => dispatchIntake({ type: 'setIntakeStarted', intakeStarted: v })
+  const [hydrationPending, setHydrationPending] = useReducer((_prev: boolean, next: boolean) => next, true)
   // "pending"  — waiting for user's yes/no on profile pre-fill
   // "accepted" — profile applied; normal intake continues
   // "declined" — user declined or no profile; normal intake flow
   const [profilePrefillMode, setProfilePrefillMode] = useState<"pending" | "accepted" | "declined">("declined")
-  const [currentQuestionId, setCurrentQuestionId] = useState<string | null>(null)
+  const [currentQuestionId, setCurrentQuestionId] = useReducer((_prev: string | null, next: string | null) => next, null)
   const [messages, setMessages] = useState<IntakeMessage[]>([])
   const [draft, setDraft] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -391,10 +416,7 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
       restoredQuestions, restoredAnswered, restored, persistedSkipped,
     )
 
-    setWizardData(restored)
-    setAnsweredQuestionIds(restoredAnswered)
-    setSkippedQuestionIds(restoredSkipped)
-    setIntakeStarted(true)
+    dispatchIntake({ type: 'restore', wizardData: restored, answeredQuestionIds: restoredAnswered, skippedQuestionIds: restoredSkipped })
     const nextQ = findNextPendingQuestion(restoredQuestions, restoredAnswered, restored, restoredSkipped)
     setCurrentQuestionId(nextQ?.id ?? null)
     return true

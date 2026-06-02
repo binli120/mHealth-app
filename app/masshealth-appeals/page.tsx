@@ -5,7 +5,7 @@
 
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useReducer } from "react"
 import { useRouter } from "next/navigation"
 import {
   Scale,
@@ -101,7 +101,8 @@ export default function MassHealthAppealsPage() {
   // Step 1 — research form
   const [categories, setCategories] = useState<AppealCategoryEntry[]>([])
   const [categoriesDegradedMessage, setCategoriesDegradedMessage] = useState<string | null>(null)
-  const [denialText, setDenialText] = useState("")
+  const [denialText, dispatchDenialText] = useReducer((_prev: string, next: string) => next, "")
+  const setDenialText = dispatchDenialText
   const [selectedCategory, setSelectedCategory] = useState<string>("")
   const {
     state: documentState,
@@ -196,7 +197,7 @@ export default function MassHealthAppealsPage() {
 
     const extractedText = documentState.extractedText.trim()
     if (extractedText) setDenialText(extractedText)
-  }, [documentState])
+  }, [documentState, setDenialText])
 
   // Load categories on mount, falling back to deterministic built-in categories.
   useEffect(() => {
@@ -416,12 +417,9 @@ export default function MassHealthAppealsPage() {
     setDenialLetterError(null)
   }
 
-  const resolvedDraftText = useMemo(
-    () => draftResult
-      ? fillAppealDraftPlaceholders(draftResult.letter_text, { applicantName, contactInformation })
-      : "",
-    [draftResult, applicantName, contactInformation],
-  )
+  const resolvedDraftText = draftResult
+    ? fillAppealDraftPlaceholders(draftResult.letter_text, { applicantName, contactInformation })
+    : ""
 
   // ── Render ───────────────────────────────────────────────────────────────
 

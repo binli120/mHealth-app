@@ -5,7 +5,7 @@
 
 "use client"
 
-import { Suspense, useEffect, useMemo, useState } from "react"
+import { Suspense, useMemo, useState } from "react"
 import { startAuthentication } from "@simplewebauthn/browser"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -65,8 +65,8 @@ function LoginPageContent() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isPasskeyLoading, setIsPasskeyLoading] = useState(false)
-  const [email, setEmail] = useState("")
-  const [shouldRememberEmail, setShouldRememberEmail] = useState(false)
+  const [email, setEmail] = useState(() => getRememberedEmail())
+  const [shouldRememberEmail, setShouldRememberEmail] = useState(() => Boolean(getRememberedEmail()))
   const [password, setPassword] = useState("")
   const [errorMessage, setErrorMessage] = useState("")
   const nextPath = useMemo(
@@ -80,13 +80,6 @@ function LoginPageContent() {
   const isContinuationSignIn = searchParams.has("next")
   const showPasskeyButton = normalizeAuthEmail(email).length > 0
 
-  useEffect(() => {
-    const rememberedEmail = getRememberedEmail()
-    if (!rememberedEmail) return
-
-    setEmail(rememberedEmail)
-    setShouldRememberEmail(true)
-  }, [])
 
   const handleRememberEmailChange = (checked: boolean | "indeterminate") => {
     const nextShouldRememberEmail = checked === true

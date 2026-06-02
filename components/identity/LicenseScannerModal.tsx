@@ -14,7 +14,7 @@
 
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useReducer, useRef, useState } from "react"
 import { DecodeHintType, NotFoundException } from "@zxing/library"
 import { BrowserPDF417Reader } from "@zxing/browser"
 import {
@@ -103,9 +103,9 @@ export function LicenseScannerModal() {
   const { scannerOpen, loading, error } = useAppSelector((s) => s.identityVerification)
 
   const [mode, setMode] = useState<ScanMode>("phone")
-  const [scanState, setScanState] = useState<ScanState>("idle")
+  const [scanState, setScanState] = useReducer((_prev: ScanState, next: ScanState) => next, "idle" as ScanState)
   const [apiResult, setApiResult] = useState<VerifyApiResponse | null>(null)
-  const [cameraError, setCameraError] = useState<string | null>(null)
+  const [cameraError, setCameraError] = useReducer((_prev: string | null, next: string | null) => next, null)
   // Brief "✓ Barcode detected!" flash before the API call starts
   const [barcodeFlash, setBarcodeFlash] = useState(false)
 
