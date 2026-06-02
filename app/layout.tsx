@@ -11,6 +11,7 @@ import { GrowthScripts } from '@/components/analytics/growth-scripts'
 import { ConditionalChatWidget } from '@/components/chat/conditional-chat-widget'
 import { ReduxProvider } from '@/components/providers/redux-provider'
 import { ThemeProvider } from '@/components/theme-provider'
+import { GlossaryProvider } from '@/lib/glossary/GlossaryContext'
 import './globals.css'
 
 function getMetadataBase() {
@@ -109,7 +110,9 @@ export default async function RootLayout({
       <body className="font-sans antialiased" suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange nonce={nonce}>
           <ReduxProvider>
-            {children}
+            <GlossaryProvider>
+              {children}
+            </GlossaryProvider>
             <ConditionalChatWidget />
             <Suspense fallback={null}>
               <GrowthProvider />
