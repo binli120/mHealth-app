@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
 import { useHydratedLanguage } from "@/lib/i18n/useHydratedLanguage"
@@ -27,16 +27,14 @@ export function GlossaryPopover({ slug, term_en, children }: GlossaryPopoverProp
   const [detail, setDetail] = useState<TermDetail | null>(null)
   const [loading, setLoading] = useState(false)
   const lang = useHydratedLanguage() as SupportedGlossaryLang
-  const fetchedRef = useRef(false)
 
   useEffect(() => {
-    if (!open || fetchedRef.current) return
+    if (!open) return
     const key = `${slug}:${lang}`
     if (cache.has(key)) {
       setDetail(cache.get(key)!)
       return
     }
-    fetchedRef.current = true
     setLoading(true)
     fetch(`/api/glossary/${slug}?lang=${encodeURIComponent(lang)}`)
       .then((r) => r.json())
