@@ -88,20 +88,17 @@ export default function AdminGlossaryPage() {
 
   // ── Fetch ────────────────────────────────────────────────────────────────
 
-  const fetchTerms = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await authenticatedFetch("/api/admin/glossary")
-      const data = await res.json() as { ok: boolean; terms?: GlossaryTerm[] }
-      if (data.ok && data.terms) setTerms(data.terms)
-    } catch {
-      // silently ignore
-    } finally {
-      setLoading(false)
-    }
+  const fetchTerms = useCallback(() => {
+    authenticatedFetch("/api/admin/glossary")
+      .then((res) => res.json())
+      .then((data: { ok: boolean; terms?: GlossaryTerm[] }) => {
+        if (data.ok && data.terms) setTerms(data.terms)
+      })
+      .catch(() => null)
+      .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => { void fetchTerms() }, [fetchTerms])
+  useEffect(() => { fetchTerms() }, [fetchTerms])
 
   // ── Filtered list ────────────────────────────────────────────────────────
 

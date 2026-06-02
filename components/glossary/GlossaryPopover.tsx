@@ -24,26 +24,32 @@ const cache = new Map<string, TermDetail>()
 
 export function GlossaryPopover({ slug, term_en, children }: GlossaryPopoverProps) {
   const [open, setOpen] = useState(false)
-  const [detail, setDetail] = useState<TermDetail | null>(null)
+  const [fetchedDetail, setFetchedDetail] = useState<TermDetail | null>(null)
   const [loading, setLoading] = useState(false)
   const lang = useHydratedLanguage() as SupportedGlossaryLang
+
+  // Read from cache synchronously at render time — no setState needed in effect
+  const detail = cache.get(`${slug}:${lang}`) ?? fetchedDetail
 
   useEffect(() => {
     if (!open) return
     const key = `${slug}:${lang}`
-    if (cache.has(key)) {
-      setDetail(cache.get(key)!)
-      return
-    }
-    setLoading(true)
-    fetch(`/api/glossary/${slug}?lang=${encodeURIComponent(lang)}`)
-      .then((r) => r.json())
-      .then((data: TermDetail) => {
+    if (cache.has(key)) return  // already in cache, detail derived above
+
+    async function load() {
+      setLoading(true)
+      try {
+        const res = await fetch(`/api/glossary/${slug}?lang=${encodeURIComponent(lang)}`)
+        const data = (await res.json()) as TermDetail
         cache.set(key, data)
-        setDetail(data)
-      })
-      .catch(() => null)
-      .finally(() => setLoading(false))
+        setFetchedDetail(data)
+      } catch {
+        // detail stays null — "Definition unavailable" fallback shown
+      } finally {
+        setLoading(false)
+      }
+    }
+    void load()
   }, [open, slug, lang])
 
   return (
