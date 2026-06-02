@@ -389,6 +389,7 @@ describe("getApplicationTypeLabel (status detail)", () => {
   it("works with all known type ids", () => {
     const knownTypes = [
       { id: "aca3", label: "ACA-3" },
+      { id: "hsn", label: "HSN" },
       { id: "aca3ap", label: "ACA-3-AP" },
       { id: "saca2", label: "SACA-2" },
       { id: "msp", label: "MSP" },

@@ -38,6 +38,7 @@ interface TypePageCopy {
   }
   appTypes: {
     aca3: { title: string; description: string }
+    hsn: { title: string; description: string }
     aca3ap: { title: string; description: string }
     saca2: { title: string; description: string }
     msp: { title: string; description: string }
@@ -98,6 +99,10 @@ const COPY: Record<SupportedLanguage, TypePageCopy> = {
       aca3: {
         title: "Massachusetts Application for Health and Dental Coverage and Help Paying Costs",
         description: "Standard application for most individuals and families.",
+      },
+      hsn: {
+        title: "Health Safety Net Application",
+        description: "Starts the ACA-3 online path for a Health Safety Net Low Income Patient determination.",
       },
       aca3ap: {
         title: "Massachusetts Application for Health and Dental Coverage and Help Paying Costs - Additional Persons",
@@ -166,6 +171,10 @@ const COPY: Record<SupportedLanguage, TypePageCopy> = {
       aca3: {
         title: "马萨诸塞州健康和牙科保险及费用援助申请",
         description: "适用于大多数个人和家庭的标准申请。",
+      },
+      hsn: {
+        title: "Health Safety Net 申请",
+        description: "通过 ACA-3 在线路径申请 Health Safety Net 低收入患者资格认定。",
       },
       aca3ap: {
         title: "马萨诸塞州健康和牙科保险及费用援助申请 - 附加人员",
@@ -236,6 +245,10 @@ const COPY: Record<SupportedLanguage, TypePageCopy> = {
         title: "Aplikasyon Massachusetts pou Kouvèti Sante ak Dantè ak Èd pou Peye Depans",
         description: "Aplikasyon estanda pou pifò moun ak fanmi.",
       },
+      hsn: {
+        title: "Aplikasyon Health Safety Net",
+        description: "Kòmanse chemen ACA-3 sou entènèt pou yon detèminasyon Health Safety Net pou pasyan ki gen revni ba.",
+      },
       aca3ap: {
         title: "Aplikasyon Massachusetts pou Kouvèti Sante ak Dantè ak Èd pou Peye Depans - Pèsonn Adisyonèl",
         description: "Itilize lè w ap ajoute moun nan yon ka fwaye ki baze sou ACA-3 ki egziste deja.",
@@ -303,6 +316,10 @@ const COPY: Record<SupportedLanguage, TypePageCopy> = {
       aca3: {
         title: "Pedido de Massachusetts para Cobertura de Saúde e Odontológica e Ajuda para Pagar Custos",
         description: "Pedido padrão para a maioria dos indivíduos e famílias.",
+      },
+      hsn: {
+        title: "Pedido Health Safety Net",
+        description: "Inicia o caminho online ACA-3 para uma determinação Health Safety Net de paciente de baixa renda.",
       },
       aca3ap: {
         title: "Pedido de Massachusetts para Cobertura de Saúde e Odontológica e Ajuda para Pagar Custos - Pessoas Adicionais",
@@ -373,6 +390,10 @@ const COPY: Record<SupportedLanguage, TypePageCopy> = {
         title: "Solicitud de Massachusetts para Cobertura de Salud y Dental y Ayuda para Pagar Costos",
         description: "Solicitud estándar para la mayoría de los individuos y familias.",
       },
+      hsn: {
+        title: "Solicitud de Health Safety Net",
+        description: "Inicia el camino en línea ACA-3 para una determinación de Health Safety Net para pacientes de bajos ingresos.",
+      },
       aca3ap: {
         title: "Solicitud de Massachusetts para Cobertura de Salud y Dental y Ayuda para Pagar Costos - Personas Adicionales",
         description: "Úselo cuando agregue personas a un caso de hogar existente basado en ACA-3.",
@@ -442,6 +463,10 @@ const COPY: Record<SupportedLanguage, TypePageCopy> = {
       aca3: {
         title: "Đơn Massachusetts cho Bảo Hiểm Sức Khỏe và Nha Khoa và Hỗ Trợ Thanh Toán Chi Phí",
         description: "Đơn tiêu chuẩn cho hầu hết các cá nhân và gia đình.",
+      },
+      hsn: {
+        title: "Đơn Health Safety Net",
+        description: "Bắt đầu lộ trình ACA-3 trực tuyến để xác định Health Safety Net cho bệnh nhân có thu nhập thấp.",
       },
       aca3ap: {
         title: "Đơn Massachusetts cho Bảo Hiểm Sức Khỏe và Nha Khoa và Hỗ Trợ Thanh Toán Chi Phí - Người Bổ Sung",

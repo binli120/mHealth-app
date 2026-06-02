@@ -73,6 +73,9 @@ export type BenefitProgramId =
   | 'masshealth_standard_pregnancy'
   | 'connector_care'
   | 'health_connector_credits'
+  | 'health_safety_net_primary'
+  | 'health_safety_net_secondary'
+  | 'health_safety_net_medical_hardship'
   | 'msp'
   | 'snap'
   | 'eitc_federal'
@@ -167,6 +170,9 @@ export interface FamilyProfile {
   // ── Household members (excludes primary applicant) ───────────────────────
   householdMembers: HouseholdMemberProfile[]
 
+  // ── Program-specific optional context ────────────────────────────────────
+  healthSafetyNet?: HealthSafetyNetContext
+
   // ── Derived fields (computed by computeDerivedFields before evaluation) ──
   householdSize: number       // primary + members
   childrenUnder5: number      // for WIC
@@ -176,6 +182,21 @@ export interface FamilyProfile {
 
   createdAt?: string
   updatedAt?: string
+}
+
+export interface HealthSafetyNetContext {
+  hasRecentMedicalBills?: boolean
+  totalAllowableMedicalBillsLast12Months?: number
+  hasUnpaidMedicalBills?: boolean
+  providerType?: 'acute_hospital' | 'community_health_center' | 'other' | 'unknown'
+  serviceDate?: string
+  serviceCategory?: string
+  hasOtherResponsiblePayer?: boolean
+  massHealthEligibleButNotEnrolled?: boolean
+  premiumAssistanceTerminatedForNonpayment?: boolean
+  healthConnectorPremiumAssistanceEligible?: boolean
+  studentHealthProgramRequired?: boolean
+  previousMedicalHardshipApplicationsLast12Months?: number
 }
 
 export interface BenefitResult {

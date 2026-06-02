@@ -81,6 +81,18 @@ const RESULT_COPY: Record<SupportedLanguage, Record<EligibilityResultCode, Resul
       details: "MassHealth is administered by Massachusetts and requires state residency. Visit healthcare.gov to explore options where you live now.",
       actionLabel: "Visit healthcare.gov",
     }),
+    health_safety_net_primary: ({ fplPercent }) => ({
+      program: "Health Safety Net - Primary",
+      tagline: `At ${fplPercent}% FPL, HSN may help with eligible hospital and community health center bills.`,
+      details: "Health Safety Net can help uninsured Massachusetts residents with eligible services from acute hospitals and community health centers. It is payer of last resort.",
+      actionLabel: "Apply for HSN",
+    }),
+    health_safety_net_secondary: ({ fplPercent }) => ({
+      program: "Health Safety Net - Secondary",
+      tagline: `At ${fplPercent}% FPL, HSN may help after primary coverage is considered.`,
+      details: "Health Safety Net Secondary may help with eligible costs after primary insurance or another responsible payer is considered.",
+      actionLabel: "Apply for HSN",
+    }),
     masshealth_limited: () => ({
       program: "MassHealth Limited",
       tagline: "Emergency and pregnancy services are available regardless of immigration status.",
@@ -196,6 +208,18 @@ const RESULT_COPY: Record<SupportedLanguage, Record<EligibilityResultCode, Resul
       tagline: "您必须居住在马萨诸塞州才能申请。",
       details: "MassHealth 由马萨诸塞州管理，要求申请人是本州居民。请访问 healthcare.gov 查看您当前所在州的选项。",
       actionLabel: "访问 healthcare.gov",
+    }),
+    health_safety_net_primary: ({ fplPercent }) => ({
+      program: "Health Safety Net - Primary",
+      tagline: `收入为 FPL 的 ${fplPercent}% 时，HSN 可能帮助支付符合条件的医院和社区健康中心账单。`,
+      details: "Health Safety Net 可帮助没有保险的马萨诸塞州居民支付急性医院和社区健康中心的合格服务费用。它是最后支付方。",
+      actionLabel: "申请 HSN",
+    }),
+    health_safety_net_secondary: ({ fplPercent }) => ({
+      program: "Health Safety Net - Secondary",
+      tagline: `收入为 FPL 的 ${fplPercent}% 时，HSN 可能在主要保险处理后提供帮助。`,
+      details: "Health Safety Net Secondary 可在主要保险或其他负责支付方处理后，帮助支付符合条件的费用。",
+      actionLabel: "申请 HSN",
     }),
     masshealth_limited: () => ({
       program: "MassHealth Limited",
@@ -313,6 +337,18 @@ const RESULT_COPY: Record<SupportedLanguage, Record<EligibilityResultCode, Resul
       details: "MassHealth se Massachusetts ki administre li epi li mande rezidans nan eta a. Vizite healthcare.gov pou wè opsyon nan eta kote ou rete a.",
       actionLabel: "Vizite healthcare.gov",
     }),
+    health_safety_net_primary: ({ fplPercent }) => ({
+      program: "Health Safety Net - Primary",
+      tagline: `Nan ${fplPercent}% FPL, HSN ka ede ak fakti lopital ak sant sante kominotè ki elijib.`,
+      details: "Health Safety Net ka ede rezidan Massachusetts ki pa gen asirans ak sèvis elijib nan lopital ak sant sante kominotè. Li peye apre lòt sous yo.",
+      actionLabel: "Aplike pou HSN",
+    }),
+    health_safety_net_secondary: ({ fplPercent }) => ({
+      program: "Health Safety Net - Secondary",
+      tagline: `Nan ${fplPercent}% FPL, HSN ka ede apre asirans prensipal la fin trete.`,
+      details: "Health Safety Net Secondary ka ede ak frè elijib apre asirans prensipal oswa lòt moun ki responsab peye fin konsidere.",
+      actionLabel: "Aplike pou HSN",
+    }),
     masshealth_limited: () => ({
       program: "MassHealth Limited",
       tagline: "Sèvis ijans ak sèvis pou gwosès ka disponib kèlkeswa estati imigrasyon.",
@@ -428,6 +464,18 @@ const RESULT_COPY: Record<SupportedLanguage, Record<EligibilityResultCode, Resul
       tagline: "Você precisa morar em Massachusetts para se inscrever.",
       details: "O MassHealth é administrado por Massachusetts e exige residência no estado. Visite healthcare.gov para explorar opções onde você mora agora.",
       actionLabel: "Visitar healthcare.gov",
+    }),
+    health_safety_net_primary: ({ fplPercent }) => ({
+      program: "Health Safety Net - Primary",
+      tagline: `A ${fplPercent}% do FPL, o HSN pode ajudar com contas elegíveis de hospitais e centros de saúde comunitários.`,
+      details: "O Health Safety Net pode ajudar residentes de Massachusetts sem seguro com serviços elegíveis em hospitais e centros de saúde comunitários. Ele é pagador de último recurso.",
+      actionLabel: "Solicitar HSN",
+    }),
+    health_safety_net_secondary: ({ fplPercent }) => ({
+      program: "Health Safety Net - Secondary",
+      tagline: `A ${fplPercent}% do FPL, o HSN pode ajudar depois que a cobertura primária for considerada.`,
+      details: "O Health Safety Net Secondary pode ajudar com custos elegíveis depois que o seguro primário ou outro pagador responsável for considerado.",
+      actionLabel: "Solicitar HSN",
     }),
     masshealth_limited: () => ({
       program: "MassHealth Limited",
@@ -545,6 +593,18 @@ const RESULT_COPY: Record<SupportedLanguage, Record<EligibilityResultCode, Resul
       details: "MassHealth es administrado por Massachusetts y requiere residencia en el estado. Visite healthcare.gov para explorar opciones donde vive ahora.",
       actionLabel: "Visitar healthcare.gov",
     }),
+    health_safety_net_primary: ({ fplPercent }) => ({
+      program: "Health Safety Net - Primary",
+      tagline: `Al ${fplPercent}% del FPL, HSN puede ayudar con facturas elegibles de hospitales y centros de salud comunitarios.`,
+      details: "Health Safety Net puede ayudar a residentes de Massachusetts sin seguro con servicios elegibles de hospitales agudos y centros de salud comunitarios. Es pagador de último recurso.",
+      actionLabel: "Solicitar HSN",
+    }),
+    health_safety_net_secondary: ({ fplPercent }) => ({
+      program: "Health Safety Net - Secondary",
+      tagline: `Al ${fplPercent}% del FPL, HSN puede ayudar después de considerar la cobertura primaria.`,
+      details: "Health Safety Net Secondary puede ayudar con costos elegibles después de considerar el seguro primario u otro pagador responsable.",
+      actionLabel: "Solicitar HSN",
+    }),
     masshealth_limited: () => ({
       program: "MassHealth Limited",
       tagline: "Los servicios de emergencia y embarazo pueden estar disponibles sin importar el estatus migratorio.",
@@ -660,6 +720,18 @@ const RESULT_COPY: Record<SupportedLanguage, Record<EligibilityResultCode, Resul
       tagline: "Bạn phải sống tại Massachusetts để nộp đơn.",
       details: "MassHealth do bang Massachusetts quản lý và yêu cầu cư trú tại bang này. Hãy truy cập healthcare.gov để xem lựa chọn tại nơi bạn đang sống.",
       actionLabel: "Truy cập healthcare.gov",
+    }),
+    health_safety_net_primary: ({ fplPercent }) => ({
+      program: "Health Safety Net - Primary",
+      tagline: `Ở mức ${fplPercent}% FPL, HSN có thể giúp với hóa đơn đủ điều kiện tại bệnh viện và trung tâm y tế cộng đồng.`,
+      details: "Health Safety Net có thể giúp cư dân Massachusetts không có bảo hiểm với các dịch vụ đủ điều kiện tại bệnh viện cấp tính và trung tâm y tế cộng đồng. Đây là nguồn chi trả cuối cùng.",
+      actionLabel: "Nộp đơn HSN",
+    }),
+    health_safety_net_secondary: ({ fplPercent }) => ({
+      program: "Health Safety Net - Secondary",
+      tagline: `Ở mức ${fplPercent}% FPL, HSN có thể giúp sau khi bảo hiểm chính được xem xét.`,
+      details: "Health Safety Net Secondary có thể giúp với chi phí đủ điều kiện sau khi bảo hiểm chính hoặc nguồn chi trả chịu trách nhiệm khác được xem xét.",
+      actionLabel: "Nộp đơn HSN",
     }),
     masshealth_limited: () => ({
       program: "MassHealth Limited",

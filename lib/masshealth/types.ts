@@ -180,7 +180,7 @@ export interface Aca3RequiredQuestionSection {
 
 // ── Application types ─────────────────────────────────────────────────────────
 
-export type MassHealthApplicationType = "aca3" | "aca3ap" | "saca2" | "msp"
+export type MassHealthApplicationType = "aca3" | "hsn" | "aca3ap" | "saca2" | "msp"
 
 export interface MassHealthApplicationTypeOption {
   id: MassHealthApplicationType
@@ -189,6 +189,7 @@ export interface MassHealthApplicationTypeOption {
   description: string
   formCode: string
   referenceUrl: string
+  baseFormType?: "aca3" | "aca3ap" | "saca2" | "msp"
 }
 
 // ── ACA-3-AP eligibility ──────────────────────────────────────────────────────

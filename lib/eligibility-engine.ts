@@ -64,6 +64,8 @@ export type EligibilityStatus = 'likely' | 'possibly' | 'unlikely'
 export type EligibilityColor = 'green' | 'yellow' | 'red' | 'blue' | 'gray'
 export type EligibilityResultCode =
   | "not_eligible_non_ma"
+  | "health_safety_net_primary"
+  | "health_safety_net_secondary"
   | "masshealth_limited"
   | "pregnancy_undocumented_standard"
   | "pregnancy_standard"
@@ -114,6 +116,25 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
   const isQualifiedImmigrant =
     data.citizenshipStatus === 'citizen' ||
     data.citizenshipStatus === 'qualified_immigrant'
+
+  const addHealthSafetyNetResult = () => {
+    if (fplPct > FPL_PCT_FAMILY_ASSIST) return
+
+    const hasPrimaryCoverage = data.hasEmployerInsurance || data.hasMedicare
+    results.push({
+      code: hasPrimaryCoverage ? "health_safety_net_secondary" : "health_safety_net_primary",
+      program: hasPrimaryCoverage ? 'Health Safety Net – Secondary' : 'Health Safety Net – Primary',
+      status: 'likely',
+      tagline: `At ${fplPct}% FPL — Health Safety Net may help with eligible hospital and community health center bills.`,
+      details: hasPrimaryCoverage
+        ? 'Health Safety Net Secondary may help with eligible costs at Massachusetts acute hospitals and community health centers after primary coverage or another responsible payer is considered.'
+        : 'Health Safety Net Primary may help uninsured Massachusetts residents with eligible services from Massachusetts acute hospitals and community health centers. HSN is payer of last resort, and HSN Partial deductibles may apply above 150% FPL.',
+      actionLabel: 'Apply for HSN',
+      actionHref: '/application/type?recommended=hsn',
+      color: 'blue',
+      priority: 4,
+    })
+  }
 
   // ── Non-MA Resident ──────────────────────────────────────────────────────
   if (!data.livesInMA) {
@@ -169,6 +190,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
       })
     }
 
+    addHealthSafetyNetResult()
     return { fplPercent: fplPct, annualFPL, monthlyFPL, results, summary: buildSummary(results) }
   }
 
@@ -230,6 +252,7 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
         priority: 3,
       })
     }
+    addHealthSafetyNetResult()
     return { fplPercent: fplPct, annualFPL, monthlyFPL, results, summary: buildSummary(results) }
   }
 
@@ -348,6 +371,8 @@ export function runEligibilityCheck(data: ScreenerData): EligibilityReport {
         priority: 2,
       })
     }
+
+    addHealthSafetyNetResult()
   }
 
   // ── SENIORS 65+ ──────────────────────────────────────────────────────────

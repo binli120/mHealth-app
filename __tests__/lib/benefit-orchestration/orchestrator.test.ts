@@ -98,6 +98,20 @@ describe('evaluateBenefitStack', () => {
     }
   })
 
+  it('includes Health Safety Net in the ranked healthcare results for low-income uninsured MA residents', () => {
+    const stack = evaluateBenefitStack(rawProfile({
+      hasPrivateInsurance: false,
+      hasEmployerInsurance: false,
+      hasMedicare: false,
+      income: emptyIncome(),
+    }))
+
+    const hsn = stack.results.find((r) => r.programId === 'health_safety_net_primary')
+    expect(hsn).toBeDefined()
+    expect(hsn?.category).toBe('healthcare')
+    expect(hsn?.estimatedMonthlyValue).toBe(0)
+  })
+
   it('summary mentions program counts', () => {
     const stack = evaluateBenefitStack(rawProfile({ income: { ...emptyIncome(), wages: 500 } }))
     if (stack.likelyPrograms.length > 0) {
