@@ -13,6 +13,7 @@ import { getMessage } from "@/lib/i18n/messages"
 import type { SupportedLanguage } from "@/lib/i18n/languages"
 import { TimelineEntry } from "./timeline-entry"
 import { CoverageForm } from "./coverage-form"
+import { CoverageChart } from "./coverage-chart"
 import type { CoverageRecordWithExplanation } from "@/lib/insurance-history/types"
 
 interface InsuranceTimelineProps {
@@ -22,15 +23,31 @@ interface InsuranceTimelineProps {
   language?: SupportedLanguage
 }
 
+/** Group items by coverage year, preserving descending order. */
+function groupByYear(items: CoverageRecordWithExplanation[]): { year: number; entries: CoverageRecordWithExplanation[] }[] {
+  const map = new Map<number, CoverageRecordWithExplanation[]>()
+  for (const item of items) {
+    const y = item.record.coverageYear
+    if (!map.has(y)) map.set(y, [])
+    map.get(y)!.push(item)
+  }
+  // Items arrive sorted DESC by year from the API; preserve that order
+  return Array.from(map.entries()).map(([year, entries]) => ({ year, entries }))
+}
+
 export function InsuranceTimeline({ items: initialItems, isLoading, loadError, language = "en" }: InsuranceTimelineProps) {
-  const [items, setItems] = useState(initialItems)
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
   const [editingId, setEditingId] = useState<string | null>(null)
   const [addingNew, setAddingNew] = useState(false)
 
+  // Derive visible items from the prop so new data from the parent is
+  // reflected immediately (avoids the useState(prop) stale-copy trap).
+  const items = initialItems.filter((i) => !deletedIds.has(i.record.id))
   const editRecord = editingId ? items.find((i) => i.record.id === editingId)?.record : null
+  const yearGroups = groupByYear(items)
 
   function handleDeleted(id: string) {
-    setItems((prev) => prev.filter((i) => i.record.id !== id))
+    setDeletedIds((prev) => new Set([...prev, id]))
   }
 
   return (
@@ -42,6 +59,8 @@ export function InsuranceTimeline({ items: initialItems, isLoading, loadError, l
           {getMessage(language, "insuranceHistoryAddPast")}
         </Button>
       </div>
+
+      <CoverageChart items={items} />
 
       {isLoading ? (
         <div className="space-y-6">
@@ -57,22 +76,41 @@ export function InsuranceTimeline({ items: initialItems, isLoading, loadError, l
         </div>
       ) : loadError ? (
         <p className="text-sm text-destructive py-4">{loadError}</p>
-      ) : items.length === 0 ? (
+      ) : yearGroups.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground text-sm">
           {getMessage(language, "insuranceHistoryEmpty")}
         </div>
       ) : (
-        items.map((item, index) => (
-          <TimelineEntry
-            key={item.record.id}
-            item={item}
-            isFirst={index === 0}
-            isLast={index === items.length - 1}
-            onEdit={setEditingId}
-            onDeleted={handleDeleted}
-            language={language}
-          />
-        ))
+        yearGroups.map(({ year, entries }, groupIndex) => {
+          const isLastGroup = groupIndex === yearGroups.length - 1
+          return (
+            <div key={year} className="flex items-start gap-4">
+              {/* Year bubble + connector line */}
+              <div className="flex flex-col items-center flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shadow">
+                  {year}
+                </div>
+                {!isLastGroup && <div className="w-0.5 flex-1 min-h-8 bg-border mt-1" />}
+              </div>
+
+              {/* All plans for this year, stacked */}
+              <div className="flex-1 pb-6 space-y-2">
+                {entries.map((item, entryIndex) => (
+                  <TimelineEntry
+                    key={item.record.id}
+                    item={item}
+                    isFirst={groupIndex === 0 && entryIndex === 0}
+                    isLast={false}
+                    onEdit={setEditingId}
+                    onDeleted={handleDeleted}
+                    language={language}
+                    showYear={false}
+                  />
+                ))}
+              </div>
+            </div>
+          )
+        })
       )}
 
       {(addingNew || editRecord) && (
@@ -87,7 +125,6 @@ export function InsuranceTimeline({ items: initialItems, isLoading, loadError, l
             setEditingId(null)
             window.location.reload()
           }}
-          existingYears={items.map((i) => i.record.coverageYear).filter((y) => editRecord?.coverageYear !== y)}
           language={language}
         />
       )}

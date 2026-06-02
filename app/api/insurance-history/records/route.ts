@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, record }, { status: 201 })
   } catch (err: unknown) {
     if (err instanceof Error && err.message.includes("unique constraint")) {
-      return NextResponse.json({ ok: false, error: "A record for this year already exists" }, { status: 409 })
+      return NextResponse.json({ ok: false, error: "This plan is already recorded for that year." }, { status: 409 })
     }
     console.error("[insurance-history/records POST]", err)
     return NextResponse.json({ ok: false, error: "Failed to create record" }, { status: 500 })

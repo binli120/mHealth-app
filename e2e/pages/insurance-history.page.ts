@@ -33,7 +33,12 @@ export class InsuranceHistoryPage {
     premium?: number
   }) {
     await this.page.getByLabel(/coverage year/i).fill(String(params.year))
-    await this.page.getByLabel(/plan name/i).fill(params.planName)
+
+    // Plan name uses a Select — open it, choose "Other / Not listed", then type the custom name
+    await this.page.getByRole("combobox").first().click()
+    await this.page.getByRole("option", { name: /other.*not listed/i }).click()
+    await this.page.getByPlaceholder(/enter plan name/i).fill(params.planName)
+
     if (params.premium != null) {
       await this.page.getByLabel(/monthly premium/i).fill(String(params.premium))
     }

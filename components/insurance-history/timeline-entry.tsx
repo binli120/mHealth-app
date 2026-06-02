@@ -45,12 +45,13 @@ interface TimelineEntryProps {
   item: CoverageRecordWithExplanation
   isFirst: boolean
   isLast: boolean
+  showYear?: boolean   // false when the parent year-group renders the bubble
   onEdit: (id: string) => void
   onDeleted: (id: string) => void
   language: SupportedLanguage
 }
 
-export function TimelineEntry({ item, isFirst, isLast, onEdit, onDeleted, language }: TimelineEntryProps) {
+export function TimelineEntry({ item, isFirst, isLast, showYear = true, onEdit, onDeleted, language }: TimelineEntryProps) {
   const [expanded, setExpanded] = useState(isFirst)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)

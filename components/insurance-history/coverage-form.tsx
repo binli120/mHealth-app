@@ -6,7 +6,7 @@
 
 "use client"
 
-import { useState } from "react"
+import React, { useState } from "react"
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Separator } from "@/components/ui/separator"
+import { Plus, Trash2 } from "lucide-react"
 import { getMessage } from "@/lib/i18n/messages"
 import type { SupportedLanguage } from "@/lib/i18n/languages"
 import { formatCurrency, parseCurrency } from "@/lib/utils/input-format"
@@ -87,108 +89,261 @@ function resolvePlanName(planName: string): { selected: string; custom: string }
   return { selected: "", custom: "" }
 }
 
+function getPlanLabel(code: string): string {
+  if (code === OTHER_VALUE || !code) return ""
+  return ALL_PLANS.find((p) => p.code === code)?.label ?? ""
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface PlanEntry {
+  key: string               // local React key only
+  selectedPlanCode: string
+  customPlanName: string
+  premiumMonthly: string
+  notes: string
+}
+
 interface CoverageFormProps {
-  record: CoverageRecord | null
-  existingYears: number[]
+  record: CoverageRecord | null  // null = new; non-null = editing single record
   onClose: () => void
   onSaved: () => void
   language: SupportedLanguage
 }
 
-interface FormState {
-  coverageYear: string
-  selectedPlanCode: string
-  customPlanName: string
-  premiumMonthly: string
-  householdSize: string
-  annualIncome: string
-  notes: string
+function emptyPlan(key?: string): PlanEntry {
+  return { key: key ?? String(Date.now()), selectedPlanCode: "", customPlanName: "", premiumMonthly: "", notes: "" }
 }
 
-export function CoverageForm({ record, existingYears, onClose, onSaved, language }: CoverageFormProps) {
+// ── Plan row component ────────────────────────────────────────────────────────
+
+interface PlanRowProps {
+  plan: PlanEntry
+  index: number
+  canRemove: boolean
+  onChange: (updated: PlanEntry) => void
+  onRemove: () => void
+  language: SupportedLanguage
+}
+
+function PlanRow({ plan, index, canRemove, onChange, onRemove, language }: PlanRowProps) {
+  return (
+    <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          Plan {index + 1}
+        </span>
+        {canRemove && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={onRemove}
+            aria-label="Remove plan"
+          >
+            <Trash2 className="w-3 h-3" />
+          </Button>
+        )}
+      </div>
+
+      <div className="space-y-1">
+        <Label>{getMessage(language, "insuranceHistoryPlanName")} *</Label>
+        <Select
+          value={plan.selectedPlanCode}
+          onValueChange={(val) => onChange({ ...plan, selectedPlanCode: val, customPlanName: "" })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder={getMessage(language, "insuranceHistoryPlanNamePlaceholder")} />
+          </SelectTrigger>
+          <SelectContent>
+            {PLAN_OPTIONS.map((group) => (
+              <SelectGroup key={group.group}>
+                <SelectLabel>{group.group}</SelectLabel>
+                {group.plans.map((p) => (
+                  <SelectItem key={p.code} value={p.code}>{p.label}</SelectItem>
+                ))}
+              </SelectGroup>
+            ))}
+            <SelectGroup>
+              <SelectLabel>Other</SelectLabel>
+              <SelectItem value={OTHER_VALUE}>Other / Not listed</SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {plan.selectedPlanCode === OTHER_VALUE && (
+        <div className="space-y-1">
+          <Label>Plan name *</Label>
+          <Input
+            placeholder="Enter plan name"
+            value={plan.customPlanName}
+            onChange={(e) => onChange({ ...plan, customPlanName: e.target.value })}
+            autoFocus
+          />
+        </div>
+      )}
+
+      <div className="space-y-1">
+        <Label htmlFor={`premium-${plan.key}`}>{getMessage(language, "insuranceHistoryPremium")}</Label>
+        <Input
+          id={`premium-${plan.key}`}
+          type="text"
+          inputMode="decimal"
+          placeholder="$0.00"
+          value={plan.premiumMonthly}
+          onChange={(e) => onChange({ ...plan, premiumMonthly: formatCurrency(e.target.value) })}
+        />
+      </div>
+
+      <div className="space-y-1">
+        <Label htmlFor={`notes-${plan.key}`}>{getMessage(language, "insuranceHistoryNotes")}</Label>
+        <Input
+          id={`notes-${plan.key}`}
+          placeholder={getMessage(language, "insuranceHistoryNotesPlaceholder")}
+          value={plan.notes}
+          onChange={(e) => onChange({ ...plan, notes: e.target.value })}
+        />
+      </div>
+    </div>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
+export function CoverageForm({ record, onClose, onSaved, language }: CoverageFormProps) {
   const isEditing = record !== null
   const currentYear = new Date().getFullYear()
 
   const { selected, custom } = resolvePlanName(record?.planName ?? "")
 
-  const [form, setForm] = useState<FormState>({
-    coverageYear: record ? String(record.coverageYear) : String(currentYear),
-    selectedPlanCode: selected,
-    customPlanName: custom,
-    premiumMonthly: record?.premiumMonthly != null ? formatCurrency(String(record.premiumMonthly)) : "",
-    householdSize: record?.householdSize != null ? String(record.householdSize) : "",
-    annualIncome: record?.annualIncome != null ? formatCurrency(String(record.annualIncome)) : "",
-    notes: record?.notes ?? "",
-  })
+  // Shared year-level fields
+  const [coverageYear, setCoverageYear] = useState(record ? String(record.coverageYear) : String(currentYear))
+  const [householdSize, setHouseholdSize] = useState(record?.householdSize != null ? String(record.householdSize) : "")
+  const [annualIncome, setAnnualIncome] = useState(record?.annualIncome != null ? formatCurrency(String(record.annualIncome)) : "")
+
+  // Plan entries (one when editing, one empty when adding new)
+  const [plans, setPlans] = useState<PlanEntry[]>([
+    {
+      key: "plan-0",
+      selectedPlanCode: selected,
+      customPlanName: custom,
+      premiumMonthly: record?.premiumMonthly != null ? formatCurrency(String(record.premiumMonthly)) : "",
+      notes: record?.notes ?? "",
+    },
+  ])
+
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const submittingRef = React.useRef(false)
 
-  function setField(field: keyof FormState) {
-    return (e: React.ChangeEvent<HTMLInputElement>) =>
-      setForm((f) => ({ ...f, [field]: e.target.value }))
+  function updatePlan(index: number, updated: PlanEntry) {
+    setPlans((prev) => prev.map((p, i) => (i === index ? updated : p)))
   }
 
-  function resolvedPlanName(): string {
-    if (form.selectedPlanCode === OTHER_VALUE) return form.customPlanName.trim()
-    return ALL_PLANS.find((p) => p.code === form.selectedPlanCode)?.label ?? ""
+  function addPlan() {
+    setPlans((prev) => [...prev, emptyPlan(String(Date.now()))])
   }
 
-  function resolvedProgramCode(): string | null {
-    if (form.selectedPlanCode === OTHER_VALUE || !form.selectedPlanCode) return null
-    return form.selectedPlanCode
+  function removePlan(index: number) {
+    setPlans((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  function planNameOf(plan: PlanEntry): string {
+    if (plan.selectedPlanCode === OTHER_VALUE) return plan.customPlanName.trim()
+    return getPlanLabel(plan.selectedPlanCode)
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (submittingRef.current) return
+    submittingRef.current = true
     setError(null)
 
-    const year = parseInt(form.coverageYear, 10)
-    if (!isEditing && existingYears.includes(year)) {
-      setError(getMessage(language, "insuranceHistoryDuplicateYear").replace("{year}", String(year)))
-      return
+    const year = parseInt(coverageYear, 10)
+
+    // Validate all plan names are filled
+    for (const plan of plans) {
+      if (!planNameOf(plan)) {
+        setError(getMessage(language, "insuranceHistoryPlanRequired"))
+        return
+      }
     }
-    const planName = resolvedPlanName()
-    if (!planName) {
-      setError(getMessage(language, "insuranceHistoryPlanRequired"))
+
+    // Check for duplicate plan names within the same submission
+    const names = plans.map(planNameOf)
+    if (new Set(names).size !== names.length) {
+      setError("You've entered the same plan name more than once.")
       return
     }
 
     setSaving(true)
     try {
-      const body = {
-        coverageYear: year,
-        planName,
-        programCode: resolvedProgramCode(),
-        premiumMonthly: form.premiumMonthly ? parseCurrency(form.premiumMonthly) : null,
-        householdSize: form.householdSize ? parseInt(form.householdSize, 10) : null,
-        annualIncome: form.annualIncome ? parseCurrency(form.annualIncome) : null,
-        notes: form.notes || null,
-      }
 
-      const url = isEditing
-        ? `/api/insurance-history/records/${record!.id}`
-        : "/api/insurance-history/records"
-      const method = isEditing ? "PUT" : "POST"
-
-      const res = await authenticatedFetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      })
-      const payload = await res.json().catch(() => ({}))
-      if (!res.ok || !payload.ok) {
-        setError(payload.error ?? getMessage(language, "insuranceHistoryError"))
-        return
+      if (isEditing) {
+        // Single-record edit
+        const plan = plans[0]
+        const body = {
+          planName: planNameOf(plan),
+          programCode: plan.selectedPlanCode !== OTHER_VALUE ? plan.selectedPlanCode : null,
+          premiumMonthly: plan.premiumMonthly ? parseCurrency(plan.premiumMonthly) : null,
+          householdSize: householdSize ? parseInt(householdSize, 10) : null,
+          annualIncome: annualIncome ? parseCurrency(annualIncome) : null,
+          notes: plan.notes || null,
+        }
+        const res = await authenticatedFetch(`/api/insurance-history/records/${record!.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+        const payload = await res.json().catch(() => ({}))
+        if (!res.ok || !payload.ok) {
+          setError(payload.error ?? getMessage(language, "insuranceHistoryError"))
+          return
+        }
+      } else {
+        // New records — POST each plan sequentially
+        for (const plan of plans) {
+          const body = {
+            coverageYear: year,
+            planName: planNameOf(plan),
+            programCode: plan.selectedPlanCode !== OTHER_VALUE ? plan.selectedPlanCode : null,
+            premiumMonthly: plan.premiumMonthly ? parseCurrency(plan.premiumMonthly) : null,
+            householdSize: householdSize ? parseInt(householdSize, 10) : null,
+            annualIncome: annualIncome ? parseCurrency(annualIncome) : null,
+            notes: plan.notes || null,
+          }
+          const res = await authenticatedFetch("/api/insurance-history/records", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          })
+          const payload = await res.json().catch(() => ({}))
+          if (!res.ok || !payload.ok) {
+            const isDuplicate = res.status === 409
+            setError(
+              isDuplicate
+                ? `A record for ${year} ("${planNameOf(plan)}") already exists. Edit the existing entry instead.`
+                : (payload.error ?? getMessage(language, "insuranceHistoryError"))
+            )
+            return
+          }
+        }
       }
       onSaved()
     } finally {
       setSaving(false)
+      submittingRef.current = false
     }
   }
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+          className="sm:max-w-lg max-h-[90vh] overflow-y-auto"
+          onInteractOutside={(e) => e.preventDefault()}
+        >
         <DialogHeader>
           <DialogTitle>
             {isEditing
@@ -196,85 +351,36 @@ export function CoverageForm({ record, existingYears, onClose, onSaved, language
               : getMessage(language, "insuranceHistoryAddDrawerTitle")}
           </DialogTitle>
         </DialogHeader>
+
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1">
-            <Label htmlFor="coverage-year">{getMessage(language, "insuranceHistoryCoverageYear")} *</Label>
-            <Input
-              id="coverage-year"
-              type="number"
-              min="1990"
-              max={currentYear}
-              value={form.coverageYear}
-              onChange={setField("coverageYear")}
-              disabled={isEditing}
-              required
-            />
-          </div>
-
-          <div className="space-y-1">
-            <Label>{getMessage(language, "insuranceHistoryPlanName")} *</Label>
-            <Select
-              value={form.selectedPlanCode}
-              onValueChange={(val) => setForm((f) => ({ ...f, selectedPlanCode: val, customPlanName: "" }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={getMessage(language, "insuranceHistoryPlanNamePlaceholder")} />
-              </SelectTrigger>
-              <SelectContent>
-                {PLAN_OPTIONS.map((group) => (
-                  <SelectGroup key={group.group}>
-                    <SelectLabel>{group.group}</SelectLabel>
-                    {group.plans.map((plan) => (
-                      <SelectItem key={plan.code} value={plan.code}>
-                        {plan.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                ))}
-                <SelectGroup>
-                  <SelectLabel>Other</SelectLabel>
-                  <SelectItem value={OTHER_VALUE}>Other / Not listed</SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {form.selectedPlanCode === OTHER_VALUE && (
+          {/* Year-level shared fields */}
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label htmlFor="custom-plan">Plan name *</Label>
+              <Label htmlFor="coverage-year">{getMessage(language, "insuranceHistoryCoverageYear")} *</Label>
               <Input
-                id="custom-plan"
-                placeholder="Enter plan name"
-                value={form.customPlanName}
-                onChange={setField("customPlanName")}
-                autoFocus
+                id="coverage-year"
+                type="number"
+                min="1990"
+                max={currentYear}
+                value={coverageYear}
+                onChange={(e) => setCoverageYear(e.target.value)}
+                disabled={isEditing}
                 required
               />
             </div>
-          )}
+            <div className="space-y-1">
+              <Label htmlFor="household">{getMessage(language, "insuranceHistoryHousehold")}</Label>
+              <Input
+                id="household"
+                type="number"
+                min="1"
+                placeholder="1"
+                value={householdSize}
+                onChange={(e) => setHouseholdSize(e.target.value)}
+              />
+            </div>
+          </div>
 
-          <div className="space-y-1">
-            <Label htmlFor="premium">{getMessage(language, "insuranceHistoryPremium")}</Label>
-            <Input
-              id="premium"
-              type="text"
-              inputMode="decimal"
-              placeholder="$0.00"
-              value={form.premiumMonthly}
-              onChange={(e) => setForm((f) => ({ ...f, premiumMonthly: formatCurrency(e.target.value) }))}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="household">{getMessage(language, "insuranceHistoryHousehold")}</Label>
-            <Input
-              id="household"
-              type="number"
-              min="1"
-              placeholder="1"
-              value={form.householdSize}
-              onChange={setField("householdSize")}
-            />
-          </div>
           <div className="space-y-1">
             <Label htmlFor="income">{getMessage(language, "insuranceHistoryIncome")}</Label>
             <Input
@@ -282,20 +388,44 @@ export function CoverageForm({ record, existingYears, onClose, onSaved, language
               type="text"
               inputMode="decimal"
               placeholder="$0"
-              value={form.annualIncome}
-              onChange={(e) => setForm((f) => ({ ...f, annualIncome: formatCurrency(e.target.value) }))}
+              value={annualIncome}
+              onChange={(e) => setAnnualIncome(formatCurrency(e.target.value))}
             />
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="notes">{getMessage(language, "insuranceHistoryNotes")}</Label>
-            <Input
-              id="notes"
-              placeholder={getMessage(language, "insuranceHistoryNotesPlaceholder")}
-              value={form.notes}
-              onChange={setField("notes")}
-            />
+
+          <Separator />
+
+          {/* Per-plan entries */}
+          <div className="space-y-3">
+            {plans.map((plan, index) => (
+              <PlanRow
+                key={plan.key}
+                plan={plan}
+                index={index}
+                canRemove={plans.length > 1}
+                onChange={(updated) => updatePlan(index, updated)}
+                onRemove={() => removePlan(index)}
+                language={language}
+              />
+            ))}
           </div>
+
+          {/* Add another plan — only when creating new records */}
+          {!isEditing && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={addPlan}
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Add another plan for {coverageYear || "this year"}
+            </Button>
+          )}
+
           {error && <p className="text-sm text-destructive">{error}</p>}
+
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
               {getMessage(language, "insuranceHistoryCancel")}
@@ -305,7 +435,9 @@ export function CoverageForm({ record, existingYears, onClose, onSaved, language
                 ? getMessage(language, "insuranceHistorySaving")
                 : isEditing
                   ? getMessage(language, "insuranceHistorySave")
-                  : getMessage(language, "insuranceHistoryAddRecord")}
+                  : plans.length > 1
+                    ? `Save ${plans.length} plans`
+                    : getMessage(language, "insuranceHistoryAddRecord")}
             </Button>
           </DialogFooter>
         </form>

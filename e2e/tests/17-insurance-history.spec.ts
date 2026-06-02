@@ -196,7 +196,19 @@ test.describe("Insurance History", () => {
 
     await historyPage.clickAddPastCoverage()
     await historyPage.assertDrawerOpen()
-    await historyPage.fillCoverageForm({ year: 2019, planName: "Another Plan 2019" })
+    // Attempt to add the same plan name again — override POST to return 409
+    await page.route("**/api/insurance-history/records", async (route) => {
+      if (route.request().method() === "POST") {
+        route.fulfill({
+          status: 409,
+          contentType: "application/json",
+          body: JSON.stringify({ ok: false, error: "This plan is already recorded for that year." }),
+        })
+      } else {
+        route.continue()
+      }
+    })
+    await historyPage.fillCoverageForm({ year: 2019, planName: "Unique Plan 2019" })
     await historyPage.submitForm()
     await historyPage.assertDuplicateYearError(2019)
   })
