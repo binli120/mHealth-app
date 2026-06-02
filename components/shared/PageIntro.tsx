@@ -11,7 +11,7 @@ interface PageIntroProps {
   /** Background color class for the icon circle, e.g. "bg-blue-100" */
   iconBg?: string
   title: string
-  description: string
+  description: ReactNode
   /** Max-width for the description paragraph. Defaults to "max-lg" */
   descriptionMaxWidth?: string
 }
