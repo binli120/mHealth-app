@@ -15,8 +15,9 @@ const UpdateSchema = z.object({
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
+  const { slug } = await params
   const auth = await requireAdmin(request)
   if (!auth.ok) return auth.response
 
@@ -26,28 +27,29 @@ export async function PATCH(
     if (!parsed.success) {
       return NextResponse.json({ error: "invalid_input", details: parsed.error.flatten() }, { status: 400 })
     }
-    const term = await updateGlossaryTerm(params.slug, parsed.data)
+    const term = await updateGlossaryTerm(slug, parsed.data)
     if (!term) return NextResponse.json({ error: "not_found" }, { status: 404 })
     return NextResponse.json({ term })
   } catch (err) {
-    logServerError(`PATCH /api/admin/glossary/${params.slug}`, err)
+    logServerError(`PATCH /api/admin/glossary/${slug}`, err)
     return NextResponse.json({ error: "server_error" }, { status: 500 })
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
+  const { slug } = await params
   const auth = await requireAdmin(request)
   if (!auth.ok) return auth.response
 
   try {
-    const deleted = await deleteGlossaryTerm(params.slug)
+    const deleted = await deleteGlossaryTerm(slug)
     if (!deleted) return NextResponse.json({ error: "not_found" }, { status: 404 })
     return NextResponse.json({ ok: true })
   } catch (err) {
-    logServerError(`DELETE /api/admin/glossary/${params.slug}`, err)
+    logServerError(`DELETE /api/admin/glossary/${slug}`, err)
     return NextResponse.json({ error: "server_error" }, { status: 500 })
   }
 }

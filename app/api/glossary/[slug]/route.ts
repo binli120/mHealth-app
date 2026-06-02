@@ -17,10 +17,11 @@ const LANG_TO_COLUMN: Record<SupportedGlossaryLang, keyof GlossaryTerm> = {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
+  const { slug } = await params
   try {
-    const term = await getGlossaryTerm(params.slug)
+    const term = await getGlossaryTerm(slug)
     if (!term) {
       return NextResponse.json({ error: "not_found" }, { status: 404 })
     }
@@ -46,7 +47,7 @@ export async function GET(
       related_slugs: term.related_slugs,
     })
   } catch (err) {
-    logServerError(`GET /api/glossary/${params.slug}`, err)
+    logServerError(`GET /api/glossary/${slug}`, err)
     return NextResponse.json({ error: "server_error" }, { status: 500 })
   }
 }
