@@ -81,6 +81,7 @@ export function evaluateEITC(profile: FamilyProfile, _fplPercent: number): Benef
   // Must be US citizen or resident alien with valid SSN
   if (profile.citizenshipStatus === 'undocumented') return null
   if (!profile.taxFiler) return null
+  if (profile.isTaxDependent) return null
 
   // Must have earned income
   const monthlyEarnedIncome = computeEarnedIncome(profile)

@@ -166,6 +166,7 @@ export interface FamilyProfile {
   // ── Tax filing ──────────────────────────────────────────────────────────
   taxFiler: boolean
   filingStatus?: TaxFilingStatus
+  isTaxDependent?: boolean  // primary applicant can be claimed by another taxpayer
 
   // ── Household members (excludes primary applicant) ───────────────────────
   householdMembers: HouseholdMemberProfile[]

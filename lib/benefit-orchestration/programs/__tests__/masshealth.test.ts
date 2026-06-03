@@ -124,6 +124,20 @@ describe("evaluateMassHealth — pregnancy, qualified", () => {
 // ── Children in household ─────────────────────────────────────────────────────
 
 describe("evaluateMassHealth — children in household", () => {
+  it("returns child coverage when the primary applicant is under 19", () => {
+    const p = profile({
+      age: 15,
+      householdSize: 1,
+      childrenUnder18: 1,
+      childrenUnder19: 1,
+    })
+    const results = evaluateMassHealth(p, 100)
+    const child = results.find((r) => r.programId === "masshealth_standard")
+    expect(child).toBeDefined()
+    expect(child?.estimatedMonthlyValue).toBe(400)
+    expect(child?.keyRequirements.join(" ")).toContain("Parent or legal guardian")
+  })
+
   it("returns masshealth_standard for children at ≤150% FPL", () => {
     const p = profile({
       householdMembers: [member({ relationship: "child", age: 5 })],

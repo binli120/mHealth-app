@@ -102,11 +102,14 @@ export function evaluateTAFDC(profile: FamilyProfile, fplPercent: number): Benef
     processingTime: '30 days',
     keyRequirements: [
       'MA resident',
-      `At least ${profile.childrenUnder18} child${profile.childrenUnder18 > 1 ? 'ren' : ''} under 18 in household`,
+      hasEligibleChildren
+        ? `At least ${profile.childrenUnder18} child${profile.childrenUnder18 > 1 ? 'ren' : ''} under 18 in household`
+        : 'Pregnant applicant',
       `Net income ≤50% FPL (~$${Math.round(annualFPL * 0.5 / 12).toLocaleString()}/month)`,
       'Citizens or qualified immigrants only',
+      profile.age < 20 ? 'Pregnant or parenting applicants under 20 must meet DTA school and living arrangement rules' : '',
       'Participation in DTA work program (unless exempt)',
-    ],
+    ].filter(Boolean),
     requiredDocuments: [
       'Photo ID',
       'Social Security cards for all household members',

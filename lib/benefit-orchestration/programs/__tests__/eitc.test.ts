@@ -92,6 +92,16 @@ describe("evaluateEITC — hard exclusions", () => {
     const p = profile({ age: 35, income: { ...emptyIncome(), wages: Math.round(20_000 / 12) } })
     expect(evaluateEITC(p, 100)).toBeNull()
   })
+
+  it("returns null when the primary filer can be claimed as another taxpayer's dependent", () => {
+    const p = profile({
+      age: 17,
+      isTaxDependent: true,
+      income: { ...emptyIncome(), wages: 1000 },
+      householdMembers: [member({ age: 1, isTaxDependent: true })],
+    })
+    expect(evaluateEITC(p, 100)).toBeNull()
+  })
 })
 
 // ── Happy path — childless adult 25–64 ───────────────────────────────────────
