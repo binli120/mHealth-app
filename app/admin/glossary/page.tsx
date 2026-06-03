@@ -273,7 +273,7 @@ export default function AdminGlossaryPage() {
                 filtered.map((term) => (
                   <tr key={term.id} className="hover:bg-muted/40">
                     <td className="px-4 py-3 font-medium text-foreground">{term.term_en}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{term.slug}</td>
+                    <td className="px-4 py-3 font-medium text-foreground">{term.slug}</td>
                     <td className="px-4 py-3">
                       <span className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary capitalize">
                         {term.category}
