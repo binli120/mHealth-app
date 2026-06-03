@@ -51,6 +51,10 @@ describe("getApplicationTypeLabel", () => {
     expect(getApplicationTypeLabel("aca3")).toBe("ACA-3")
   })
 
+  it("returns the short label for 'hsn'", () => {
+    expect(getApplicationTypeLabel("hsn")).toBe("HSN")
+  })
+
   it("returns the short label for 'aca3ap'", () => {
     expect(getApplicationTypeLabel("aca3ap")).toBe("ACA-3-AP")
   })

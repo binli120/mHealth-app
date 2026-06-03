@@ -10,6 +10,7 @@ import {
   APPLICATION_TYPE_LABELS,
   getApplicationTypeQuickCheckRecommendation,
   getApplicationTypeLabel,
+  getApplicationTypeBaseForm,
   isMassHealthApplicationType,
 } from "../application-types"
 
@@ -19,6 +20,7 @@ describe("MASSHEALTH_APPLICATION_TYPES", () => {
   it("defines supported application type ids in order", () => {
     expect(MASSHEALTH_APPLICATION_TYPES.map((type) => type.id)).toEqual([
       "aca3",
+      "hsn",
       "aca3ap",
       "saca2",
       "msp",
@@ -73,6 +75,10 @@ describe("APPLICATION_TYPE_LABELS", () => {
     expect(APPLICATION_TYPE_LABELS.get("aca3")).toBe("ACA-3")
   })
 
+  it("maps 'hsn' → 'HSN'", () => {
+    expect(APPLICATION_TYPE_LABELS.get("hsn")).toBe("HSN")
+  })
+
   it("maps 'aca3ap' → 'ACA-3-AP'", () => {
     expect(APPLICATION_TYPE_LABELS.get("aca3ap")).toBe("ACA-3-AP")
   })
@@ -118,6 +124,10 @@ describe("getApplicationTypeLabel", () => {
     expect(getApplicationTypeLabel("aca3")).toBe("ACA-3")
   })
 
+  it("returns the short label for 'hsn'", () => {
+    expect(getApplicationTypeLabel("hsn")).toBe("HSN")
+  })
+
   it("returns the short label for 'aca3ap'", () => {
     expect(getApplicationTypeLabel("aca3ap")).toBe("ACA-3-AP")
   })
@@ -146,6 +156,21 @@ describe("getApplicationTypeLabel", () => {
 
   it("uppercases even when a custom fallback is supplied", () => {
     expect(getApplicationTypeLabel("zzz", "Fallback")).toBe("ZZZ")
+  })
+})
+
+// ── getApplicationTypeBaseForm ───────────────────────────────────────────────
+
+describe("getApplicationTypeBaseForm", () => {
+  it("treats HSN as an ACA-3-backed application variant", () => {
+    expect(getApplicationTypeBaseForm("hsn")).toBe("aca3")
+  })
+
+  it("returns the type itself for non-variant application types", () => {
+    expect(getApplicationTypeBaseForm("aca3")).toBe("aca3")
+    expect(getApplicationTypeBaseForm("aca3ap")).toBe("aca3ap")
+    expect(getApplicationTypeBaseForm("saca2")).toBe("saca2")
+    expect(getApplicationTypeBaseForm("msp")).toBe("msp")
   })
 })
 

@@ -74,6 +74,16 @@ describe("BenefitProgramCard", () => {
     expect(screen.queryByText(/\/month/)).not.toBeInTheDocument()
   })
 
+  it("renders value notes for programs without a monthly cash estimate", () => {
+    renderCard({
+      estimatedMonthlyValue: 0,
+      estimatedAnnualValue: 0,
+      valueNote: "May reduce eligible hospital bills; exact value depends on service and provider.",
+    })
+    expect(screen.getByText("May reduce eligible hospital bills; exact value depends on service and provider.")).toBeInTheDocument()
+    expect(screen.queryByText(/\/month/)).not.toBeInTheDocument()
+  })
+
   it("renders processing time", () => {
     renderCard()
     expect(screen.getByText("30 days")).toBeInTheDocument()

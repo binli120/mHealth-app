@@ -197,6 +197,16 @@ describe("runEligibilityCheck — child under 19", () => {
 // ── Adults 19–64 ──────────────────────────────────────────────────────────────
 
 describe("runEligibilityCheck — adult 19–64", () => {
+  it("includes Health Safety Net for MA residents at or below 300% FPL", () => {
+    const fpl = getAnnualFPL(1)
+    const report = runEligibilityCheck(
+      base({ age: 30, annualIncome: Math.round(fpl * 2.0), hasMedicare: false })
+    )
+    const hsn = report.results.find((r) => r.code === "health_safety_net_primary")
+    expect(hsn).toBeDefined()
+    expect(hsn?.actionHref).toBe("/application/type?recommended=hsn")
+  })
+
   it("returns careplus for income ≤138% FPL without Medicare", () => {
     const fpl = getAnnualFPL(1)
     const report = runEligibilityCheck(

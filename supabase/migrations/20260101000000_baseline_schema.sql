@@ -1217,7 +1217,7 @@ $$;
 
 -- ── Views ─────────────────────────────────────────────────────────────────────
 
-CREATE OR REPLACE VIEW public.identity_pending_review AS
+CREATE OR REPLACE VIEW public.identity_pending_review WITH (security_invoker = true) AS
   SELECT
     a.id              AS applicant_id,
     a.identity_status,
@@ -1287,8 +1287,9 @@ ALTER TABLE public.mobile_upload_sessions      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_passkey_credentials    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.appeal_analyses             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_agent_memory           ENABLE ROW LEVEL SECURITY;
--- rate_limit_counters: explicitly disabled (no PHI, server-only writes)
-ALTER TABLE public.rate_limit_counters DISABLE ROW LEVEL SECURITY;
+-- rate_limit_counters: server-only; RLS enabled with no permissive policies so
+-- only service-role (which bypasses RLS) can read/write.
+ALTER TABLE public.rate_limit_counters ENABLE ROW LEVEL SECURITY;
 
 -- ── RLS Policies ──────────────────────────────────────────────────────────────
 

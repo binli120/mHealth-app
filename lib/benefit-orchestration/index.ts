@@ -8,6 +8,7 @@ export { computeDerivedFields, computeTotalMonthlyIncome, computeEarnedIncome, e
 export type {
   FamilyProfile,
   HouseholdMemberProfile,
+  HealthSafetyNetContext,
   IncomeBreakdown,
   AssetBreakdown,
   BenefitResult,

@@ -48,6 +48,10 @@ describe("APPLICATION_TYPE_LABELS (status/[id] re-export from lib)", () => {
     expect(APPLICATION_TYPE_LABELS.get("aca3")).toBe("ACA-3")
   })
 
+  it("maps 'hsn' → 'HSN'", () => {
+    expect(APPLICATION_TYPE_LABELS.get("hsn")).toBe("HSN")
+  })
+
   it("maps 'aca3ap' → 'ACA-3-AP'", () => {
     expect(APPLICATION_TYPE_LABELS.get("aca3ap")).toBe("ACA-3-AP")
   })

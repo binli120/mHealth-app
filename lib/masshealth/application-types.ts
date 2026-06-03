@@ -29,6 +29,18 @@ export const MASSHEALTH_APPLICATION_TYPES: MassHealthApplicationTypeOption[] = [
     formCode: "ACA-3 (03/26)",
     referenceUrl:
       "https://www.mass.gov/lists/applications-to-become-a-masshealth-member",
+    baseFormType: "aca3",
+  },
+  {
+    id: "hsn",
+    title: "Health Safety Net Application",
+    shortLabel: "HSN",
+    description:
+      "Apply online for a Health Safety Net Low Income Patient determination through the ACA-3 health coverage application.",
+    formCode: "ACA-3 HSN Variant",
+    referenceUrl:
+      "https://www.mass.gov/how-to/apply-for-masshealth-the-health-safety-net-or-the-childrens-medical-security-plan",
+    baseFormType: "aca3",
   },
   {
     id: "aca3ap",
@@ -40,6 +52,7 @@ export const MASSHEALTH_APPLICATION_TYPES: MassHealthApplicationTypeOption[] = [
     formCode: "ACA-3-AP (03/25)",
     referenceUrl:
       "https://www.mass.gov/doc/massachusetts-application-for-health-and-dental-coverage-and-help-paying-costs-additional-persons/download",
+    baseFormType: "aca3ap",
   },
   {
     id: "saca2",
@@ -51,6 +64,7 @@ export const MASSHEALTH_APPLICATION_TYPES: MassHealthApplicationTypeOption[] = [
     formCode: "SACA-2 (03/26)",
     referenceUrl:
       "https://www.mass.gov/lists/applications-to-become-a-masshealth-member",
+    baseFormType: "saca2",
   },
   {
     id: "msp",
@@ -61,6 +75,7 @@ export const MASSHEALTH_APPLICATION_TYPES: MassHealthApplicationTypeOption[] = [
     formCode: "MSP Application",
     referenceUrl:
       "https://www.mass.gov/lists/applications-to-become-a-masshealth-member",
+    baseFormType: "msp",
   },
 ]
 
@@ -92,6 +107,15 @@ export function getApplicationTypeLabel(
 ): string {
   if (!type) return fallback
   return APPLICATION_TYPE_LABELS.get(type) ?? type.toUpperCase()
+}
+
+export function getApplicationTypeBaseForm(
+  type: MassHealthApplicationType,
+): NonNullable<MassHealthApplicationTypeOption["baseFormType"]> {
+  const option = MASSHEALTH_APPLICATION_TYPES.find((item) => item.id === type)
+  if (option?.baseFormType) return option.baseFormType
+  if (type === "hsn") return "aca3"
+  return type
 }
 
 export function getApplicationTypeQuickCheckRecommendation(

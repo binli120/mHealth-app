@@ -9,6 +9,7 @@
 import type { FamilyProfile, BenefitResult, BenefitStack, ApplicationBundle, BenefitProgramId } from './types'
 import { getAnnualFPL, getIncomeAsFPLPercent, computeTotalMonthlyIncome, computeDerivedFields } from './fpl-utils'
 import { evaluateMassHealth } from './programs/masshealth'
+import { evaluateHealthSafetyNet } from './programs/health-safety-net'
 import { evaluateMSP } from './programs/msp'
 import { evaluateSnap } from './programs/snap'
 import { evaluateEITC } from './programs/eitc'
@@ -170,6 +171,7 @@ export function evaluateBenefitStack(rawProfile: Omit<FamilyProfile, 'householdS
 
   // Run all evaluators
   const masshealthResults = evaluateMassHealth(profile, fplPercent)
+  const healthSafetyNetResults = evaluateHealthSafetyNet(profile, fplPercent)
   const mspResult = evaluateMSP(profile, fplPercent)
   const snapResult = evaluateSnap(profile, fplPercent)
   const eitcResult = evaluateEITC(profile, fplPercent)
@@ -182,6 +184,7 @@ export function evaluateBenefitStack(rawProfile: Omit<FamilyProfile, 'householdS
 
   const allResults: BenefitResult[] = [
     ...masshealthResults,
+    ...healthSafetyNetResults,
     mspResult,
     snapResult,
     eitcResult,
