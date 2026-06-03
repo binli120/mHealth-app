@@ -122,6 +122,7 @@ const defaultProfile = (): Omit<FamilyProfile, "householdSize" | "childrenUnder5
   housingStatus: "renter",
   utilityTypes: [],
   taxFiler: false,
+  isTaxDependent: false,
   householdMembers: [],
 })
 
@@ -482,6 +483,12 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
                   <Checkbox id="taxFiler" checked={profile.taxFiler} onCheckedChange={(v) => update("taxFiler", !!v)} />
                   <label htmlFor="taxFiler" className="text-sm cursor-pointer">{getMessage(language, "bsTaxFilerCheck")}</label>
                 </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox id="isTaxDependent" checked={!!profile.isTaxDependent} onCheckedChange={(v) => update("isTaxDependent", !!v)} />
+                  <label htmlFor="isTaxDependent" className="text-sm cursor-pointer">
+                    Someone else can claim me as a dependent
+                  </label>
+                </div>
                 {profile.taxFiler && (
                   <div>
                     <Label className="text-sm">{getMessage(language, "bsFilingStatusLabel")}</Label>
@@ -575,6 +582,7 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
                   { label: "Medicare", value: profile.hasMedicare ? "Yes" : "No" },
                   { label: "Housing", value: HOUSING_OPTIONS.find((o) => o.value === profile.housingStatus)?.label },
                   { label: "Monthly income (self)", value: `$${Object.values(profile.income).reduce((a, v) => a + v, 0).toLocaleString()}` },
+                  { label: "Claimed as dependent", value: profile.isTaxDependent ? "Yes" : "No" },
                   { label: "Utilities", value: profile.utilityTypes.length > 0 ? profile.utilityTypes.join(", ") : "None" },
                 ].map(({ label, value }) => (
                   <div key={label} className="flex justify-between px-3 py-2">

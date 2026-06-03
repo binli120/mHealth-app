@@ -129,11 +129,17 @@ export function evaluateMassHealth(profile: FamilyProfile, fplPercent: number): 
   }
 
   // ── Children under 19 ───────────────────────────────────────────────────
-  const childrenInHousehold = profile.householdMembers.filter(
+  const childMembers = profile.householdMembers.filter(
     (m) => (m.relationship === 'child' || m.relationship === 'stepchild' || m.relationship === 'grandchild') && m.age < 19
   )
+  const primaryIsChildApplicant = profile.age < 19
+  const childrenForCoverageCount = childMembers.length + (primaryIsChildApplicant ? 1 : 0)
 
-  if (childrenInHousehold.length > 0) {
+  if (childrenForCoverageCount > 0) {
+    const primarySubscriberNote = primaryIsChildApplicant
+      ? 'Parent or legal guardian must sign Health Connector/MassHealth Terms & Conditions for a child-only primary subscriber'
+      : null
+
     if (magiAsFPL <= FPL_PCT_CHILD_STANDARD) {
       results.push({
         programId: 'masshealth_standard',
@@ -143,21 +149,23 @@ export function evaluateMassHealth(profile: FamilyProfile, fplPercent: number): 
         administeredBy: 'MA MassHealth',
         eligibilityStatus: 'likely',
         confidence: 88,
-        estimatedMonthlyValue: 400 * childrenInHousehold.length,
-        estimatedAnnualValue: 4800 * childrenInHousehold.length,
-        valueNote: `Full Medicaid for ${childrenInHousehold.length} child${childrenInHousehold.length > 1 ? 'ren' : ''}, $0 premiums`,
+        estimatedMonthlyValue: 400 * childrenForCoverageCount,
+        estimatedAnnualValue: 4800 * childrenForCoverageCount,
+        valueNote: `Full Medicaid for ${childrenForCoverageCount} child${childrenForCoverageCount > 1 ? 'ren' : ''}, $0 premiums`,
         score: 0,
         priority: 0,
         keyRequirements: [
           'MA resident',
           'Child under 19',
           `Income ≤150% FPL (~$${Math.round(annualFPL * 1.5).toLocaleString()}/yr)`,
-        ],
+          primarySubscriberNote ?? '',
+        ].filter(Boolean),
         requiredDocuments: [...baseRequiredDocs, "Children's birth certificates"],
         nextSteps: [
           'Apply at mahealthconnector.org or call MassHealth',
+          primarySubscriberNote ?? '',
           'Children enrolled within 45 days; sooner if urgent need',
-        ],
+        ].filter(Boolean),
         ...applyInfo,
       })
     } else if (magiAsFPL <= FPL_PCT_FAMILY_ASSIST) {
@@ -169,21 +177,23 @@ export function evaluateMassHealth(profile: FamilyProfile, fplPercent: number): 
         administeredBy: 'MA MassHealth',
         eligibilityStatus: 'likely',
         confidence: 80,
-        estimatedMonthlyValue: 200 * childrenInHousehold.length,
-        estimatedAnnualValue: 2400 * childrenInHousehold.length,
-        valueNote: `Low-cost CHIP coverage for ${childrenInHousehold.length} child${childrenInHousehold.length > 1 ? 'ren' : ''} (small monthly premium)`,
+        estimatedMonthlyValue: 200 * childrenForCoverageCount,
+        estimatedAnnualValue: 2400 * childrenForCoverageCount,
+        valueNote: `Low-cost CHIP coverage for ${childrenForCoverageCount} child${childrenForCoverageCount > 1 ? 'ren' : ''} (small monthly premium)`,
         score: 0,
         priority: 0,
         keyRequirements: [
           'MA resident',
           'Child under 19',
           `Income 150–300% FPL (~$${Math.round(annualFPL * 1.5).toLocaleString()}–$${Math.round(annualFPL * 3).toLocaleString()}/yr)`,
-        ],
+          primarySubscriberNote ?? '',
+        ].filter(Boolean),
         requiredDocuments: [...baseRequiredDocs, "Children's birth certificates"],
         nextSteps: [
           'Apply at mahealthconnector.org — comprehensive pediatric coverage',
+          primarySubscriberNote ?? '',
           'Small monthly premiums based on income',
-        ],
+        ].filter(Boolean),
         ...applyInfo,
       })
     }
