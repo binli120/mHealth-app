@@ -91,8 +91,8 @@ export default function AdminGlossaryPage() {
   const fetchTerms = useCallback(() => {
     authenticatedFetch("/api/admin/glossary")
       .then((res) => res.json())
-      .then((data: { ok: boolean; terms?: GlossaryTerm[] }) => {
-        if (data.ok && data.terms) setTerms(data.terms)
+      .then((data: { terms?: GlossaryTerm[] }) => {
+        if (data.terms) setTerms(data.terms)
       })
       .catch(() => null)
       .finally(() => setLoading(false))
@@ -159,12 +159,12 @@ export default function AdminGlossaryPage() {
       const res = await authenticatedFetch(
         isNew ? "/api/admin/glossary" : `/api/admin/glossary/${editingSlug}`,
         {
-          method: isNew ? "POST" : "PUT",
+          method: isNew ? "POST" : "PATCH",
           body: JSON.stringify(body),
         },
       )
-      const data = await res.json() as { ok?: boolean; error?: string }
-      if (data.ok) {
+      const data = await res.json() as { term?: unknown; error?: string }
+      if (res.ok) {
         closeDialog()
         void fetchTerms()
       } else {
@@ -186,8 +186,7 @@ export default function AdminGlossaryPage() {
       const res = await authenticatedFetch(`/api/admin/glossary/${deleteSlug}`, {
         method: "DELETE",
       })
-      const data = await res.json() as { ok?: boolean; error?: string }
-      if (data.ok) {
+      if (res.ok) {
         setDeleteSlug(null)
         void fetchTerms()
       }
