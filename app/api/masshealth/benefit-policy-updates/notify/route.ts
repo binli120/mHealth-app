@@ -3,7 +3,7 @@
  * @email: blee@healthcompass.cloud
  *
  * POST /api/masshealth/benefit-policy-updates/notify
- * Checks submitted/non-draft applications for MassHealth policy updates and
+ * Checks saved applications for MassHealth policy updates and
  * creates in-app notifications when new findings are found.
  */
 
@@ -29,17 +29,28 @@ export async function POST(request: Request) {
   try {
     const applications = await listAppliedApplicationsForPolicyUpdates(authResult.userId, limit)
     if (applications.length === 0) {
+      logServerInfo("masshealth.benefitPolicyUpdates.notify.skipped", {
+        userId: authResult.userId,
+        reason: "no_applications",
+        ms: Date.now() - start,
+      })
       return NextResponse.json({
         ok: true,
         checked: false,
         checkedApplications: 0,
         notificationsCreated: 0,
-        reason: "no_applied_applications",
+        reason: "no_applications",
       })
     }
 
     const results = []
     for (const application of applications) {
+      logServerInfo("masshealth.benefitPolicyUpdates.notify.checkApplication", {
+        userId: authResult.userId,
+        applicationId: application.id,
+        status: application.status,
+        applicationType: application.applicationType,
+      })
       const result = await notifyBenefitPolicyUpdatesForApplication({
         userId: authResult.userId,
         applicationId: application.id,

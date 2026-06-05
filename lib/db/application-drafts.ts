@@ -421,14 +421,6 @@ export async function listAppliedApplicationsForPolicyUpdates(
         submitted_at
       FROM public.applications
       WHERE applicant_id = $1::uuid
-        AND status IN (
-          'submitted'::application_status,
-          'ai_extracted'::application_status,
-          'needs_review'::application_status,
-          'rfi_requested'::application_status,
-          'approved'::application_status,
-          'denied'::application_status
-        )
       ORDER BY COALESCE(submitted_at, last_saved_at, updated_at, created_at) DESC
       LIMIT $2::int
     `,

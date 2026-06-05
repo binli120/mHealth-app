@@ -34,12 +34,14 @@ const BENEFIT_NAME_KEYS = new Set([
 ])
 
 const MASSHEALTH_APPLICATION_TYPE_BENEFITS: Record<string, string[]> = {
-  "aca_3": ["MassHealth", "Dental Benefits", "Pharmacy"],
-  "aca3": ["MassHealth", "Dental Benefits", "Pharmacy"],
-  "aca_3_ap": ["MassHealth", "Dental Benefits", "Pharmacy"],
-  "aca3ap": ["MassHealth", "Dental Benefits", "Pharmacy"],
+  "aca_3": ["MassHealth", "Health Safety Net", "Dental Benefits", "Pharmacy"],
+  "aca3": ["MassHealth", "Health Safety Net", "Dental Benefits", "Pharmacy"],
+  "aca_3_ap": ["MassHealth", "Health Safety Net", "Dental Benefits", "Pharmacy"],
+  "aca3ap": ["MassHealth", "Health Safety Net", "Dental Benefits", "Pharmacy"],
   "saca_2": ["MassHealth", "PCA services", "Long-term services and supports"],
   "saca2": ["MassHealth", "PCA services", "Long-term services and supports"],
+  "hsn": ["Health Safety Net"],
+  "health_safety_net": ["Health Safety Net"],
 }
 
 export interface NotifyBenefitPolicyUpdatesInput {
@@ -55,7 +57,7 @@ export interface NotifyBenefitPolicyUpdatesResult {
   notified: boolean
   benefitNames: string[]
   findingCount: number
-  reason?: "no_benefits" | "no_new_findings" | "duplicate"
+  reason?: "no_benefits" | "no_relevant_findings" | "duplicate"
 }
 
 export async function notifyBenefitPolicyUpdatesForApplication(
@@ -69,7 +71,7 @@ export async function notifyBenefitPolicyUpdatesForApplication(
   const response = await fetchPolicyUpdates(input.userId, benefitNames)
   const findings = response.findings.filter(isNotificationWorthyFinding)
   if (findings.length === 0) {
-    return { checked: true, notified: false, benefitNames, findingCount: 0, reason: "no_new_findings" }
+    return { checked: true, notified: false, benefitNames, findingCount: 0, reason: "no_relevant_findings" }
   }
 
   const contentHashes = uniqueStrings(findings.map((finding) => finding.content_hash).filter(Boolean))
@@ -125,7 +127,7 @@ export function collectAppliedBenefitNames(input: {
 async function fetchPolicyUpdates(userId: string, benefitNames: string[]) {
   try {
     return await fetchBenefitPolicyUpdatesFromAnalysisService(
-      { benefitNames, includeUnchanged: false },
+      { benefitNames, includeUnchanged: true },
       {
         baseUrl: ANALYSIS_BASE,
         apiToken: MASSHEALTH_API_TOKEN,
@@ -133,7 +135,7 @@ async function fetchPolicyUpdates(userId: string, benefitNames: string[]) {
       },
     )
   } catch {
-    return fetchBenefitPolicyUpdatesFromLocalPython({ benefitNames, includeUnchanged: false })
+    return fetchBenefitPolicyUpdatesFromLocalPython({ benefitNames, includeUnchanged: true })
   }
 }
 
@@ -205,7 +207,7 @@ function normalizeKey(value?: string | null): string | null {
 }
 
 function isNotificationWorthyFinding(finding: BenefitPolicyFinding): boolean {
-  return finding.snapshot_status !== "unchanged" && finding.change_signal !== "none"
+  return finding.change_signal !== "none"
 }
 
 function buildNotificationTitle(findings: BenefitPolicyFinding[]): string {
