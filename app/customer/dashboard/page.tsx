@@ -264,6 +264,29 @@ export default function CustomerDashboardPage() {
   )
 
   useEffect(() => {
+    if (applications.length === 0) return
+
+    let cancelled = false
+    authenticatedFetch("/api/masshealth/benefit-policy-updates/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ limit: 5 }),
+    })
+      .then((response) => response.json().catch(() => null))
+      .then((payload: { notificationsCreated?: number } | null) => {
+        if (cancelled) return
+        if (payload?.notificationsCreated && payload.notificationsCreated > 0) {
+          window.dispatchEvent(new Event("notification:refresh"))
+        }
+      })
+      .catch(() => {})
+
+    return () => {
+      cancelled = true
+    }
+  }, [applications])
+
+  useEffect(() => {
     let mounted = true
 
     const loadFirstName = async () => {

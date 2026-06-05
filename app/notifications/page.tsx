@@ -12,6 +12,8 @@ import { ArrowLeft, CheckCheck, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { BenefitPolicyUpdateDialog } from "@/components/notifications/BenefitPolicyUpdateDialog"
+import { BenefitPolicyUpdateNotificationCard } from "@/components/notifications/BenefitPolicyUpdateNotificationCard"
 import { NotificationItem } from "@/components/notifications/NotificationItem"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import {
@@ -28,6 +30,7 @@ import type { Notification } from "@/lib/notifications/types"
 
 const TYPE_LABELS: Record<string, string> = {
   all:              "All",
+  benefit_policy_update: "Policy Updates",
   status_change:    "Status",
   document_request: "Documents",
   renewal_reminder: "Renewals",
@@ -35,10 +38,15 @@ const TYPE_LABELS: Record<string, string> = {
   general:          "General",
 }
 
+function isBenefitPolicyUpdate(notification: Notification): boolean {
+  return notification.metadata?.kind === "benefit_policy_update"
+}
+
 export default function NotificationsPage() {
   const dispatch = useAppDispatch()
   const { items, unreadCount, loading, error } = useAppSelector((s) => s.notifications)
   const [filter, setFilter] = useState<string>("all")
+  const [selectedPolicyUpdate, setSelectedPolicyUpdate] = useState<Notification | null>(null)
   // Keep a stable ref to items for rollback snapshots inside callbacks
   const itemsRef = useRef(items)
   useEffect(() => {
@@ -81,7 +89,16 @@ export default function NotificationsPage() {
     }
   }, [dispatch])
 
-  const filtered = filter === "all" ? items : items.filter((n) => n.type === filter)
+  const handlePolicyUpdateReview = useCallback(async (notification: Notification) => {
+    await handleItemClick(notification)
+    setSelectedPolicyUpdate(notification)
+  }, [handleItemClick])
+
+  const filtered = filter === "all"
+    ? items
+    : filter === "benefit_policy_update"
+      ? items.filter(isBenefitPolicyUpdate)
+      : items.filter((n) => n.type === filter && !isBenefitPolicyUpdate(n))
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
@@ -116,7 +133,9 @@ export default function NotificationsPage() {
         {Object.entries(TYPE_LABELS).map(([key, label]) => {
           const count = key === "all"
             ? items.filter((n) => !n.readAt).length
-            : items.filter((n) => n.type === key && !n.readAt).length
+            : key === "benefit_policy_update"
+              ? items.filter((n) => isBenefitPolicyUpdate(n) && !n.readAt).length
+              : items.filter((n) => n.type === key && !isBenefitPolicyUpdate(n) && !n.readAt).length
           return (
             <button
               key={key}
@@ -155,11 +174,22 @@ export default function NotificationsPage() {
         </div>
       ) : (
         <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
-          {filtered.map((n) => (
-            <NotificationItem key={n.id} notification={n} onClick={handleItemClick} />
-          ))}
+          {filtered.map((n) =>
+            isBenefitPolicyUpdate(n) ? (
+              <BenefitPolicyUpdateNotificationCard key={n.id} notification={n} onClick={handlePolicyUpdateReview} />
+            ) : (
+              <NotificationItem key={n.id} notification={n} onClick={handleItemClick} />
+            ),
+          )}
         </div>
       )}
+      <BenefitPolicyUpdateDialog
+        notification={selectedPolicyUpdate}
+        open={selectedPolicyUpdate !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedPolicyUpdate(null)
+        }}
+      />
     </div>
   )
 }

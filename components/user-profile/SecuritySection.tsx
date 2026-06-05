@@ -40,7 +40,7 @@ interface PasskeyInfo {
   created_at: string
 }
 
-type TotpStep = "idle" | "qr" | "verifying"
+type TotpStep = "idle" | "qr" | "verifying" | "removing"
 
 interface MfaEnrollData {
   factorId: string
@@ -56,6 +56,80 @@ function formatDate(iso: string) {
     month: "short",
     day: "numeric",
   })
+}
+
+// ── TotpActivePanel ───────────────────────────────────────────────────────────
+
+function TotpActivePanel({ factor, onRemoved }: { factor: Factor; onRemoved: () => void }) {
+  const [confirming, setConfirming] = useState(false)
+  const [removing, setRemoving] = useState(false)
+
+  const handleRemove = async () => {
+    setRemoving(true)
+    try {
+      const supabase = getSupabaseClient()
+      const { error } = await supabase.auth.mfa.unenroll({ factorId: factor.id })
+      if (error) {
+        toast.error(error.message)
+        return
+      }
+      toast.success("Two-factor authentication removed.")
+      onRemoved()
+    } catch {
+      toast.error("Unable to remove 2FA. Please try again.")
+    } finally {
+      setRemoving(false)
+      setConfirming(false)
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+        <ShieldCheck className="h-5 w-5 shrink-0 text-emerald-600" />
+        <div className="flex-1">
+          <p className="text-sm font-medium text-emerald-800">2FA is active</p>
+          <p className="text-xs text-emerald-700 mt-0.5">
+            Your account is protected. You&apos;ll be prompted for a code on each sign-in.
+          </p>
+        </div>
+        {!confirming && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={() => setConfirming(true)}
+          >
+            Remove
+          </Button>
+        )}
+      </div>
+
+      {confirming && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-3">
+          <p className="text-sm text-destructive font-medium">Remove two-factor authentication?</p>
+          <p className="text-xs text-muted-foreground">
+            Your account will be less secure without 2FA. You can re-enable it at any time.
+          </p>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => void handleRemove()}
+              disabled={removing}
+              className="gap-1"
+            >
+              {removing ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+              {removing ? "Removing…" : "Yes, remove 2FA"}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setConfirming(false)} disabled={removing}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ── SecuritySection ───────────────────────────────────────────────────────────
@@ -434,15 +508,13 @@ export function SecuritySection() {
               <Loader2 className="h-4 w-4 animate-spin" /> Loading…
             </div>
           ) : hasTotpFactor ? (
-            <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-              <ShieldCheck className="h-5 w-5 shrink-0 text-emerald-600" />
-              <div>
-                <p className="text-sm font-medium text-emerald-800">2FA is active</p>
-                <p className="text-xs text-emerald-700 mt-0.5">
-                  Your account is protected. You&apos;ll be prompted for a code on each sign-in.
-                </p>
-              </div>
-            </div>
+            <TotpActivePanel
+              factor={totpFactors[0]}
+              onRemoved={() => {
+                setTotpFactors([])
+                setTotpStep("idle")
+              }}
+            />
           ) : totpStep === "idle" ? (
             <Button
               onClick={() => void handleStartTotp()}

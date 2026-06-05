@@ -14,6 +14,7 @@ import {
 } from "@/lib/db/application-drafts"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 import { notifyStatusChange } from "@/lib/notifications/service"
+import { notifyBenefitPolicyUpdatesForApplication } from "@/lib/masshealth/benefit-policy-change-notifier"
 import { logServerError } from "@/lib/server/logger"
 import {
   ERROR_APPLICATION_DRAFT_NOT_FOUND,
@@ -161,6 +162,18 @@ export async function PUT(request: Request, context: RouteContext) {
     if (record.status === "submitted") {
       notifyStatusChange(authResult.userId, applicationId, "submitted").catch((err) => {
         logServerError("Failed to send submission notification", err, {
+          module: "api/applications/draft",
+          userId: authResult.userId,
+          applicationId,
+        })
+      })
+      notifyBenefitPolicyUpdatesForApplication({
+        userId: authResult.userId,
+        applicationId,
+        applicationType: record.applicationType ?? body.applicationType,
+        wizardState: body.wizardState,
+      }).catch((err) => {
+        logServerError("Failed to check MassHealth benefit policy updates", err, {
           module: "api/applications/draft",
           userId: authResult.userId,
           applicationId,

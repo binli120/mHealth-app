@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MassHealth Policy Notification Preview</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --border: #e5e7eb;
+      --muted: #f8fafc;
+      --text: #111827;
+      --subtle: #6b7280;
+      --sky: #0369a1;
+      --sky-soft: #e0f2fe;
+      --button: #111827;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f3f4f6;
+      color: var(--text);
+    }
+    .page {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 32px 16px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .back {
+      width: 40px;
+      height: 40px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      font-size: 22px;
+    }
+    h1 { margin: 0; font-size: 26px; line-height: 1.2; }
+    .unread { margin: 4px 0 0; color: var(--subtle); font-size: 14px; }
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .chip {
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--subtle);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .chip.active {
+      background: #111827;
+      border-color: #111827;
+      color: white;
+    }
+    .badge-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 16px;
+      height: 16px;
+      margin-left: 6px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      color: #111827;
+      font-size: 10px;
+    }
+    .list {
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: white;
+    }
+    .card {
+      padding: 18px 16px;
+      background: #f8fafc;
+    }
+    .row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .icon {
+      display: flex;
+      width: 36px;
+      height: 36px;
+      flex: 0 0 36px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      background: var(--sky-soft);
+      color: var(--sky);
+    }
+    .content { min-width: 0; flex: 1; }
+    .titlebar {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .title {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .time {
+      flex: 0 0 auto;
+      color: var(--subtle);
+      font-size: 11px;
+    }
+    .dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      margin-left: 8px;
+      border-radius: 999px;
+      background: var(--sky);
+      vertical-align: 1px;
+    }
+    .body {
+      margin: 6px 0 0;
+      color: var(--subtle);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 14px;
+    }
+    .tag {
+      border-radius: 4px;
+      background: #eef2f7;
+      color: #374151;
+      padding: 4px 8px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .findings {
+      display: grid;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .finding {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: white;
+      padding: 10px;
+    }
+    .finding-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .signal {
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 6px;
+      color: #374151;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    ul {
+      margin: 8px 0 0;
+      padding-left: 0;
+      list-style: none;
+      display: grid;
+      gap: 6px;
+    }
+    li {
+      color: var(--subtle);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .source {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 8px;
+      color: var(--sky);
+      font-size: 12px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .button {
+      border: 0;
+      border-radius: 6px;
+      background: var(--button);
+      color: white;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .application {
+      color: var(--subtle);
+      font-size: 11px;
+    }
+    .overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: rgba(0, 0, 0, 0.48);
+    }
+    .dialog {
+      width: min(760px, 100%);
+      max-height: 86vh;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: white;
+      box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+    }
+    .dialog-head {
+      border-bottom: 1px solid var(--border);
+      padding: 18px 20px;
+    }
+    .dialog-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 750;
+    }
+    .dialog-desc {
+      margin: 6px 0 0;
+      color: var(--subtle);
+      font-size: 13px;
+    }
+    .dialog-body {
+      max-height: calc(86vh - 84px);
+      overflow: auto;
+      padding: 16px 20px 20px;
+    }
+    .detail {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: white;
+      padding: 14px;
+    }
+    .detail + .detail { margin-top: 12px; }
+    .detail-top {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .detail-title {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 750;
+    }
+    .detail-source {
+      margin: 4px 0 0;
+      color: var(--subtle);
+      font-size: 12px;
+    }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+      font-size: 12px;
+    }
+    .detail-grid dt {
+      color: var(--subtle);
+      font-weight: 700;
+    }
+    .detail-grid dd {
+      margin: 3px 0 0;
+      color: var(--text);
+    }
+    .evidence-title {
+      margin: 14px 0 0;
+      color: var(--subtle);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .evidence-item {
+      border-radius: 5px;
+      background: #f3f4f6;
+      padding: 9px 10px;
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    @media (max-width: 640px) {
+      .detail-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="header">
+      <button class="back" aria-label="Back">←</button>
+      <div>
+        <h1>Notifications</h1>
+        <p class="unread">1 unread</p>
+      </div>
+    </div>
+
+    <div class="filters">
+      <span class="chip">All <span class="badge-count">1</span></span>
+      <span class="chip active">Policy Updates <span class="badge-count">1</span></span>
+      <span class="chip">Status</span>
+      <span class="chip">Documents</span>
+      <span class="chip">Renewals</span>
+      <span class="chip">Deadlines</span>
+      <span class="chip">General</span>
+    </div>
+
+    <section class="list" aria-label="Notifications">
+      <article class="card">
+        <div class="row">
+          <div class="icon" aria-hidden>⌕</div>
+          <div class="content">
+            <div class="titlebar">
+              <div>
+                <p class="title">MassHealth update for dental <span class="dot"></span></p>
+                <p class="body">New MassHealth policy information may affect applied benefits. Review 3 update(s), starting with MassHealth Pharmacy Facts.</p>
+              </div>
+              <span class="time">now</span>
+            </div>
+
+            <div class="tags">
+              <span class="tag">MassHealth</span>
+              <span class="tag">Dental Benefits</span>
+              <span class="tag">Pharmacy</span>
+            </div>
+
+            <div class="findings">
+              <div class="finding">
+                <div class="finding-head">
+                  <span>Dental</span>
+                  <span class="signal">policy review</span>
+                </div>
+                <ul>
+                  <li>Dental claim submission and processing language changed in a recent MassHealth update.</li>
+                  <li>Members or staff should review effective dates and payer-specific instructions.</li>
+                </ul>
+                <a class="source" href="#">MassHealth provider bulletin ↗</a>
+              </div>
+
+              <div class="finding">
+                <div class="finding-head">
+                  <span>Pharmacy</span>
+                  <span class="signal">prior authorization change</span>
+                </div>
+                <ul>
+                  <li>Pharmacy coverage guidance includes updated prior authorization or preferred-drug language.</li>
+                  <li>Check whether medications tied to weight loss, diabetes, or chronic care are affected.</li>
+                </ul>
+                <a class="source" href="#">MassHealth Pharmacy Facts ↗</a>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button class="button">Review changes</button>
+              <span class="application">Application 8a7b11c2</span>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+  <div class="overlay" aria-label="Open policy update review dialog">
+    <section class="dialog">
+      <div class="dialog-head">
+        <p class="dialog-title">MassHealth update for dental</p>
+        <p class="dialog-desc">3 update(s) found for benefits tied to this application.</p>
+      </div>
+      <div class="dialog-body">
+        <div class="tags">
+          <span class="tag">MassHealth</span>
+          <span class="tag">Dental Benefits</span>
+          <span class="tag">Pharmacy</span>
+        </div>
+
+        <article class="detail">
+          <div class="detail-top">
+            <div>
+              <p class="detail-title">1. Dental</p>
+              <p class="detail-source">MassHealth provider bulletin</p>
+            </div>
+            <span class="signal">policy review</span>
+          </div>
+          <dl class="detail-grid">
+            <div>
+              <dt>Benefits</dt>
+              <dd>dental, dental claims</dd>
+            </div>
+            <div>
+              <dt>Conditions</dt>
+              <dd>claims, third-party administrator</dd>
+            </div>
+          </dl>
+          <p class="evidence-title">Evidence</p>
+          <ul>
+            <li class="evidence-item">Dental claim submission and processing language changed in a recent MassHealth update.</li>
+            <li class="evidence-item">Members or staff should review effective dates and payer-specific instructions.</li>
+          </ul>
+          <a class="source" href="#">Open source ↗</a>
+        </article>
+
+        <article class="detail">
+          <div class="detail-top">
+            <div>
+              <p class="detail-title">2. Pharmacy</p>
+              <p class="detail-source">MassHealth Pharmacy Facts</p>
+            </div>
+            <span class="signal">prior authorization change</span>
+          </div>
+          <dl class="detail-grid">
+            <div>
+              <dt>Benefits</dt>
+              <dd>pharmacy, formulary</dd>
+            </div>
+            <div>
+              <dt>Treatments</dt>
+              <dd>GLP-1, Wegovy, Zepbound</dd>
+            </div>
+            <div>
+              <dt>Diseases</dt>
+              <dd>obesity, diabetes</dd>
+            </div>
+            <div>
+              <dt>Conditions</dt>
+              <dd>prior authorization, preferred drug</dd>
+            </div>
+          </dl>
+          <p class="evidence-title">Evidence</p>
+          <ul>
+            <li class="evidence-item">Pharmacy coverage guidance includes updated prior authorization or preferred-drug language.</li>
+            <li class="evidence-item">Check whether medications tied to weight loss, diabetes, or chronic care are affected.</li>
+          </ul>
+          <a class="source" href="#">Open source ↗</a>
+        </article>
+
+        <p class="application">Application ID: 8a7b11c2-1111-4444-9999-123456789abc</p>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
