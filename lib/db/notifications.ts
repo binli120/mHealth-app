@@ -42,6 +42,32 @@ export async function createNotification(input: CreateNotificationInput): Promis
   return rowToNotification(rows[0])
 }
 
+export async function notificationExistsForPolicyUpdate(params: {
+  userId: string
+  applicationId: string
+  contentHashes: string[]
+}): Promise<boolean> {
+  if (params.contentHashes.length === 0) {
+    return false
+  }
+
+  const pool = getDbPool()
+  const { rows } = await pool.query<{ exists: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1
+       FROM notifications
+       WHERE user_id = $1
+         AND type = 'general'
+         AND metadata->>'kind' = 'benefit_policy_update'
+         AND metadata->>'applicationId' = $2
+         AND (metadata->'contentHashes') ?| $3::text[]
+     ) AS exists`,
+    [params.userId, params.applicationId, params.contentHashes],
+  )
+
+  return Boolean(rows[0]?.exists)
+}
+
 export async function markAsRead(notificationId: string, userId: string): Promise<void> {
   const pool = getDbPool()
   await pool.query(

@@ -73,6 +73,14 @@ export interface ApplicationDraftListResult {
   total: number
 }
 
+export interface AppliedApplicationForPolicyUpdates {
+  id: string
+  status: string
+  applicationType: string | null
+  draftState: Record<string, unknown> | null
+  submittedAt: string | null
+}
+
 export interface ApplicationDraftListFilters {
   status?: string | null
   query?: string | null
@@ -391,6 +399,49 @@ export async function listApplicationDrafts(
     records: rows.map((row) => toSummary(row as Record<string, unknown>)),
     total: parseIntOrNull(rows[0]?.total_count) ?? rows.length,
   }
+}
+
+export async function listAppliedApplicationsForPolicyUpdates(
+  userId: string,
+  limit = 5,
+): Promise<AppliedApplicationForPolicyUpdates[]> {
+  const applicantId = await findApplicantIdForUser(userId)
+  if (!applicantId) {
+    return []
+  }
+
+  const pool = getDbPool()
+  const { rows } = await pool.query(
+    `
+      SELECT
+        id,
+        status,
+        application_type,
+        draft_state,
+        submitted_at
+      FROM public.applications
+      WHERE applicant_id = $1::uuid
+        AND status IN (
+          'submitted'::application_status,
+          'ai_extracted'::application_status,
+          'needs_review'::application_status,
+          'rfi_requested'::application_status,
+          'approved'::application_status,
+          'denied'::application_status
+        )
+      ORDER BY COALESCE(submitted_at, last_saved_at, updated_at, created_at) DESC
+      LIMIT $2::int
+    `,
+    [applicantId, Math.max(1, Math.min(20, Math.trunc(limit)))],
+  )
+
+  return rows.map((row) => ({
+    id: String(row.id),
+    status: String(row.status),
+    applicationType: (row.application_type as string | null) ?? null,
+    draftState: (row.draft_state as Record<string, unknown> | null) ?? null,
+    submittedAt: (row.submitted_at as string | null) ?? null,
+  }))
 }
 
 export async function upsertApplicationDraft(params: {
