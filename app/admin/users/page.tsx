@@ -23,6 +23,7 @@ import {
   Upload,
   ChevronDown,
   Trash2,
+  ShieldOff,
 } from "lucide-react"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { toUserFacingError } from "@/lib/errors/user-facing"
@@ -143,6 +144,15 @@ function AdminUsersInner() {
     await authenticatedFetch("/api/admin/users", {
       method: "PATCH",
       body: JSON.stringify({ userId, action: "set_active", isActive }),
+    })
+    void fetchUsers()
+  }
+
+  const handleResetMfa = async (userId: string) => {
+    if (!confirm("Remove all 2FA factors for this user? They will need to re-enroll.")) return
+    await authenticatedFetch("/api/admin/users", {
+      method: "PATCH",
+      body: JSON.stringify({ userId, action: "reset_mfa" }),
     })
     void fetchUsers()
   }
@@ -449,13 +459,22 @@ function AdminUsersInner() {
                       {new Date(u.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => handleSetActive(u.id, !u.is_active)}
-                        title={u.is_active ? "Deactivate" : "Activate"}
-                        className={`rounded p-1.5 hover:bg-muted ${u.is_active ? "text-destructive" : "text-success"}`}
-                      >
-                        {u.is_active ? <UserX className="size-4" /> : <UserCheck className="size-4" />}
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => void handleResetMfa(u.id)}
+                          title="Reset 2FA"
+                          className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        >
+                          <ShieldOff className="size-4" />
+                        </button>
+                        <button
+                          onClick={() => handleSetActive(u.id, !u.is_active)}
+                          title={u.is_active ? "Deactivate" : "Activate"}
+                          className={`rounded p-1.5 hover:bg-muted ${u.is_active ? "text-destructive" : "text-success"}`}
+                        >
+                          {u.is_active ? <UserX className="size-4" /> : <UserCheck className="size-4" />}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

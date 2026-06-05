@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/auth/require-admin"
 import { listUsers, setUserActive, setUserRole, listCompaniesForSelect } from "@/lib/db/admin"
+import { getSupabaseAdminClient } from "@/lib/supabase/server"
 
 export const runtime = "nodejs"
 
@@ -37,7 +38,7 @@ export async function PATCH(request: Request) {
 
   const body = (await request.json().catch(() => ({}))) as {
     userId?: string
-    action?: "set_active" | "set_role"
+    action?: "set_active" | "set_role" | "reset_mfa"
     isActive?: boolean
     roleName?: string
     add?: boolean
@@ -61,6 +62,21 @@ export async function PATCH(request: Request) {
     }
     await setUserRole(body.userId, body.roleName, body.add)
     return NextResponse.json({ ok: true })
+  }
+
+  if (body.action === "reset_mfa") {
+    const adminClient = getSupabaseAdminClient()
+    const { data: factors, error: listErr } = await adminClient.auth.admin.mfa.listFactors({ userId: body.userId })
+    if (listErr) {
+      return NextResponse.json({ ok: false, error: listErr.message }, { status: 500 })
+    }
+    const allFactors = (factors?.factors ?? []).filter((f) => f.factor_type === "totp")
+    await Promise.all(
+      allFactors.map((f: { id: string }) =>
+        adminClient.auth.admin.mfa.deleteFactor({ userId: body.userId!, id: f.id }),
+      ),
+    )
+    return NextResponse.json({ ok: true, removed: allFactors.length })
   }
 
   return NextResponse.json({ ok: false, error: "Unknown action" }, { status: 400 })

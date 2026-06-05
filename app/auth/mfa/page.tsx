@@ -18,6 +18,93 @@ import { getSupabaseClient } from "@/lib/supabase/client"
 import { ShieldHeartIcon } from "@/lib/icons"
 import type { Factor } from "@supabase/supabase-js"
 
+// ── Recovery sub-form ────────────────────────────────────────────────────────
+
+function RecoveryForm({ onCancel }: { onCancel: () => void }) {
+  const [email, setEmail] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [error, setError] = useState("")
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
+    setIsLoading(true)
+    try {
+      const res = await fetch("/api/auth/reset-mfa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      })
+      const data = (await res.json().catch(() => ({ ok: false }))) as { ok: boolean; error?: string }
+      if (!data.ok) {
+        setError(data.error ?? "Unable to send email. Please try again.")
+        return
+      }
+      setSent(true)
+    } catch {
+      setError("Unable to send email. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  if (sent) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+          <p className="text-sm font-medium text-emerald-800">Check your inbox</p>
+          <p className="mt-1 text-xs text-emerald-700">
+            If <span className="font-medium">{email}</span> has an account, you&apos;ll receive a
+            link to remove your 2FA. Check your spam folder if it doesn&apos;t arrive.
+          </p>
+        </div>
+        <Button variant="outline" className="w-full" onClick={onCancel}>
+          Back
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <form onSubmit={(e) => void handleSend(e)} className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Enter the email address for your account. We&apos;ll send a link that removes your
+        two-factor authentication so you can sign in again.
+      </p>
+      <div className="space-y-2">
+        <Label htmlFor="recovery-email" className="text-foreground">
+          Email address
+        </Label>
+        <Input
+          id="recovery-email"
+          type="email"
+          placeholder="you@example.com"
+          required
+          autoFocus
+          autoComplete="email"
+          className="border-input bg-background text-foreground"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+      </div>
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      <Button
+        type="submit"
+        className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+        disabled={isLoading || !email}
+      >
+        {isLoading ? "Sending…" : "Send reset link"}
+      </Button>
+      <Button type="button" variant="ghost" className="w-full" onClick={onCancel} disabled={isLoading}>
+        Back to verification
+      </Button>
+    </form>
+  )
+}
+
+// ── Main MFA page ─────────────────────────────────────────────────────────────
+
 function MFAPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -26,6 +113,7 @@ function MFAPageContent() {
   const [errorMessage, setErrorMessage] = useState("")
   const [factors, setFactors] = useState<Factor[]>([])
   const [isLoadingFactors, setIsLoadingFactors] = useState(true)
+  const [showRecovery, setShowRecovery] = useState(false)
 
   const nextPath = useMemo(
     () => getSafeAuthNextPath(searchParams.get("next"), "/admin"),
@@ -90,6 +178,11 @@ function MFAPageContent() {
     router.push("/auth/login")
   }
 
+  const cardTitle = showRecovery ? "Reset Two-Factor Authentication" : "Verify Identity"
+  const cardDescription = showRecovery
+    ? "We'll email you a link to remove your authenticator."
+    : "Open your authenticator app and enter the current code."
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="border-b border-border bg-card px-4 py-4">
@@ -112,20 +205,22 @@ function MFAPageContent() {
             </div>
             <h1 className="text-2xl font-bold text-foreground">Two-Factor Authentication</h1>
             <p className="mt-1 text-muted-foreground">
-              Enter the 6-digit code from your authenticator app.
+              {showRecovery
+                ? "Lost access to your authenticator app?"
+                : "Enter the 6-digit code from your authenticator app."}
             </p>
           </div>
 
           <Card className="border-border bg-card">
             <CardHeader className="space-y-1 pb-4">
-              <CardTitle className="text-xl text-card-foreground">Verify Identity</CardTitle>
-              <CardDescription>
-                Open your authenticator app and enter the current code.
-              </CardDescription>
+              <CardTitle className="text-xl text-card-foreground">{cardTitle}</CardTitle>
+              <CardDescription>{cardDescription}</CardDescription>
             </CardHeader>
             <CardContent>
               {isLoadingFactors ? (
                 <p className="text-center text-sm text-muted-foreground">Loading...</p>
+              ) : showRecovery ? (
+                <RecoveryForm onCancel={() => setShowRecovery(false)} />
               ) : factors.length === 0 ? (
                 <div className="space-y-4">
                   <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
@@ -178,6 +273,16 @@ function MFAPageContent() {
                   >
                     Cancel & Sign Out
                   </Button>
+                  <p className="text-center text-xs text-muted-foreground">
+                    Lost access to your authenticator?{" "}
+                    <button
+                      type="button"
+                      className="underline hover:text-foreground"
+                      onClick={() => setShowRecovery(true)}
+                    >
+                      Reset via email
+                    </button>
+                  </p>
                 </form>
               )}
             </CardContent>
