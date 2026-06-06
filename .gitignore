@@ -39,3 +39,4 @@ supabase/migrations/.$*.drawio.bkp
 # Large binary policy docs (txt versions committed instead)
 resources/*.pdf
 resources/*.docx
+*.drawio.dtmp

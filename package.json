@@ -11,6 +11,7 @@
     "doc:exec-summary": "node docs/gen-exec-summary.mjs",
     "lint": "eslint .",
     "db:check": "DATABASE_URL_DEV=${DATABASE_URL_DEV:-postgresql://postgres:postgres@localhost:54322/postgres} node ./scripts/check-db.mjs",
+    "db:schema:generate": "node ./scripts/generate-db-schema-artifacts.mjs",
     "gen:test-license": "node scripts/generate-test-license.mjs",
     "db:migrate:dev": "bash ./scripts/db-migrate-dev.sh",
     "db:push:dev": "supabase db push",
@@ -48,12 +49,13 @@
     "stack": "pnpm clean && pnpm lint && pnpm test && pnpm run build-storybook && pnpm dev"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.30.0",
     "@ai-sdk/groq": "^3.0.39",
     "@ai-sdk/openai": "^3.0.52",
+    "@anthropic-ai/sdk": "^0.30.0",
     "@fontsource/caveat": "^5.2.8",
     "@hookform/resolvers": "^3.9.1",
     "@opentelemetry/auto-instrumentations-node": "^0.75.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "^0.217.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.217.0",
     "@opentelemetry/resources": "^2.6.1",
     "@opentelemetry/sdk-node": "^0.217.0",

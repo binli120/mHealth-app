@@ -4,7 +4,7 @@
  */
 
 /**
- * Next.js OpenTelemetry instrumentation — ships traces to OpenObserve.
+ * Next.js OpenTelemetry instrumentation — ships traces and metrics to OpenObserve.
  * Loaded automatically by Next.js 15+ on every server start.
  *
  * Requires env vars:
@@ -69,7 +69,8 @@ export async function register() {
   const auth = Buffer.from(`${user}:${pass}`).toString("base64")
 
   // Dynamic imports keep these packages out of the client bundle
-  const { NodeSDK }                     = await import("@opentelemetry/sdk-node")
+  const { NodeSDK, metrics: sdkMetrics } = await import("@opentelemetry/sdk-node")
+  const { OTLPMetricExporter }          = await import("@opentelemetry/exporter-metrics-otlp-http")
   const { OTLPTraceExporter }           = await import("@opentelemetry/exporter-trace-otlp-http")
   const { getNodeAutoInstrumentations } = await import("@opentelemetry/auto-instrumentations-node")
   const { resourceFromAttributes }      = await import("@opentelemetry/resources")
@@ -79,6 +80,10 @@ export async function register() {
     scrubHttpResponseSpan,
     scrubPgStatement,
   } = await import("@/lib/telemetry/otel-phi-hooks")
+
+  const metricExportIntervalMillis = Number(
+    process.env.OPENOBSERVE_METRICS_INTERVAL_MS ?? 60_000,
+  )
 
   const sdk = new NodeSDK({
     resource: resourceFromAttributes({
@@ -90,6 +95,17 @@ export async function register() {
       url:     `${url}/api/${org}/traces`,
       headers: { Authorization: `Basic ${auth}` },
     }),
+    metricReaders: [
+      new sdkMetrics.PeriodicExportingMetricReader({
+        exporter: new OTLPMetricExporter({
+          url:     `${url}/api/${org}/v1/metrics`,
+          headers: { Authorization: `Basic ${auth}` },
+        }),
+        exportIntervalMillis: Number.isFinite(metricExportIntervalMillis)
+          ? metricExportIntervalMillis
+          : 60_000,
+      }),
+    ],
     instrumentations: [
       getNodeAutoInstrumentations({
         // ── Disabled instrumentations ─────────────────────────────────────
@@ -137,6 +153,6 @@ export async function register() {
   sdk.start()
 
   console.info(
-    `[instrumentation] OpenTelemetry tracing active → ${url}/api/${org}/traces`,
+    `[instrumentation] OpenTelemetry traces active → ${url}/api/${org}/traces; metrics active → ${url}/api/${org}/v1/metrics`,
   )
 }

@@ -2,7 +2,7 @@
 # @email: blee@healthcompass.cloud
 
 # Vector — container log collector for HealthCompass MA
-# Reads Docker logs from all containers and ships them to OpenObserve.
+# Reads Docker logs from selected HealthCompass containers and ships them to OpenObserve.
 #
 # Collected sources:
 #   healthcompass-app      → Next.js structured logs
@@ -44,6 +44,7 @@ if err == null {
 '''
 
 # ── Sink: OpenObserve HTTP ingest ─────────────────────────────────────────────
+# Recommended stream name: containers_prod.
 [sinks.openobserve]
 type            = "http"
 inputs          = ["normalize"]

@@ -66,7 +66,7 @@ services:
       OPENOBSERVE_USER: ${OPENOBSERVE_USER:-}
       OPENOBSERVE_PASSWORD: ${OPENOBSERVE_PASSWORD:-}
       OPENOBSERVE_ORG: ${OPENOBSERVE_ORG:-default}
-      OPENOBSERVE_STREAM: ${OPENOBSERVE_STREAM:-mhealth-app}
+      OPENOBSERVE_STREAM: ${OPENOBSERVE_STREAM:-mhealth_app}
     env_file:
       - .env.production.local
     labels:
@@ -116,7 +116,7 @@ services:
       OPENOBSERVE_USER: ${OPENOBSERVE_USER}
       OPENOBSERVE_PASSWORD: ${OPENOBSERVE_PASSWORD}
       OPENOBSERVE_ORG: ${OPENOBSERVE_ORG:-default}
-      OPENOBSERVE_STREAM_CONTAINERS: ${OPENOBSERVE_STREAM_CONTAINERS:-containers-prod}
+      OPENOBSERVE_STREAM_CONTAINERS: ${OPENOBSERVE_STREAM_CONTAINERS:-containers_prod}
     networks:
       - internal
     depends_on:

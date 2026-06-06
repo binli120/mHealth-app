@@ -147,6 +147,13 @@ FROM_EMAIL=noreply@yourdomain.com
 # ── External services ─────────────────────────────────────────────────────────
 NEXT_PUBLIC_MASSHEALTH_FORMS_BASE_URL=http://localhost:8000
 NEXT_PUBLIC_MASSHEALTH_ANALYSIS_BASE_URL=http://localhost:8000
+MASSHEALTH_API_TOKEN=                  # optional bearer token for analysis-service requests
+
+# Local MassHealth monitor fallback (used if the analysis service is unavailable)
+MASSHEALTH_MONITOR_ROOT=/Users/<you>/dev/tinyfish
+MASSHEALTH_MONITOR_PYTHON=
+MASSHEALTH_MONITOR_CONFIG=
+MASSHEALTH_MONITOR_SNAPSHOT=
 
 # ── OpenObserve observability ─────────────────────────────────────────────────
 # All three must be set to activate; leave blank to disable silently
@@ -154,8 +161,9 @@ OPENOBSERVE_URL=http://<your-openobserve-host>:5080
 OPENOBSERVE_USER=<your-openobserve-user>
 OPENOBSERVE_PASSWORD=
 OPENOBSERVE_ORG=default
-OPENOBSERVE_STREAM=mhealth-app
-OPENOBSERVE_STREAM_CONTAINERS=containers-local   # Vector ships all container logs here
+OPENOBSERVE_STREAM=mhealth_app
+OPENOBSERVE_STREAM_CONTAINERS=containers_local   # Vector ships all container logs here
+OPENOBSERVE_METRICS_INTERVAL_MS=60000
 
 # ── Optional ──────────────────────────────────────────────────────────────────
 PROFILE_ENCRYPTION_KEY=        # 32-byte hex string for profile field encryption
@@ -213,6 +221,43 @@ For day-to-day release readiness, solo-engineer QA workflow, and UAT guidance, u
 
 ---
 
+## MassHealth Policy Update Notifications
+
+This branch adds a policy-monitoring flow that checks whether new MassHealth guidance may affect benefits tied to a user's application, then surfaces the result as an in-app notification with evidence and source links.
+
+### User workflow
+
+1. The app derives benefit names from the saved application type and wizard state.
+2. `POST /api/masshealth/benefit-policy-updates/notify` checks the user's submitted applications for relevant policy changes.
+3. The route calls the MassHealth analysis service first, then falls back to the local Python monitor if the upstream service is unavailable.
+4. New findings are deduplicated by content hash and stored as in-app notifications with benefit tags, evidence snippets, and source URLs.
+5. Users review the results on `/notifications` under the `Policy Updates` filter and open a detail dialog with the full finding preview.
+
+### API surface
+
+| Route | Purpose |
+|---|---|
+| `POST /api/masshealth/benefit-policy-updates` | Fetch benefit-policy findings for an explicit list of up to 20 benefit names |
+| `POST /api/masshealth/benefit-policy-updates/notify` | Scan the current user's applied applications and create deduplicated in-app notifications |
+
+### Runtime and fallback behavior
+
+- Primary integration: `NEXT_PUBLIC_MASSHEALTH_ANALYSIS_BASE_URL` with optional `MASSHEALTH_API_TOKEN`
+- Fallback integration: local Python monitor at `MASSHEALTH_MONITOR_ROOT` via `masshealth_monitor.integration_cli`
+- Notification payload: application ID, normalized benefit names, top findings, evidence excerpts, effective dates, and source metadata
+- Current scope: submitted applications only; default notify scan limit is `5` applications per request and is clamped to `20`
+
+### Verification
+
+Use these checks when validating the feature locally:
+
+```bash
+pnpm test app/api/masshealth/benefit-policy-updates/__tests__/route.test.ts
+pnpm test
+```
+
+---
+
 ## Commands
 
 | Command | Description |
@@ -252,7 +297,7 @@ For day-to-day release readiness, solo-engineer QA workflow, and UAT guidance, u
 
 ## Observability (OpenObserve + OpenTelemetry)
 
-HealthCompass MA ships structured logs and distributed traces to a self-hosted **OpenObserve** instance running on the Hostinger VPS.
+HealthCompass MA ships structured logs, distributed traces, and OTLP metrics to a self-hosted **OpenObserve** instance running on the Hostinger VPS.
 
 ### Architecture
 
@@ -268,7 +313,8 @@ lib/server/logger.ts          ← logServerError() / logServerInfo()
 
 instrumentation.ts            ← OpenTelemetry SDK (auto-loaded by Next.js)
         │
-        └─── OTLP/HTTP traces  ─────────────────► OpenObserve /api/{org}/traces
+        ├─── OTLP/HTTP traces  ─────────────────► OpenObserve /api/{org}/traces
+        └─── OTLP/HTTP metrics ─────────────────► OpenObserve /api/{org}/v1/metrics
 ```
 
 ### What is collected
@@ -277,6 +323,7 @@ instrumentation.ts            ← OpenTelemetry SDK (auto-loaded by Next.js)
 |---|---|
 | **Structured logs** | Every `logServerError` / `logServerInfo` call across 47+ API routes |
 | **Distributed traces** | HTTP requests, DB queries, and more via OpenTelemetry auto-instrumentation |
+| **Metrics** | OpenTelemetry runtime/instrumentation metrics exported every 60 seconds by default |
 | **PII redaction** | Keys matching `authorization`, `token`, `password`, `ssn`, `dob` are automatically replaced with `[redacted]` |
 
 ### OpenObserve instance
@@ -285,26 +332,29 @@ instrumentation.ts            ← OpenTelemetry SDK (auto-loaded by Next.js)
 |---|---|
 | **URL** | `http://<your-openobserve-host>:5080` |
 | **Login** | `<your-openobserve-user>` |
-| **Dev stream** | `mhealth-app` |
-| **Prod stream** | `mhealth-app-prod` |
+| **App log stream** | `mhealth_app` |
+| **Container log stream** | `containers_prod` |
+| **Trace stream** | `default` |
 
 ### Environment variables
 
-All three must be set to activate log shipping and tracing. Leave blank to disable silently.
+URL, user, and password must be set to activate log, trace, and metric shipping. Leave blank to disable silently.
 
 ```env
 OPENOBSERVE_URL=http://<your-openobserve-host>:5080
 OPENOBSERVE_USER=<your-openobserve-user>
 OPENOBSERVE_PASSWORD=<your-password>
 OPENOBSERVE_ORG=default
-OPENOBSERVE_STREAM=mhealth-app                   # Next.js app logs (structured JSON)
-OPENOBSERVE_STREAM_CONTAINERS=containers-prod    # Vector: all container logs (Ollama, Traefik, etc.)
+OPENOBSERVE_STREAM=mhealth_app                   # Next.js app logs (structured JSON)
+OPENOBSERVE_STREAM_CONTAINERS=containers_prod    # Vector: all container logs (Ollama, Traefik, etc.)
+OPENOBSERVE_METRICS_INTERVAL_MS=60000            # OTLP metrics export interval
 ```
 
 ### Querying logs
 
-1. Open your OpenObserve instance → **Logs** → select stream `mhealth-app`
-2. Useful queries:
+1. Open your OpenObserve instance → **Logs** → select stream `mhealth_app`
+2. Set the UI time range to cover the stored event timestamps. Stream stats can show historical events even when the default "last 15 minutes" range returns no rows.
+3. Useful queries:
    ```sql
    -- All errors
    level = 'error'
@@ -369,22 +419,22 @@ docker logs openobserve --tail 50 -f
 | Image | `timberio/vector:0.39-alpine` |
 | Config | `deploy/vector.toml` |
 | Source | Docker socket (`/var/run/docker.sock`) |
-| Destination stream | `containers-prod` (configurable via `OPENOBSERVE_STREAM_CONTAINERS`) |
+| Destination stream | `containers_prod` (configurable via `OPENOBSERVE_STREAM_CONTAINERS`) |
 
-**What you'll see in OpenObserve → `containers-prod`:**
+**What you'll see in OpenObserve → `containers_prod`:**
 - Ollama inference requests (`"msg":"inference started"`, model load times, errors)
 - Traefik access logs (HTTP method, path, status, duration)
 - Next.js logs (already structured JSON — parsed automatically by Vector)
 - Analysis service logs when the profile is enabled
 
 **Querying container logs:**
-1. Open your OpenObserve instance → **Logs** → select stream **`containers-prod`**
+1. Open your OpenObserve instance → **Logs** → select stream **`containers_prod`**
 2. Filter by service:
    - Ollama: `service = 'healthcompass-ollama'`
    - Traefik: `service = 'healthcompass-proxy'`
    - App: `service = 'healthcompass-app'`
 
-**No env var set for `OPENOBSERVE_STREAM_CONTAINERS`?** Vector defaults to `containers-prod` in production (see `docker-compose.yml`).
+**No env var set for `OPENOBSERVE_STREAM_CONTAINERS`?** Vector defaults to `containers_prod` in production (see `docker-compose.yml`).
 
 ---
 
@@ -756,8 +806,9 @@ See the **Setup → Configure environment variables** section above for the full
 | `OPENOBSERVE_USER` | OpenObserve admin email |
 | `OPENOBSERVE_PASSWORD` | OpenObserve admin password |
 | `OPENOBSERVE_ORG` | `default` |
-| `OPENOBSERVE_STREAM` | `mhealth-app-prod` |
-| `OPENOBSERVE_STREAM_CONTAINERS` | `containers-prod` |
+| `OPENOBSERVE_STREAM` | `mhealth_app` |
+| `OPENOBSERVE_STREAM_CONTAINERS` | `containers_prod` |
+| `OPENOBSERVE_METRICS_INTERVAL_MS` | `60000` |
 
 > **Secrets vs Variables:** All of the above must be stored under **Secrets** (lock icon),
 > not Variables. Secrets use `${{ secrets.NAME }}`; Variables use `${{ vars.NAME }}` — mixing them causes blank values and silent deploy failures.
