@@ -54,6 +54,24 @@ const ANALYTICS_IMAGE_SOURCES = [
   "https://stats.g.doubleclick.net",
 ]
 
+function getOpenObserveRumOrigin(): string | null {
+  const site = process.env.NEXT_PUBLIC_OPENOBSERVE_RUM_SITE?.trim()
+  if (!site) return null
+
+  const hasProtocol = /^https?:\/\//i.test(site)
+  const protocol = process.env.NEXT_PUBLIC_OPENOBSERVE_RUM_INSECURE_HTTP
+    ?.trim()
+    .toLowerCase() === "true"
+    ? "http"
+    : "https"
+
+  try {
+    return new URL(hasProtocol ? site : `${protocol}://${site}`).origin
+  } catch {
+    return null
+  }
+}
+
 /**
  * Generate a cryptographically random nonce.
  *
@@ -85,6 +103,7 @@ export function buildCspHeader(opts: CspOptions): string {
     (process.env.NEXT_PUBLIC_SUPABASE_URL
       ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).host
       : "*.supabase.co")
+  const openObserveRumOrigin = getOpenObserveRumOrigin()
 
   const directives: string[] = [
     "default-src 'self'",
@@ -112,6 +131,7 @@ export function buildCspHeader(opts: CspOptions): string {
       `https://${supabaseHost}`,
       `wss://${supabaseHost}`,
       ...ANALYTICS_CONNECT_SOURCES,
+      ...(openObserveRumOrigin ? [openObserveRumOrigin] : []),
     ].join(" "),
 
     // Images: data URIs (base64 avatars), blobs (camera captures), YouTube

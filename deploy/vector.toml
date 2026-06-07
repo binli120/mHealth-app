@@ -33,8 +33,11 @@ source = '''
 
 # Try to parse the message as JSON (Next.js structured logs); fall back to raw
 parsed, err = parse_json(.message)
-if err == null {
-  . = merge(., parsed)
+if err == null && is_object(parsed) {
+  ., err = merge(., parsed)
+  if err != null {
+    .raw_message = .message
+  }
 } else {
   .raw_message = .message
 }

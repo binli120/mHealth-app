@@ -8,6 +8,7 @@ import { headers } from 'next/headers'
 import { Suspense } from 'react'
 import { GrowthProvider } from '@/components/analytics/growth-provider'
 import { GrowthScripts } from '@/components/analytics/growth-scripts'
+import { OpenObserveRumProvider } from '@/components/analytics/openobserve-rum-provider'
 import { ConditionalChatWidget } from '@/components/chat/conditional-chat-widget'
 import { ReduxProvider } from '@/components/providers/redux-provider'
 import { ThemeProvider } from '@/components/theme-provider'
@@ -116,6 +117,7 @@ export default async function RootLayout({
             <ConditionalChatWidget />
             <Suspense fallback={null}>
               <GrowthProvider />
+              <OpenObserveRumProvider />
             </Suspense>
           </ReduxProvider>
           <footer className="fixed bottom-1 right-2 text-[10px] text-muted-foreground/40 select-none pointer-events-none">

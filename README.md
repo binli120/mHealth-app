@@ -315,6 +315,10 @@ instrumentation.ts            ← OpenTelemetry SDK (auto-loaded by Next.js)
         │
         ├─── OTLP/HTTP traces  ─────────────────► OpenObserve /api/{org}/traces
         └─── OTLP/HTTP metrics ─────────────────► OpenObserve /api/{org}/v1/metrics
+
+OpenObserveRumProvider        ← browser RUM + frontend error logs
+        │
+        └─── Browser SDK intake ─────────────────► OpenObserve RUM endpoint
 ```
 
 ### What is collected
@@ -324,6 +328,7 @@ instrumentation.ts            ← OpenTelemetry SDK (auto-loaded by Next.js)
 | **Structured logs** | Every `logServerError` / `logServerInfo` call across 47+ API routes |
 | **Distributed traces** | HTTP requests, DB queries, and more via OpenTelemetry auto-instrumentation |
 | **Metrics** | OpenTelemetry runtime/instrumentation metrics exported every 60 seconds by default |
+| **Browser RUM** | Page views, resource timings, long tasks, frontend errors, and optional masked session replay |
 | **PII redaction** | Keys matching `authorization`, `token`, `password`, `ssn`, `dob` are automatically replaced with `[redacted]` |
 
 ### OpenObserve instance
@@ -348,7 +353,27 @@ OPENOBSERVE_ORG=default
 OPENOBSERVE_STREAM=mhealth_app                   # Next.js app logs (structured JSON)
 OPENOBSERVE_STREAM_CONTAINERS=containers_prod    # Vector: all container logs (Ollama, Traefik, etc.)
 OPENOBSERVE_METRICS_INTERVAL_MS=60000            # OTLP metrics export interval
+
+# Browser RUM + frontend logs
+NEXT_PUBLIC_OPENOBSERVE_RUM_ENABLED=true
+NEXT_PUBLIC_OPENOBSERVE_RUM_CLIENT_TOKEN=rum0yUTEgT6HU0fNSbJ
+NEXT_PUBLIC_OPENOBSERVE_RUM_APPLICATION_ID=healthcompass-web
+NEXT_PUBLIC_OPENOBSERVE_RUM_SITE=observe.healthcompass.cloud
+NEXT_PUBLIC_OPENOBSERVE_RUM_SERVICE=healthcompass-web
+NEXT_PUBLIC_OPENOBSERVE_RUM_ENV=production
+NEXT_PUBLIC_OPENOBSERVE_RUM_VERSION=
+NEXT_PUBLIC_OPENOBSERVE_RUM_ORG=default
+NEXT_PUBLIC_OPENOBSERVE_RUM_INSECURE_HTTP=false
+NEXT_PUBLIC_OPENOBSERVE_RUM_API_VERSION=v1
+NEXT_PUBLIC_OPENOBSERVE_RUM_SESSION_SAMPLE_RATE=100
+NEXT_PUBLIC_OPENOBSERVE_RUM_REPLAY_SAMPLE_RATE=0
+NEXT_PUBLIC_OPENOBSERVE_RUM_SESSION_REPLAY_ENABLED=false
+NEXT_PUBLIC_OPENOBSERVE_RUM_PRIVACY_LEVEL=mask-user-input
 ```
+
+> Browser constraint: the production app is served over HTTPS and `healthcompass.cloud` uses HSTS. Browser RUM should use an HTTPS OpenObserve endpoint such as `observe.healthcompass.cloud`. Raw `http://healthcompass.cloud:5080` works for server-to-server ingest but will be blocked or upgraded by browsers.
+
+> Privacy default: RUM does not call `setUser`, does not send names or emails, strips query/hash values from event URLs in `beforeSend`, redacts sensitive keys, and keeps session replay disabled unless explicitly enabled.
 
 ### Querying logs
 

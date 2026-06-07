@@ -172,6 +172,40 @@ describe("buildCspHeader — supabaseHost option", () => {
   })
 })
 
+describe("buildCspHeader — OpenObserve RUM", () => {
+  const savedSite = process.env.NEXT_PUBLIC_OPENOBSERVE_RUM_SITE
+  const savedInsecureHttp = process.env.NEXT_PUBLIC_OPENOBSERVE_RUM_INSECURE_HTTP
+
+  afterEach(() => {
+    if (savedSite) process.env.NEXT_PUBLIC_OPENOBSERVE_RUM_SITE = savedSite
+    else delete process.env.NEXT_PUBLIC_OPENOBSERVE_RUM_SITE
+
+    if (savedInsecureHttp) {
+      process.env.NEXT_PUBLIC_OPENOBSERVE_RUM_INSECURE_HTTP = savedInsecureHttp
+    } else {
+      delete process.env.NEXT_PUBLIC_OPENOBSERVE_RUM_INSECURE_HTTP
+    }
+  })
+
+  it("adds the configured HTTPS OpenObserve origin to connect-src", () => {
+    process.env.NEXT_PUBLIC_OPENOBSERVE_RUM_SITE = "observe.healthcompass.cloud"
+    delete process.env.NEXT_PUBLIC_OPENOBSERVE_RUM_INSECURE_HTTP
+
+    const csp = buildCspHeader({ nonce: "n1" })
+
+    expect(csp).toContain("https://observe.healthcompass.cloud")
+  })
+
+  it("adds the configured HTTP OpenObserve origin when insecureHTTP is enabled", () => {
+    process.env.NEXT_PUBLIC_OPENOBSERVE_RUM_SITE = "healthcompass.cloud:5080"
+    process.env.NEXT_PUBLIC_OPENOBSERVE_RUM_INSECURE_HTTP = "true"
+
+    const csp = buildCspHeader({ nonce: "n1" })
+
+    expect(csp).toContain("http://healthcompass.cloud:5080")
+  })
+})
+
 describe("buildCspHeader — nonce uniqueness in output", () => {
   it("two CSPs with different nonces differ only in the nonce token", () => {
     const csp1 = buildCspHeader({ nonce: "nonce-one", supabaseHost: "x.supabase.co" })

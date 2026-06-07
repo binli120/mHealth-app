@@ -43,6 +43,20 @@ services:
         NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
         NEXT_PUBLIC_MASSHEALTH_FORMS_BASE_URL: ${NEXT_PUBLIC_MASSHEALTH_FORMS_BASE_URL:-}
         NEXT_PUBLIC_MASSHEALTH_ANALYSIS_BASE_URL: ${NEXT_PUBLIC_MASSHEALTH_ANALYSIS_BASE_URL:-}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_ENABLED: ${NEXT_PUBLIC_OPENOBSERVE_RUM_ENABLED:-false}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_CLIENT_TOKEN: ${NEXT_PUBLIC_OPENOBSERVE_RUM_CLIENT_TOKEN:-}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_APPLICATION_ID: ${NEXT_PUBLIC_OPENOBSERVE_RUM_APPLICATION_ID:-healthcompass-web}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_SITE: ${NEXT_PUBLIC_OPENOBSERVE_RUM_SITE:-}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_SERVICE: ${NEXT_PUBLIC_OPENOBSERVE_RUM_SERVICE:-healthcompass-web}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_ENV: ${NEXT_PUBLIC_OPENOBSERVE_RUM_ENV:-production}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_VERSION: ${NEXT_PUBLIC_OPENOBSERVE_RUM_VERSION:-}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_ORG: ${NEXT_PUBLIC_OPENOBSERVE_RUM_ORG:-default}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_INSECURE_HTTP: ${NEXT_PUBLIC_OPENOBSERVE_RUM_INSECURE_HTTP:-false}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_API_VERSION: ${NEXT_PUBLIC_OPENOBSERVE_RUM_API_VERSION:-v1}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_SESSION_SAMPLE_RATE: ${NEXT_PUBLIC_OPENOBSERVE_RUM_SESSION_SAMPLE_RATE:-100}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_REPLAY_SAMPLE_RATE: ${NEXT_PUBLIC_OPENOBSERVE_RUM_REPLAY_SAMPLE_RATE:-0}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_SESSION_REPLAY_ENABLED: ${NEXT_PUBLIC_OPENOBSERVE_RUM_SESSION_REPLAY_ENABLED:-false}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_PRIVACY_LEVEL: ${NEXT_PUBLIC_OPENOBSERVE_RUM_PRIVACY_LEVEL:-mask-user-input}
     image: healthcompass-ma:latest
     container_name: healthcompass-app
     restart: unless-stopped
@@ -67,6 +81,8 @@ services:
       OPENOBSERVE_PASSWORD: ${OPENOBSERVE_PASSWORD:-}
       OPENOBSERVE_ORG: ${OPENOBSERVE_ORG:-default}
       OPENOBSERVE_STREAM: ${OPENOBSERVE_STREAM:-mhealth_app}
+      NEXT_PUBLIC_OPENOBSERVE_RUM_SITE: ${NEXT_PUBLIC_OPENOBSERVE_RUM_SITE:-}
+      NEXT_PUBLIC_OPENOBSERVE_RUM_INSECURE_HTTP: ${NEXT_PUBLIC_OPENOBSERVE_RUM_INSECURE_HTTP:-false}
     env_file:
       - .env.production.local
     labels:
@@ -101,6 +117,30 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     networks:
+      - internal
+
+  # ── OpenObserve (log/metrics/RUM backend) ────────────────────────────────
+  openobserve:
+    image: public.ecr.aws/zinclabs/openobserve:latest
+    container_name: openobserve
+    restart: unless-stopped
+    expose:
+      - "5080"
+    environment:
+      ZO_ROOT_USER_EMAIL: ${OPENOBSERVE_USER}
+      ZO_ROOT_USER_PASSWORD: ${OPENOBSERVE_PASSWORD}
+      ZO_DATA_DIR: /data
+    volumes:
+      - openobserve_data:/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.openobserve.rule=Host(`observe.${DOMAIN}`)"
+      - "traefik.http.routers.openobserve.entrypoints=websecure"
+      - "traefik.http.routers.openobserve.tls=true"
+      - "traefik.http.routers.openobserve.tls.certresolver=le"
+      - "traefik.http.services.openobserve.loadbalancer.server.port=5080"
+    networks:
+      - proxy
       - internal
 
   # ── Vector — container log collector → OpenObserve ───────────────────────
@@ -189,3 +229,4 @@ networks:
 volumes:
   traefik_certs:
   ollama_data:
+  openobserve_data:
