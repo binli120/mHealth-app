@@ -31,7 +31,7 @@ coverage/
 
 # TypeScript build cache
 tsconfig.tsbuildinfo
-
+*.tsbuildinfo
 # Supabase temp files
 supabase/.temp/
 supabase/migrations/.$*.drawio.bkp

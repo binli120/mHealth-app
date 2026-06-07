@@ -7,7 +7,8 @@
 
 import { useEffect, useMemo } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
-import { Analytics as VercelAnalytics } from "@vercel/analytics/react"
+// Vercel Analytics only works on Vercel — disabled on self-hosted VPS
+// import { Analytics as VercelAnalytics } from "@vercel/analytics/react"
 
 declare global {
   interface Window {
@@ -114,5 +115,5 @@ export function GrowthProvider() {
     })
   }, [pathname, search])
 
-  return <VercelAnalytics />
+  return null
 }
