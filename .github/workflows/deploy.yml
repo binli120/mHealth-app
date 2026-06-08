@@ -139,6 +139,23 @@ jobs:
               "MCP_CLIENT_SECRET=${{ secrets.MCP_CLIENT_SECRET }}" \
               "PROFILE_ENCRYPTION_KEY=${{ secrets.PROFILE_ENCRYPTION_KEY }}" \
               "ADMIN_PASSKEY_SESSION_SECRET=${{ secrets.ADMIN_PASSKEY_SESSION_SECRET }}" \
+              "OPENOBSERVE_URL=${{ secrets.OPENOBSERVE_URL }}" \
+              "OPENOBSERVE_USER=${{ secrets.OPENOBSERVE_USER }}" \
+              "OPENOBSERVE_PASSWORD=${{ secrets.OPENOBSERVE_PASSWORD }}" \
+              "OPENOBSERVE_ORG=${{ secrets.OPENOBSERVE_ORG }}" \
+              "OPENOBSERVE_STREAM_CONTAINERS=${{ secrets.OPENOBSERVE_STREAM_CONTAINERS }}" \
+              "SMTP_USER=${{ secrets.SMTP_USER }}" \
+              "SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}" \
+              "SMTP_FROM_EMAIL=${{ secrets.SMTP_FROM_EMAIL }}" \
+              "SMTP_REPLY_TO=${{ secrets.SMTP_REPLY_TO }}" \
+              "NEXT_PUBLIC_OPENOBSERVE_RUM_ENABLED=${{ secrets.NEXT_PUBLIC_OPENOBSERVE_RUM_ENABLED }}" \
+              "NEXT_PUBLIC_OPENOBSERVE_RUM_CLIENT_TOKEN=${{ secrets.NEXT_PUBLIC_OPENOBSERVE_RUM_CLIENT_TOKEN }}" \
+              "NEXT_PUBLIC_OPENOBSERVE_RUM_SITE=${{ secrets.NEXT_PUBLIC_OPENOBSERVE_RUM_SITE }}" \
+              "NEXT_PUBLIC_OPENOBSERVE_RUM_ORG=default" \
+              "NEXT_PUBLIC_OPENOBSERVE_RUM_INSECURE_HTTP=false" \
+              "NEXT_PUBLIC_OPENOBSERVE_RUM_API_VERSION=v1" \
+              "NEXT_PUBLIC_OPENOBSERVE_RUM_SESSION_SAMPLE_RATE=100" \
+              "NEXT_PUBLIC_OPENOBSERVE_RUM_PRIVACY_LEVEL=mask-user-input" \
               > "$ENV_FILE"
             chmod 600 "$ENV_FILE"
             echo "✅ .env.production.local written ($(wc -l < "$ENV_FILE") lines)"
