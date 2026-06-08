@@ -30,6 +30,17 @@ import { Pool } from "pg"
 
 const BASE_URL = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3001" // matches playwright.config.ts default
 const IS_REMOTE = !BASE_URL.startsWith("http://localhost") && !BASE_URL.startsWith("http://127.0.0.1")
+const E2E_HOSTNAME = new URL(BASE_URL).hostname
+const E2E_COOKIE_CONSENT = {
+  name: "hc_cookie_consent",
+  value: "declined",
+  domain: E2E_HOSTNAME,
+  path: "/",
+  expires: -1,
+  httpOnly: false,
+  secure: BASE_URL.startsWith("https://"),
+  sameSite: "Lax" as const,
+}
 
 // Allow credential overrides for pre-existing cloud accounts (set via GitHub secrets)
 const CLOUD_DEMO_USER = {
@@ -60,7 +71,7 @@ const ADMIN_AUTH_FILE = path.join(AUTH_DIR, "admin.json")
 const SOCIAL_WORKER_AUTH_FILE = path.join(AUTH_DIR, "social-worker.json")
 
 /** Empty Playwright storage-state — lets tests run without crashing on ENOENT */
-const EMPTY_STORAGE_STATE = JSON.stringify({ cookies: [], origins: [] })
+const EMPTY_STORAGE_STATE = JSON.stringify({ cookies: [E2E_COOKIE_CONSENT], origins: [] })
 
 function ensureAuthDir() {
   fs.mkdirSync(AUTH_DIR, { recursive: true })
@@ -74,6 +85,10 @@ function ensureAuthDir() {
 
 function writeEmptyState(filePath: string) {
   fs.writeFileSync(filePath, EMPTY_STORAGE_STATE, "utf8")
+}
+
+async function addE2eConsentCookie(context: import("@playwright/test").BrowserContext) {
+  await context.addCookies([E2E_COOKIE_CONSENT])
 }
 
 async function ensureUser(
@@ -142,6 +157,7 @@ async function loginAndSaveState(
       if (cookies.some((c) => c.name === "hc-session-hint")) break
       await page.waitForTimeout(200)
     }
+    await addE2eConsentCookie(page.context())
     await page.context().storageState({ path: filePath })
     console.log(`[setup] ✅ Auth state saved for ${user.email} → ${path.basename(filePath)}`)
     return true

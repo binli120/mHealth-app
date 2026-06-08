@@ -14,6 +14,7 @@ import * as path from "path"
 const BASE_URL = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3001"
 const IS_DEMO = process.env.DEMO_MODE === "true"
 const SKIP_WEB_SERVER = process.env.E2E_SKIP_WEB_SERVER === "true"
+const E2E_HOSTNAME = new URL(BASE_URL).hostname
 // When targeting a remote URL (cloud/staging), skip starting a local dev server
 const IS_REMOTE = !BASE_URL.startsWith("http://localhost") && !BASE_URL.startsWith("http://127.0.0.1")
 const DEMO_ENV_KEYS = [
@@ -106,6 +107,21 @@ export default defineConfig({
       ],
   use: {
     baseURL: BASE_URL,
+    storageState: {
+      cookies: [
+        {
+          name: "hc_cookie_consent",
+          value: "declined",
+          domain: E2E_HOSTNAME,
+          path: "/",
+          expires: -1,
+          httpOnly: false,
+          secure: BASE_URL.startsWith("https://"),
+          sameSite: "Lax",
+        },
+      ],
+      origins: [],
+    },
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     // Slow motion for demos so viewers can follow along

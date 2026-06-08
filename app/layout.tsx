@@ -4,15 +4,20 @@
  */
 
 import type { Metadata } from 'next'
-import { headers } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { Suspense } from 'react'
-import { GrowthProvider } from '@/components/analytics/growth-provider'
+import { ConsentedAnalytics } from '@/components/analytics/consented-analytics'
 import { GrowthScripts } from '@/components/analytics/growth-scripts'
-import { OpenObserveRumProvider } from '@/components/analytics/openobserve-rum-provider'
 import { ConditionalChatWidget } from '@/components/chat/conditional-chat-widget'
 import { ReduxProvider } from '@/components/providers/redux-provider'
 import { ThemeProvider } from '@/components/theme-provider'
+import { CookieConsentBanner } from '@/components/privacy/cookie-consent-banner'
 import { GlossaryProvider } from '@/lib/glossary/GlossaryContext'
+import {
+  COOKIE_CONSENT_COOKIE,
+  hasAnalyticsCookieConsent,
+  isCookieConsentValue,
+} from '@/lib/privacy/cookie-consent'
 import './globals.css'
 
 function getMetadataBase() {
@@ -94,6 +99,9 @@ export default async function RootLayout({
   // The nonce is set by middleware on every request.  It is undefined when
   // the page is rendered without middleware (e.g. static export or unit tests).
   const nonce = (await headers()).get('x-nonce') ?? undefined
+  const consentCookie = (await cookies()).get(COOKIE_CONSENT_COOKIE)?.value
+  const cookieConsent = isCookieConsentValue(consentCookie) ? consentCookie : null
+  const hasAnalyticsConsent = hasAnalyticsCookieConsent(cookieConsent)
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -106,7 +114,7 @@ export default async function RootLayout({
           per-request and unpredictable at render time.
         */}
         {nonce && <meta name="csp-nonce" content={nonce} />}
-        <GrowthScripts nonce={nonce} />
+        {hasAnalyticsConsent && <GrowthScripts nonce={nonce} />}
       </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange nonce={nonce}>
@@ -116,13 +124,13 @@ export default async function RootLayout({
             </GlossaryProvider>
             <ConditionalChatWidget />
             <Suspense fallback={null}>
-              <GrowthProvider />
-              <OpenObserveRumProvider />
+              {hasAnalyticsConsent && <ConsentedAnalytics />}
             </Suspense>
           </ReduxProvider>
           <footer className="fixed bottom-1 right-2 text-[10px] text-muted-foreground/40 select-none pointer-events-none">
             v{process.env.NEXT_PUBLIC_APP_VERSION}
           </footer>
+          <CookieConsentBanner initialConsent={cookieConsent} />
         </ThemeProvider>
       </body>
     </html>

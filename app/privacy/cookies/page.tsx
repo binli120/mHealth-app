@@ -5,7 +5,7 @@
 
 import type { Metadata } from "next"
 import Link from "next/link"
-import { ArrowLeft, Cookie } from "lucide-react"
+import { ArrowLeft, Cookie, ShieldCheck } from "lucide-react"
 
 export const metadata: Metadata = {
   title: "Cookie Policy",
@@ -41,18 +41,50 @@ export default function CookiePolicyPage() {
           </p>
         </div>
 
-        <div className="rounded-lg border border-border bg-card p-6 text-center">
-          <p className="text-muted-foreground">
-            A detailed cookie policy is being prepared and will be published
-            here. For questions, contact{" "}
-            <a
-              href="mailto:privacy@healthcompass.cloud"
-              className="text-primary hover:underline"
-            >
-              privacy@healthcompass.cloud
-            </a>
-            .
-          </p>
+        <div className="space-y-6">
+          <section className="rounded-lg border border-border bg-card p-6">
+            <div className="mb-4 flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold">Required cookies</h2>
+            </div>
+            <p className="text-sm leading-6 text-muted-foreground">
+              These cookies are necessary for authentication, passkey challenges, session hints, security
+              controls, and application workflow continuity. They are not used for advertising and cannot be
+              disabled through the cookie banner because the service depends on them.
+            </p>
+          </section>
+
+          <section className="rounded-lg border border-border bg-card p-6">
+            <h2 className="mb-3 text-lg font-semibold">Optional analytics and referral cookies</h2>
+            <p className="text-sm leading-6 text-muted-foreground">
+              If you accept optional cookies, HealthCompass may load configured analytics tools such as Google
+              Analytics, Mixpanel, or OpenObserve RUM. We also may store a first-party referral cookie
+              (<code className="mx-1 rounded bg-muted px-1 py-0.5 text-xs">hc_ref</code>) when you arrive
+              with a referral code. These tools help us measure page usage, diagnose product issues, and
+              understand referral performance.
+            </p>
+          </section>
+
+          <section className="rounded-lg border border-border bg-card p-6">
+            <h2 className="mb-3 text-lg font-semibold">Your choice</h2>
+            <p className="text-sm leading-6 text-muted-foreground">
+              The cookie banner records your choice in a first-party consent cookie
+              (<code className="mx-1 rounded bg-muted px-1 py-0.5 text-xs">hc_cookie_consent</code>) for up to
+              180 days. Declining optional cookies does not affect sign-in, eligibility screening, application
+              intake, document upload, or account security features.
+            </p>
+          </section>
+
+          <section className="rounded-lg border border-border bg-card p-6">
+            <h2 className="mb-3 text-lg font-semibold">Questions</h2>
+            <p className="text-sm leading-6 text-muted-foreground">
+              For privacy questions or to request assistance changing your cookie preference, contact{" "}
+              <a href="mailto:privacy@healthcompass.cloud" className="text-primary hover:underline">
+                privacy@healthcompass.cloud
+              </a>
+              .
+            </p>
+          </section>
         </div>
       </main>
     </div>
