@@ -24,6 +24,8 @@ export interface ApplicationDraftRecord {
   submittedAt: string | null
   createdAt: string
   updatedAt: string
+  needsCustomerReview: boolean
+  swLastModifiedAt: string | null
 }
 
 export interface DraftApiResponse {
