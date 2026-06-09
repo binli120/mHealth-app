@@ -5,7 +5,7 @@
 
 "use client"
 
-import { use, useCallback, useEffect, useMemo, useReducer } from "react"
+import { use, useCallback, useEffect, useMemo, useReducer, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -29,6 +29,7 @@ import {
   Edit3,
   FileText,
   Upload,
+  UserCheck,
   Users,
 } from "lucide-react"
 
@@ -56,6 +57,9 @@ export default function StatusDetailPage({ params }: PageProps) {
   const record = recordState.record
   const isLoading = recordState.isLoading
   const loadError = recordState.loadError
+
+  const [confirmingReview, setConfirmingReview] = useState(false)
+  const [reviewConfirmed, setReviewConfirmed] = useState(false)
 
   const statusConfig = useMemo<Record<ApplicationStatus, {
     label: string
@@ -144,6 +148,35 @@ export default function StatusDetailPage({ params }: PageProps) {
           </Card>
         ) : record ? (
           <>
+            {record && record.needsCustomerReview && !reviewConfirmed && (
+              <div className="mb-6 flex items-start gap-3 rounded-lg border border-amber-400 bg-amber-50 p-4 dark:border-amber-600 dark:bg-amber-950">
+                <UserCheck className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                    A social worker updated information in this application
+                    {record.swLastModifiedAt ? ` on ${formatDate(record.swLastModifiedAt)}` : ""}.
+                    Please review the details below and confirm everything is correct.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={confirmingReview}
+                  className="shrink-0 border-amber-400 text-amber-800 hover:bg-amber-100 dark:border-amber-600 dark:text-amber-200"
+                  onClick={async () => {
+                    setConfirmingReview(true)
+                    try {
+                      await authenticatedFetch(`/api/applications/${id}/confirm-review`, { method: "PATCH" })
+                      setReviewConfirmed(true)
+                    } finally {
+                      setConfirmingReview(false)
+                    }
+                  }}
+                >
+                  {confirmingReview ? "Confirming…" : "Looks correct"}
+                </Button>
+              </div>
+            )}
             <div className="mb-8">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>

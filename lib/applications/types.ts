@@ -25,6 +25,10 @@ export interface ApplicationListRecord {
   householdSize: number | null
   /** True when an encrypted PHI blob + server-stored key exist for this draft. */
   phiDraftLocked: boolean
+  /** True when a social worker has modified this application and the customer has not yet confirmed. */
+  needsCustomerReview: boolean
+  /** ISO timestamp of the last SW-made save, or null if none. */
+  swLastModifiedAt: string | null
 }
 
 export interface ApplicationListApiResponse {

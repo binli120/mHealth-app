@@ -70,6 +70,7 @@ import { buildDashboardGreeting, getApplicationTypeLabel } from "./page.utils"
 import { DashboardTour } from "./dashboard-tour"
 import { UploadToApplicationDialog } from "@/components/dashboard/UploadToApplicationDialog"
 import { InsuranceSummaryCard } from "@/components/insurance-history/insurance-summary-card"
+import { ActionRequiredCard } from "@/components/dashboard/ActionRequiredCard"
 
 interface DashboardWidgetTooltipProps {
   children: ReactNode
@@ -305,11 +306,6 @@ export default function CustomerDashboardPage() {
       mounted = false
     }
   }, [])
-
-  const needsActionApp = useMemo(
-    () => applications.find((item) => item.status === "rfi_requested"),
-    [applications],
-  )
 
   const fallbackFirstName = useMemo(() => {
     const applicantName = applications.find((item) => item.applicantName)?.applicantName ?? ""
@@ -673,36 +669,10 @@ export default function CustomerDashboardPage() {
 
           <div className="space-y-6">
             <DashboardWidgetTooltip content="Shows urgent MassHealth requests, such as missing documents or information you need to review." side="left">
-              <Card className="border-warning/50 bg-warning/5" data-tour="dashboard-action-required">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base text-card-foreground">
-                  <AlertCircle className="h-5 w-5 text-warning" />
-                  {getMessage(language, "dashboardActionRequired")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {needsActionApp ? (
-                  <>
-                    <p className="mb-3 text-sm text-muted-foreground">
-                      Application {needsActionApp.id} {getMessage(language, "dashboardActionRequiredDesc")}
-                    </p>
-                    <Link href={`/customer/status/${needsActionApp.id}`}>
-                      <Button
-                        size="sm"
-                        className="w-full gap-2 bg-warning text-warning-foreground hover:bg-warning/90"
-                      >
-                        <Upload className="h-4 w-4" />
-                        {getMessage(language, "dashboardReviewRequest")}
-                      </Button>
-                    </Link>
-                  </>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    {getMessage(language, "dashboardNoActionRequired")}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+              <ActionRequiredCard
+                applications={applications}
+                language={language}
+              />
             </DashboardWidgetTooltip>
 
             <DashboardWidgetTooltip content="Summarizes the latest updates across your applications so you can see what changed recently." side="left">
