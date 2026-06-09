@@ -314,7 +314,7 @@ const EN_MESSAGES = {
   dashboardActionRequired: "Action Required",
   dashboardActionRequiredDesc: "requires additional information.",
   dashboardReviewRequest: "Review Request",
-  dashboardNoActionRequired: "No outstanding requests right now.",
+  dashboardNoActionRequired: "No actions required right now.",
   dashboardLatestActivity: "Latest Activity",
   dashboardNoActivity: "No recent activity.",
   dashboardNeedHelp: "Need Help?",
