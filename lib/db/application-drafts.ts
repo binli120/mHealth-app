@@ -66,6 +66,10 @@ export interface ApplicationDraftSummary {
   householdSize: number | null
   /** True when an encrypted PHI blob exists for this draft. */
   phiDraftLocked: boolean
+  /** True when a social worker has modified this application and the customer has not yet confirmed. */
+  needsCustomerReview: boolean
+  /** ISO timestamp of the last SW-made save, or null if none. */
+  swLastModifiedAt: string | null
 }
 
 export interface ApplicationDraftListResult {
@@ -243,6 +247,8 @@ function toSummary(row: Record<string, unknown>): ApplicationDraftSummary {
     applicantName: (row.applicant_name as string | null) ?? null,
     householdSize: parseIntOrNull(row.household_size),
     phiDraftLocked: Boolean(row.phi_draft_locked),
+    needsCustomerReview: Boolean(row.needs_customer_review),
+    swLastModifiedAt: (row.sw_last_modified_at as string | null) ?? null,
   }
 }
 
@@ -371,6 +377,8 @@ export async function listApplicationDrafts(
         NULLIF(TRIM(COALESCE(draft_state #>> '{data,contact,p1_name}', '')), '') AS applicant_name,
         NULLIF(TRIM(COALESCE(draft_state #>> '{data,contact,p1_num_people}', '')), '') AS household_size,
         (phi_draft_resume_id IS NOT NULL AND phi_draft_key_enc IS NOT NULL) AS phi_draft_locked,
+        needs_customer_review,
+        sw_last_modified_at,
         COUNT(*) OVER() AS total_count
       FROM public.applications
       WHERE applicant_id = $1::uuid
@@ -502,6 +510,8 @@ export async function upsertApplicationDraft(params: {
         END,
         draft_step = GREATEST(COALESCE(public.applications.draft_step, 0), $6::int),
         last_saved_at = now(),
+        needs_customer_review = CASE WHEN $7::uuid IS NOT NULL THEN true ELSE needs_customer_review END,
+        sw_last_modified_at   = CASE WHEN $7::uuid IS NOT NULL THEN now() ELSE sw_last_modified_at END,
         submitted_at = CASE
           WHEN $3::application_status = 'submitted'
             THEN COALESCE(public.applications.submitted_at, now())
@@ -527,6 +537,7 @@ export async function upsertApplicationDraft(params: {
       params.applicationType ?? null,
       JSON.stringify(safeWizardState),
       normalizedStep,
+      params.actingForUserId ?? null,  // $7 — sets SW flags when non-null
     ],
   )
 
@@ -668,5 +679,26 @@ export async function clearPhiDraftResumeId(params: {
         AND applicant_id = $2::uuid
     `,
     [params.applicationId, applicantId],
+  )
+}
+
+/**
+ * Clear the needs_customer_review flag after the customer confirms SW-made changes.
+ * Only clears if the application belongs to the given patient.
+ */
+export async function confirmCustomerReview(
+  applicationId: string,
+  patientUserId: string,
+): Promise<void> {
+  assertUuid(applicationId)
+  const applicantId = await findApplicantIdForUser(patientUserId)
+  if (!applicantId) return
+  const pool = getDbPool()
+  await pool.query(
+    `UPDATE public.applications
+        SET needs_customer_review = false
+      WHERE id = $1::uuid
+        AND applicant_id = $2::uuid`,
+    [applicationId, applicantId],
   )
 }
