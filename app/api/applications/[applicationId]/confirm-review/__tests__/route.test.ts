@@ -27,14 +27,15 @@ describe("PATCH /api/applications/[applicationId]/confirm-review", () => {
   })
 
   it("calls confirmCustomerReview and returns ok:true on success", async () => {
+    const applicationId = "11111111-1111-4111-8111-111111111111"
     mockRequireAuth.mockResolvedValue({ ok: true, userId: "user-1" })
     mockConfirmCustomerReview.mockResolvedValue(undefined)
-    const res = await PATCH(new Request("http://test/api/applications/app-1/confirm-review"), {
-      params: Promise.resolve({ applicationId: "app-1" }),
+    const res = await PATCH(new Request(`http://test/api/applications/${applicationId}/confirm-review`), {
+      params: Promise.resolve({ applicationId }),
     })
     const body = await res.json()
     expect(res.status).toBe(200)
     expect(body.ok).toBe(true)
-    expect(mockConfirmCustomerReview).toHaveBeenCalledWith("app-1", "user-1")
+    expect(mockConfirmCustomerReview).toHaveBeenCalledWith(applicationId, "user-1")
   })
 })

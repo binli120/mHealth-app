@@ -510,8 +510,8 @@ export async function upsertApplicationDraft(params: {
         END,
         draft_step = GREATEST(COALESCE(public.applications.draft_step, 0), $6::int),
         last_saved_at = now(),
-        needs_customer_review = CASE WHEN $7::uuid IS NOT NULL THEN true ELSE needs_customer_review END,
-        sw_last_modified_at   = CASE WHEN $7::uuid IS NOT NULL THEN now() ELSE sw_last_modified_at END,
+        needs_customer_review = CASE WHEN $7::uuid IS NOT NULL THEN true ELSE public.applications.needs_customer_review END,
+        sw_last_modified_at   = CASE WHEN $7::uuid IS NOT NULL THEN now() ELSE public.applications.sw_last_modified_at END,
         submitted_at = CASE
           WHEN $3::application_status = 'submitted'
             THEN COALESCE(public.applications.submitted_at, now())

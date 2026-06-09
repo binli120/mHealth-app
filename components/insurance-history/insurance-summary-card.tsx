@@ -28,7 +28,7 @@ export function InsuranceSummaryCard({ latest, language = "en" }: InsuranceSumma
     : getMessage(language, "insuranceHistoryNoCoverage")
 
   return (
-    <Link href="/customer/insurance-history" className="h-full">
+    <Link href="/customer/insurance-history" className="h-full" aria-label="View full history">
       <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
         <CardContent className="flex items-center gap-4 p-4">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
@@ -38,7 +38,6 @@ export function InsuranceSummaryCard({ latest, language = "en" }: InsuranceSumma
             <p className="font-medium text-card-foreground">{getMessage(language, "insuranceHistoryTitle")}</p>
             <p className="text-sm text-muted-foreground">{description}</p>
           </div>
-          <span className="text-xs font-medium text-primary shrink-0">View full history →</span>
         </CardContent>
       </Card>
     </Link>
