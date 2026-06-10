@@ -40,3 +40,6 @@ supabase/migrations/.$*.drawio.bkp
 resources/*.pdf
 resources/*.docx
 *.drawio.dtmp
+
+### mcp 
+.mcp.json

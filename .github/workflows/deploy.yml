@@ -59,13 +59,34 @@ jobs:
     environment: dev
 
     steps:
+      - name: Preflight SSH reachability
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_SSH_PORT: ${{ secrets.VPS_SSH_PORT || '22' }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${VPS_HOST:-}" ]; then
+            echo "::error::VPS_HOST secret is empty or missing."
+            exit 1
+          fi
+
+          if ! timeout 15 bash -c "</dev/tcp/${VPS_HOST}/${VPS_SSH_PORT}" 2>/dev/null; then
+            {
+              echo "::error::Cannot reach the configured VPS over TCP port ${VPS_SSH_PORT}."
+              echo "::error::Check the VPS_HOST secret, VPS_SSH_PORT secret, Hostinger firewall rules, and whether SSH is listening on the VPS."
+            }
+            exit 1
+          fi
+
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.2.0
         with:
           host:        ${{ secrets.VPS_HOST }}
           username:    ${{ secrets.VPS_USER }}
           key:         ${{ secrets.VPS_SSH_KEY }}
-          port:        22
+          port:        ${{ secrets.VPS_SSH_PORT || '22' }}
+          timeout:     60s
           script_stop: true
           script: |
             set -euo pipefail
