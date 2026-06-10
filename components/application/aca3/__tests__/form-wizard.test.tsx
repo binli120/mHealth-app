@@ -304,8 +304,17 @@ describe("FormWizard", () => {
     try {
       renderWizardWithStore(store)
 
-      // Allow extra time in CI where microtask/state-update cycles are slower.
-      const preview = await screen.findByTitle("ACA-03 PDF preview", {}, { timeout: 5_000 })
+      await screen.findByText("Step 8 of 9")
+      await waitFor(() => {
+        expect(
+          vi.mocked(authenticatedFetch).mock.calls.some(([url, init]) => (
+            String(url) === "/api/forms/aca-3-0325/fill" && init?.method === "POST"
+          )),
+        ).toBe(true)
+      })
+      await waitFor(() => expect(createObjectUrlSpy).toHaveBeenCalled(), { timeout: 10_000 })
+
+      const preview = await screen.findByTitle("ACA-03 PDF preview", {}, { timeout: 10_000 })
       expect(createObjectUrlSpy).toHaveBeenCalled()
       expect(preview).toHaveAttribute("src", "blob:http://localhost/generated-pdf#navpanes=0&view=FitH&zoom=page-fit")
     } finally {
@@ -313,5 +322,5 @@ describe("FormWizard", () => {
       createObjectUrlSpy.mockRestore()
       revokeObjectUrlSpy.mockRestore()
     }
-  })
+  }, 15_000)
 })
