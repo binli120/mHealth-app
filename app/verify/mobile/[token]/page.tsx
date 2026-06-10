@@ -19,8 +19,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useParams } from "next/navigation"
-import { DecodeHintType, NotFoundException } from "@zxing/library"
-import { BrowserPDF417Reader } from "@zxing/browser"
+import { DecodeHintType, BarcodeFormat, NotFoundException } from "@zxing/library"
+import { BrowserMultiFormatReader } from "@zxing/browser"
 import { ShieldCheck, ScanLine, XCircle, CheckCircle2, Clock, Loader2, AlertTriangle, Flashlight, FlashlightOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -156,9 +156,12 @@ export default function MobileVerifyPage() {
 
     const hints = new Map<DecodeHintType, unknown>()
     hints.set(DecodeHintType.TRY_HARDER, true)
-    const reader = new BrowserPDF417Reader(hints, { delayBetweenScanAttempts: 50 })
+    hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.PDF_417])
+    const reader = new BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 300 })
 
     let cancelled = false
+    // Hold ref so cleanup can stop even if .then() hasn't resolved yet
+    let pendingControls: { stop(): void } | null = null
 
     reader.decodeFromConstraints(
       {
@@ -172,6 +175,7 @@ export default function MobileVerifyPage() {
       (result, err) => {
         if (cancelled) return
         if (result) {
+          pendingControls?.stop()
           controlsRef.current?.stop()
           setBarcodeFlash(true)
           const raw = result.getText()
@@ -185,6 +189,7 @@ export default function MobileVerifyPage() {
       },
     )
       .then((controls) => {
+        pendingControls = controls
         if (cancelled) { controls.stop(); return }
         controlsRef.current = controls
         // Detect torch capability after stream starts
@@ -204,7 +209,12 @@ export default function MobileVerifyPage() {
         setPageState("ready")
       })
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+      pendingControls?.stop()
+      controlsRef.current?.stop()
+      controlsRef.current = null
+    }
   }, [pageState, submitBarcode])
 
   // Cleanup on unmount
@@ -301,7 +311,7 @@ export default function MobileVerifyPage() {
 
             {/* Camera viewport — full width on mobile */}
             <div className="relative overflow-hidden rounded-xl bg-black" style={{ aspectRatio: "4/3" }}>
-              <video ref={videoRef} className="h-full w-full object-cover" playsInline muted />
+              <video ref={videoRef} className="h-full w-full object-cover" autoPlay playsInline muted />
 
               {/* ── Guide overlay (box-shadow cutout) ──────────────────── */}
               {!barcodeFlash && (
