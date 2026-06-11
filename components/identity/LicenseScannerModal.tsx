@@ -5,8 +5,8 @@
  * LicenseScannerModal
  *
  * Three scan modes:
- *   1. Camera       — ZXing PDF417 continuous scan via desktop/laptop webcam
- *   2. Upload Photo — fallback image-file decode via ZXing
+ *   1. Camera       — zxing-wasm PDF417 continuous scan via desktop/laptop webcam
+ *   2. Upload Photo — fallback image-file decode via zxing-wasm
  *   3. Scan with Phone — QR code handoff: desktop shows QR → phone opens
  *                        /verify/mobile/{token} → phone scans DL barcode →
  *                        desktop polls for completion → Redux updated
@@ -15,8 +15,11 @@
 "use client"
 
 import { useCallback, useEffect, useReducer, useRef, useState } from "react"
-import { DecodeHintType, NotFoundException } from "@zxing/library"
-import { BrowserPDF417Reader } from "@zxing/browser"
+import {
+  readPdf417FromImage,
+  startPdf417Scan,
+  type Pdf417ScanControls,
+} from "@/lib/identity/pdf417-scanner"
 import {
   Dialog,
   DialogContent,
@@ -119,7 +122,7 @@ export function LicenseScannerModal() {
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const videoRef = useRef<HTMLVideoElement>(null)
-  const controlsRef = useRef<{ stop(): void } | null>(null)
+  const controlsRef = useRef<Pdf417ScanControls | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // ── Stop camera ─────────────────────────────────────────────────────────
@@ -214,36 +217,21 @@ export function LicenseScannerModal() {
     setCameraError(null)
     setScanState("scanning")
 
-    // BrowserPDF417Reader is purpose-built for PDF417 — no multi-format overhead.
-    const hints = new Map<DecodeHintType, unknown>()
-    hints.set(DecodeHintType.TRY_HARDER, true)
-    const reader = new BrowserPDF417Reader(hints, { delayBetweenScanAttempts: 50 })
-
     try {
-      const controls = await reader.decodeFromConstraints(
-        {
-          video: {
-            facingMode: { ideal: "environment" },
-            // Request the highest resolution the camera supports.
-            width:  { min: 1280, ideal: 1920 },
-            height: { min:  720, ideal: 1080 },
-          },
+      const controls = await startPdf417Scan({
+        video: videoRef.current,
+        onResult: (raw) => {
+          setBarcodeFlash(true)
+          setTimeout(() => {
+            setBarcodeFlash(false)
+            stopCamera()
+            void submitBarcode(raw)
+          }, 750)
         },
-        videoRef.current,
-        (result, err) => {
-          if (result) {
-            controlsRef.current?.stop()
-            setBarcodeFlash(true)
-            const raw = result.getText()
-            setTimeout(() => {
-              setBarcodeFlash(false)
-              void submitBarcode(raw)
-            }, 750)
-          } else if (err && !(err instanceof NotFoundException)) {
-            console.warn("[LicenseScanner]", err)
-          }
+        onError: (err) => {
+          console.warn("[LicenseScanner]", err)
         },
-      )
+      })
       controlsRef.current = controls
     } catch (err) {
       const msg = err instanceof Error && err.name === "NotAllowedError"
@@ -252,7 +240,7 @@ export function LicenseScannerModal() {
       setCameraError(msg)
       setScanState("idle")
     }
-  }, [submitBarcode])
+  }, [stopCamera, submitBarcode])
 
   // Auto-start camera when tab is selected
   useEffect(() => {
@@ -268,18 +256,14 @@ export function LicenseScannerModal() {
       if (!file) return
       setScanState("scanning")
       setCameraError(null)
-      const hints = new Map<DecodeHintType, unknown>()
-      hints.set(DecodeHintType.TRY_HARDER, true)
-      const reader = new BrowserPDF417Reader(hints)
-      const url = URL.createObjectURL(file)
       try {
-        const result = await reader.decodeFromImageUrl(url)
-        void submitBarcode(result.getText())
+        const raw = await readPdf417FromImage(file)
+        if (!raw) throw new Error("No PDF417 barcode found in image")
+        void submitBarcode(raw)
       } catch {
         setCameraError("Could not find a barcode in the image. Make sure you photographed the back of the license clearly.")
         setScanState("idle")
       } finally {
-        URL.revokeObjectURL(url)
         if (fileInputRef.current) fileInputRef.current.value = ""
       }
     },

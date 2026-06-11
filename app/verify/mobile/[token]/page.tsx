@@ -19,8 +19,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useParams } from "next/navigation"
-import { DecodeHintType, BarcodeFormat, NotFoundException } from "@zxing/library"
-import { BrowserMultiFormatReader } from "@zxing/browser"
+import { startPdf417Scan, type Pdf417ScanControls } from "@/lib/identity/pdf417-scanner"
 import { ShieldCheck, ScanLine, XCircle, CheckCircle2, Clock, Loader2, AlertTriangle, Flashlight, FlashlightOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -44,7 +43,7 @@ export default function MobileVerifyPage() {
   const [torchAvailable, setTorchAvailable] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
-  const controlsRef = useRef<{ stop(): void } | null>(null)
+  const controlsRef = useRef<Pdf417ScanControls | null>(null)
   // Signals the useEffect below that it should actually start the camera once
   // the video element has been mounted (pageState flip happens first, then render,
   // then the effect runs — at that point videoRef.current is guaranteed non-null).
@@ -154,40 +153,24 @@ export default function MobileVerifyPage() {
     const videoEl = videoRef.current
     if (!videoEl) return
 
-    const hints = new Map<DecodeHintType, unknown>()
-    hints.set(DecodeHintType.TRY_HARDER, true)
-    hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.PDF_417])
-    const reader = new BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 300 })
-
     let cancelled = false
     // Hold ref so cleanup can stop even if .then() hasn't resolved yet
-    let pendingControls: { stop(): void } | null = null
+    let pendingControls: Pdf417ScanControls | null = null
 
-    reader.decodeFromConstraints(
-      {
-        video: {
-          facingMode: { ideal: "environment" },
-          width:  { min: 1280, ideal: 1920 },
-          height: { min:  720, ideal: 1080 },
-        },
-      },
-      videoEl,
-      (result, err) => {
+    startPdf417Scan({
+      video: videoEl,
+      onResult: (raw) => {
         if (cancelled) return
-        if (result) {
-          pendingControls?.stop()
-          controlsRef.current?.stop()
-          setBarcodeFlash(true)
-          const raw = result.getText()
-          setTimeout(() => {
-            setBarcodeFlash(false)
-            void submitBarcode(raw)
-          }, 750)
-        } else if (err && !(err instanceof NotFoundException)) {
-          console.warn("[MobileVerify] scan warning:", err)
-        }
+        setBarcodeFlash(true)
+        setTimeout(() => {
+          setBarcodeFlash(false)
+          void submitBarcode(raw)
+        }, 750)
       },
-    )
+      onError: (err) => {
+        console.warn("[MobileVerify] scan warning:", err)
+      },
+    })
       .then((controls) => {
         pendingControls = controls
         if (cancelled) { controls.stop(); return }

@@ -43,3 +43,6 @@ resources/*.docx
 
 ### mcp 
 .mcp.json
+
+# zxing-wasm binary copied by scripts/copy-zxing-wasm.mjs
+public/wasm/
