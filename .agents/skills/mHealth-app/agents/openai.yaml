@@ -1,0 +1,6 @@
+interface:
+  display_name: "MHealth App"
+  short_description: "Repo-specific patterns and workflows for mHealth-app"
+  default_prompt: "Use the mHealth-app repo skill to follow existing architecture, testing, and workflow conventions."
+policy:
+  allow_implicit_invocation: true
