@@ -6,7 +6,7 @@
  *
  * Opens a compact scan dialog from the profile "Personal Information" section.
  * Two modes:
- *   1. Camera  — ZXing PDF417 scan → AAMVA parsed client-side → preview card → Apply
+ *   1. Camera  — zxing-wasm PDF417 scan → AAMVA parsed client-side → preview card → Apply
  *   2. Phone   — QR handoff (same cross-device session) → desktop polls for
  *                extracted_data → preview card → Apply
  *
@@ -20,8 +20,7 @@
 "use client"
 
 import { useCallback, useEffect, useReducer, useRef, useState } from "react"
-import { BarcodeFormat, DecodeHintType, NotFoundException } from "@zxing/library"
-import { BrowserMultiFormatReader } from "@zxing/browser"
+import { startPdf417Scan, type Pdf417ScanControls } from "@/lib/identity/pdf417-scanner"
 import {
   Dialog,
   DialogContent,
@@ -111,7 +110,7 @@ export function ProfileScanModal({ open, onClose, onApply }: ProfileScanModalPro
   const [phoneError, setPhoneError] = useState<string | null>(null)
 
   const videoRef = useRef<HTMLVideoElement>(null)
-  const controlsRef = useRef<{ stop(): void } | null>(null)
+  const controlsRef = useRef<Pdf417ScanControls | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -160,46 +159,38 @@ export function ProfileScanModal({ open, onClose, onApply }: ProfileScanModalPro
     setParseError(null)
     setCameraState("scanning")
 
-    const hints = new Map<DecodeHintType, unknown>()
-    hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.PDF_417])
-    hints.set(DecodeHintType.TRY_HARDER, true)
-    const reader = new BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 200 })
-
     try {
-      const controls = await reader.decodeFromConstraints(
-        { video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } },
-        videoRef.current,
-        (result, err) => {
-          if (result) {
-            controlsRef.current?.stop()
-            const raw = result.getText()
-            setBarcodeFlash(true)
-            setTimeout(() => {
-              setBarcodeFlash(false)
-              // Parse client-side
-              const parsed = parseAamvaBarcode(raw)
-              if (!parsed.ok) {
-                setParseError(parsed.error)
-                setCameraState("error")
-                return
-              }
-              const d = parsed.data
-              setParsedFields({
-                firstName: d.firstName,
-                lastName: d.lastName,
-                addressLine1: d.addressStreet,
-                city: d.addressCity,
-                state: d.addressState,
-                zip: d.addressZip,
-              })
-              setPendingRaw(raw)
-              setCameraState("parsed")
-            }, 750)
-          } else if (err && !(err instanceof NotFoundException)) {
-            console.warn("[ProfileScan]", err)
-          }
+      const controls = await startPdf417Scan({
+        video: videoRef.current,
+        onResult: (raw) => {
+          setBarcodeFlash(true)
+          setTimeout(() => {
+            setBarcodeFlash(false)
+            stopCamera()
+            // Parse client-side
+            const parsed = parseAamvaBarcode(raw)
+            if (!parsed.ok) {
+              setParseError(parsed.error)
+              setCameraState("error")
+              return
+            }
+            const d = parsed.data
+            setParsedFields({
+              firstName: d.firstName,
+              lastName: d.lastName,
+              addressLine1: d.addressStreet,
+              city: d.addressCity,
+              state: d.addressState,
+              zip: d.addressZip,
+            })
+            setPendingRaw(raw)
+            setCameraState("parsed")
+          }, 750)
         },
-      )
+        onError: (err) => {
+          console.warn("[ProfileScan]", err)
+        },
+      })
       controlsRef.current = controls
     } catch (err) {
       const msg = err instanceof Error && err.name === "NotAllowedError"
@@ -207,7 +198,7 @@ export function ProfileScanModal({ open, onClose, onApply }: ProfileScanModalPro
         : "Could not start camera."
       setCameraError(msg)
     }
-  }, [])
+  }, [stopCamera])
 
   // Auto-start camera when modal opens on camera tab
   useEffect(() => {

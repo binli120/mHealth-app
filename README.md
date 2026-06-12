@@ -813,6 +813,7 @@ See the **Setup → Configure environment variables** section above for the full
 | `VPS_HOST` | Your VPS IP address or hostname |
 | `VPS_USER` | `root` |
 | `VPS_SSH_KEY` | Full contents of private key (begins `-----BEGIN OPENSSH PRIVATE KEY-----`) |
+| `VPS_SSH_PORT` | Optional; defaults to `22` when omitted |
 | `APP_DIR` | `/opt/masshealth-app` |
 | `GH_PAT` | GitHub fine-grained token — repo Contents: Read-only |
 | `REPO_SLUG` | `your-username/mHealth-app` |
@@ -1039,7 +1040,7 @@ docker exec healthcompass-ollama ollama pull llama3.2       # pull / update mode
 
 #### `dial tcp ***:22: i/o timeout`
 
-SSH port 22 is blocked. Fix via **hPanel → VPS → Firewall** — add inbound TCP rule for port 22.
+GitHub Actions cannot open a TCP connection to SSH. Usually SSH port 22 is blocked, the VPS IP changed, or SSH is listening on a non-default port. Fix via **hPanel → VPS → Firewall** by adding an inbound TCP rule for the configured SSH port. If you use a non-22 SSH port, set the GitHub environment secret `VPS_SSH_PORT`.
 Then on the VPS (via hPanel web terminal):
 ```bash
 ufw allow 22/tcp && ufw --force enable

@@ -117,6 +117,9 @@ export function buildCspHeader(opts: CspOptions): string {
       "'self'",
       `'nonce-${nonce}'`,
       "'strict-dynamic'",
+      // WebAssembly compilation (zxing-wasm barcode scanner). Unlike
+      // 'unsafe-eval' this does NOT allow JS eval()/Function().
+      "'wasm-unsafe-eval'",
       ...ANALYTICS_SCRIPT_SOURCES,
       ...(isDev ? ["'unsafe-eval'"] : []),
     ].join(" "),
@@ -152,8 +155,9 @@ export function buildCspHeader(opts: CspOptions): string {
     // Voice/video blobs for accessibility features
     "media-src 'self' blob:",
 
-    // PDF.js web worker runs as a blob: URL
-    "worker-src blob:",
+    // blob: — PDF.js web worker runs as a blob: URL
+    // 'self' — bundled workers served from /_next/static (PDF417 scanner)
+    "worker-src 'self' blob:",
 
     "frame-src 'self' blob:",
     "object-src 'none'",

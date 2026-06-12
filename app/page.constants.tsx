@@ -83,7 +83,7 @@ export const PROBLEM_ITEMS: ProblemItem[] = [
     icon:  <AlertCircle className="h-6 w-6 text-accent" />,
     bg:    "bg-accent/10",
     title: "Benefits slip through the cracks",
-    body:  "The average Massachusetts family misses $4,800/year in unclaimed benefits — not because they don't qualify, but because they never knew to apply.",
+    body:  "Eligible families often qualify for multiple programs worth thousands per year — but many never receive them, not because they don't qualify, but because they never knew to apply.",
     delay: 300,
   },
 ]
@@ -109,7 +109,9 @@ export const STATS_CONFIG: StatConfig[] = [
   { target: 9,    suffix: "+",    prefix: "",  label: "Benefit programs checked"    },
   { target: 6,    suffix: "",     prefix: "",  label: "Languages supported"          },
   { target: 15,   suffix: " min", prefix: "~", label: "Average time to apply"        },
-  { target: 2400, suffix: "/mo",  prefix: "$", label: "Max combined monthly benefit", duration: 2200 },
+  // ~700K MA residents in the "SNAP Gap" — likely SNAP-eligible MassHealth members not enrolled
+  // (https://www.masslegalhelp.org/public-benefits-ssi/snap-food-benefits/massachusetts-snap-gap)
+  { target: 700000, suffix: "", prefix: "~", label: "MA residents likely missing SNAP", duration: 2200 },
 ]
 
 // ── Live Assistance ───────────────────────────────────────────────────────────
