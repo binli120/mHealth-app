@@ -40,3 +40,9 @@ supabase/migrations/.$*.drawio.bkp
 resources/*.pdf
 resources/*.docx
 *.drawio.dtmp
+
+### mcp 
+.mcp.json
+
+# zxing-wasm binary copied by scripts/copy-zxing-wasm.mjs
+public/wasm/
