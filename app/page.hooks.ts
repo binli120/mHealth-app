@@ -37,13 +37,19 @@ export function useInView(threshold = 0.15) {
 }
 
 /**
- * Counts from 0 to `end` over `duration` ms, starting when `inView` becomes true.
+ * Animates a stat from 0 up to `end` over `duration` ms once `inView` becomes
+ * true. Initializes (and server-renders) at `end`, never 0 — crawlers, link
+ * previews, and no-JS visitors only see the first render, and a homepage that
+ * reads "0+ programs" to them is worse than one that never animates.
  */
 export function useCounter(end: number, inView: boolean, duration = 1600) {
-  const [value, setValue] = useState(0)
+  const [value, setValue] = useState(end)
 
   useEffect(() => {
     if (!inView) return
+    // No synchronous reset to 0 — the first interval tick (16ms in) lands
+    // near 0 anyway, and a sync setState here would trigger a cascading
+    // render (react-hooks/set-state-in-effect).
     let n = 0
     const step = end / (duration / 16)
     const id = setInterval(() => {
