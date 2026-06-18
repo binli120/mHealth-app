@@ -109,7 +109,7 @@ services:
 
   # ── Whisper ASR (local voice transcription — no data leaves VPS) ─────────
   whisper:
-    image: onerahmet/openai-whisper-asr-webservice:latest-cpu
+    image: onerahmet/openai-whisper-asr-webservice:latest
     container_name: healthcompass-whisper
     restart: unless-stopped
     expose:
