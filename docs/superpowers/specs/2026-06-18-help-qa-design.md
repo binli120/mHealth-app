@@ -60,7 +60,7 @@ help_questions (
   title           text NOT NULL,
   body            text,                          -- optional details + appended voice transcript
   category        text NOT NULL DEFAULT 'other', -- eligibility|benefits_coverage|applications_appeals|platform_help|other
-  embedding       vector(1536),                  -- text-embedding-3-small or nomic-embed-text (768-dim)
+  embedding       vector(768),                   -- nomic-embed-text via Ollama (768-dim)
   voice_url       text,                          -- signed URL path in Supabase Storage
   file_url        text,
   file_name       text,
@@ -139,14 +139,21 @@ Paths: `help/{questionId}/voice.{ext}` and `help/{questionId}/{fileName}`
 
 ## AI Pipeline (on question submission)
 
+All AI processing is fully on-premise — no patient data leaves the VPS.
+
 Executed server-side in `POST /api/help/questions`, steps run in sequence:
 
-1. **Voice transcription** — if voice file present: POST to Groq Whisper API (`whisper-large-v3`). Transcript is appended to `body` with a `\n\n[Voice transcript]: ` prefix.
-2. **Category classification** — `title + body` sent to Groq `llama-3.1-8b-instant` with structured output schema → one of `eligibility | benefits_coverage | applications_appeals | platform_help | other`.
-3. **Embedding** — `title + body` embedded via `text-embedding-3-small` (OpenAI, if `OPENAI_API_KEY` set) or `nomic-embed-text` (Ollama fallback). Stored in `embedding` column.
-4. **Email notification** — Resend sends from `no-reply@healthcompass.cloud` to `no-reply@healthcompass.cloud` with question title, body excerpt, category, and link to `/help/[id]`.
+1. **Voice transcription** — if voice file present: `POST /asr?task=transcribe&language=en&output=json` to local Whisper ASR (`WHISPER_BASE_URL`), form field `audio_file`. Returns `{ text, segments, language }`. Transcript appended to `body` with `\n\n[Voice transcript]: ` prefix.
+2. **Category classification** — `title + body` sent to local Ollama (`llama3.2` via `OLLAMA_BASE_URL`) with structured output schema → one of `eligibility | benefits_coverage | applications_appeals | platform_help | other`.
+3. **Embedding** — `title + body` embedded via Ollama `nomic-embed-text` (768-dim). Stored in `embedding vector(768)` column. Note: use `vector(768)` in migration, not 1536.
+4. **Email notification** — Resend sends from/to `no-reply@healthcompass.cloud` with question title, body excerpt, category, and link to `/help/[id]`.
 
-**Similar questions** (live search while typing): `GET /api/help/questions/similar?q=` embeds the query string and runs a pgvector cosine similarity query. Returns top 3 questions where similarity > 0.75. Debounced 400ms on the client.
+**Similar questions** (live search while typing): `GET /api/help/questions/similar?q=` embeds the query via `nomic-embed-text` and runs pgvector cosine similarity. Returns top 3 questions where similarity > 0.75. Debounced 400ms on the client.
+
+**Infrastructure:**
+- Whisper: `onerahmet/openai-whisper-asr-webservice:latest`, port 9000, internal network only
+- `WHISPER_BASE_URL=http://whisper:9000` (prod) / `http://localhost:9000` (local dev)
+- `WHISPER_MODEL=medium` (prod, ~1.5GB RAM) / `small` (local dev)
 
 ---
 
@@ -207,7 +214,7 @@ supabase/migrations/
 
 | Variable | Purpose |
 |----------|---------|
-| `GROQ_API_KEY` | Whisper transcription + classification (already in use) |
-| `OPENAI_API_KEY` | `text-embedding-3-small` embeddings (optional; falls back to Ollama) |
+| `WHISPER_BASE_URL` | Local Whisper ASR service (`http://whisper:9000` prod, `http://localhost:9000` dev) |
+| `WHISPER_MODEL` | Whisper model size — `medium` prod, `small` local dev |
 | `RESEND_API_KEY` | Email notification (already in use) |
-| `OLLAMA_BASE_URL` | Embedding fallback via `nomic-embed-text` (already in use) |
+| `OLLAMA_BASE_URL` | Classification + embeddings via `llama3.2` + `nomic-embed-text` (already in use) |
