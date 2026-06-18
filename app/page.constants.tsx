@@ -159,10 +159,10 @@ export const TESTIMONIALS: Testimonial[] = [
 // ── Footer ────────────────────────────────────────────────────────────────────
 
 export const FOOTER_PROGRAMS: FooterLink[] = [
-  { label: "MassHealth",            href: "#" },
-  { label: "SNAP / Food Assistance", href: "#" },
-  { label: "EITC Tax Credits",      href: "#" },
-  { label: "LIHEAP Energy Aid",     href: "#" },
+  { label: "MassHealth",            href: "/programs/masshealth" },
+  { label: "SNAP / Food Assistance", href: "/programs/snap" },
+  { label: "EITC Tax Credits",      href: "/programs/eitc" },
+  { label: "LIHEAP Energy Aid",     href: "/programs/liheap" },
 ]
 
 export const FOOTER_PLATFORM: FooterLink[] = [
