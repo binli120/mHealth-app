@@ -7,12 +7,11 @@
 
 import { use, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
 import { Card, CardContent }    from '@/components/ui/card'
+import { PageHeader }           from '@/components/shared/PageHeader'
 import { QuestionDetailHeader } from '@/components/help/QuestionDetailHeader'
 import { AnswerCard }           from '@/components/help/AnswerCard'
 import { AnswerForm }           from '@/components/help/AnswerForm'
-import { ShieldHeartIcon }      from '@/lib/icons'
 import { useHelpQuestionDetail } from './page.hooks'
 
 export default function HelpQuestionPage({
@@ -37,51 +36,38 @@ export default function HelpQuestionPage({
   }, [id, question?.voiceUrl])
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-        <div className="mx-auto flex h-16 max-w-7xl items-center px-4">
-          <Link
-            href="/help"
-            className="flex flex-1 items-center gap-2 text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span className="text-sm">Back</span>
-          </Link>
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <ShieldHeartIcon color="currentColor" className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <span className="font-semibold text-foreground">HealthCompass MA</span>
-          </div>
-          <div className="flex-1" />
-        </div>
-      </header>
+    <div className="min-h-screen bg-gray-50">
+      <PageHeader
+        backHref="/help"
+        backLabel="Help Center"
+        breadcrumbs={[{ label: question?.title ?? 'Question' }]}
+      />
 
-      <main className="mx-auto max-w-7xl px-4 py-8 space-y-6">
+      <main className="mx-auto max-w-4xl px-4 py-8">
         {loading && (
           <div className="space-y-4">
-            <div className="h-8 w-32 bg-muted rounded animate-pulse" />
-            <div className="h-40 bg-muted rounded animate-pulse" />
+            <div className="h-8 w-48 bg-gray-200 rounded animate-pulse" />
+            <div className="h-40 bg-white rounded animate-pulse border border-gray-200" />
           </div>
         )}
 
         {!loading && (error || !question) && (
-          <div>
-            <p className="text-destructive">{error ?? 'Question not found.'}</p>
-            <Link href="/help" className="text-sm text-primary hover:underline mt-2 block">
-              ← Back to Help
+          <div className="text-center py-16">
+            <p className="text-red-600 mb-3">{error ?? 'Question not found.'}</p>
+            <Link href="/help" className="text-sm text-primary hover:underline">
+              ← Back to Help Center
             </Link>
           </div>
         )}
 
         {!loading && question && (
-          <Card>
+          <Card className="bg-white border-gray-200">
             <CardContent className="pt-6 space-y-6">
               <QuestionDetailHeader question={question} voiceSignedUrl={voiceSignedUrl} />
 
               {question.answers.length > 0 && (
                 <div className="space-y-4">
-                  <h2 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
+                  <h2 className="font-semibold text-sm uppercase tracking-wide text-gray-500">
                     {question.answers.length} Answer{question.answers.length !== 1 ? 's' : ''}
                   </h2>
                   {question.answers.map(a => (
