@@ -7,9 +7,10 @@ import { formatDistanceToNow } from 'date-fns'
 interface QuestionDetailHeaderProps {
   question: HelpQuestion
   voiceSignedUrl?: string | null
+  fileSignedUrl?: string | null
 }
 
-export function QuestionDetailHeader({ question, voiceSignedUrl }: QuestionDetailHeaderProps) {
+export function QuestionDetailHeader({ question, voiceSignedUrl, fileSignedUrl }: QuestionDetailHeaderProps) {
   const [bodyMain, voiceTranscript] = splitTranscript(question.body)
 
   return (
@@ -43,9 +44,19 @@ export function QuestionDetailHeader({ question, voiceSignedUrl }: QuestionDetai
 
       {question.fileName && (
         <div className="flex items-center gap-2 text-sm">
-          <FileText className="h-4 w-4 text-muted-foreground" />
+          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
           <span className="text-muted-foreground">Attachment:</span>
-          <span className="font-medium">{question.fileName}</span>
+          {fileSignedUrl ? (
+            <a
+              href={fileSignedUrl}
+              download={question.fileName}
+              className="font-medium text-primary hover:underline truncate"
+            >
+              {question.fileName}
+            </a>
+          ) : (
+            <span className="font-medium text-muted-foreground truncate">{question.fileName}</span>
+          )}
         </div>
       )}
     </div>

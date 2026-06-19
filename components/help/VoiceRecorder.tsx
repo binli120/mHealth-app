@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Mic, Square, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -13,19 +13,32 @@ export function VoiceRecorder({ onRecorded }: VoiceRecorderProps) {
   const [audioUrl, setAudioUrl]   = useState<string | null>(null)
   const [error, setError]         = useState<string | null>(null)
   const mediaRef  = useRef<MediaRecorder | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
   const chunksRef = useRef<Blob[]>([])
+
+  // Stop the microphone if the component unmounts while recording
+  useEffect(() => {
+    return () => {
+      if (mediaRef.current && mediaRef.current.state !== 'inactive') {
+        mediaRef.current.stop()
+      }
+      streamRef.current?.getTracks().forEach(t => t.stop())
+    }
+  }, [])
 
   const startRecording = useCallback(async () => {
     setError(null)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
       const recorder = new MediaRecorder(stream)
       mediaRef.current  = recorder
       chunksRef.current = []
 
       recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
       recorder.onstop = () => {
-        stream.getTracks().forEach(t => t.stop())
+        streamRef.current?.getTracks().forEach(t => t.stop())
+        streamRef.current = null
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
         if (blob.size > 10 * 1024 * 1024) {
           setError('Recording exceeds 10 MB limit.')

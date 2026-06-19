@@ -120,7 +120,7 @@ export async function getHelpQuestion(id: string): Promise<HelpQuestionDetail | 
   const { rows: aRows } = await pool.query<AnswerRow>(
     `SELECT ha.id, ha.question_id, ha.user_id, ha.body, ha.created_at,
             hub.badge_type,
-            COALESCE(au.raw_user_meta_data->>'full_name', au.email, 'Community member') AS display_name
+            COALESCE(NULLIF(TRIM(au.raw_user_meta_data->>'full_name'), ''), 'Community member') AS display_name
      FROM public.help_answers ha
      JOIN auth.users au ON au.id = ha.user_id
      LEFT JOIN public.help_user_badge hub ON hub.user_id = ha.user_id
@@ -180,7 +180,7 @@ export async function createHelpAnswer(input: {
      )
      SELECT ins.id, ins.question_id, ins.user_id, ins.body, ins.created_at,
             hub.badge_type,
-            COALESCE(au.raw_user_meta_data->>'full_name', au.email, 'Community member') AS display_name
+            COALESCE(NULLIF(TRIM(au.raw_user_meta_data->>'full_name'), ''), 'Community member') AS display_name
      FROM ins
      JOIN auth.users au ON au.id = ins.user_id
      LEFT JOIN public.help_user_badge hub ON hub.user_id = ins.user_id`,

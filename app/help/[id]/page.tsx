@@ -25,18 +25,26 @@ export default function HelpQuestionPage({
   const { id } = use(params)
   const { question, loading, error, appendAnswer } = useHelpQuestionDetail(id)
   const [voiceSignedUrl, setVoiceSignedUrl] = useState<string | null>(null)
+  const [fileSignedUrl, setFileSignedUrl]   = useState<string | null>(null)
 
   useEffect(() => {
-    if (!question?.voiceUrl) return
-    async function resolveVoiceUrl() {
+    if (!question) return
+    async function resolveSignedUrls() {
       try {
-        const res  = await fetch(`/api/help/questions/${id}/voice-url`)
-        const data = await res.json() as { url?: string }
-        if (data.url) setVoiceSignedUrl(data.url)
+        if (question!.voiceUrl) {
+          const res  = await fetch(`/api/help/questions/${id}/voice-url`)
+          const data = await res.json() as { url?: string }
+          if (data.url) setVoiceSignedUrl(data.url)
+        }
+        if (question!.fileUrl) {
+          const res  = await fetch(`/api/help/questions/${id}/file-url`)
+          const data = await res.json() as { url?: string }
+          if (data.url) setFileSignedUrl(data.url)
+        }
       } catch { /* non-fatal */ }
     }
-    void resolveVoiceUrl()
-  }, [id, question?.voiceUrl])
+    void resolveSignedUrls()
+  }, [id, question?.voiceUrl, question?.fileUrl])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -66,7 +74,7 @@ export default function HelpQuestionPage({
         {!loading && question && (
           <Card className="bg-white border-gray-200">
             <CardContent className="pt-6 space-y-6">
-              <QuestionDetailHeader question={question} voiceSignedUrl={voiceSignedUrl} />
+              <QuestionDetailHeader question={question} voiceSignedUrl={voiceSignedUrl} fileSignedUrl={fileSignedUrl} />
 
               {question.answers.length > 0 && (
                 <div className="space-y-4">
