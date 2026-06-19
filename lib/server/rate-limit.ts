@@ -192,6 +192,12 @@ export const documentUploadLimiter = new DbRateLimiter({ limit: 20, windowMs: 10
 /** Mobile upload — 5 attempts per token per 15 min */
 export const mobileUploadLimiter = new DbRateLimiter({ limit: 5, windowMs: 15 * 60_000 })
 
+/** Help Q&A — new question: 5 per hour per user */
+export const helpQuestionLimiter = new DbRateLimiter({ limit: 5, windowMs: 60 * 60_000 })
+
+/** Help Q&A — new answer: 20 per hour per user */
+export const helpAnswerLimiter = new DbRateLimiter({ limit: 20, windowMs: 60 * 60_000 })
+
 // ── Helper ────────────────────────────────────────────────────────────────────
 
 /** Extract the best available client IP from a Next.js Request. */
