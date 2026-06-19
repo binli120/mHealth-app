@@ -17,8 +17,11 @@ const {
   listHelpQuestions,
   getHelpQuestion,
   createHelpQuestion,
+  updateHelpQuestionEmbedding,
+  createHelpAnswer,
   findSimilarQuestions,
   setNotifyOnAnswer,
+  getQuestionsWithNotifyForQuestion,
 } = await import('../db')
 
 // Minimal row fixtures
@@ -183,6 +186,57 @@ describe('findSimilarQuestions', () => {
   it('returns empty array when no similar questions found', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [] })
     const result = await findSimilarQuestions(new Array(768).fill(0))
+    expect(result).toEqual([])
+  })
+})
+
+// ── updateHelpQuestionEmbedding ───────────────────────────────────────────────
+
+describe('updateHelpQuestionEmbedding', () => {
+  it('issues UPDATE with serialised embedding vector', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+    await updateHelpQuestionEmbedding('q-1', [0.1, 0.2, 0.3])
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]]
+    expect(sql).toMatch(/UPDATE.*help_questions.*embedding/i)
+    expect(params[0]).toBe('[0.1,0.2,0.3]')
+    expect(params[1]).toBe('q-1')
+  })
+})
+
+// ── createHelpAnswer ──────────────────────────────────────────────────────────
+
+describe('createHelpAnswer', () => {
+  it('inserts and returns the new answer', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [ANSWER_ROW] })
+    const result = await createHelpAnswer({
+      questionId: 'q-1',
+      userId: 'u-2',
+      body: 'You can apply online.',
+    })
+    expect(result.id).toBe('a-1')
+    expect(result.displayName).toBe('Maria Santos')
+    const [sql] = mockQuery.mock.calls[0] as [string, unknown[]]
+    expect(sql).toMatch(/INSERT INTO public\.help_answers/i)
+  })
+})
+
+// ── getQuestionsWithNotifyForQuestion ─────────────────────────────────────────
+
+describe('getQuestionsWithNotifyForQuestion', () => {
+  it('returns userId and email for questions with notify=true', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ user_id: 'u-1', email: 'user@example.com' }],
+    })
+    const result = await getQuestionsWithNotifyForQuestion('q-1')
+    expect(result).toEqual([{ userId: 'u-1', email: 'user@example.com' }])
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]]
+    expect(sql).toMatch(/notify_on_answer/i)
+    expect(params).toContain('q-1')
+  })
+
+  it('returns empty array when no subscribers', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+    const result = await getQuestionsWithNotifyForQuestion('q-no-notify')
     expect(result).toEqual([])
   })
 })

@@ -85,4 +85,22 @@ describe('embedText', () => {
     })
     await expect(embedText('test')).rejects.toThrow('empty embedding')
   })
+
+  it('throws with status and body on non-ok response', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+      text: async () => 'Service Unavailable',
+    })
+    await expect(embedText('test')).rejects.toThrow('Ollama embed failed: 503 Service Unavailable')
+  })
+
+  it('throws with empty body when res.text() rejects', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      text: async () => { throw new Error('stream error') },
+    })
+    await expect(embedText('test')).rejects.toThrow('Ollama embed failed: 500 ')
+  })
 })
