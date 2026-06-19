@@ -36,9 +36,12 @@ export function AskQuestionDialog({ open, onOpenChange, onQuestionCreated }: Ask
   const similarTimerRef             = useRef<ReturnType<typeof setTimeout> | null>(null)
   const fileInputRef                = useRef<HTMLInputElement>(null)
 
+  // Derive visibility from title length — avoids synchronous setState in effect body
+  const visibleSimilar = title.trim().length >= 5 ? similar : []
+
   useEffect(() => {
     if (similarTimerRef.current) clearTimeout(similarTimerRef.current)
-    if (title.trim().length < 5) { setSimilar([]); return }
+    if (title.trim().length < 5) return
     similarTimerRef.current = setTimeout(async () => {
       try {
         const res  = await fetch(`/api/help/questions/similar?q=${encodeURIComponent(title)}`)
@@ -114,12 +117,12 @@ export function AskQuestionDialog({ open, onOpenChange, onQuestionCreated }: Ask
             />
           </div>
 
-          {similar.length > 0 && (
+          {visibleSimilar.length > 0 && (
             <div className="rounded-md border bg-blue-50 dark:bg-blue-950/30 p-3 space-y-1">
               <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide">
                 {getMessage(language, 'helpSimilarTitle')}
               </p>
-              {similar.map(q => (
+              {visibleSimilar.map(q => (
                 <a
                   key={q.id}
                   href={`/help/${q.id}`}
