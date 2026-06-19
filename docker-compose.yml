@@ -83,6 +83,7 @@ services:
       OPENOBSERVE_STREAM: ${OPENOBSERVE_STREAM:-mhealth_app}
       NEXT_PUBLIC_OPENOBSERVE_RUM_SITE: ${NEXT_PUBLIC_OPENOBSERVE_RUM_SITE:-}
       NEXT_PUBLIC_OPENOBSERVE_RUM_INSECURE_HTTP: ${NEXT_PUBLIC_OPENOBSERVE_RUM_INSECURE_HTTP:-false}
+      WHISPER_BASE_URL: ${WHISPER_BASE_URL:-http://whisper:9000}
     env_file:
       - .env.production.local
     labels:
@@ -103,6 +104,23 @@ services:
     depends_on:
       ollama:
         condition: service_started
+      whisper:
+        condition: service_started
+
+  # ── Whisper ASR (local voice transcription — no data leaves VPS) ─────────
+  whisper:
+    image: onerahmet/openai-whisper-asr-webservice:latest
+    container_name: healthcompass-whisper
+    restart: unless-stopped
+    expose:
+      - "9000"
+    environment:
+      ASR_MODEL: ${WHISPER_MODEL:-medium}
+      ASR_ENGINE: openai_whisper
+    volumes:
+      - whisper_models:/root/.cache/whisper
+    networks:
+      - internal
 
   # ── Ollama (AI chat) ─────────────────────────────────────────────────────
   ollama:
@@ -230,3 +248,4 @@ volumes:
   traefik_certs:
   ollama_data:
   openobserve_data:
+  whisper_models:
