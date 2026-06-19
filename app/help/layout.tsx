@@ -3,14 +3,11 @@
  * @email: blee@healthcompass.cloud
  */
 
-import type { ReactNode } from 'react'
-import type { Metadata } from 'next'
+"use client"
 
-export const metadata: Metadata = {
-  title: 'Help Center | HealthCompass MA',
-  description: 'Ask questions and get answers from the HealthCompass community and healthcare professionals.',
-}
+import type { ReactNode } from 'react'
+import { AuthGuard } from '@/components/shared/AuthGuard'
 
 export default function HelpLayout({ children }: { children: ReactNode }) {
-  return <>{children}</>
+  return <AuthGuard next="/help">{children}</AuthGuard>
 }

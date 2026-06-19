@@ -368,6 +368,12 @@ export default function CustomerDashboardPage() {
             >
               Appeal Letter
             </Link>
+            <Link
+              href="/help"
+              className="shrink-0 whitespace-nowrap text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Help
+            </Link>
           </nav>
           <div className="flex shrink-0 items-center gap-3">
             <div className="flex items-center gap-2 sm:gap-3" data-tour="dashboard-account-tools">
@@ -539,6 +545,21 @@ export default function CustomerDashboardPage() {
                   <div>
                     <p className="font-medium text-card-foreground">{getMessage(language, "dashboardNavKnowledgeCenter")}</p>
                     <p className="text-sm text-muted-foreground">{getMessage(language, "dashboardKnowledgeCenterDesc")}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </DashboardWidgetTooltip>
+          <DashboardWidgetTooltip content="Ask questions and get answers from healthcare professionals and the HealthCompass community.">
+            <Link href="/help" className="h-full lg:col-span-4">
+              <Card className="h-full cursor-pointer border-border bg-card transition-all hover:border-primary/50 hover:shadow-md">
+                <CardContent className="flex items-center gap-4 p-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                    <HelpCircle className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-card-foreground">Help Center</p>
+                    <p className="text-sm text-muted-foreground">Ask questions, get answers from the community</p>
                   </div>
                 </CardContent>
               </Card>
