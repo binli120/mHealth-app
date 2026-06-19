@@ -1,6 +1,8 @@
 'use client'
 
 import { HELP_CATEGORIES, HELP_CATEGORY_LABELS, type HelpCategory } from '@/lib/help/constants'
+import { getMessage } from '@/lib/i18n/messages'
+import { useAppSelector } from '@/lib/redux/hooks'
 import { cn } from '@/lib/utils'
 
 interface CategoryPillsProps {
@@ -9,10 +11,15 @@ interface CategoryPillsProps {
 }
 
 export function CategoryPills({ selected, onChange }: CategoryPillsProps) {
-  const all = [{ value: 'all' as const, label: 'All' }, ...HELP_CATEGORIES.map(c => ({ value: c, label: HELP_CATEGORY_LABELS[c] }))]
+  const language = useAppSelector((state) => state.app.language)
+  const pills = [
+    { value: 'all' as const, label: getMessage(language, 'helpCategoryAll') },
+    ...HELP_CATEGORIES.map(c => ({ value: c, label: HELP_CATEGORY_LABELS[c] })),
+  ]
+
   return (
     <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by category">
-      {all.map(({ value, label }) => (
+      {pills.map(({ value, label }) => (
         <button
           key={value}
           onClick={() => onChange(value)}

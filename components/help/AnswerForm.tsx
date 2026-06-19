@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
+import { Button }   from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { getMessage } from '@/lib/i18n/messages'
+import { useAppSelector } from '@/lib/redux/hooks'
 import type { HelpAnswer } from '@/lib/help/types'
 
 interface AnswerFormProps {
@@ -11,6 +13,7 @@ interface AnswerFormProps {
 }
 
 export function AnswerForm({ questionId, onAnswerPosted }: AnswerFormProps) {
+  const language = useAppSelector((state) => state.app.language)
   const [body, setBody]       = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState<string | null>(null)
@@ -19,7 +22,6 @@ export function AnswerForm({ questionId, onAnswerPosted }: AnswerFormProps) {
     e.preventDefault()
     setError(null)
     setLoading(true)
-
     try {
       const res = await fetch(`/api/help/questions/${questionId}/answers`, {
         method: 'POST',
@@ -40,7 +42,7 @@ export function AnswerForm({ questionId, onAnswerPosted }: AnswerFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-3 pt-4 border-t mt-4">
       <Textarea
-        placeholder="Write an answer..."
+        placeholder={getMessage(language, 'helpAnswerPlaceholder')}
         value={body}
         onChange={e => setBody(e.target.value)}
         maxLength={5000}
@@ -51,7 +53,7 @@ export function AnswerForm({ questionId, onAnswerPosted }: AnswerFormProps) {
       <div className="flex justify-between items-center">
         <span className="text-xs text-muted-foreground">{body.length}/5000</span>
         <Button type="submit" disabled={loading || body.trim().length === 0} size="sm">
-          {loading ? 'Posting…' : 'Post Answer'}
+          {loading ? getMessage(language, 'helpAnswerSubmitting') : getMessage(language, 'helpAnswerSubmit')}
         </Button>
       </div>
     </form>

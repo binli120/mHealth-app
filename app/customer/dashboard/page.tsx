@@ -558,8 +558,8 @@ export default function CustomerDashboardPage() {
                     <HelpCircle className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="font-medium text-card-foreground">Help Center</p>
-                    <p className="text-sm text-muted-foreground">Ask questions, get answers from the community</p>
+                    <p className="font-medium text-card-foreground">{getMessage(language, 'helpPageTitle')}</p>
+                    <p className="text-sm text-muted-foreground">{getMessage(language, 'helpDashboardWidgetDesc')}</p>
                   </div>
                 </CardContent>
               </Card>

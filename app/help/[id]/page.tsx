@@ -12,6 +12,8 @@ import { PageHeader }           from '@/components/shared/PageHeader'
 import { QuestionDetailHeader } from '@/components/help/QuestionDetailHeader'
 import { AnswerCard }           from '@/components/help/AnswerCard'
 import { AnswerForm }           from '@/components/help/AnswerForm'
+import { getMessage }           from '@/lib/i18n/messages'
+import { useAppSelector }       from '@/lib/redux/hooks'
 import { useHelpQuestionDetail } from './page.hooks'
 
 export default function HelpQuestionPage({
@@ -19,6 +21,7 @@ export default function HelpQuestionPage({
 }: {
   params: Promise<{ id: string }>
 }) {
+  const language = useAppSelector((state) => state.app.language)
   const { id } = use(params)
   const { question, loading, error, appendAnswer } = useHelpQuestionDetail(id)
   const [voiceSignedUrl, setVoiceSignedUrl] = useState<string | null>(null)
@@ -39,7 +42,7 @@ export default function HelpQuestionPage({
     <div className="min-h-screen bg-gray-50">
       <PageHeader
         backHref="/help"
-        backLabel="Help Center"
+        backLabel={getMessage(language, 'helpNavBreadcrumb')}
         breadcrumbs={[{ label: question?.title ?? 'Question' }]}
       />
 
@@ -71,7 +74,7 @@ export default function HelpQuestionPage({
                     {question.answers.length} Answer{question.answers.length !== 1 ? 's' : ''}
                   </h2>
                   {question.answers.map(a => (
-                    <AnswerCard key={a.id} answer={a} />
+                    <AnswerCard key={a.id} answer={a} language={language} />
                   ))}
                 </div>
               )}

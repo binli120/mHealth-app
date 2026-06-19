@@ -10,10 +10,12 @@ import { Input }    from '@/components/ui/input'
 import { Label }    from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch }   from '@/components/ui/switch'
-import { VoiceRecorder }  from './VoiceRecorder'
+import { VoiceRecorder }       from './VoiceRecorder'
 import { HELP_CATEGORY_LABELS } from '@/lib/help/constants'
 import type { HelpCategory }    from '@/lib/help/constants'
 import type { HelpQuestion, SimilarQuestion } from '@/lib/help/types'
+import { getMessage }    from '@/lib/i18n/messages'
+import { useAppSelector } from '@/lib/redux/hooks'
 
 interface AskQuestionDialogProps {
   open: boolean
@@ -22,6 +24,7 @@ interface AskQuestionDialogProps {
 }
 
 export function AskQuestionDialog({ open, onOpenChange, onQuestionCreated }: AskQuestionDialogProps) {
+  const language = useAppSelector((state) => state.app.language)
   const [title, setTitle]           = useState('')
   const [body, setBody]             = useState('')
   const [voiceFile, setVoiceFile]   = useState<File | null>(null)
@@ -33,11 +36,9 @@ export function AskQuestionDialog({ open, onOpenChange, onQuestionCreated }: Ask
   const similarTimerRef             = useRef<ReturnType<typeof setTimeout> | null>(null)
   const fileInputRef                = useRef<HTMLInputElement>(null)
 
-  // Debounced similar questions fetch
   useEffect(() => {
     if (similarTimerRef.current) clearTimeout(similarTimerRef.current)
     if (title.trim().length < 5) { setSimilar([]); return }
-
     similarTimerRef.current = setTimeout(async () => {
       try {
         const res  = await fetch(`/api/help/questions/similar?q=${encodeURIComponent(title)}`)
@@ -45,7 +46,6 @@ export function AskQuestionDialog({ open, onOpenChange, onQuestionCreated }: Ask
         if (data.ok) setSimilar(data.data ?? [])
       } catch { /* non-fatal */ }
     }, 400)
-
     return () => { if (similarTimerRef.current) clearTimeout(similarTimerRef.current) }
   }, [title])
 
@@ -59,7 +59,6 @@ export function AskQuestionDialog({ open, onOpenChange, onQuestionCreated }: Ask
     e.preventDefault()
     setError(null)
     setLoading(true)
-
     try {
       const form = new FormData()
       form.append('title', title.trim())
@@ -70,12 +69,10 @@ export function AskQuestionDialog({ open, onOpenChange, onQuestionCreated }: Ask
 
       const res  = await fetch('/api/help/questions', { method: 'POST', body: form })
       const data = await res.json() as { ok: boolean; data?: HelpQuestion; error?: string }
-
       if (!data.ok) throw new Error(data.error ?? 'Failed to submit question.')
 
       onQuestionCreated(data.data!)
       onOpenChange(false)
-      // Reset form
       setTitle(''); setBody(''); setVoiceFile(null); setAttachFile(null); setNotify(true); setSimilar([])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.')
@@ -88,16 +85,15 @@ export function AskQuestionDialog({ open, onOpenChange, onQuestionCreated }: Ask
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Ask a Question</DialogTitle>
+          <DialogTitle>{getMessage(language, 'helpDialogTitle')}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Title */}
           <div className="space-y-1">
             <Label htmlFor="help-title">Question *</Label>
             <Input
               id="help-title"
-              placeholder="What would you like to know?"
+              placeholder={getMessage(language, 'helpDialogTitlePlaceholder')}
               value={title}
               onChange={e => setTitle(e.target.value)}
               maxLength={300}
@@ -106,12 +102,11 @@ export function AskQuestionDialog({ open, onOpenChange, onQuestionCreated }: Ask
             />
           </div>
 
-          {/* Body */}
           <div className="space-y-1">
             <Label htmlFor="help-body">Details (optional)</Label>
             <Textarea
               id="help-body"
-              placeholder="Add more context if helpful..."
+              placeholder={getMessage(language, 'helpDialogBodyPlaceholder')}
               value={body}
               onChange={e => setBody(e.target.value)}
               maxLength={5000}
@@ -119,11 +114,10 @@ export function AskQuestionDialog({ open, onOpenChange, onQuestionCreated }: Ask
             />
           </div>
 
-          {/* Similar questions */}
           {similar.length > 0 && (
             <div className="rounded-md border bg-blue-50 dark:bg-blue-950/30 p-3 space-y-1">
               <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide">
-                Similar questions already answered
+                {getMessage(language, 'helpSimilarTitle')}
               </p>
               {similar.map(q => (
                 <a
@@ -135,22 +129,20 @@ export function AskQuestionDialog({ open, onOpenChange, onQuestionCreated }: Ask
                 >
                   {q.title}
                   <span className="text-xs text-muted-foreground ml-1">
-                    ({HELP_CATEGORY_LABELS[q.category as HelpCategory]} · {q.answerCount} answer{q.answerCount !== 1 ? 's' : ''})
+                    ({HELP_CATEGORY_LABELS[q.category as HelpCategory]} · {q.answerCount} {getMessage(language, 'helpAnswerCount')})
                   </span>
                 </a>
               ))}
             </div>
           )}
 
-          {/* Voice */}
           <div className="space-y-1">
-            <Label>Voice recording (optional, max 1)</Label>
+            <Label>{getMessage(language, 'helpDialogVoiceLabel')}</Label>
             <VoiceRecorder onRecorded={setVoiceFile} />
           </div>
 
-          {/* File attachment */}
           <div className="space-y-1">
-            <Label>File attachment (optional, max 1 — PDF, Word, Excel, PPT, text)</Label>
+            <Label>{getMessage(language, 'helpDialogFileLabel')}</Label>
             {attachFile ? (
               <div className="flex items-center gap-2 text-sm">
                 <Paperclip className="h-4 w-4 text-muted-foreground" />
@@ -182,9 +174,10 @@ export function AskQuestionDialog({ open, onOpenChange, onQuestionCreated }: Ask
             )}
           </div>
 
-          {/* Notify toggle */}
           <div className="flex items-center justify-between">
-            <Label htmlFor="help-notify" className="cursor-pointer">Notify me when someone answers</Label>
+            <Label htmlFor="help-notify" className="cursor-pointer">
+              {getMessage(language, 'helpDialogNotifyLabel')}
+            </Label>
             <Switch id="help-notify" checked={notify} onCheckedChange={setNotify} />
           </div>
 
@@ -195,7 +188,7 @@ export function AskQuestionDialog({ open, onOpenChange, onQuestionCreated }: Ask
               Cancel
             </Button>
             <Button type="submit" disabled={loading || title.trim().length < 5}>
-              {loading ? 'Submitting…' : 'Submit Question'}
+              {loading ? getMessage(language, 'helpDialogSubmitting') : getMessage(language, 'helpDialogSubmit')}
             </Button>
           </div>
         </form>
