@@ -5,6 +5,15 @@ import { logServerError, logServerInfo } from '@/lib/server/logger'
 import { HELP_CATEGORY_LABELS } from './constants'
 import type { HelpQuestion } from './types'
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 const FROM_EMAIL = process.env.FROM_EMAIL ?? 'no-reply@healthcompass.cloud'
 const NOTIFY_EMAIL = 'no-reply@healthcompass.cloud'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://healthcompass.cloud'
@@ -22,8 +31,8 @@ export async function sendNewQuestionEmail(question: HelpQuestion): Promise<void
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
       <h2 style="color:#1a6fa3">New Help Question</h2>
       <p><strong>Category:</strong> ${categoryLabel}</p>
-      <h3 style="margin-bottom:4px">${question.title}</h3>
-      <p style="color:#555;white-space:pre-wrap">${bodyExcerpt}</p>
+      <h3 style="margin-bottom:4px">${escapeHtml(question.title)}</h3>
+      <p style="color:#555;white-space:pre-wrap">${escapeHtml(bodyExcerpt)}</p>
       <p>
         <a href="${questionUrl}"
            style="background:#1a6fa3;color:white;padding:10px 20px;border-radius:4px;text-decoration:none;display:inline-block;margin-top:8px">

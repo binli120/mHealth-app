@@ -2,9 +2,13 @@ import { NextResponse } from 'next/server'
 import { requireAuthenticatedUser } from '@/lib/auth/require-auth'
 import { logServerError } from '@/lib/server/logger'
 import { checkRateLimitAsync, helpAnswerLimiter } from '@/lib/server/rate-limit'
-import { createHelpAnswer } from '@/lib/help/db'
+import { createHelpAnswer, getQuestionsWithNotifyForQuestion } from '@/lib/help/db'
+import { resend } from '@/lib/resend'
 
 export const runtime = 'nodejs'
+
+const FROM_EMAIL = process.env.FROM_EMAIL ?? 'no-reply@healthcompass.cloud'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://healthcompass.cloud'
 
 export async function POST(
   request: Request,
@@ -29,9 +33,32 @@ export async function POST(
     }
 
     const answer = await createHelpAnswer({ questionId, userId: auth.userId, body: answerBody })
+
+    // Fire-and-forget: notify question owner if notify_on_answer = true
+    void sendAnswerNotification(questionId).catch(err =>
+      logServerError('sendAnswerNotification failed', err, { questionId }),
+    )
+
     return NextResponse.json({ ok: true, data: answer }, { status: 201 })
   } catch (err) {
     logServerError('POST /api/help/questions/[id]/answers', err, { userId: auth.userId })
     return NextResponse.json({ ok: false, error: 'Failed to post answer.' }, { status: 500 })
   }
+}
+
+async function sendAnswerNotification(questionId: string): Promise<void> {
+  const notifyRows = await getQuestionsWithNotifyForQuestion(questionId)
+  if (!notifyRows.length) return
+
+  await Promise.all(
+    notifyRows.map(async ({ email }) => {
+      const { error } = await resend.emails.send({
+        from: `HealthCompass MA <${FROM_EMAIL}>`,
+        to: email,
+        subject: `Re: [Help] Your question received an answer`,
+        html: `<p>Someone answered your question.</p><p><a href="${APP_URL}/help/${questionId}">View the answer</a></p>`,
+      })
+      if (error) throw new Error(error.message)
+    }),
+  )
 }
