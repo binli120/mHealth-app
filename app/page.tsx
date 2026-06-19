@@ -292,6 +292,7 @@ export default function LandingPage() {
                 <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">{copy.aiLabel}</span>
               </a>
               <Link href="/knowledge-center" className="text-sm text-muted-foreground transition-colors hover:text-foreground">{copy.navResources}</Link>
+              <Link href="/help" className="text-sm text-muted-foreground transition-colors hover:text-foreground">Help</Link>
             </nav>
             <div className="flex items-center gap-3">
               <LanguageSwitcher className="w-[160px] border-border bg-card text-foreground" />
