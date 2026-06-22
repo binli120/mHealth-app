@@ -42,6 +42,41 @@ if err == null && is_object(parsed) {
   .raw_message = .message
 }
 
+# Promote safe dashboard labels from nested app context. This keeps OpenObserve
+# SQL panels simple and avoids querying nested JSON paths in logs.
+if exists(.context) && is_object(.context) {
+  if exists(.context.agent) { .agent = .context.agent }
+  if exists(.context.counter) { .counter = .context.counter }
+  if exists(.context.duration_ms) { .duration_ms = .context.duration_ms }
+  if exists(.context.durationMs) { .duration_ms = .context.durationMs }
+  if exists(.context.errorCode) { .error_code = .context.errorCode }
+  if exists(.context.extractor) { .extractor = .context.extractor }
+  if exists(.context.fieldsFound) { .fields_found = .context.fieldsFound }
+  if exists(.context.hasMemory) { .has_memory = .context.hasMemory }
+  if exists(.context.ip_hash) { .ip_hash = .context.ip_hash }
+  if exists(.context.language) { .language = .context.language }
+  if exists(.context.messageCount) { .message_count = .context.messageCount }
+  if exists(.context.method) { .method = .context.method }
+  if exists(.context.metric) { .metric = .context.metric }
+  if exists(.context.mode) { .mode = .context.mode }
+  if exists(.context.module) { .module = .context.module }
+  if exists(.context.ms) { .ms = .context.ms }
+  if exists(.context.path) { .path = .context.path }
+  if exists(.context.reason) { .reason = .context.reason }
+  if exists(.context.role) { .role = .context.role }
+  if exists(.context.route) { .route = .context.route }
+  if exists(.context.sequence) { .sequence = .context.sequence }
+  if exists(.context.session_id) { .session_id = .context.session_id }
+  if exists(.context.sessionId) { .session_id = .context.sessionId }
+  if exists(.context.status) { .status = .context.status }
+  if exists(.context.thresholdMs) { .threshold_ms = .context.thresholdMs }
+  if exists(.context.tool) { .tool = .context.tool }
+  if exists(.context.type) { .type = .context.type }
+  if exists(.context.user_hash) { .user_hash = .context.user_hash }
+  if exists(.context.userHash) { .user_hash = .context.userHash }
+  if exists(.context.value) { .value = .context.value }
+}
+
 # OpenObserve expects _timestamp in microseconds
 ._timestamp = to_unix_timestamp(now(), unit: "microseconds")
 '''

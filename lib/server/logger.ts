@@ -40,6 +40,39 @@ const MAX_ARRAY_ITEMS = 20
 const MAX_OBJECT_KEYS = 30
 const MAX_STRING_LENGTH = 500
 
+const TOP_LEVEL_CONTEXT_FIELDS = new Set([
+  "agent",
+  "counter",
+  "duration_ms",
+  "durationMs",
+  "errorCode",
+  "extractor",
+  "fieldsFound",
+  "hasMemory",
+  "ip_hash",
+  "language",
+  "messageCount",
+  "method",
+  "metric",
+  "mode",
+  "module",
+  "ms",
+  "path",
+  "reason",
+  "role",
+  "route",
+  "sequence",
+  "sessionId",
+  "session_id",
+  "status",
+  "thresholdMs",
+  "tool",
+  "type",
+  "userHash",
+  "user_hash",
+  "value",
+])
+
 function shouldRedactKey(key: string): boolean {
   const normalized = key.trim().toLowerCase()
   return REDACTED_KEYS.has(normalized)
@@ -110,6 +143,24 @@ function serializeError(error: unknown): Record<string, unknown> {
   }
 }
 
+function isTopLevelLogFieldValue(value: unknown): value is string | number | boolean {
+  return typeof value === "string" || typeof value === "number" || typeof value === "boolean"
+}
+
+function getTopLevelContextFields(sanitizedContext: unknown): Record<string, string | number | boolean> {
+  if (!sanitizedContext || typeof sanitizedContext !== "object" || Array.isArray(sanitizedContext)) {
+    return {}
+  }
+
+  const fields: Record<string, string | number | boolean> = {}
+  for (const [key, value] of Object.entries(sanitizedContext as Record<string, unknown>)) {
+    if (!TOP_LEVEL_CONTEXT_FIELDS.has(key) || !isTopLevelLogFieldValue(value)) continue
+    fields[key] = value
+  }
+
+  return fields
+}
+
 // ─── OpenObserve shipping ─────────────────────────────────────────────────────
 
 function getOOCredentials(): { url: string; auth: string; org: string; stream: string } | null {
@@ -147,6 +198,8 @@ function shipToOpenObserve(payload: Record<string, unknown>): void {
 function writeLog(level: LogLevel, event: string, context?: Record<string, unknown>): void {
   if (!isLevelEnabled(level)) return
 
+  const sanitizedContext = context ? sanitizeValue(context) : undefined
+
   const payload = {
     _timestamp: Date.now() * 1000, // OpenObserve expects microseconds
     ts:         new Date().toISOString(),
@@ -154,7 +207,8 @@ function writeLog(level: LogLevel, event: string, context?: Record<string, unkno
     event,
     service:    "mhealth-app",
     env:        process.env.NODE_ENV ?? "development",
-    ...(context ? { context: sanitizeValue(context) } : {}),
+    ...(sanitizedContext ? getTopLevelContextFields(sanitizedContext) : {}),
+    ...(sanitizedContext ? { context: sanitizedContext } : {}),
   }
 
   const line = JSON.stringify(payload)
@@ -189,4 +243,3 @@ export function logServerInfo(event: string, context?: Record<string, unknown>):
 export function logServerDebug(event: string, context?: Record<string, unknown>): void {
   writeLog("debug", event, context)
 }
-

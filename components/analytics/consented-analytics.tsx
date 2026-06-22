@@ -17,11 +17,17 @@ const OpenObserveRumProvider = dynamic(
   { ssr: false },
 )
 
+const CustomerSessionProvider = dynamic(
+  () => import("@/components/analytics/customer-session-provider").then((mod) => mod.CustomerSessionProvider),
+  { ssr: false },
+)
+
 export function ConsentedAnalytics() {
   return (
     <>
       <GrowthProvider />
       <OpenObserveRumProvider />
+      <CustomerSessionProvider />
     </>
   )
 }
