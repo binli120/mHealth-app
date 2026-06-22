@@ -81,6 +81,61 @@ describe("logServerInfo", () => {
     const arg = (console.info as ReturnType<typeof vi.spyOn>).mock.calls[0][0] as string
     expect(JSON.parse(arg).context).toBeUndefined()
   })
+
+  it("promotes approved context labels to top-level fields for OpenObserve queries", () => {
+    logServerInfo("metric.counter", {
+      agent:   "benefit-advisor",
+      counter: "rag_empty_result",
+      metric:  true,
+      reason:  "no_match",
+      value:   1,
+    })
+
+    const arg = (console.info as ReturnType<typeof vi.spyOn>).mock.calls[0][0] as string
+    const parsed = JSON.parse(arg)
+
+    expect(parsed.agent).toBe("benefit-advisor")
+    expect(parsed.counter).toBe("rag_empty_result")
+    expect(parsed.metric).toBe(true)
+    expect(parsed.reason).toBe("no_match")
+    expect(parsed.value).toBe(1)
+    expect(parsed.context.counter).toBe("rag_empty_result")
+  })
+
+  it("promotes snake_case customer analytics labels to top-level fields", () => {
+    logServerInfo("customer.active_time", {
+      duration_ms: 30_000,
+      ip_hash:     "ip123",
+      path:        "/customer/dashboard",
+      session_id:  "session-1",
+      user_hash:   "abc123",
+    })
+
+    const arg = (console.info as ReturnType<typeof vi.spyOn>).mock.calls[0][0] as string
+    const parsed = JSON.parse(arg)
+
+    expect(parsed.duration_ms).toBe(30_000)
+    expect(parsed.ip_hash).toBe("ip123")
+    expect(parsed.path).toBe("/customer/dashboard")
+    expect(parsed.session_id).toBe("session-1")
+    expect(parsed.user_hash).toBe("abc123")
+  })
+
+  it("does not promote unapproved or sensitive context fields", () => {
+    logServerInfo("auth.attempt", {
+      password: "s3cr3t!",
+      route:    "/api/auth/login",
+      userId:   "u-123",
+    })
+
+    const arg = (console.info as ReturnType<typeof vi.spyOn>).mock.calls[0][0] as string
+    const parsed = JSON.parse(arg)
+
+    expect(parsed.route).toBe("/api/auth/login")
+    expect(parsed.userId).toBeUndefined()
+    expect(parsed.password).toBeUndefined()
+    expect(parsed.context.password).toBe("[redacted]")
+  })
 })
 
 // ── logServerError ────────────────────────────────────────────────────────────

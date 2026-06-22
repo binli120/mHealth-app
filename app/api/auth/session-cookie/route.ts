@@ -5,6 +5,9 @@
 
 import { NextResponse } from "next/server"
 
+import { logLoginEvent } from "@/lib/db/admin-access"
+import { getAnalyticsIpHash, getAnalyticsUserHash } from "@/lib/server/customer-analytics"
+import { logServerInfo } from "@/lib/server/logger"
 import { getSupabaseServerClient } from "@/lib/supabase/server"
 
 const DEFAULT_ACCESS_TOKEN_MAX_AGE = 60 * 60
@@ -57,6 +60,17 @@ export async function POST(request: Request) {
       { status: 401 },
     )
   }
+
+  const ipAddress = request.headers.get("x-forwarded-for")
+  const userAgent = request.headers.get("user-agent")
+  const ipHash = getAnalyticsIpHash(request)
+  void logLoginEvent(data.user.id, "login", ipAddress, userAgent)
+  logServerInfo("customer.login", {
+    ...(ipHash ? { ip_hash: ipHash } : {}),
+    method: "password",
+    route: "/api/auth/session-cookie",
+    user_hash: getAnalyticsUserHash(data.user.id),
+  })
 
   const isSecure = process.env.NODE_ENV === "production"
   const response = NextResponse.json({ ok: true })
