@@ -109,9 +109,21 @@ function createWorkerDecoder(): DecoderHandle | null {
         const id = nextId++
         return new Promise<string | null>((resolve, reject) => {
           pending.set(id, { resolve, reject })
-          const request: DecodeRequest = { id, imageData, options: READER_OPTIONS }
-          // Transfer the pixel buffer instead of copying ~8MB per frame.
-          worker.postMessage(request, [imageData.data.buffer])
+          // Extract the raw RGBA buffer before posting. Sending the ImageData
+          // object AND listing its buffer as a transferable causes the buffer
+          // to be detached before the structured clone is written on some
+          // mobile browsers, giving the worker an empty ImageData that never
+          // decodes. Sending only the buffer and reconstructing ImageData in
+          // the worker is the safe cross-browser pattern.
+          const buffer = imageData.data.buffer as ArrayBuffer
+          const request: DecodeRequest = {
+            id,
+            buffer,
+            width: imageData.width,
+            height: imageData.height,
+            options: READER_OPTIONS,
+          }
+          worker.postMessage(request, [buffer])
         })
       },
       dispose() {

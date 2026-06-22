@@ -43,6 +43,9 @@ function normalizeResolveModules(modules) {
 // script-src can use 'nonce-{value}' instead of the weaker 'unsafe-inline'.
 // See: proxy.ts, lib/csp/nonce.ts
 const securityHeaders = [
+  // Tells ngrok not to show its browser-warning interstitial page.
+  // Safe to include unconditionally — non-ngrok proxies ignore this header.
+  { key: "ngrok-skip-browser-warning", value: "true" },
   // Prevent the page from being embedded in a frame (clickjacking)
   { key: "X-Frame-Options", value: "DENY" },
   // Prevent browsers from MIME-sniffing the content type
@@ -73,7 +76,7 @@ const nextConfig = {
   // crashes the Turbopack build worker on Node < 22.
   serverExternalPackages: ["pdf-parse", "pdfjs-dist", "canvas"],
   // 127.0.0.1 is required for Playwright e2e tests (PORT=3001 pnpm dev)
-  allowedDevOrigins: ["127.0.0.1", "192.168.86.25", "192.168.1.92", "192.168.1.47"],
+  allowedDevOrigins: ["127.0.0.1", "192.168.86.25", "192.168.1.92", "192.168.1.47", "*.ngrok-free.app", "*.ngrok-free.dev", "*.ngrok.io"],
   turbopack: {
     root: projectRoot,
   },

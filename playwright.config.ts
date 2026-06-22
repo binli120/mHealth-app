@@ -166,7 +166,7 @@ export default defineConfig({
           env: {
             ...LOCAL_DEMO_ENV,
             ...LOCAL_E2E_AUTH_ENV,
-            PATH: `/Users/blee/.nvm/versions/node/v20.12.2/bin:${process.env.PATH}`,
+            PATH: `/Users/blee/.nvm/versions/node/v22.23.0/bin:${process.env.PATH}`,
           },
         },
       }),

@@ -18,9 +18,15 @@ prepareZXingModule({
   },
 })
 
+// Send raw RGBA bytes + dimensions instead of ImageData to avoid a browser
+// bug where transferring imageData.data.buffer detaches the buffer before the
+// structured clone of the ImageData completes. The worker reconstructs a fresh
+// ImageData from the transferred buffer, which is always safe.
 export interface DecodeRequest {
   id: number
-  imageData: ImageData
+  buffer: ArrayBuffer
+  width: number
+  height: number
   options: ReaderOptions
 }
 
@@ -36,8 +42,9 @@ const workerScope = self as unknown as {
 }
 
 workerScope.onmessage = async (event: MessageEvent<DecodeRequest>) => {
-  const { id, imageData, options } = event.data
+  const { id, buffer, width, height, options } = event.data
   try {
+    const imageData = new ImageData(new Uint8ClampedArray(buffer), width, height)
     const results = await readBarcodes(imageData, options)
     const hit = results.find((r) => r.isValid && r.text.trim().length > 0)
     workerScope.postMessage({ id, ok: true, text: hit ? hit.text : null })

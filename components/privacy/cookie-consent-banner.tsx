@@ -6,6 +6,7 @@
 "use client"
 
 import { useState } from "react"
+import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { Cookie } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -30,7 +31,12 @@ function writeConsentCookie(value: CookieConsentValue) {
   ].filter(Boolean).join("; ")
 }
 
+// Paths where showing a cookie banner would break the flow (no auth session,
+// camera active, reload on accept would lose the scan token).
+const SUPPRESS_PATHS = ["/verify/mobile/", "/upload/mobile/"]
+
 export function CookieConsentBanner({ initialConsent = null }: CookieConsentBannerProps) {
+  const pathname = usePathname()
   const [consent, setConsent] = useState<CookieConsentValue | null>(initialConsent)
 
   function saveConsent(value: CookieConsentValue) {
@@ -43,6 +49,7 @@ export function CookieConsentBanner({ initialConsent = null }: CookieConsentBann
   }
 
   if (consent) return null
+  if (pathname && SUPPRESS_PATHS.some((p) => pathname.startsWith(p))) return null
 
   return (
     <section
