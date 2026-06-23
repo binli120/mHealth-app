@@ -701,14 +701,6 @@ export default function LandingPage() {
                 </div>
               </div>
             </div>
-            <div className="mt-8 border-t border-border pt-8 text-center text-sm text-muted-foreground">
-              <p>{copy.footerCopyright}</p>
-              <p className="mt-2">
-                <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
-                {" · "}
-                <Link href="/privacy/cookies" className="hover:text-foreground">Cookies</Link>
-              </p>
-            </div>
           </div>
         </footer>
 

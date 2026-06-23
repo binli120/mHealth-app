@@ -13,6 +13,7 @@ import { ReduxProvider } from '@/components/providers/redux-provider'
 import { ThemeProvider } from '@/components/theme-provider'
 import { CookieConsentBanner } from '@/components/privacy/cookie-consent-banner'
 import { GlossaryProvider } from '@/lib/glossary/GlossaryContext'
+import { SiteFooter } from '@/components/layout/site-footer'
 import {
   COOKIE_CONSENT_COOKIE,
   hasAnalyticsCookieConsent,
@@ -127,6 +128,7 @@ export default async function RootLayout({
               {hasAnalyticsConsent && <ConsentedAnalytics />}
             </Suspense>
           </ReduxProvider>
+          <SiteFooter />
           <footer className="fixed bottom-1 right-2 text-[10px] text-muted-foreground/40 select-none pointer-events-none">
             v{process.env.NEXT_PUBLIC_APP_VERSION}
           </footer>
