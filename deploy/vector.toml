@@ -10,6 +10,36 @@
 #   healthcompass-proxy    → Traefik access/error logs
 #   healthcompass-analysis → MassHealth analysis service (when enabled)
 
+# ── Source: Supabase Prometheus metrics ──────────────────────────────────────
+[sources.supabase_metrics]
+type     = "prometheus_scrape"
+endpoints = ["${SUPABASE_METRICS_URL}"]
+scrape_interval_secs = 60
+
+[sources.supabase_metrics.auth]
+strategy = "bearer"
+token    = "${SUPABASE_SERVICE_ROLE_KEY}"
+
+# ── Transform: tag Supabase metrics with env label ───────────────────────────
+[transforms.supabase_tag]
+type   = "remap"
+inputs = ["supabase_metrics"]
+source = '''
+.env = "production"
+.source = "supabase"
+'''
+
+# ── Sink: OpenObserve — Supabase metrics stream ───────────────────────────────
+[sinks.openobserve_supabase]
+type        = "prometheus_remote_write"
+inputs      = ["supabase_tag"]
+endpoint    = "${OPENOBSERVE_URL}/api/${OPENOBSERVE_ORG}/${OPENOBSERVE_STREAM_SUPABASE}/prometheus/api/v1/write"
+
+[sinks.openobserve_supabase.auth]
+strategy = "basic"
+user     = "${OPENOBSERVE_USER}"
+password = "${OPENOBSERVE_PASSWORD}"
+
 # ── Source: Docker container logs ────────────────────────────────────────────
 [sources.docker_logs]
 type = "docker_logs"
