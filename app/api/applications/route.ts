@@ -11,6 +11,8 @@ import {
   listApplicationDrafts,
 } from "@/lib/db/application-drafts"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
+import { getAnalyticsUserHash } from "@/lib/server/customer-analytics"
+import { logServerInfo } from "@/lib/server/logger"
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -99,6 +101,12 @@ export async function POST(request: Request) {
       applicationId: requestedId,
       applicationType: body.applicationType,
       actingForUserId: actingFor,
+    })
+
+    logServerInfo("application.created", {
+      route: "/api/applications",
+      user_hash: getAnalyticsUserHash(authResult.userId),
+      ...(body.applicationType ? { type: body.applicationType } : {}),
     })
 
     return NextResponse.json({
