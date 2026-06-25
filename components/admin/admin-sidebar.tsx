@@ -26,6 +26,7 @@ import {
   KeyRound,
   ShieldCheck,
   BookOpen,
+  Server,
   type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -77,6 +78,7 @@ const NAV_GROUPS: NavGroup[] = [
     title: "System",
     items: [
       { href: "/admin/phi-audit", label: "PHI Audit Log", icon: ShieldCheck },
+      { href: "/admin/services",  label: "Services",      icon: Server },
     ],
   },
 ]
