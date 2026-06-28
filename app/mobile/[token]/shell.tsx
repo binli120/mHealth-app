@@ -16,6 +16,7 @@ import type { HandoffContextType } from "@/lib/db/mobile-handoff-session"
 // Lazy-loaded context renderers to keep initial bundle small
 import dynamic from "next/dynamic"
 const IntakeChat = dynamic(() => import("@/components/application/aca3/intake-chat").then(m => ({ default: m.IntakeChat })))
+const MobileVoiceRecorder = dynamic(() => import("@/components/handoff/mobile-voice-recorder").then(m => ({ default: m.MobileVoiceRecorder })))
 
 const CONTEXT_LABELS: Record<HandoffContextType, string> = {
   intake_chat: "Intake Chat",
@@ -119,8 +120,11 @@ export function MobileShell({ token }: { token: string }) {
           </div>
         )}
         {context.contextType === "voice_message" && (
-          // MobileVoiceRecorder will be implemented in Task 7
-          <div>Voice recorder coming in Task 7</div>
+          <MobileVoiceRecorder
+            patientId={context.contextPayload.patientId as string}
+            conversationId={context.contextPayload.conversationId as string}
+            onSaveAndExit={handleSaveAndExit}
+          />
         )}
         {(context.contextType === "id_verify" || context.contextType === "doc_upload") && (
           // These contexts redirect to their existing standalone pages during handoff creation
