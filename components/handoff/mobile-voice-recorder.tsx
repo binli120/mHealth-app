@@ -32,6 +32,7 @@ export function MobileVoiceRecorder({ patientId, conversationId, onSaveAndExit }
   const blobRef = useRef<Blob | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const objectUrlRef = useRef<string | null>(null)
 
   const startRecording = useCallback(async () => {
     setError(null)
@@ -81,11 +82,20 @@ export function MobileVoiceRecorder({ patientId, conversationId, onSaveAndExit }
   const playReview = useCallback(() => {
     if (!blobRef.current) return
     audioRef.current?.pause()
-    audioRef.current = new Audio(URL.createObjectURL(blobRef.current))
+    // Revoke previous object URL to avoid memory leak
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current)
+    }
+    objectUrlRef.current = URL.createObjectURL(blobRef.current)
+    audioRef.current = new Audio(objectUrlRef.current)
     void audioRef.current.play()
   }, [])
 
   const reset = useCallback(() => {
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current)
+      objectUrlRef.current = null
+    }
     setRecordState("idle")
     setSeconds(0)
     setTranscription("")
