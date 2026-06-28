@@ -1,3 +1,7 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
 import { AlertTriangle } from "lucide-react"
 
 export default function MobileAlreadyClaimedPage() {

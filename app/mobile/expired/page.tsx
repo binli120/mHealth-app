@@ -1,3 +1,7 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
 import { Clock } from "lucide-react"
 
 export default function MobileExpiredPage() {

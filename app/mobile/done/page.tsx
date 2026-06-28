@@ -1,3 +1,7 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
 import { CheckCircle2 } from "lucide-react"
 
 export default function MobileDonePage() {

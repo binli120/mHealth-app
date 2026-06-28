@@ -51,7 +51,11 @@ export function MobileShell({ token }: { token: string }) {
 
         // Establish Supabase session on mobile
         const supabase = getSupabaseClient()
-        await supabase.auth.refreshSession({ refresh_token: json.refreshToken })
+        const { error: refreshError } = await supabase.auth.refreshSession({ refresh_token: json.refreshToken })
+        if (refreshError) {
+          setExchangeState("expired")
+          return
+        }
 
         setContext({ contextType: json.contextType, contextPayload: json.contextPayload })
         setExchangeState("ready")
@@ -67,11 +71,15 @@ export function MobileShell({ token }: { token: string }) {
   }, [exchangeState, router])
 
   async function handleSaveAndExit(progressSummary: Record<string, unknown> = {}) {
-    await fetch(`/api/handoff/${encodeURIComponent(token)}/complete`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ progressSummary }),
-    })
+    try {
+      await fetch(`/api/handoff/${encodeURIComponent(token)}/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ progressSummary }),
+      })
+    } catch {
+      // best-effort; redirect regardless so user isn't stuck
+    }
     router.replace("/mobile/done")
   }
 
