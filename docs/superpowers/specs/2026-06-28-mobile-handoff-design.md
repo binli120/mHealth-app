@@ -72,6 +72,70 @@ CREATE INDEX ON mobile_handoff_sessions (token);
 
 ---
 
+## Token Exchange & Auth Flow
+
+```
+Desktop                        Server                           Mobile
+  |                               |                                |
+  | POST /api/handoff             |                                |
+  | { contextType, payload }      |                                |
+  |------------------------------>|                                |
+  |                               | encrypt(refreshToken)          |
+  |                               | INSERT mobile_handoff_sessions |
+  |                               | status = 'pending'             |
+  | <-- { token, mobileUrl,       |                                |
+  |        expiresAt }            |                                |
+  |                               |                                |
+  | [renders QR + locks UI]       |                                |
+  |                               |                                |
+  | GET /api/handoff?token (3s)   |                                |
+  |------------------------------>|                                |
+  | <-- { status: 'pending' }     |                                |
+  |                               |                                |
+  |                               |    GET /mobile/[token]         |
+  |                               |<-------------------------------|
+  |                               | (renders shell page, no auth)  |
+  |                               |------------------------------->|
+  |                               |                                |
+  |                               |    POST /api/handoff/[token]/exchange
+  |                               |<-------------------------------|
+  |                               | validate: pending, not expired |
+  |                               | status = 'active' (atomic)     |
+  |                               | decrypt refreshToken           |
+  |                               | --> { session, contextPayload }|
+  |                               |------------------------------->|
+  |                               |    supabase.setSession()       |
+  |                               |                                |
+  | GET /api/handoff?token (3s)   |                                |
+  |------------------------------>|                                |
+  | <-- { status: 'active' }      |                                |
+  | [desktop: "In progress on     |                                |
+  |   your phone"]                |                                |
+  |                               |                                |
+  |                               |    [user completes task]       |
+  |                               |                                |
+  |                               |    POST /api/handoff/[token]/complete
+  |                               |<-------------------------------|
+  |                               | { progressSummary }            |
+  |                               | status = 'completed'           |
+  |                               | completed_at = now()           |
+  |                               |------------------------------->|
+  |                               |    [mobile shows done screen]  |
+  |                               |                                |
+  | GET /api/handoff?token (3s)   |                                |
+  |------------------------------>|                                |
+  | <-- { status: 'completed',    |                                |
+  |        progressSummary }      |                                |
+  | [overlay auto-dismisses,      |                                |
+  |  desktop refreshes state]     |                                |
+```
+
+**Double-scan protection:** the `pending → active` transition is atomic (single UPDATE … WHERE status = 'pending' RETURNING). If a second device hits exchange on an already-active token it receives 409. If the token has expired it receives 410.
+
+**Cancel path:** desktop "Cancel" hits `DELETE /api/handoff?token=xxx` → sets `status = 'expired'`. If mobile already exchanged (status is `active`), the mobile session remains valid but `complete` will be rejected with 410, and mobile shows "Session was cancelled on the other device."
+
+---
+
 ## API Routes
 
 ### `POST /api/handoff`
