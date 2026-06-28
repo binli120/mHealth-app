@@ -30,6 +30,8 @@ import { countHouseholdRelationshipMentions } from "@/lib/masshealth/household-r
 import { type WidgetSpec, } from "@/components/application/aca3/intake-question-widget"
 import { splitWizardState } from "@/lib/phi-token/token"
 import { PhiSaveExitDialog } from "@/components/application/phi-save-exit-dialog"
+import { useHandoff } from "@/components/handoff/use-handoff"
+import { HandoffWaitOverlay } from "@/components/handoff/handoff-wait-overlay"
 import {
   buildQuestions,
   buildContextValuesForQuestion,
@@ -93,6 +95,7 @@ interface IntakeChatProps {
   skipServerDraft?: boolean
   onSwitchToWizard: () => void
   onSaveAndExit?: () => void
+  mobileMode?: boolean
 }
 
 const SPOKEN_LANGUAGE_TO_CODE: Record<string, SupportedLanguage> = {
@@ -319,7 +322,7 @@ export { findNextPendingQuestion as findNextPendingIntakeQuestion } from "./inta
 export { getWizardStepForIntakeProgress } from "./intake-chat-question-builder"
 export { writeValue as writeIntakeQuestionValue } from "./intake-chat-question-builder"
 
-export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft, onSwitchToWizard, onSaveAndExit }: IntakeChatProps) {
+export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft, onSwitchToWizard, onSaveAndExit, mobileMode }: IntakeChatProps) {
   const router = useRouter()
   const dispatch = useAppDispatch()
   const selectedLanguage = useAppSelector((state) => state.app.language)
@@ -339,6 +342,14 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
   })
 
   const userProfile = useAppSelector((state) => state.userProfile?.profile ?? null)
+
+  const { trigger: handoffTrigger, cancel: handoffCancel, state: handoffState, mobileUrl: handoffMobileUrl, expiresAt: handoffExpiresAt } = useHandoff(
+    "intake_chat",
+    () => ({
+      applicationId: resolvedApplicationId ?? DEFAULT_APPLICATION_ID,
+      resumeId: "",
+    }),
+  )
 
   const copy = UI_COPY[selectedLanguage]
 
@@ -1202,6 +1213,13 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
 
   return (
     <>
+    <HandoffWaitOverlay
+      state={handoffState}
+      mobileUrl={handoffMobileUrl}
+      expiresAt={handoffExpiresAt}
+      onCancel={handoffCancel}
+      contextLabel="Intake Chat"
+    />
     <IntakeChatPanel
       copy={copy}
       onSaveAndExit={handleSaveAndExitClick}
@@ -1226,6 +1244,7 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
       widgetSpec={widgetSpec}
       onWidgetAnswer={handleWidgetAnswer}
       widgetKey={currentQuestionId ?? undefined}
+      onHandoff={mobileMode ? undefined : handoffTrigger}
     />
     {resolvedApplicationId && (
       <PhiSaveExitDialog

@@ -17,6 +17,7 @@ import type { HandoffContextType } from "@/lib/db/mobile-handoff-session"
 import dynamic from "next/dynamic"
 const IntakeChat = dynamic(() => import("@/components/application/aca3/intake-chat").then(m => ({ default: m.IntakeChat })))
 const MobileVoiceRecorder = dynamic(() => import("@/components/handoff/mobile-voice-recorder").then(m => ({ default: m.MobileVoiceRecorder })))
+const MassHealthChatWidget = dynamic(() => import("@/components/chat/masshealth-chat-widget").then(m => ({ default: m.MassHealthChatWidget })))
 
 const CONTEXT_LABELS: Record<HandoffContextType, string> = {
   intake_chat: "Intake Chat",
@@ -111,13 +112,14 @@ export function MobileShell({ token }: { token: string }) {
             applicationId={context.contextPayload.applicationId as string}
             onSwitchToWizard={() => {/* no wizard in mobile mode */}}
             onSaveAndExit={() => handleSaveAndExit()}
+            mobileMode
           />
         )}
         {context.contextType === "mh_chat" && (
-          // mobileMode/onSaveAndExit props will be wired in Task 8
-          <div className="flex flex-1 items-center justify-center text-muted-foreground text-sm">
-            Chat coming in Task 8
-          </div>
+          <MassHealthChatWidget
+            mobileMode
+            onSaveAndExit={() => handleSaveAndExit()}
+          />
         )}
         {context.contextType === "voice_message" && (
           <MobileVoiceRecorder

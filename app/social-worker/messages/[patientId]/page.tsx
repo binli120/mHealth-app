@@ -25,6 +25,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { useHandoff } from "@/components/handoff/use-handoff"
+import { HandoffTrigger } from "@/components/handoff/handoff-trigger"
+import { HandoffWaitOverlay } from "@/components/handoff/handoff-wait-overlay"
 import { getSafeSupabaseSession } from "@/lib/supabase/client"
 import { formatTime } from "@/lib/utils/format"
 import { useAutoScroll } from "@/hooks/use-auto-scroll"
@@ -103,6 +106,10 @@ export default function SwPatientConversationPage({ params }: PageParams) {
   const bottomRef = useAutoScroll([messages, loading])
   const { recording, durationSec, start: startRec, stop: stopRec, cancel: cancelRec } = useAudioRecorder()
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const { trigger: triggerHandoff, cancel: cancelHandoff, state: handoffState, mobileUrl, expiresAt } = useHandoff(
+    "voice_message",
+    () => ({ patientId: patientId ?? "", conversationId: "" }),
+  )
 
   // Resolve params and session
   useEffect(() => {
@@ -204,6 +211,7 @@ export default function SwPatientConversationPage({ params }: PageParams) {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col">
+      <HandoffWaitOverlay state={handoffState} mobileUrl={mobileUrl} expiresAt={expiresAt} onCancel={cancelHandoff} contextLabel="Voice Note" />
       {/* Header */}
       <div className="flex items-center gap-3 border-b px-4 py-3">
         <Button asChild size="icon-sm" variant="ghost">
@@ -279,10 +287,13 @@ export default function SwPatientConversationPage({ params }: PageParams) {
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizontal className="h-4 w-4" />}
               </Button>
             ) : (
-              <Button type="button" size="icon-sm" variant="outline" aria-label="Record voice"
-                disabled={sending} onClick={() => void startRec()}>
-                <Mic className="h-4 w-4" />
-              </Button>
+              <>
+                <Button type="button" size="icon-sm" variant="outline" aria-label="Record voice"
+                  disabled={sending} onClick={() => void startRec()}>
+                  <Mic className="h-4 w-4" />
+                </Button>
+                <HandoffTrigger onTrigger={triggerHandoff} />
+              </>
             )}
           </div>
         </form>
