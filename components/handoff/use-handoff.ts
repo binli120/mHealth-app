@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -69,8 +74,8 @@ export function useHandoff(
         if (json.status === "active" && state === "waiting_scan") setState("in_progress")
         if (json.status === "completed") {
           stopPolling()
-          setState("completed")
           onComplete?.(json.progressSummary ?? {})
+          setState("completed")
           setTimeout(() => setState("idle"), 3000)
         }
         if (json.status === "expired") { stopPolling(); setState("idle") }

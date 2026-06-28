@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@healthcompass.cloud
+ */
+
 "use client"
 
 import { useEffect, useState } from "react"
@@ -50,11 +55,13 @@ export function HandoffWaitOverlay({ state, mobileUrl, expiresAt, onCancel, cont
           </button>
         )}
 
-        {state === "waiting_scan" && qrUrl && (
+        {state === "waiting_scan" && (
           <>
             <p className="text-center text-sm font-medium">Scan with your phone to continue</p>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qrUrl} alt="QR code to open on mobile" className="h-48 w-48 rounded-md border" />
+            {qrUrl
+              ? <img src={qrUrl} alt="QR code to open on mobile" className="h-48 w-48 rounded-md border" />
+              : <div className="flex h-48 w-48 items-center justify-center rounded-md border text-sm text-muted-foreground">Generating…</div>
+            }
             <p className={cn("font-mono text-sm", secondsLeft < 60 ? "text-destructive" : "text-muted-foreground")}>
               Expires in {mm}:{ss}
             </p>
