@@ -114,7 +114,12 @@ export async function claimHandoffSession(token: string): Promise<MobileHandoffS
   )
   const row = result.rows[0]
   if (!row) return null
-  const decryptedRefreshToken = decryptField(row.encrypted_refresh_token)
+  let decryptedRefreshToken: string
+  try {
+    decryptedRefreshToken = decryptField(row.encrypted_refresh_token)
+  } catch (error) {
+    throw new Error("Failed to decrypt handoff session credentials")
+  }
   return mapRow(row, decryptedRefreshToken)
 }
 
