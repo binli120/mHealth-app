@@ -34,5 +34,6 @@ describe("POST /api/handoff/[token]/exchange", () => {
     expect(json.ok).toBe(true)
     expect(json.refreshToken).toBe("rt-secret")
     expect(json.contextType).toBe("intake_chat")
+    expect(json.contextPayload).toEqual({ applicationId: "app-1" })
   })
 })
