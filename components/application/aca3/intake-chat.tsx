@@ -348,6 +348,7 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
     () => ({
       applicationId: resolvedApplicationId ?? DEFAULT_APPLICATION_ID,
       resumeId: "",
+      lastAnsweredId: currentQuestionId ?? "",
     }),
   )
 
@@ -1208,8 +1209,12 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
   )
 
   const handleSaveAndExitClick = useCallback(() => {
+    if (mobileMode) {
+      onSaveAndExit?.()
+      return
+    }
     setSaveExitDialogOpen(true)
-  }, [])
+  }, [mobileMode, onSaveAndExit])
 
   return (
     <>

@@ -181,7 +181,7 @@ interface MassHealthChatWidgetProps {
   initialHistory?: Array<{ role: 'user' | 'assistant'; content: string }>
 }
 
-export function MassHealthChatWidget({ mobileMode, onSaveAndExit }: MassHealthChatWidgetProps = {}) {
+export function MassHealthChatWidget({ mobileMode, onSaveAndExit, initialHistory }: MassHealthChatWidgetProps = {}) {
   const dispatch = useAppDispatch()
   const selectedLanguage = useAppSelector((state) => state.app.language)
   const [open, setOpen] = useState(false)
@@ -234,7 +234,9 @@ export function MassHealthChatWidget({ mobileMode, onSaveAndExit }: MassHealthCh
     (prev: WidgetMessage[], next: WidgetMessage[] | ((p: WidgetMessage[]) => WidgetMessage[])) =>
       typeof next === 'function' ? next(prev) : next,
     undefined,
-    () => [createAssistantMessage(greeting, "chatGreeting")],
+    () => initialHistory && initialHistory.length > 0
+      ? initialHistory.map((h) => ({ id: createMessageId(), role: h.role, content: h.content } as WidgetMessage))
+      : [createAssistantMessage(greeting, "chatGreeting")],
   )
   // Benefit advisor messages (separate history)
   const [advisorMessages, setAdvisorMessages] = useReducer(

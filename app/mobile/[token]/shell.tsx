@@ -119,6 +119,7 @@ export function MobileShell({ token }: { token: string }) {
           <MassHealthChatWidget
             mobileMode
             onSaveAndExit={() => handleSaveAndExit()}
+            initialHistory={context.contextPayload.chatHistory as Array<{ role: 'user' | 'assistant'; content: string }>}
           />
         )}
         {context.contextType === "voice_message" && (
