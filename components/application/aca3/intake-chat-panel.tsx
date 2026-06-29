@@ -19,6 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/lib/i18n/languages"
+import { HandoffTrigger } from "@/components/handoff/handoff-trigger"
 
 const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
   en: "EN",
@@ -72,6 +73,7 @@ interface IntakeChatPanelProps {
   widgetSpec?: WidgetSpec | null
   onWidgetAnswer?: (value: string) => void
   widgetKey?: string
+  onHandoff?: () => void
 }
 
 export function IntakeChatPanel({
@@ -98,6 +100,7 @@ export function IntakeChatPanel({
   widgetSpec,
   onWidgetAnswer,
   widgetKey,
+  onHandoff,
 }: IntakeChatPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -148,6 +151,7 @@ export function IntakeChatPanel({
             <Label htmlFor="intake-auto-speak" className="text-sm">{copy.autoPlay}</Label>
           </div>
           <div className="flex flex-wrap items-center gap-1">
+            {onHandoff && <HandoffTrigger onTrigger={onHandoff} />}
             {SUPPORTED_LANGUAGES.map(({ code }) => (
               <button
                 key={code}

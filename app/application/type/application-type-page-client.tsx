@@ -130,6 +130,7 @@ export default function ApplicationTypePage({ recommendedParam }: ApplicationTyp
           applicationId,
           applicationType,
         }),
+        signal: AbortSignal.timeout(8_000),
       })
     } catch {
       // Continue using local app context; draft autosave will upsert later.
@@ -146,7 +147,7 @@ export default function ApplicationTypePage({ recommendedParam }: ApplicationTyp
 
   const handleSelectType = async (applicationType: ApplicationTypeId) => {
     try {
-      const res = await authenticatedFetch(`/api/applications?status=draft`, { method: "GET" })
+      const res = await authenticatedFetch(`/api/applications?status=draft`, { method: "GET", signal: AbortSignal.timeout(6_000) })
       const data = (await res.json()) as {
         ok: boolean
         records?: Array<{ id: string; applicationType: string | null }>
