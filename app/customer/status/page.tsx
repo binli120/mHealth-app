@@ -47,6 +47,7 @@ export default function StatusListPage() {
     const response = await authenticatedFetch(`/api/applications?${params.toString()}`, {
       method: "GET",
       cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
     })
     const payload = (await response.json().catch(() => ({}))) as ApplicationListApiResponse
     if (!response.ok || !payload.ok) throw new Error(payload.error || getMessage(language, "dashboardLoadingApps"))

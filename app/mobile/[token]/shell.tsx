@@ -40,11 +40,13 @@ export function MobileShell({ token }: { token: string }) {
   const [context, setContext] = useState<ExchangeResult | null>(null)
 
   useEffect(() => {
-    if (!token) { setExchangeState("expired"); return }
     let cancelled = false
 
-    fetch(`/api/handoff/${encodeURIComponent(token)}/exchange`, { method: "POST" })
-      .then(async (res) => {
+    async function exchange() {
+      if (!token) { setExchangeState("expired"); return }
+
+      try {
+        const res = await fetch(`/api/handoff/${encodeURIComponent(token)}/exchange`, { method: "POST" })
         if (cancelled) return
         if (res.status === 409) { setExchangeState("claimed"); return }
         if (!res.ok) { setExchangeState("expired"); return }
@@ -54,16 +56,17 @@ export function MobileShell({ token }: { token: string }) {
         // Establish Supabase session on mobile
         const supabase = getSupabaseClient()
         const { error: refreshError } = await supabase.auth.refreshSession({ refresh_token: json.refreshToken })
-        if (refreshError) {
-          setExchangeState("expired")
-          return
-        }
+        if (cancelled) return
+        if (refreshError) { setExchangeState("expired"); return }
 
         setContext({ contextType: json.contextType as HandoffContextType, contextPayload: json.contextPayload as Record<string, unknown> })
         setExchangeState("ready")
-      })
-      .catch(() => { if (!cancelled) setExchangeState("expired") })
+      } catch {
+        if (!cancelled) setExchangeState("expired")
+      }
+    }
 
+    exchange()
     return () => { cancelled = true }
   }, [token])
 

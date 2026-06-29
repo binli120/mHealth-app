@@ -343,6 +343,8 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
 
   const userProfile = useAppSelector((state) => state.userProfile?.profile ?? null)
 
+  const [currentQuestionId, setCurrentQuestionId] = useReducer((_prev: string | null, next: string | null) => next, null)
+
   const { trigger: handoffTrigger, cancel: handoffCancel, state: handoffState, mobileUrl: handoffMobileUrl, expiresAt: handoffExpiresAt } = useHandoff(
     "intake_chat",
     () => ({
@@ -394,7 +396,6 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
   // "accepted" — profile applied; normal intake continues
   // "declined" — user declined or no profile; normal intake flow
   const [profilePrefillMode, setProfilePrefillMode] = useState<"pending" | "accepted" | "declined">("declined")
-  const [currentQuestionId, setCurrentQuestionId] = useReducer((_prev: string | null, next: string | null) => next, null)
   const [messages, setMessages] = useState<IntakeMessage[]>([])
   const [draft, setDraft] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -432,7 +433,7 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
     const nextQ = findNextPendingQuestion(restoredQuestions, restoredAnswered, restored, restoredSkipped)
     setCurrentQuestionId(nextQ?.id ?? null)
     return true
-  }, [])
+  }, [setCurrentQuestionId])
 
   // Intercept browser back button once the chat has started so users don't
   // accidentally leave without saving.
@@ -749,7 +750,7 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
       ])
       onSwitchToWizard()
     },
-    [onSwitchToWizard, persistWizardData],
+    [onSwitchToWizard, persistWizardData, setCurrentQuestionId],
   )
 
   const appendAssistantQuestion = useCallback(
@@ -780,7 +781,7 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
       ])
       setCurrentQuestionId(question.id)
     },
-    [localizeQuestion],
+    [localizeQuestion, setCurrentQuestionId],
   )
 
   useEffect(() => {
@@ -1148,7 +1149,7 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
       setCurrentQuestionId(questionId)
       await appendAssistantQuestion("Let me re-ask:", question)
     },
-    [appendAssistantQuestion, questions],
+    [appendAssistantQuestion, questions, setCurrentQuestionId],
   )
 
   const handleResetChat = () => {
