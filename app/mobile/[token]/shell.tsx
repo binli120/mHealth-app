@@ -59,7 +59,7 @@ export function MobileShell({ token }: { token: string }) {
           return
         }
 
-        setContext({ contextType: json.contextType, contextPayload: json.contextPayload })
+        setContext({ contextType: json.contextType as HandoffContextType, contextPayload: json.contextPayload as Record<string, unknown> })
         setExchangeState("ready")
       })
       .catch(() => { if (!cancelled) setExchangeState("expired") })
