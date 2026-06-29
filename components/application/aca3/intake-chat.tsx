@@ -348,7 +348,7 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
     () => ({
       applicationId: resolvedApplicationId ?? DEFAULT_APPLICATION_ID,
       resumeId: "",
-      lastAnsweredId: currentQuestionId ?? "",
+      lastAnsweredId: currentQuestionId ?? null,
     }),
   )
 

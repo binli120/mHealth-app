@@ -292,7 +292,7 @@ export default function SwPatientConversationPage({ params }: PageParams) {
                   disabled={sending} onClick={() => void startRec()}>
                   <Mic className="h-4 w-4" />
                 </Button>
-                <HandoffTrigger onTrigger={triggerHandoff} />
+                <HandoffTrigger onTrigger={triggerHandoff} disabled={!patientId} />
               </>
             )}
           </div>
