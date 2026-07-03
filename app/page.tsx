@@ -14,6 +14,14 @@ import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+} from "@/components/ui/navigation-menu"
 import { useAppSelector } from "@/lib/redux/hooks"
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher"
 import { CheckCircle2, ChevronRight, Loader2, Mail, Sparkles } from "lucide-react"
@@ -279,20 +287,122 @@ export default function LandingPage() {
               </div>
               <span className="text-xl font-semibold text-foreground">HealthCompass MA</span>
             </div>
-            <nav className="hidden items-center gap-4 md:flex">
-              <a href="#problems"     className="text-sm text-muted-foreground transition-colors hover:text-foreground">{copy.navProblem}</a>
-              <a href="#how-it-works" className="text-sm text-muted-foreground transition-colors hover:text-foreground">{copy.navHowItWorks}</a>
-              <a href="#why-us"       className="text-sm text-muted-foreground transition-colors hover:text-foreground">{copy.navWhyUs}</a>
-              <a href="#live-assistance" className="flex items-center gap-0.5 text-sm font-medium text-accent transition-colors hover:text-accent/80">
-                {copy.navLiveAssistance}
-                <span className="rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-bold text-accent-foreground">{copy.newLabel}</span>
-              </a>
-              <a href="#appeal" className="flex items-center gap-0.5 text-sm font-medium text-primary transition-colors hover:text-primary/80">
-                {copy.navAppealHelp}
-                <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">{copy.aiLabel}</span>
-              </a>
-              <Link href="/knowledge-center" className="text-sm text-muted-foreground transition-colors hover:text-foreground">{copy.navResources}</Link>
-            </nav>
+            <NavigationMenu className="hidden md:flex" viewport={false}>
+              <NavigationMenuList>
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger className="bg-transparent text-sm text-muted-foreground data-[state=open]:bg-transparent">
+                    {copy.navPrograms}
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className="grid w-56 gap-1">
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <Link href="/programs/masshealth">{copy.navProgramMasshealth}</Link>
+                        </NavigationMenuLink>
+                      </li>
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <Link href="/programs/snap">{copy.navProgramSnap}</Link>
+                        </NavigationMenuLink>
+                      </li>
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <Link href="/programs/eitc">{copy.navProgramEitc}</Link>
+                        </NavigationMenuLink>
+                      </li>
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <Link href="/programs/liheap">{copy.navProgramLiheap}</Link>
+                        </NavigationMenuLink>
+                      </li>
+                      <li className="mt-1 border-t border-border pt-1">
+                        <NavigationMenuLink asChild>
+                          <Link href="/programs" className="font-medium text-primary">{copy.navProgramsAll}</Link>
+                        </NavigationMenuLink>
+                      </li>
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger className="bg-transparent text-sm text-muted-foreground data-[state=open]:bg-transparent">
+                    {copy.navTools}
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className="grid w-56 gap-1">
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <Link href="/prescreener">{copy.navEligibilityChecker}</Link>
+                        </NavigationMenuLink>
+                      </li>
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <Link href="/benefit-stack">{copy.navBenefitStackTool}</Link>
+                        </NavigationMenuLink>
+                      </li>
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <Link href="/masshealth-appeals" className="flex-row items-center justify-between">
+                            {copy.navAiAppealLetters}
+                            <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">{copy.aiLabel}</span>
+                          </Link>
+                        </NavigationMenuLink>
+                      </li>
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger className="bg-transparent text-sm text-muted-foreground data-[state=open]:bg-transparent">
+                    {copy.navAbout}
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className="grid w-48 gap-1">
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <a href="#problems">{copy.navProblem}</a>
+                        </NavigationMenuLink>
+                      </li>
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <a href="#how-it-works">{copy.navHowItWorks}</a>
+                        </NavigationMenuLink>
+                      </li>
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <a href="#why-us">{copy.navWhyUs}</a>
+                        </NavigationMenuLink>
+                      </li>
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger className="bg-transparent text-sm text-muted-foreground data-[state=open]:bg-transparent">
+                    {copy.navResources}
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className="grid w-56 gap-1">
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <a href="#live-assistance" className="flex-row items-center justify-between">
+                            {copy.navLiveAssistance}
+                            <span className="rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-bold text-accent-foreground">{copy.newLabel}</span>
+                          </a>
+                        </NavigationMenuLink>
+                      </li>
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <Link href="/help">{copy.navHelpCenter}</Link>
+                        </NavigationMenuLink>
+                      </li>
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <Link href="/knowledge-center">{copy.navKnowledgeCenter}</Link>
+                        </NavigationMenuLink>
+                      </li>
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+              </NavigationMenuList>
+            </NavigationMenu>
             <div className="flex items-center gap-3">
               <LanguageSwitcher className="w-[160px] border-border bg-card text-foreground" />
               <Link href="/auth/login">

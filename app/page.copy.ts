@@ -12,12 +12,24 @@ import type { SupportedLanguage } from "@/lib/i18n/languages"
 
 export interface LandingCopy {
   // Header
+  navPrograms: string
+  navProgramsAll: string
+  navProgramMasshealth: string
+  navProgramSnap: string
+  navProgramEitc: string
+  navProgramLiheap: string
+  navTools: string
+  navEligibilityChecker: string
+  navBenefitStackTool: string
+  navAiAppealLetters: string
+  navAbout: string
   navProblem: string
   navHowItWorks: string
   navWhyUs: string
-  navLiveAssistance: string
-  navAppealHelp: string
   navResources: string
+  navLiveAssistance: string
+  navHelpCenter: string
+  navKnowledgeCenter: string
   signIn: string
   getStarted: string
   newLabel: string
@@ -103,11 +115,23 @@ export interface LandingCopy {
 // https://www.masslegalhelp.org/public-benefits-ssi/snap-food-benefits/massachusetts-snap-gap
 
 const EN: LandingCopy = {
+  navPrograms: "Programs",
+  navProgramsAll: "View All Programs",
+  navProgramMasshealth: "MassHealth",
+  navProgramSnap: "SNAP / Food Assistance",
+  navProgramEitc: "EITC Tax Credits",
+  navProgramLiheap: "LIHEAP Energy Aid",
+  navTools: "Tools",
+  navEligibilityChecker: "Eligibility Checker",
+  navBenefitStackTool: "Benefit Stack Tool",
+  navAiAppealLetters: "AI Appeal Letters",
+  navAbout: "About",
   navProblem: "The Problem",
   navHowItWorks: "How It Works",
   navWhyUs: "Why Us",
+  navHelpCenter: "Help Center",
+  navKnowledgeCenter: "Knowledge Center",
   navLiveAssistance: "Live Assistance",
-  navAppealHelp: "Appeal Help",
   navResources: "Resources",
   signIn: "Sign In",
   getStarted: "Get Started",
@@ -220,11 +244,23 @@ const EN: LandingCopy = {
 // ── Spanish ───────────────────────────────────────────────────────────────────
 
 const ES: LandingCopy = {
+  navPrograms: "Programas",
+  navProgramsAll: "Ver Todos los Programas",
+  navProgramMasshealth: "MassHealth",
+  navProgramSnap: "SNAP / Asistencia Alimentaria",
+  navProgramEitc: "Créditos EITC",
+  navProgramLiheap: "Ayuda de Energía LIHEAP",
+  navTools: "Herramientas",
+  navEligibilityChecker: "Verificador de Elegibilidad",
+  navBenefitStackTool: "Herramienta de Beneficios Combinados",
+  navAiAppealLetters: "Cartas de Apelación con IA",
+  navAbout: "Acerca de",
   navProblem: "El Problema",
   navHowItWorks: "Cómo Funciona",
   navWhyUs: "Por Qué Nosotros",
+  navHelpCenter: "Centro de Ayuda",
+  navKnowledgeCenter: "Centro de Conocimiento",
   navLiveAssistance: "Asistencia en Vivo",
-  navAppealHelp: "Ayuda con Apelaciones",
   navResources: "Recursos",
   signIn: "Iniciar Sesión",
   getStarted: "Empezar",
@@ -337,11 +373,23 @@ const ES: LandingCopy = {
 // ── Chinese (Simplified) ──────────────────────────────────────────────────────
 
 const ZH_CN: LandingCopy = {
+  navPrograms: "项目",
+  navProgramsAll: "查看所有项目",
+  navProgramMasshealth: "MassHealth",
+  navProgramSnap: "SNAP / 食品援助",
+  navProgramEitc: "EITC 税收抵免",
+  navProgramLiheap: "LIHEAP 能源援助",
+  navTools: "工具",
+  navEligibilityChecker: "资格检查器",
+  navBenefitStackTool: "福利组合工具",
+  navAiAppealLetters: "AI 申诉信",
+  navAbout: "关于",
   navProblem: "问题所在",
   navHowItWorks: "如何运作",
   navWhyUs: "为何选择我们",
+  navHelpCenter: "帮助中心",
+  navKnowledgeCenter: "知识中心",
   navLiveAssistance: "实时援助",
-  navAppealHelp: "申诉帮助",
   navResources: "资源",
   signIn: "登录",
   getStarted: "开始使用",
@@ -454,11 +502,23 @@ const ZH_CN: LandingCopy = {
 // ── Haitian Creole ────────────────────────────────────────────────────────────
 
 const HT: LandingCopy = {
+  navPrograms: "Pwogram",
+  navProgramsAll: "Gade Tout Pwogram yo",
+  navProgramMasshealth: "MassHealth",
+  navProgramSnap: "SNAP / Èd Manje",
+  navProgramEitc: "Kredi Taks EITC",
+  navProgramLiheap: "Èd Enèji LIHEAP",
+  navTools: "Zouti",
+  navEligibilityChecker: "Verifikatè Elijibilite",
+  navBenefitStackTool: "Zouti Konbine Benefis",
+  navAiAppealLetters: "Lèt Apèl ak AI",
+  navAbout: "Konsènan",
   navProblem: "Pwoblèm nan",
   navHowItWorks: "Kijan Sa Travay",
   navWhyUs: "Poukisa Nou",
+  navHelpCenter: "Sant Èd",
+  navKnowledgeCenter: "Sant Konesans",
   navLiveAssistance: "Asistans an Dirèk",
-  navAppealHelp: "Èd pou Apèl",
   navResources: "Resous",
   signIn: "Konekte",
   getStarted: "Kòmanse",
@@ -571,11 +631,23 @@ const HT: LandingCopy = {
 // ── Portuguese (Brazil) ───────────────────────────────────────────────────────
 
 const PT_BR: LandingCopy = {
+  navPrograms: "Programas",
+  navProgramsAll: "Ver Todos os Programas",
+  navProgramMasshealth: "MassHealth",
+  navProgramSnap: "SNAP / Assistência Alimentar",
+  navProgramEitc: "Créditos Fiscais EITC",
+  navProgramLiheap: "Ajuda de Energia LIHEAP",
+  navTools: "Ferramentas",
+  navEligibilityChecker: "Verificador de Elegibilidade",
+  navBenefitStackTool: "Ferramenta de Benefícios Combinados",
+  navAiAppealLetters: "Cartas de Recurso com IA",
+  navAbout: "Sobre",
   navProblem: "O Problema",
   navHowItWorks: "Como Funciona",
   navWhyUs: "Por Que Nós",
+  navHelpCenter: "Central de Ajuda",
+  navKnowledgeCenter: "Central de Conhecimento",
   navLiveAssistance: "Assistência ao Vivo",
-  navAppealHelp: "Ajuda com Recurso",
   navResources: "Recursos",
   signIn: "Entrar",
   getStarted: "Começar",
@@ -688,11 +760,23 @@ const PT_BR: LandingCopy = {
 // ── Vietnamese ────────────────────────────────────────────────────────────────
 
 const VI: LandingCopy = {
+  navPrograms: "Chương Trình",
+  navProgramsAll: "Xem Tất Cả Chương Trình",
+  navProgramMasshealth: "MassHealth",
+  navProgramSnap: "SNAP / Hỗ Trợ Thực Phẩm",
+  navProgramEitc: "Tín Dụng Thuế EITC",
+  navProgramLiheap: "Hỗ Trợ Năng Lượng LIHEAP",
+  navTools: "Công Cụ",
+  navEligibilityChecker: "Kiểm Tra Tư Cách",
+  navBenefitStackTool: "Công Cụ Kết Hợp Phúc Lợi",
+  navAiAppealLetters: "Thư Kháng Cáo AI",
+  navAbout: "Giới Thiệu",
   navProblem: "Vấn Đề",
   navHowItWorks: "Cách Thức Hoạt Động",
   navWhyUs: "Tại Sao Chọn Chúng Tôi",
+  navHelpCenter: "Trung Tâm Hỗ Trợ",
+  navKnowledgeCenter: "Trung Tâm Kiến Thức",
   navLiveAssistance: "Hỗ Trợ Trực Tiếp",
-  navAppealHelp: "Hỗ Trợ Kháng Cáo",
   navResources: "Tài Nguyên",
   signIn: "Đăng Nhập",
   getStarted: "Bắt Đầu",
