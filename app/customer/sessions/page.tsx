@@ -15,7 +15,7 @@ import { SessionListPanel } from "@/components/collaborative-sessions/SessionLis
 
 export default function CustomerSessionsPage() {
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="mx-auto w-full max-w-6xl sm:w-2/3">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <Video className="w-6 h-6 text-violet-500" />

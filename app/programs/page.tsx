@@ -11,6 +11,7 @@ import { ArrowRight } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PageHeader } from "@/components/shared/PageHeader"
 import { PROGRAM_PAGES } from "./program-content"
 
 export const metadata: Metadata = {
@@ -23,13 +24,14 @@ export const metadata: Metadata = {
 export default function ProgramsIndexPage() {
   return (
     <main className="min-h-screen bg-background">
-      <div className="mx-auto max-w-3xl px-4 py-10 sm:py-14">
-        <nav aria-label="Breadcrumb" className="mb-6 text-sm text-muted-foreground">
-          <Link href="/" className="hover:text-foreground">Home</Link>
-          <span className="mx-2">/</span>
-          <span className="text-foreground">Programs</span>
-        </nav>
+      <PageHeader
+        backHref="/"
+        backLabel="Home"
+        breadcrumbs={[{ label: "Programs" }]}
+        maxWidth="w-full sm:w-2/3 max-w-6xl"
+      />
 
+      <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:w-2/3 sm:py-14">
         <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
           Massachusetts Benefit Programs: 2026 Eligibility Guides
         </h1>

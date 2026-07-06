@@ -14,6 +14,7 @@ import { ArrowRight, CheckCircle2, ExternalLink } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PageHeader } from "@/components/shared/PageHeader"
 import { getProgramBySlug, PROGRAM_PAGES } from "../program-content"
 
 export function generateStaticParams() {
@@ -69,15 +70,14 @@ export default async function ProgramPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(program)) }}
       />
 
-      <div className="mx-auto max-w-3xl px-4 py-10 sm:py-14">
-        <nav aria-label="Breadcrumb" className="mb-6 text-sm text-muted-foreground">
-          <Link href="/" className="hover:text-foreground">Home</Link>
-          <span className="mx-2">/</span>
-          <Link href="/programs" className="hover:text-foreground">Programs</Link>
-          <span className="mx-2">/</span>
-          <span className="text-foreground">{program.name}</span>
-        </nav>
+      <PageHeader
+        backHref="/"
+        backLabel="Home"
+        breadcrumbs={[{ label: "Programs", href: "/programs" }, { label: program.name }]}
+        maxWidth="w-full sm:w-2/3 max-w-6xl"
+      />
 
+      <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:w-2/3 sm:py-14">
         <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
           {program.h1}
         </h1>
@@ -193,7 +193,7 @@ export default async function ProgramPage({
         <section className="mt-12 rounded-lg bg-primary p-6 text-primary-foreground sm:p-8">
           <h2 className="text-2xl font-semibold">See everything you qualify for — in one check</h2>
           <p className="mt-2 text-primary-foreground/85">
-            HealthCompass checks {program.name} and 8 other Massachusetts benefit programs in about 5
+            HealthCompass checks {program.name} and 10 other Massachusetts benefit programs in about 5
             minutes. Free, available in 6 languages, with live social worker support.
           </p>
           <Button asChild size="lg" variant="secondary" className="mt-4">

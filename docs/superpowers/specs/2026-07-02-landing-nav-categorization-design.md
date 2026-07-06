@@ -19,6 +19,7 @@ Desktop nav only (`hidden md:flex`). No mobile menu exists today and none is add
    - SNAP / Food Assistance → `/programs/snap`
    - EITC Tax Credits → `/programs/eitc`
    - LIHEAP Energy Aid → `/programs/liheap`
+   - WIC → `/programs/wic` (added after a follow-up review found `program-content.ts` has 5 real program pages, not the 4 the original `FOOTER_PROGRAMS` constant listed)
    - View All Programs → `/programs`
 2. **Tools** ▾
    - Eligibility Checker → `/prescreener`

@@ -16,7 +16,7 @@ export default function CookiePolicyPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card px-4 py-4">
-        <div className="mx-auto max-w-3xl">
+        <div className="mx-auto w-full max-w-6xl sm:w-2/3">
           <Link
             href="/privacy"
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
@@ -27,7 +27,7 @@ export default function CookiePolicyPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 py-12">
+      <main className="mx-auto w-full max-w-6xl px-4 py-12 sm:w-2/3">
         <div className="text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
             <Cookie className="h-6 w-6 text-primary" />
