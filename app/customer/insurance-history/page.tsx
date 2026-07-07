@@ -57,7 +57,7 @@ export default function InsuranceHistoryPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-2xl px-4 py-8">
+      <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:w-2/3">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-foreground md:text-3xl">
             {getMessage(language, "insuranceHistoryTitle")}

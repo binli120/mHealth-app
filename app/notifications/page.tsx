@@ -101,7 +101,7 @@ export default function NotificationsPage() {
       : items.filter((n) => n.type === filter && !isBenefitPolicyUpdate(n))
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8">
+    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:w-2/3">
       {/* Header */}
       <div className="mb-6 flex items-center gap-4">
         <Link href="/customer/dashboard">

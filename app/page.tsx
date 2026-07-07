@@ -231,7 +231,7 @@ function HowItWorksSteps({ copy }: { copy: LandingCopy }) {
           }}
         />
       </div>
-      <div className="relative grid gap-8 md:grid-cols-4">
+      <div className="relative grid gap-8 sm:grid-cols-2 md:grid-cols-5">
         {STEPS.map((step, i) => (
           <div
             key={copy.steps[i].title}
@@ -281,11 +281,14 @@ export default function LandingPage() {
         {/* ── Header ─────────────────────────────────────────────────────────── */}
         <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
           <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary">
                 <ShieldHeartIcon color="currentColor" className="h-5 w-5 text-primary-foreground" />
               </div>
-              <span className="text-xl font-semibold text-foreground">HealthCompass MA</span>
+              <span className="truncate text-sm font-semibold text-foreground sm:text-xl">
+                <span className="sm:hidden">HealthCompass</span>
+                <span className="hidden sm:inline">HealthCompass MA</span>
+              </span>
             </div>
             <NavigationMenu className="hidden md:flex" viewport={false}>
               <NavigationMenuList>
@@ -313,6 +316,11 @@ export default function LandingPage() {
                       <li>
                         <NavigationMenuLink asChild>
                           <Link href="/programs/liheap">{copy.navProgramLiheap}</Link>
+                        </NavigationMenuLink>
+                      </li>
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <Link href="/programs/wic">{copy.navProgramWic}</Link>
                         </NavigationMenuLink>
                       </li>
                       <li className="mt-1 border-t border-border pt-1">
@@ -403,8 +411,8 @@ export default function LandingPage() {
                 </NavigationMenuItem>
               </NavigationMenuList>
             </NavigationMenu>
-            <div className="flex items-center gap-3">
-              <LanguageSwitcher className="w-[160px] border-border bg-card text-foreground" />
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+              <LanguageSwitcher className="w-[90px] border-border bg-card px-2 text-foreground sm:w-[160px] sm:px-3" />
               <Link href="/auth/login">
                 <Button variant="outline" size="sm" className="hidden sm:flex">{copy.signIn}</Button>
               </Link>
@@ -454,7 +462,7 @@ export default function LandingPage() {
               </div>
 
               {/* right – animated preview */}
-              <div className="relative flex justify-center lg:justify-end">
+              <div className="relative mb-16 flex justify-center lg:mb-0 lg:justify-end">
                 <div className="float-1 absolute -left-6 top-4 hidden rounded-xl border border-border bg-card px-3 py-2 shadow-lg lg:flex">
                   <span className="text-xs font-medium text-foreground">{copy.previewMissedBenefit}</span>
                 </div>
@@ -485,7 +493,7 @@ export default function LandingPage() {
                 {copy.probDesc}
               </p>
             </FadeUp>
-            <div className="grid gap-6 md:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
               {PROBLEM_ITEMS.map((item, i) => (
                 <FadeUp key={copy.problemItems[i].title} delay={item.delay}>
                   <Card className="h-full border-border bg-background transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
