@@ -1251,6 +1251,7 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
       onWidgetAnswer={handleWidgetAnswer}
       widgetKey={currentQuestionId ?? undefined}
       onHandoff={mobileMode ? undefined : handoffTrigger}
+      mobileMode={mobileMode}
     />
     {resolvedApplicationId && (
       <PhiSaveExitDialog

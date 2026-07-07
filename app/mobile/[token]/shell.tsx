@@ -100,13 +100,18 @@ export function MobileShell({ token }: { token: string }) {
 
   const label = CONTEXT_LABELS[context.contextType]
 
+  // intake_chat panel renders its own header in mobileMode
+  const hideShellHeader = context.contextType === "intake_chat"
+
   return (
     <div className="flex min-h-svh flex-col bg-background">
-      {/* Mobile header */}
-      <header className="flex items-center border-b bg-card px-4 py-3">
-        <span className="font-semibold text-primary">HealthCompass</span>
-        <span className="ml-auto text-sm text-muted-foreground">{label}</span>
-      </header>
+      {/* Shell header — hidden when the context renderer has its own */}
+      {!hideShellHeader && (
+        <header className="flex items-center border-b bg-card px-4 py-3">
+          <span className="font-semibold text-primary">HealthCompass</span>
+          <span className="ml-auto text-sm text-muted-foreground">{label}</span>
+        </header>
+      )}
 
       {/* Context renderer */}
       <main className="flex flex-1 flex-col overflow-hidden">
