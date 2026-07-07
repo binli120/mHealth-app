@@ -14,6 +14,14 @@ import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+} from "@/components/ui/navigation-menu"
 import { useAppSelector } from "@/lib/redux/hooks"
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher"
 import { CheckCircle2, ChevronRight, Loader2, Mail, Sparkles } from "lucide-react"
@@ -223,7 +231,7 @@ function HowItWorksSteps({ copy }: { copy: LandingCopy }) {
           }}
         />
       </div>
-      <div className="relative grid gap-8 md:grid-cols-4">
+      <div className="relative grid gap-8 sm:grid-cols-2 md:grid-cols-5">
         {STEPS.map((step, i) => (
           <div
             key={copy.steps[i].title}
@@ -273,28 +281,138 @@ export default function LandingPage() {
         {/* ── Header ─────────────────────────────────────────────────────────── */}
         <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
           <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary">
                 <ShieldHeartIcon color="currentColor" className="h-5 w-5 text-primary-foreground" />
               </div>
-              <span className="text-xl font-semibold text-foreground">HealthCompass MA</span>
+              <span className="truncate text-sm font-semibold text-foreground sm:text-xl">
+                <span className="sm:hidden">HealthCompass</span>
+                <span className="hidden sm:inline">HealthCompass MA</span>
+              </span>
             </div>
-            <nav className="hidden items-center gap-4 md:flex">
-              <a href="#problems"     className="text-sm text-muted-foreground transition-colors hover:text-foreground">{copy.navProblem}</a>
-              <a href="#how-it-works" className="text-sm text-muted-foreground transition-colors hover:text-foreground">{copy.navHowItWorks}</a>
-              <a href="#why-us"       className="text-sm text-muted-foreground transition-colors hover:text-foreground">{copy.navWhyUs}</a>
-              <a href="#live-assistance" className="flex items-center gap-0.5 text-sm font-medium text-accent transition-colors hover:text-accent/80">
-                {copy.navLiveAssistance}
-                <span className="rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-bold text-accent-foreground">{copy.newLabel}</span>
-              </a>
-              <a href="#appeal" className="flex items-center gap-0.5 text-sm font-medium text-primary transition-colors hover:text-primary/80">
-                {copy.navAppealHelp}
-                <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">{copy.aiLabel}</span>
-              </a>
-              <Link href="/knowledge-center" className="text-sm text-muted-foreground transition-colors hover:text-foreground">{copy.navResources}</Link>
-            </nav>
-            <div className="flex items-center gap-3">
-              <LanguageSwitcher className="w-[160px] border-border bg-card text-foreground" />
+            <NavigationMenu className="hidden md:flex" viewport={false}>
+              <NavigationMenuList>
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger className="bg-transparent text-sm text-muted-foreground data-[state=open]:bg-transparent">
+                    {copy.navPrograms}
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className="grid w-56 gap-1">
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <Link href="/programs/masshealth">{copy.navProgramMasshealth}</Link>
+                        </NavigationMenuLink>
+                      </li>
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <Link href="/programs/snap">{copy.navProgramSnap}</Link>
+                        </NavigationMenuLink>
+                      </li>
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <Link href="/programs/eitc">{copy.navProgramEitc}</Link>
+                        </NavigationMenuLink>
+                      </li>
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <Link href="/programs/liheap">{copy.navProgramLiheap}</Link>
+                        </NavigationMenuLink>
+                      </li>
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <Link href="/programs/wic">{copy.navProgramWic}</Link>
+                        </NavigationMenuLink>
+                      </li>
+                      <li className="mt-1 border-t border-border pt-1">
+                        <NavigationMenuLink asChild>
+                          <Link href="/programs" className="font-medium text-primary">{copy.navProgramsAll}</Link>
+                        </NavigationMenuLink>
+                      </li>
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger className="bg-transparent text-sm text-muted-foreground data-[state=open]:bg-transparent">
+                    {copy.navTools}
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className="grid w-56 gap-1">
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <Link href="/prescreener">{copy.navEligibilityChecker}</Link>
+                        </NavigationMenuLink>
+                      </li>
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <Link href="/benefit-stack">{copy.navBenefitStackTool}</Link>
+                        </NavigationMenuLink>
+                      </li>
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <Link href="/masshealth-appeals" className="flex-row items-center justify-between">
+                            {copy.navAiAppealLetters}
+                            <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">{copy.aiLabel}</span>
+                          </Link>
+                        </NavigationMenuLink>
+                      </li>
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger className="bg-transparent text-sm text-muted-foreground data-[state=open]:bg-transparent">
+                    {copy.navAbout}
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className="grid w-48 gap-1">
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <a href="#problems">{copy.navProblem}</a>
+                        </NavigationMenuLink>
+                      </li>
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <a href="#how-it-works">{copy.navHowItWorks}</a>
+                        </NavigationMenuLink>
+                      </li>
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <a href="#why-us">{copy.navWhyUs}</a>
+                        </NavigationMenuLink>
+                      </li>
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger className="bg-transparent text-sm text-muted-foreground data-[state=open]:bg-transparent">
+                    {copy.navResources}
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className="grid w-56 gap-1">
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <a href="#live-assistance" className="flex-row items-center justify-between">
+                            {copy.navLiveAssistance}
+                            <span className="rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-bold text-accent-foreground">{copy.newLabel}</span>
+                          </a>
+                        </NavigationMenuLink>
+                      </li>
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <Link href="/help">{copy.navHelpCenter}</Link>
+                        </NavigationMenuLink>
+                      </li>
+                      <li>
+                        <NavigationMenuLink asChild>
+                          <Link href="/knowledge-center">{copy.navKnowledgeCenter}</Link>
+                        </NavigationMenuLink>
+                      </li>
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+              </NavigationMenuList>
+            </NavigationMenu>
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+              <LanguageSwitcher className="w-[90px] border-border bg-card px-2 text-foreground sm:w-[160px] sm:px-3" />
               <Link href="/auth/login">
                 <Button variant="outline" size="sm" className="hidden sm:flex">{copy.signIn}</Button>
               </Link>
@@ -344,7 +462,7 @@ export default function LandingPage() {
               </div>
 
               {/* right – animated preview */}
-              <div className="relative flex justify-center lg:justify-end">
+              <div className="relative mb-16 flex justify-center lg:mb-0 lg:justify-end">
                 <div className="float-1 absolute -left-6 top-4 hidden rounded-xl border border-border bg-card px-3 py-2 shadow-lg lg:flex">
                   <span className="text-xs font-medium text-foreground">{copy.previewMissedBenefit}</span>
                 </div>
@@ -375,7 +493,7 @@ export default function LandingPage() {
                 {copy.probDesc}
               </p>
             </FadeUp>
-            <div className="grid gap-6 md:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
               {PROBLEM_ITEMS.map((item, i) => (
                 <FadeUp key={copy.problemItems[i].title} delay={item.delay}>
                   <Card className="h-full border-border bg-background transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">

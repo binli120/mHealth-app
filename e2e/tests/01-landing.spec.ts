@@ -49,8 +49,10 @@ test.describe("Landing Page", () => {
       return
     }
     await appealLink.click()
-    // The landing page may use an anchor (#appeal) or navigate to /masshealth-appeals
-    await expect(page).toHaveURL(/\/masshealth-appeals|#appeal/, { timeout: 5_000 })
+    // The landing page may use an anchor (#appeal), navigate to /masshealth-appeals,
+    // or — since that route is auth-gated — bounce an unauthenticated visitor to
+    // /auth/login?next=/masshealth-appeals.
+    await expect(page).toHaveURL(/\/masshealth-appeals|#appeal|\/auth\/login/, { timeout: 5_000 })
   })
 
   test("no console errors on load", async ({ page }) => {

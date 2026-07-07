@@ -11,12 +11,15 @@
 
 import {
   AlertCircle,
+  BookMarked,
   BookOpen,
   Bot,
   Brain,
   ClipboardList,
   FileCheck,
+  FileX,
   Globe,
+  History,
   Languages,
   Layers,
   Lock,
@@ -51,7 +54,7 @@ export const PREVIEW_PROGRAMS: PreviewProgram[] = [
   { label: "LIHEAP Energy Aid",   badge: "Eligible", color: "text-warning", bg: "bg-warning/10",  delay: 1900 },
 ]
 
-export const HERO_TAGS = ["Free to use", "9+ programs", "6 languages", "Voice messaging", "~15 min to apply"]
+export const HERO_TAGS = ["Free to use", "11+ programs", "6 languages", "Voice messaging", "~15 min to apply"]
 
 // ── How It Works ──────────────────────────────────────────────────────────────
 
@@ -60,6 +63,7 @@ export const STEPS: Step[] = [
   { icon: <Sparkles className="h-6 w-6" />,    title: "See programs you qualify for", body: "Our AI instantly checks your profile against MassHealth, SNAP, EITC, LIHEAP, WIC, and more." },
   { icon: <ClipboardList className="h-6 w-6" />, title: "Apply with guided steps",   body: "We walk you through each application with plain-language explanations and a document checklist." },
   { icon: <Zap className="h-6 w-6" />,         title: "Track everything in one place", body: "Monitor application status, renewal deadlines, and benefit amounts from your dashboard." },
+  { icon: <Scale className="h-6 w-6" />,       title: "Got denied? Appeal in minutes", body: "If a program says no, paste the denial notice — our AI drafts a cited appeal letter grounded in real MassHealth regulations." },
 ]
 
 // ── The Problem ───────────────────────────────────────────────────────────────
@@ -86,12 +90,19 @@ export const PROBLEM_ITEMS: ProblemItem[] = [
     body:  "Eligible families often qualify for multiple programs worth thousands per year — but many never receive them, not because they don't qualify, but because they never knew to apply.",
     delay: 300,
   },
+  {
+    icon:  <FileX className="h-6 w-6 text-primary" />,
+    bg:    "bg-primary/10",
+    title: "Wrongly denied? Most people don't fight back",
+    body:  "Benefits get denied or cut off over paperwork errors, missed deadlines, or misapplied rules — but appealing feels like a legal maze, so most people accept the denial instead of challenging it.",
+    delay: 450,
+  },
 ]
 
 // ── Why Choose Us ─────────────────────────────────────────────────────────────
 
 export const FEATURE_ITEMS: FeatureItem[] = [
-  { icon: <Sparkles />, color: "text-primary", bg: "bg-primary/10", title: "AI Eligibility Engine",  body: "Cross-check your profile against 9+ state and federal programs in seconds — no paperwork required.", delay: 0   },
+  { icon: <Sparkles />, color: "text-primary", bg: "bg-primary/10", title: "AI Eligibility Engine",  body: "Cross-check your profile against 11+ state and federal programs in seconds — no paperwork required.", delay: 0   },
   { icon: <Layers />,   color: "text-accent",  bg: "bg-accent/10",  title: "Benefit Stacking",       body: "Most programs can be combined. We show every program you qualify for, not just one — maximizing your total benefit.", delay: 100 },
   { icon: <FileCheck />,color: "text-success", bg: "bg-success/10", title: "Guided Applications",    body: "Step-by-step walkthroughs with plain-language explanations, document checklists, and real-time validation.", delay: 200 },
   { icon: <Bot />,      color: "text-primary", bg: "bg-primary/10", title: "AI Chat Assistant",      body: "Ask questions any time. Our MassHealth assistant explains programs, deadlines, and next steps in plain language.", delay: 300 },
@@ -101,16 +112,21 @@ export const FEATURE_ITEMS: FeatureItem[] = [
   { icon: <Users />,    color: "text-primary", bg: "bg-primary/10", title: "Live Social Worker Chat", body: "Connect directly with a licensed social worker via real-time messaging, screen sharing, and secure voice notes.", delay: 700, isNew: true },
   { icon: <Mic />,      color: "text-accent",  bg: "bg-accent/10",  title: "Voice Messaging",         body: "Send voice messages to your social worker — automatically transcribed on delivery so nothing gets lost in translation.", delay: 800, isNew: true },
   { icon: <Languages />,color: "text-success", bg: "bg-success/10", title: "Auto-Translation",        body: "Speak in any language. Voice messages are instantly transcribed and translated to English using AI — no interpreter needed.", delay: 900, isNew: true },
+  { icon: <BookMarked />,color: "text-primary", bg: "bg-primary/10", title: "Benefits Glossary",       body: "Tap any confusing term — MAGI, spend-down, redetermination — for a plain-language definition in your own language.", delay: 1000, isNew: true },
+  { icon: <History />,  color: "text-accent",  bg: "bg-accent/10",  title: "Insurance History Timeline", body: "See your full coverage history in one view, with plain-language explanations of why your plan changed year to year.", delay: 1100, isNew: true },
 ]
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
 export const STATS_CONFIG: StatConfig[] = [
-  { target: 9,    suffix: "+",    prefix: "",  label: "Benefit programs checked"    },
+  { target: 11,   suffix: "+",    prefix: "",  label: "Benefit programs checked"    },
   { target: 6,    suffix: "",     prefix: "",  label: "Languages supported"          },
   { target: 15,   suffix: " min", prefix: "~", label: "Average time to apply"        },
-  // ~700K MA residents in the "SNAP Gap" — likely SNAP-eligible MassHealth members not enrolled
-  // (https://www.masslegalhelp.org/public-benefits-ssi/snap-food-benefits/massachusetts-snap-gap)
+  // ~700K MA residents in the "SNAP Gap" (MassHealth enrollees likely SNAP-eligible but not
+  // enrolled) — based on 2021 DTA data, first popularized ~Aug 2022. No more recent public
+  // recount found as of 2026-07-06; the original masslegalhelp.org source page is dead
+  // (now redirects to an unrelated page). Verified against:
+  // https://mwhealth.org/stories/policy-watch-snap-gap-addressed-through-streamlined-application-process
   { target: 700000, suffix: "", prefix: "~", label: "MA residents likely missing SNAP", duration: 2200 },
 ]
 

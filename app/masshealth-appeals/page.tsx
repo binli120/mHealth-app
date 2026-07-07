@@ -429,10 +429,10 @@ export default function MassHealthAppealsPage() {
         backHref="/customer/dashboard"
         backLabel="Dashboard"
         breadcrumbs={[{ label: "MassHealth Appeal Assistant" }]}
-        maxWidth="max-w-3xl"
+        maxWidth="w-full sm:w-2/3 max-w-6xl"
       />
 
-      <main className="mx-auto max-w-3xl px-4 py-8">
+      <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:w-2/3">
         {/* Intro — shown on entry and while researching */}
         {(pageState === "form" || pageState === "researching") && (
           <PageIntro
