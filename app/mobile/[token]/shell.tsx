@@ -11,6 +11,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import { getSupabaseClient } from "@/lib/supabase/client"
+import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import type { HandoffContextType } from "@/lib/db/mobile-handoff-session"
 
 // Lazy-loaded context renderers to keep initial bundle small
@@ -77,9 +78,8 @@ export function MobileShell({ token }: { token: string }) {
 
   async function handleSaveAndExit(progressSummary: Record<string, unknown> = {}) {
     try {
-      await fetch(`/api/handoff/${encodeURIComponent(token)}/complete`, {
+      await authenticatedFetch(`/api/handoff/${encodeURIComponent(token)}/complete`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ progressSummary }),
       })
     } catch {

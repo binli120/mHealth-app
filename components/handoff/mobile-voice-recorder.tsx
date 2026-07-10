@@ -111,14 +111,18 @@ export function MobileVoiceRecorder({ patientId, conversationId, onSaveAndExit }
     form.append("transcription", transcription)
     form.append("conversationId", conversationId)
     try {
-      await authenticatedFetch(`/api/messages/${patientId}/upload`, {
+      const res = await authenticatedFetch(`/api/messages/${patientId}/upload`, {
         method: "POST",
         body: form,
       })
+      const json = await res.json().catch(() => null)
+      if (!res.ok || !json?.ok) {
+        throw new Error(typeof json?.error === "string" ? json.error : "Failed to send. Please try again.")
+      }
       setRecordState("sent")
       onSaveAndExit({ sent: true, transcription })
-    } catch {
-      setError("Failed to send. Please try again.")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send. Please try again.")
       setRecordState("review")
     }
   }, [transcription, conversationId, patientId, onSaveAndExit])
