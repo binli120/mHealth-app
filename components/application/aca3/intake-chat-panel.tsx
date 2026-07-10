@@ -116,7 +116,8 @@ export function IntakeChatPanel({
       setIsListening(false)
       return
     }
-    const SR = window.SpeechRecognition ?? (window as unknown as { webkitSpeechRecognition: typeof SpeechRecognition }).webkitSpeechRecognition
+    const SR = window.SpeechRecognition ?? window.webkitSpeechRecognition
+    if (!SR) return
     const recognition = new SR()
     recognition.lang = selectedLanguage === "zh-CN" ? "zh-CN" : selectedLanguage === "ht" ? "fr-HT" : selectedLanguage === "pt-BR" ? "pt-BR" : selectedLanguage === "es" ? "es-US" : selectedLanguage === "vi" ? "vi-VN" : "en-US"
     recognition.interimResults = false
@@ -144,33 +145,31 @@ export function IntakeChatPanel({
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Mobile header */}
         <div className="shrink-0 border-b bg-card px-4 py-3 space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              {onSaveAndExit && (
-                <Button type="button" variant="ghost" size="sm" onClick={onSaveAndExit} className="gap-1.5 text-muted-foreground hover:text-foreground">
-                  <ArrowLeft className="h-5 w-5" />
-                  Save & Exit
-                </Button>
-              )}
-              <span className="font-semibold text-base">{copy.title}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              {SUPPORTED_LANGUAGES.map(({ code }) => (
-                <button
-                  key={code}
-                  type="button"
-                  onClick={() => onLanguageChange(code)}
-                  className={cn(
-                    "rounded px-2 py-1 text-xs font-medium transition-colors",
-                    selectedLanguage === code
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted",
-                  )}
-                >
-                  {LANGUAGE_LABELS[code]}
-                </button>
-              ))}
-            </div>
+          <div className="flex items-center gap-2">
+            {onSaveAndExit && (
+              <Button type="button" variant="ghost" size="sm" onClick={onSaveAndExit} className="shrink-0 gap-1.5 text-muted-foreground hover:text-foreground">
+                <ArrowLeft className="h-5 w-5" />
+                Save & Exit
+              </Button>
+            )}
+            <span className="min-w-0 flex-1 truncate font-semibold text-base">{copy.title}</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-1">
+            {SUPPORTED_LANGUAGES.map(({ code }) => (
+              <button
+                key={code}
+                type="button"
+                onClick={() => onLanguageChange(code)}
+                className={cn(
+                  "rounded px-2 py-1 text-xs font-medium transition-colors",
+                  selectedLanguage === code
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted",
+                )}
+              >
+                {LANGUAGE_LABELS[code]}
+              </button>
+            ))}
           </div>
           {completionPercent !== undefined && completionPercent > 0 && (
             <Progress value={completionPercent} className="h-1.5" />

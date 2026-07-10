@@ -21,7 +21,7 @@ import { usePathname } from "next/navigation"
 
 import { MassHealthChatWidget } from "@/components/chat/masshealth-chat-widget"
 
-const SUPPRESSED_PREFIXES = ["/social-worker", "/admin", "/reviewer", "/auth", "/prescreener"]
+const SUPPRESSED_PREFIXES = ["/social-worker", "/admin", "/reviewer", "/auth", "/prescreener", "/mobile"]
 
 export function ConditionalChatWidget() {
   const pathname = usePathname()

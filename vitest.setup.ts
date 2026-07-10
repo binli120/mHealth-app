@@ -52,6 +52,24 @@ if (typeof globalThis.DOMMatrix === "undefined") {
   globalThis.DOMMatrix = DOMMatrixStub
 }
 
+// jsdom does not implement window.matchMedia — stub it so components using
+// the useIsMobile() hook (media-query based) don't throw in tests.
+if (typeof window.matchMedia !== "function") {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  })
+}
+
 // jsdom's Blob implementation does not include arrayBuffer() — add the method
 // so tests that exercise magic-bytes validation (which reads file bytes) work.
 if (typeof Blob !== "undefined" && typeof Blob.prototype.arrayBuffer !== "function") {

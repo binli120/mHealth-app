@@ -411,13 +411,13 @@ export default function LandingPage() {
                 </NavigationMenuItem>
               </NavigationMenuList>
             </NavigationMenu>
-            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-              <LanguageSwitcher className="w-[90px] border-border bg-card px-2 text-foreground sm:w-[160px] sm:px-3" />
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+              <LanguageSwitcher className="w-[76px] border-border bg-card px-2 text-foreground sm:w-[160px] sm:px-3" />
               <Link href="/auth/login">
-                <Button variant="outline" size="sm" className="hidden sm:flex">{copy.signIn}</Button>
+                <Button variant="outline" size="sm" className="px-2 sm:px-3">{copy.signIn}</Button>
               </Link>
               <Link href="/auth/register">
-                <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">{copy.getStarted}</Button>
+                <Button size="sm" className="bg-primary px-2 text-primary-foreground hover:bg-primary/90 sm:px-3">{copy.getStarted}</Button>
               </Link>
             </div>
           </div>

@@ -28,6 +28,7 @@ import { createUuid } from "@/lib/utils/random-id"
 import { parsePastedUsAddress } from "@/lib/utils/address-parse"
 import { countHouseholdRelationshipMentions } from "@/lib/masshealth/household-relationships"
 import { type WidgetSpec, } from "@/components/application/aca3/intake-question-widget"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { splitWizardState } from "@/lib/phi-token/token"
 import { PhiSaveExitDialog } from "@/components/application/phi-save-exit-dialog"
 import { useHandoff } from "@/components/handoff/use-handoff"
@@ -323,6 +324,11 @@ export { getWizardStepForIntakeProgress } from "./intake-chat-question-builder"
 export { writeValue as writeIntakeQuestionValue } from "./intake-chat-question-builder"
 
 export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft, onSwitchToWizard, onSaveAndExit, mobileMode }: IntakeChatProps) {
+  // The desktop layout (sidebar, vh-based scroll area) doesn't reflow at
+  // narrow widths, so fall back to the full-screen mobile layout whenever
+  // the viewport itself is phone-sized, not just when explicitly handed off.
+  const isNarrowViewport = useIsMobile()
+  const effectiveMobileMode = mobileMode || isNarrowViewport
   const router = useRouter()
   const dispatch = useAppDispatch()
   const selectedLanguage = useAppSelector((state) => state.app.language)
@@ -1250,8 +1256,8 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
       widgetSpec={widgetSpec}
       onWidgetAnswer={handleWidgetAnswer}
       widgetKey={currentQuestionId ?? undefined}
-      onHandoff={mobileMode ? undefined : handoffTrigger}
-      mobileMode={mobileMode}
+      onHandoff={effectiveMobileMode ? undefined : handoffTrigger}
+      mobileMode={effectiveMobileMode}
     />
     {resolvedApplicationId && (
       <PhiSaveExitDialog
