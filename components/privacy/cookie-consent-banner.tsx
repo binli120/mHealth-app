@@ -33,7 +33,7 @@ function writeConsentCookie(value: CookieConsentValue) {
 
 // Paths where showing a cookie banner would break the flow (no auth session,
 // camera active, reload on accept would lose the scan token).
-const SUPPRESS_PATHS = ["/verify/mobile/", "/upload/mobile/"]
+const SUPPRESS_PATHS = ["/verify/mobile/", "/upload/mobile/", "/mobile/"]
 
 export function CookieConsentBanner({ initialConsent = null }: CookieConsentBannerProps) {
   const pathname = usePathname()

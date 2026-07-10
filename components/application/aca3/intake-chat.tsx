@@ -28,8 +28,11 @@ import { createUuid } from "@/lib/utils/random-id"
 import { parsePastedUsAddress } from "@/lib/utils/address-parse"
 import { countHouseholdRelationshipMentions } from "@/lib/masshealth/household-relationships"
 import { type WidgetSpec, } from "@/components/application/aca3/intake-question-widget"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { splitWizardState } from "@/lib/phi-token/token"
 import { PhiSaveExitDialog } from "@/components/application/phi-save-exit-dialog"
+import { useHandoff } from "@/components/handoff/use-handoff"
+import { HandoffWaitOverlay } from "@/components/handoff/handoff-wait-overlay"
 import {
   buildQuestions,
   buildContextValuesForQuestion,
@@ -93,6 +96,7 @@ interface IntakeChatProps {
   skipServerDraft?: boolean
   onSwitchToWizard: () => void
   onSaveAndExit?: () => void
+  mobileMode?: boolean
 }
 
 const SPOKEN_LANGUAGE_TO_CODE: Record<string, SupportedLanguage> = {
@@ -319,7 +323,12 @@ export { findNextPendingQuestion as findNextPendingIntakeQuestion } from "./inta
 export { getWizardStepForIntakeProgress } from "./intake-chat-question-builder"
 export { writeValue as writeIntakeQuestionValue } from "./intake-chat-question-builder"
 
-export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft, onSwitchToWizard, onSaveAndExit }: IntakeChatProps) {
+export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft, onSwitchToWizard, onSaveAndExit, mobileMode }: IntakeChatProps) {
+  // The desktop layout (sidebar, vh-based scroll area) doesn't reflow at
+  // narrow widths, so fall back to the full-screen mobile layout whenever
+  // the viewport itself is phone-sized, not just when explicitly handed off.
+  const isNarrowViewport = useIsMobile()
+  const effectiveMobileMode = mobileMode || isNarrowViewport
   const router = useRouter()
   const dispatch = useAppDispatch()
   const selectedLanguage = useAppSelector((state) => state.app.language)
@@ -339,6 +348,17 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
   })
 
   const userProfile = useAppSelector((state) => state.userProfile?.profile ?? null)
+
+  const [currentQuestionId, setCurrentQuestionId] = useReducer((_prev: string | null, next: string | null) => next, null)
+
+  const { trigger: handoffTrigger, cancel: handoffCancel, state: handoffState, mobileUrl: handoffMobileUrl, expiresAt: handoffExpiresAt } = useHandoff(
+    "intake_chat",
+    () => ({
+      applicationId: resolvedApplicationId ?? DEFAULT_APPLICATION_ID,
+      resumeId: "",
+      lastAnsweredId: currentQuestionId ?? null,
+    }),
+  )
 
   const copy = UI_COPY[selectedLanguage]
 
@@ -382,7 +402,6 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
   // "accepted" — profile applied; normal intake continues
   // "declined" — user declined or no profile; normal intake flow
   const [profilePrefillMode, setProfilePrefillMode] = useState<"pending" | "accepted" | "declined">("declined")
-  const [currentQuestionId, setCurrentQuestionId] = useReducer((_prev: string | null, next: string | null) => next, null)
   const [messages, setMessages] = useState<IntakeMessage[]>([])
   const [draft, setDraft] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -420,7 +439,7 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
     const nextQ = findNextPendingQuestion(restoredQuestions, restoredAnswered, restored, restoredSkipped)
     setCurrentQuestionId(nextQ?.id ?? null)
     return true
-  }, [])
+  }, [setCurrentQuestionId])
 
   // Intercept browser back button once the chat has started so users don't
   // accidentally leave without saving.
@@ -737,7 +756,7 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
       ])
       onSwitchToWizard()
     },
-    [onSwitchToWizard, persistWizardData],
+    [onSwitchToWizard, persistWizardData, setCurrentQuestionId],
   )
 
   const appendAssistantQuestion = useCallback(
@@ -768,7 +787,7 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
       ])
       setCurrentQuestionId(question.id)
     },
-    [localizeQuestion],
+    [localizeQuestion, setCurrentQuestionId],
   )
 
   useEffect(() => {
@@ -1136,7 +1155,7 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
       setCurrentQuestionId(questionId)
       await appendAssistantQuestion("Let me re-ask:", question)
     },
-    [appendAssistantQuestion, questions],
+    [appendAssistantQuestion, questions, setCurrentQuestionId],
   )
 
   const handleResetChat = () => {
@@ -1197,11 +1216,22 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
   )
 
   const handleSaveAndExitClick = useCallback(() => {
+    if (mobileMode) {
+      onSaveAndExit?.()
+      return
+    }
     setSaveExitDialogOpen(true)
-  }, [])
+  }, [mobileMode, onSaveAndExit])
 
   return (
     <>
+    <HandoffWaitOverlay
+      state={handoffState}
+      mobileUrl={handoffMobileUrl}
+      expiresAt={handoffExpiresAt}
+      onCancel={handoffCancel}
+      contextLabel="Intake Chat"
+    />
     <IntakeChatPanel
       copy={copy}
       onSaveAndExit={handleSaveAndExitClick}
@@ -1226,6 +1256,8 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
       widgetSpec={widgetSpec}
       onWidgetAnswer={handleWidgetAnswer}
       widgetKey={currentQuestionId ?? undefined}
+      onHandoff={effectiveMobileMode ? undefined : handoffTrigger}
+      mobileMode={effectiveMobileMode}
     />
     {resolvedApplicationId && (
       <PhiSaveExitDialog

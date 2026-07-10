@@ -86,13 +86,18 @@ if (projectLocalEnv.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABAS
 
 Object.assign(process.env, LOCAL_DEMO_ENV, LOCAL_E2E_AUTH_ENV)
 
+// Exclude demo recording scripts from the regular suite; they run via pnpm demo:* with DEMO_MODE=true.
+// Shared between the root config and the chromium project below — project-level
+// testIgnore replaces (rather than merges with) the root one, so the chromium
+// project must repeat these conditions on top of its own mobile-folder exclusion.
+const BASE_TEST_IGNORE = [
+  ...(IS_DEMO ? [] : ["**/demo-*.spec.ts"]),
+  ...(IS_REMOTE ? ["**/10-dev-auth-security.spec.ts"] : []),
+]
+
 export default defineConfig({
   testDir: "./e2e/tests",
-  // Exclude demo recording scripts from the regular suite; they run via pnpm demo:* with DEMO_MODE=true
-  testIgnore: [
-    ...(IS_DEMO ? [] : ["**/demo-*.spec.ts"]),
-    ...(IS_REMOTE ? ["**/10-dev-auth-security.spec.ts"] : []),
-  ],
+  testIgnore: BASE_TEST_IGNORE,
   // Demo needs more time for AI responses (Ollama); CI uses default 30s
   timeout: IS_DEMO ? 90_000 : 30_000,
   fullyParallel: !IS_DEMO,
@@ -152,6 +157,22 @@ export default defineConfig({
         viewport: IS_DEMO ? { width: 1440, height: 900 } : { width: 1280, height: 720 },
       },
       dependencies: ["setup"],
+      // Mobile-viewport specs live under e2e/tests/mobile/ and run only in
+      // the mobile-chromium project below — keep them out of the desktop run.
+      // Must also repeat BASE_TEST_IGNORE: project-level testIgnore replaces
+      // the root-level one rather than merging with it.
+      testIgnore: [...BASE_TEST_IGNORE, "**/mobile/**"],
+    },
+    {
+      name: "mobile-chromium",
+      use: {
+        ...devices["iPhone 13"],
+      },
+      dependencies: ["setup"],
+      // Only the dedicated mobile-viewport specs run here — running the full
+      // desktop-oriented suite at phone width would be noisy and mostly
+      // redundant with the chromium project.
+      testMatch: ["mobile/**/*.spec.ts"],
     },
   ],
   // Start dev server only for local runs; skip when targeting a remote URL

@@ -47,3 +47,4 @@ resources/*.docx
 
 # zxing-wasm binary copied by scripts/copy-zxing-wasm.mjs
 public/wasm/
+.pnpm-store/

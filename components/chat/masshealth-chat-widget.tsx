@@ -39,6 +39,9 @@ import type {
 } from "./types"
 import { SwFinderPanel } from "./sw-finder-panel"
 import { SwDirectChatPanel, type DirectMessage } from "./sw-direct-chat-panel"
+import { useHandoff } from "@/components/handoff/use-handoff"
+import { HandoffWaitOverlay } from "@/components/handoff/handoff-wait-overlay"
+import { HandoffTrigger } from "@/components/handoff/handoff-trigger"
 
 function createMessageId() {
   return createUuid()
@@ -172,7 +175,13 @@ function MessageBubble({
   )
 }
 
-export function MassHealthChatWidget() {
+interface MassHealthChatWidgetProps {
+  mobileMode?: boolean
+  onSaveAndExit?: () => void
+  initialHistory?: Array<{ role: 'user' | 'assistant'; content: string }>
+}
+
+export function MassHealthChatWidget({ mobileMode, onSaveAndExit, initialHistory }: MassHealthChatWidgetProps = {}) {
   const dispatch = useAppDispatch()
   const selectedLanguage = useAppSelector((state) => state.app.language)
   const [open, setOpen] = useState(false)
@@ -225,7 +234,9 @@ export function MassHealthChatWidget() {
     (prev: WidgetMessage[], next: WidgetMessage[] | ((p: WidgetMessage[]) => WidgetMessage[])) =>
       typeof next === 'function' ? next(prev) : next,
     undefined,
-    () => [createAssistantMessage(greeting, "chatGreeting")],
+    () => initialHistory && initialHistory.length > 0
+      ? initialHistory.map((h) => ({ id: createMessageId(), role: h.role, content: h.content } as WidgetMessage))
+      : [createAssistantMessage(greeting, "chatGreeting")],
   )
   // Benefit advisor messages (separate history)
   const [advisorMessages, setAdvisorMessages] = useReducer(
@@ -233,6 +244,11 @@ export function MassHealthChatWidget() {
       typeof next === 'function' ? next(prev) : next,
     undefined,
     () => [createAssistantMessage(advisorGreeting, "advisorGreeting")],
+  )
+
+  const { trigger: handoffTrigger, cancel: handoffCancel, state: handoffState, mobileUrl: handoffMobileUrl, expiresAt: handoffExpiresAt } = useHandoff(
+    "mh_chat",
+    () => ({ chatHistory: messages.slice(-20).map((m) => ({ role: m.role, content: m.content })) }),
   )
 
   const [draft, setDraft] = useState("")
@@ -439,7 +455,7 @@ export function MassHealthChatWidget() {
     <div
       role="dialog"
       aria-label="Sign in to use HealthCompass AI Assistant"
-      className="fixed right-5 bottom-24 z-40 w-[min(92vw,320px)] rounded-2xl border bg-card shadow-2xl overflow-hidden"
+      className="fixed left-5 bottom-24 z-40 w-[min(92vw,320px)] rounded-2xl border bg-card shadow-2xl overflow-hidden"
     >
       {/* Header stripe */}
       <div className="flex items-center justify-between border-b px-4 py-3">
@@ -489,7 +505,7 @@ export function MassHealthChatWidget() {
   // ── Auth loading mini-popup — tiny spinner while session resolves ──────────
   const loadingPopup = open && authStatus === "loading" ? (
     <div
-      className="fixed right-5 bottom-24 z-40 flex h-16 w-[min(92vw,320px)] items-center justify-center rounded-2xl border bg-card shadow-2xl"
+      className="fixed left-5 bottom-24 z-40 flex h-16 w-[min(92vw,320px)] items-center justify-center rounded-2xl border bg-card shadow-2xl"
       aria-busy="true"
     >
       <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -500,7 +516,7 @@ export function MassHealthChatWidget() {
     <>
       <Button
         size="icon-lg"
-        className="fixed right-5 bottom-5 z-50 h-14 w-14 rounded-full shadow-xl"
+        className="fixed left-5 bottom-5 z-50 h-14 w-14 rounded-full shadow-xl"
         aria-label={open ? copy.hideAssistant : copy.openAssistant}
         aria-expanded={open}
         onClick={() => setOpen((previous) => !previous)}
@@ -516,12 +532,20 @@ export function MassHealthChatWidget() {
       {/* Loading: tiny spinner card */}
       {loadingPopup}
 
+      <HandoffWaitOverlay
+        state={handoffState}
+        mobileUrl={handoffMobileUrl}
+        expiresAt={handoffExpiresAt}
+        onCancel={handoffCancel}
+        contextLabel="Assistant"
+      />
+
       {/* Authenticated: full chat panel */}
       {open && authStatus === "authenticated" ? (
         <section
           role="dialog"
           aria-label={copy.dialogLabel}
-          className="fixed right-5 bottom-24 z-40 flex h-[min(80vh,760px)] w-[min(92vw,440px)] flex-col overflow-hidden rounded-lg border bg-background shadow-2xl"
+          className="fixed left-5 bottom-24 z-40 flex h-[min(80vh,760px)] w-[min(92vw,440px)] flex-col overflow-hidden rounded-lg border bg-background shadow-2xl"
         >
           {/* Header */}
           <header className="border-b px-5 py-4 text-left">
@@ -540,6 +564,7 @@ export function MassHealthChatWidget() {
                     ))}
                   </SelectContent>
                 </Select>
+                {!mobileMode && <HandoffTrigger onTrigger={handoffTrigger} />}
                 <Button
                   type="button"
                   size="icon-sm"
@@ -713,6 +738,11 @@ export function MassHealthChatWidget() {
                     <p className="mt-2 text-xs text-muted-foreground">
                       {copy.outOfTopicLabel} &ldquo;{outOfScopeReply}&rdquo;
                     </p>
+                  )}
+                  {mobileMode && onSaveAndExit && (
+                    <Button type="button" variant="outline" size="sm" className="mt-2 w-full" onClick={onSaveAndExit}>
+                      Save &amp; Exit
+                    </Button>
                   )}
                 </form>
               </div>
