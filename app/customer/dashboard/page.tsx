@@ -42,6 +42,7 @@ import {
   HelpCircle,
   Lock,
   LogOut,
+  Menu,
   MessageCircle,
   Scale,
   FileSearch,
@@ -52,6 +53,7 @@ import {
   X,
   Loader2,
 } from "lucide-react"
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { dispatchOpenSwChat } from "@/lib/events/chat-events"
 import { NotificationBell } from "@/components/notifications/NotificationBell"
 import { SessionInviteBanner } from "@/components/collaborative-sessions/SessionInviteBanner"
@@ -100,6 +102,7 @@ export default function CustomerDashboardPage() {
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [dashboardTourRunId, setDashboardTourRunId] = useState(0)
   const [loginGreetingDate] = useState(() => new Date())
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   // Social worker access state
   type SocialWorker = {
@@ -420,6 +423,71 @@ export default function CustomerDashboardPage() {
               >
                 {isSigningOut ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogOut className="h-5 w-5" />}
               </Button>
+              <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+                <SheetTrigger asChild>
+                  <Button type="button" variant="ghost" size="icon" className="md:hidden" aria-label="Open menu">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-4/5 overflow-y-auto pt-0 sm:max-w-xs">
+                  <SheetHeader className="border-b border-border">
+                    <SheetTitle className="text-left">Menu</SheetTitle>
+                    <SheetDescription className="sr-only">Dashboard navigation links</SheetDescription>
+                  </SheetHeader>
+                  <nav className="flex flex-col gap-1 px-4 pb-6">
+                    <SheetClose asChild>
+                      <Link href="/customer/dashboard" className="rounded-md px-2 py-2.5 text-sm font-medium text-foreground hover:bg-muted">
+                        {getMessage(language, "dashboardNav")}
+                      </Link>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Link href="/customer/status" className="rounded-md px-2 py-2.5 text-sm text-foreground hover:bg-muted">
+                        {getMessage(language, "dashboardNavApplications")}
+                      </Link>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Link href="/benefit-stack" className="rounded-md px-2 py-2.5 text-sm text-foreground hover:bg-muted">
+                        {getMessage(language, "dashboardNavBenefitStack")}
+                      </Link>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Link href="/customer/sessions" className="rounded-md px-2 py-2.5 text-sm text-foreground hover:bg-muted">
+                        Sessions
+                      </Link>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Link href="/knowledge-center" className="rounded-md px-2 py-2.5 text-sm text-foreground hover:bg-muted">
+                        {getMessage(language, "dashboardNavKnowledgeCenter")}
+                      </Link>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Link href="/masshealth-appeals" className="rounded-md px-2 py-2.5 text-sm text-foreground hover:bg-muted">
+                        Appeal Letter
+                      </Link>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Link href="/help" className="rounded-md px-2 py-2.5 text-sm text-foreground hover:bg-muted">
+                        Help
+                      </Link>
+                    </SheetClose>
+                    <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
+                      <LanguageSwitcher />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => {
+                          setMobileNavOpen(false)
+                          setDashboardTourRunId((id) => id + 1)
+                        }}
+                        aria-label="Open dashboard tutorial"
+                      >
+                        <HelpCircle className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </nav>
+                </SheetContent>
+              </Sheet>
             </div>
           </div>
         </div>

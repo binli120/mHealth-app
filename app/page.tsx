@@ -22,9 +22,10 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu"
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { useAppSelector } from "@/lib/redux/hooks"
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher"
-import { CheckCircle2, ChevronRight, Loader2, Mail, Sparkles } from "lucide-react"
+import { CheckCircle2, ChevronRight, Loader2, Mail, Menu, Sparkles } from "lucide-react"
 import { ShieldHeartIcon } from "@/lib/icons"
 import { PrivacyPromiseBlock } from "@/components/privacy/privacy-promise-block"
 
@@ -262,6 +263,7 @@ function HowItWorksSteps({ copy }: { copy: LandingCopy }) {
 export default function LandingPage() {
   const language = useAppSelector((state) => state.app.language)
   const copy = useMemo(() => getLandingCopy(language), [language])
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   // Animated stat counters — hooks must be called unconditionally at top level
   const { ref: statsRef, inView: statsInView } = useInView(0.3)
@@ -413,12 +415,80 @@ export default function LandingPage() {
             </NavigationMenu>
             <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
               <LanguageSwitcher className="w-[76px] border-border bg-card px-2 text-foreground sm:w-[160px] sm:px-3" />
-              <Link href="/auth/login">
+              <Link href="/auth/login" className="hidden md:block">
                 <Button variant="outline" size="sm" className="px-2 sm:px-3">{copy.signIn}</Button>
               </Link>
-              <Link href="/auth/register">
+              <Link href="/auth/register" className="hidden md:block">
                 <Button size="sm" className="bg-primary px-2 text-primary-foreground hover:bg-primary/90 sm:px-3">{copy.getStarted}</Button>
               </Link>
+              <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-10 w-10 md:hidden" aria-label="Open menu">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-4/5 overflow-y-auto pt-0 sm:max-w-xs">
+                  <SheetHeader className="border-b border-border">
+                    <SheetTitle className="text-left">Menu</SheetTitle>
+                    <SheetDescription className="sr-only">Site navigation links</SheetDescription>
+                  </SheetHeader>
+                  <nav className="flex flex-col gap-6 px-4 pb-6">
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{copy.navPrograms}</p>
+                      <div className="flex flex-col gap-1">
+                        <SheetClose asChild><Link href="/programs/masshealth" className="rounded-md px-2 py-2.5 text-sm text-foreground hover:bg-muted">{copy.navProgramMasshealth}</Link></SheetClose>
+                        <SheetClose asChild><Link href="/programs/snap" className="rounded-md px-2 py-2.5 text-sm text-foreground hover:bg-muted">{copy.navProgramSnap}</Link></SheetClose>
+                        <SheetClose asChild><Link href="/programs/eitc" className="rounded-md px-2 py-2.5 text-sm text-foreground hover:bg-muted">{copy.navProgramEitc}</Link></SheetClose>
+                        <SheetClose asChild><Link href="/programs/liheap" className="rounded-md px-2 py-2.5 text-sm text-foreground hover:bg-muted">{copy.navProgramLiheap}</Link></SheetClose>
+                        <SheetClose asChild><Link href="/programs/wic" className="rounded-md px-2 py-2.5 text-sm text-foreground hover:bg-muted">{copy.navProgramWic}</Link></SheetClose>
+                        <SheetClose asChild><Link href="/programs" className="rounded-md px-2 py-2.5 text-sm font-medium text-primary hover:bg-muted">{copy.navProgramsAll}</Link></SheetClose>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{copy.navTools}</p>
+                      <div className="flex flex-col gap-1">
+                        <SheetClose asChild><Link href="/prescreener" className="rounded-md px-2 py-2.5 text-sm text-foreground hover:bg-muted">{copy.navEligibilityChecker}</Link></SheetClose>
+                        <SheetClose asChild><Link href="/benefit-stack" className="rounded-md px-2 py-2.5 text-sm text-foreground hover:bg-muted">{copy.navBenefitStackTool}</Link></SheetClose>
+                        <SheetClose asChild>
+                          <Link href="/masshealth-appeals" className="flex items-center justify-between rounded-md px-2 py-2.5 text-sm text-foreground hover:bg-muted">
+                            {copy.navAiAppealLetters}
+                            <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">{copy.aiLabel}</span>
+                          </Link>
+                        </SheetClose>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{copy.navAbout}</p>
+                      <div className="flex flex-col gap-1">
+                        <SheetClose asChild><a href="#problems" className="rounded-md px-2 py-2.5 text-sm text-foreground hover:bg-muted">{copy.navProblem}</a></SheetClose>
+                        <SheetClose asChild><a href="#how-it-works" className="rounded-md px-2 py-2.5 text-sm text-foreground hover:bg-muted">{copy.navHowItWorks}</a></SheetClose>
+                        <SheetClose asChild><a href="#why-us" className="rounded-md px-2 py-2.5 text-sm text-foreground hover:bg-muted">{copy.navWhyUs}</a></SheetClose>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{copy.navResources}</p>
+                      <div className="flex flex-col gap-1">
+                        <SheetClose asChild>
+                          <a href="#live-assistance" className="flex items-center justify-between rounded-md px-2 py-2.5 text-sm text-foreground hover:bg-muted">
+                            {copy.navLiveAssistance}
+                            <span className="rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-bold text-accent-foreground">{copy.newLabel}</span>
+                          </a>
+                        </SheetClose>
+                        <SheetClose asChild><Link href="/help" className="rounded-md px-2 py-2.5 text-sm text-foreground hover:bg-muted">{copy.navHelpCenter}</Link></SheetClose>
+                        <SheetClose asChild><Link href="/knowledge-center" className="rounded-md px-2 py-2.5 text-sm text-foreground hover:bg-muted">{copy.navKnowledgeCenter}</Link></SheetClose>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2 border-t border-border pt-4">
+                      <SheetClose asChild>
+                        <Link href="/auth/login"><Button variant="outline" className="w-full">{copy.signIn}</Button></Link>
+                      </SheetClose>
+                      <SheetClose asChild>
+                        <Link href="/auth/register"><Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90">{copy.getStarted}</Button></Link>
+                      </SheetClose>
+                    </div>
+                  </nav>
+                </SheetContent>
+              </Sheet>
             </div>
           </div>
         </header>

@@ -7,6 +7,7 @@
 
 import { type FormEvent, type RefObject, useCallback, useEffect, useRef, useState } from "react"
 import { ArrowLeft, Loader2, Mic, MicOff, Pencil, RotateCcw, SendHorizontal } from "lucide-react"
+import { toast } from "sonner"
 
 import { IntakeMessageBubble, type IntakeMessage } from "@/components/application/aca3/intake-chat-message-bubble"
 import { IntakeQuestionWidget, type WidgetSpec } from "@/components/application/aca3/intake-question-widget"
@@ -106,18 +107,38 @@ export function IntakeChatPanel({
 }: IntakeChatPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [isListening, setIsListening] = useState(false)
+  const [isVoiceProcessing, setIsVoiceProcessing] = useState(false)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
 
   const speechSupported = typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)
 
+  const voiceErrorMessage = (error: string) => {
+    switch (error) {
+      case "not-allowed":
+      case "service-not-allowed":
+        return "Microphone access denied. Enable microphone permissions in your browser to use voice input."
+      case "no-speech":
+        return "No speech detected. Try again."
+      case "network":
+        return "Voice input needs an internet connection."
+      case "audio-capture":
+        return "No microphone found on this device."
+      default:
+        return "Voice input failed. Please try again or type your answer."
+    }
+  }
+
   const toggleVoiceInput = useCallback(() => {
     if (isListening) {
+      setIsVoiceProcessing(true)
       recognitionRef.current?.stop()
-      setIsListening(false)
       return
     }
     const SR = window.SpeechRecognition ?? window.webkitSpeechRecognition
-    if (!SR) return
+    if (!SR) {
+      toast.error("Voice input isn't supported in this browser.")
+      return
+    }
     const recognition = new SR()
     recognition.lang = selectedLanguage === "zh-CN" ? "zh-CN" : selectedLanguage === "ht" ? "fr-HT" : selectedLanguage === "pt-BR" ? "pt-BR" : selectedLanguage === "es" ? "es-US" : selectedLanguage === "vi" ? "vi-VN" : "en-US"
     recognition.interimResults = false
@@ -125,8 +146,17 @@ export function IntakeChatPanel({
       const transcript = Array.from(event.results).map(r => r[0].transcript).join(" ")
       onDraftChange((draft + " " + transcript).trimStart())
     }
-    recognition.onend = () => setIsListening(false)
-    recognition.onerror = () => setIsListening(false)
+    recognition.onend = () => {
+      setIsListening(false)
+      setIsVoiceProcessing(false)
+    }
+    recognition.onerror = (event) => {
+      setIsListening(false)
+      setIsVoiceProcessing(false)
+      if (event.error !== "aborted") {
+        toast.error(voiceErrorMessage(event.error))
+      }
+    }
     recognitionRef.current = recognition
     recognition.start()
     setIsListening(true)
@@ -213,17 +243,23 @@ export function IntakeChatPanel({
                   size="icon"
                   className="h-12 w-12 shrink-0"
                   onClick={toggleVoiceInput}
-                  disabled={disableInput}
+                  disabled={disableInput || isVoiceProcessing}
                   aria-label={isListening ? "Stop voice input" : "Voice input"}
                 >
-                  {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                  {isVoiceProcessing ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : isListening ? (
+                    <MicOff className="h-5 w-5" />
+                  ) : (
+                    <Mic className="h-5 w-5" />
+                  )}
                 </Button>
               )}
               <Input
                 ref={inputRef}
                 value={draft}
                 onChange={(event) => onDraftChange(event.target.value)}
-                placeholder={isListening ? "Listening…" : copy.placeholder}
+                placeholder={isVoiceProcessing ? "Processing…" : isListening ? "Listening…" : copy.placeholder}
                 disabled={disableInput}
                 className="h-12 text-base"
               />

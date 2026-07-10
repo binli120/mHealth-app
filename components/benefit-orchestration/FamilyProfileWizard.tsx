@@ -72,7 +72,7 @@ function IncomeSection({
   return (
     <div className="space-y-3">
       <p className="text-sm font-medium text-gray-800">{label}</p>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <CurrencyInput label={getMessage(language, "bsWagesSalary")} value={income.wages} onChange={(v) => update("wages", v)} description={getMessage(language, "bsWagesDesc")} />
         <CurrencyInput label={getMessage(language, "bsSelfEmployment")} value={income.selfEmployment} onChange={(v) => update("selfEmployment", v)} description={getMessage(language, "bsSelfEmploymentDesc")} />
         <CurrencyInput label={getMessage(language, "bsSocialSecurity")} value={income.socialSecurity} onChange={(v) => update("socialSecurity", v)} />
@@ -398,7 +398,7 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
                           <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                         </Button>
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div>
                           <Label htmlFor={`member-name-input-${member.id}`} className="text-xs">{getMessage(language, "bsFirstNameOptional")}</Label>
                           <Input id={`member-name-input-${member.id}`} value={member.firstName ?? ""} onChange={(e) => updateMember(member.id, { firstName: e.target.value })} placeholder="Name" className="mt-1 text-sm" />
@@ -450,7 +450,7 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
                       </div>
                       <div>
                         <Label className="text-xs text-gray-600">{getMessage(language, "bsMemberMonthlyIncome")}</Label>
-                        <div className="grid grid-cols-2 gap-2 mt-1">
+                        <div className="grid grid-cols-1 gap-2 mt-1 sm:grid-cols-2">
                           <CurrencyInput label={getMessage(language, "bsMemberWages")} value={member.income.wages} onChange={(v) => updateMember(member.id, { income: { ...member.income, wages: v } })} />
                           <CurrencyInput label={getMessage(language, "bsMemberSsSsi")} value={member.income.socialSecurity + member.income.ssi + member.income.other} onChange={(v) => updateMember(member.id, { income: { ...member.income, other: v } })} />
                         </div>
@@ -553,7 +553,7 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
             <>
               <h2 className="text-base font-semibold text-gray-900">{getMessage(language, "bsAssetsTitle")}</h2>
               <p className="text-sm text-gray-500">{getMessage(language, "bsAssetsDesc")}</p>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <CurrencyInput label={getMessage(language, "bsBankAccounts")} value={profile.assets.bankAccounts} onChange={(v) => update("assets", { ...profile.assets, bankAccounts: v })} />
                 <CurrencyInput label={getMessage(language, "bsInvestments")} value={profile.assets.investments} onChange={(v) => update("assets", { ...profile.assets, investments: v })} />
                 <CurrencyInput label={getMessage(language, "bsRealEstate")} value={profile.assets.realEstate} onChange={(v) => update("assets", { ...profile.assets, realEstate: v })} />
