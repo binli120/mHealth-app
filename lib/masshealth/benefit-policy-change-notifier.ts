@@ -10,7 +10,9 @@ import {
   fetchBenefitPolicyUpdatesFromAnalysisService,
   fetchBenefitPolicyUpdatesFromLocalPython,
   type BenefitPolicyFinding,
+  type BenefitPolicyUpdatesResponse,
 } from "@/lib/masshealth/benefit-policy-updates-client"
+import { logServerError } from "@/lib/server/logger"
 
 const ANALYSIS_BASE = process.env.NEXT_PUBLIC_MASSHEALTH_ANALYSIS_BASE_URL ?? "http://localhost:8000"
 const MASSHEALTH_API_TOKEN = process.env.MASSHEALTH_API_TOKEN ?? ""
@@ -57,7 +59,7 @@ export interface NotifyBenefitPolicyUpdatesResult {
   notified: boolean
   benefitNames: string[]
   findingCount: number
-  reason?: "no_benefits" | "no_relevant_findings" | "duplicate"
+  reason?: "no_benefits" | "no_relevant_findings" | "duplicate" | "unavailable"
 }
 
 export async function notifyBenefitPolicyUpdatesForApplication(
@@ -69,6 +71,9 @@ export async function notifyBenefitPolicyUpdatesForApplication(
   }
 
   const response = await fetchPolicyUpdates(input.userId, benefitNames)
+  if (!response) {
+    return { checked: false, notified: false, benefitNames, findingCount: 0, reason: "unavailable" }
+  }
   const findings = response.findings.filter(isNotificationWorthyFinding)
   if (findings.length === 0) {
     return { checked: true, notified: false, benefitNames, findingCount: 0, reason: "no_relevant_findings" }
@@ -124,7 +129,10 @@ export function collectAppliedBenefitNames(input: {
   return uniqueStrings(names).slice(0, MAX_BENEFIT_NAMES)
 }
 
-async function fetchPolicyUpdates(userId: string, benefitNames: string[]) {
+async function fetchPolicyUpdates(
+  userId: string,
+  benefitNames: string[],
+): Promise<BenefitPolicyUpdatesResponse | null> {
   try {
     return await fetchBenefitPolicyUpdatesFromAnalysisService(
       { benefitNames, includeUnchanged: true },
@@ -134,8 +142,16 @@ async function fetchPolicyUpdates(userId: string, benefitNames: string[]) {
         userId,
       },
     )
-  } catch {
-    return fetchBenefitPolicyUpdatesFromLocalPython({ benefitNames, includeUnchanged: true })
+  } catch (analysisError) {
+    try {
+      return await fetchBenefitPolicyUpdatesFromLocalPython({ benefitNames, includeUnchanged: true })
+    } catch (localError) {
+      logServerError("masshealth.benefitPolicyUpdates.notify.sourcesUnavailable", localError, {
+        userId,
+        analysisError: analysisError instanceof Error ? analysisError.message : String(analysisError),
+      })
+      return null
+    }
   }
 }
 

@@ -15,6 +15,10 @@ vi.mock("@/lib/masshealth/benefit-policy-updates-client", () => ({
   fetchBenefitPolicyUpdatesFromLocalPython: vi.fn(),
 }))
 
+vi.mock("@/lib/server/logger", () => ({
+  logServerError: vi.fn(),
+}))
+
 import { createNotification, notificationExistsForPolicyUpdate } from "@/lib/db/notifications"
 import {
   fetchBenefitPolicyUpdatesFromAnalysisService,
@@ -201,5 +205,19 @@ describe("notifyBenefitPolicyUpdatesForApplication", () => {
         title: "MassHealth update for dental",
       }),
     )
+  })
+
+  it("degrades gracefully when both the analysis service and local monitor fail", async () => {
+    vi.mocked(fetchBenefitPolicyUpdatesFromAnalysisService).mockRejectedValue(new Error("analysis down"))
+    vi.mocked(fetchBenefitPolicyUpdatesFromLocalPython).mockRejectedValue(new Error("ENOENT: python missing"))
+
+    const result = await notifyBenefitPolicyUpdatesForApplication({
+      userId: USER_ID,
+      applicationId: APPLICATION_ID,
+      benefitNames: ["Dental Benefits"],
+    })
+
+    expect(result).toMatchObject({ checked: false, notified: false, reason: "unavailable" })
+    expect(createNotification).not.toHaveBeenCalled()
   })
 })

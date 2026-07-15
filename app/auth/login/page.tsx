@@ -294,6 +294,10 @@ function LoginPageContent() {
       if (aalData?.nextLevel === "aal2" && aalData.currentLevel !== "aal2") {
         const resolvedPath = await resolvePostAuthRedirect(nextPath, signIn.data.session?.access_token ?? "")
         saveRememberedEmail(shouldRememberEmail, normalizedEmail)
+        // Sync the aal1 session cookie now so the proxy's auth gate (checked on
+        // /auth/mfa itself is unprotected, but on the post-verify destination
+        // via router.refresh()) sees a session instead of bouncing back to login.
+        await syncSessionCookie(signIn.data.session)
         router.push(`/auth/mfa?next=${encodeURIComponent(resolvedPath)}`)
         return
       }

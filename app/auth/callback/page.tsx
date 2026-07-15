@@ -13,6 +13,7 @@ import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { getSafeAuthNextPath, resolvePostAuthRedirect } from "@/lib/auth/navigation"
 import { getSafeSupabaseSession, getSupabaseClient } from "@/lib/supabase/client"
+import { syncSessionCookie } from "@/lib/supabase/session-cookie"
 import { toUserFacingError } from "@/lib/errors/user-facing"
 import { ShieldHeartIcon } from "@/lib/icons"
 import { Loader2 } from "lucide-react"
@@ -31,6 +32,10 @@ function CallbackContent() {
     const doRedirect = async (accessToken: string) => {
       if (redirected) return
       redirected = true
+      // proxy.ts gates protected routes on the sb-access-token cookie, not the
+      // client SDK's local session — sync it or router.refresh() below gets
+      // bounced back to /auth/login.
+      await syncSessionCookie({ access_token: accessToken })
       const destination = await resolvePostAuthRedirect(next, accessToken)
       router.push(destination)
       router.refresh()

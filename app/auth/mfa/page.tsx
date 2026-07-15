@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { getSafeAuthNextPath } from "@/lib/auth/navigation"
 import { getSupabaseClient } from "@/lib/supabase/client"
+import { syncSessionCookie } from "@/lib/supabase/session-cookie"
 import { ShieldHeartIcon } from "@/lib/icons"
 import type { Factor } from "@supabase/supabase-js"
 
@@ -163,6 +164,13 @@ function MFAPageContent() {
         setErrorMessage("Invalid code. Please try again.")
         return
       }
+
+      // mfa.verify() upgrades the session to aal2 in the client SDK's local
+      // storage, but the proxy's auth gate reads the sb-access-token cookie
+      // server-side — sync it now or router.refresh() below gets bounced
+      // back to /auth/login by proxy.ts, causing a login<->MFA loop.
+      const { data: refreshedSession } = await supabase.auth.getSession()
+      await syncSessionCookie(refreshedSession.session)
 
       router.push(nextPath)
       router.refresh()
