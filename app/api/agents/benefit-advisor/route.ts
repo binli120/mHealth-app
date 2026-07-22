@@ -71,7 +71,12 @@ export async function POST(request: Request) {
         async execute({ writer }) {
           const result = streamText({
             model: getOllamaModel(),
-            system: buildBenefitAdvisorAgentSystemPrompt(language, memory?.extractedFacts ?? {}),
+            system: buildBenefitAdvisorAgentSystemPrompt(
+              language,
+              memory?.extractedFacts ?? {},
+              memory?.isStale ?? false,
+              memory?.factAgeDays ?? 0,
+            ),
             messages,
             // Tools are built with the writer in closure so check_eligibility
             // can write the eligibility annotation mid-stream.

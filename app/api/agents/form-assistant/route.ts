@@ -22,6 +22,7 @@ import { logServerError, logServerInfo } from "@/lib/server/logger"
 import { incrementCounter } from "@/lib/server/counters"
 import { buildFormAssistantTools } from "@/lib/agents/form-assistant/tools"
 import { buildFormAssistantAgentSystemPrompt } from "@/lib/agents/form-assistant/prompts"
+import { loadUserAgentMemory } from "@/lib/agents/memory"
 import { containsSsnLikeContent, SSN_CHAT_HANDOFF_MESSAGE } from "@/lib/agents/sensitive-input"
 import { FORM_ASSISTANT_SECTIONS } from "@/app/api/chat/masshealth/constants"
 import type { ChatMessage } from "@/lib/masshealth/types"
@@ -122,12 +123,22 @@ export async function POST(request: Request) {
       existingSourceCount: existingSources.length,
     })
 
+    // Read-only: reuse whatever Benefit Advisor/Intake/Chat already learned so
+    // this agent can confirm rather than cold-ask. Never writes back — the
+    // real persistence for form data is the encrypted application-draft API.
+    const memory = await loadUserAgentMemory(authResult.userId).catch(() => null)
+
     return createUIMessageStreamResponse({
       stream: createUIMessageStream({
         async execute({ writer }) {
           const result = streamText({
             model: getOllamaModel(),
-            system: buildFormAssistantAgentSystemPrompt(language, currentSection, collectedSummary),
+            system: buildFormAssistantAgentSystemPrompt(
+              language,
+              currentSection,
+              collectedSummary,
+              memory?.extractedFacts ?? {},
+            ),
             messages,
             tools: buildFormAssistantTools(
               { messages, language, collectedSummary, currentSection, existingMembers, existingSources },

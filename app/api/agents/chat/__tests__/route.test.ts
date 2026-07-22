@@ -48,6 +48,10 @@ vi.mock("@/lib/agents/chat/prompts", () => ({
   buildChatAgentSystemPrompt: vi.fn().mockReturnValue("chat-system-prompt"),
 }))
 
+vi.mock("@/lib/agents/memory", () => ({
+  loadUserAgentMemory: vi.fn().mockResolvedValue(null),
+}))
+
 vi.mock("ai", () => ({
   createUIMessageStream: vi.fn(({ execute }: { execute: (ctx: { writer: typeof fakeWriter }) => void }) => {
     execute({ writer: fakeWriter })
@@ -207,18 +211,40 @@ describe("POST /api/agents/chat — happy path", () => {
   it("defaults to 'en' when no language is provided", async () => {
     const { buildChatAgentSystemPrompt } = await import("@/lib/agents/chat/prompts")
     await POST(makeRequest({ messages: IN_SCOPE_MSG }))
-    expect(buildChatAgentSystemPrompt).toHaveBeenCalledWith("en")
+    expect(buildChatAgentSystemPrompt).toHaveBeenCalledWith("en", {})
   })
 
   it("uses the provided language when it is a supported locale", async () => {
     const { buildChatAgentSystemPrompt } = await import("@/lib/agents/chat/prompts")
     await POST(makeRequest({ messages: IN_SCOPE_MSG, language: "vi" }))
-    expect(buildChatAgentSystemPrompt).toHaveBeenCalledWith("vi")
+    expect(buildChatAgentSystemPrompt).toHaveBeenCalledWith("vi", {})
   })
 
   it("falls back to 'en' for an unsupported language code", async () => {
     const { buildChatAgentSystemPrompt } = await import("@/lib/agents/chat/prompts")
     await POST(makeRequest({ messages: IN_SCOPE_MSG, language: "klingon" }))
-    expect(buildChatAgentSystemPrompt).toHaveBeenCalledWith("en")
+    expect(buildChatAgentSystemPrompt).toHaveBeenCalledWith("en", {})
+  })
+
+  it("passes persisted known facts (read-only) to the prompt when memory exists", async () => {
+    const { buildChatAgentSystemPrompt } = await import("@/lib/agents/chat/prompts")
+    const { loadUserAgentMemory } = await import("@/lib/agents/memory")
+    const knownFacts = { age: 30 }
+    vi.mocked(loadUserAgentMemory).mockResolvedValueOnce({
+      id: "memory-1",
+      userId: USER_ID,
+      sessionId: null,
+      extractedFacts: knownFacts,
+      formProgress: {},
+      createdAt: new Date("2026-01-01T00:00:00Z"),
+      updatedAt: new Date("2026-01-01T00:00:00Z"),
+      isStale: false,
+      factAgeDays: 0,
+    })
+
+    await POST(makeRequest({ messages: IN_SCOPE_MSG }))
+
+    expect(loadUserAgentMemory).toHaveBeenCalledWith(USER_ID)
+    expect(buildChatAgentSystemPrompt).toHaveBeenCalledWith("en", knownFacts)
   })
 })

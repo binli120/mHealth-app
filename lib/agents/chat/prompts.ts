@@ -12,9 +12,15 @@
  * Typical ReAct trace:
  *   1. retrieve_policy ("MassHealth <topic>")  — optional
  *   2. (LLM streams a plain-language answer)
+ *
+ * Read-only memory: the route loads any facts the Benefit Advisor / Intake
+ * agents already persisted (lib/agents/memory) and injects them here so
+ * Chat doesn't ask a returning user to repeat themselves. Chat never writes
+ * to memory itself — it has no extraction tool.
  */
 
 import type { SupportedLanguage } from "@/lib/i18n/languages"
+import type { ScreenerData } from "@/lib/eligibility-engine"
 
 const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
   en: "English",
@@ -25,8 +31,33 @@ const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
   vi: "Vietnamese (Tiếng Việt)",
 }
 
-export function buildChatAgentSystemPrompt(language: SupportedLanguage): string {
+/** Render a short summary of facts already known from prior sessions, if any. */
+function buildKnownFactsSection(facts: Partial<ScreenerData>): string {
+  const lines: string[] = []
+
+  if (facts.age !== undefined) lines.push(`- Age: ${facts.age}`)
+  if (facts.householdSize !== undefined) lines.push(`- Household size: ${facts.householdSize}`)
+  if (facts.annualIncome !== undefined) lines.push(`- Annual income: $${facts.annualIncome.toLocaleString()}`)
+  if (facts.citizenshipStatus !== undefined) lines.push(`- Citizenship status: ${facts.citizenshipStatus}`)
+  if (facts.hasMedicare !== undefined) lines.push(`- Has Medicare: ${facts.hasMedicare}`)
+
+  if (lines.length === 0) return ""
+
+  return [
+    "The following facts are already known about this user from prior sessions.",
+    "Use them to personalize your answer (e.g. reference their situation) but do not",
+    "restate them as a diagnosis, and do not treat this as sufficient for an eligibility",
+    "determination — redirect to the Benefit Advisor for that.",
+    ...lines,
+  ].join("\n")
+}
+
+export function buildChatAgentSystemPrompt(
+  language: SupportedLanguage,
+  knownFacts: Partial<ScreenerData> = {},
+): string {
   const lang = LANGUAGE_LABELS[language] ?? "English"
+  const factSection = buildKnownFactsSection(knownFacts)
 
   return [
     `You are a helpful MassHealth information assistant. Always respond in ${lang}.`,
@@ -34,7 +65,7 @@ export function buildChatAgentSystemPrompt(language: SupportedLanguage): string 
     "You help Massachusetts residents understand MassHealth programs, eligibility rules,",
     "required documents, and how to apply. You answer general policy questions clearly",
     "and compassionately, without making eligibility determinations.",
-    "",
+    ...(factSection ? ["", factSection, ""] : [""]),
     "You have one tool:",
     "",
     "  retrieve_policy — Search official MassHealth policy documents for the user's topic.",

@@ -17,6 +17,10 @@ export interface AgentMemory {
   formProgress: Record<string, unknown>
   createdAt: Date
   updatedAt: Date
+  /** True when extractedFacts are older than MEMORY_STALE_DAYS (default 90). */
+  isStale: boolean
+  /** Age of the stored facts in whole days, for prompt-level messaging. */
+  factAgeDays: number
 }
 
 export interface MemoryUpdatePayload {
@@ -35,7 +39,10 @@ export interface MemoryRow {
   id: string
   user_id: string
   session_id: string | null
-  extracted_facts: Record<string, unknown>
+  /** Deprecated plaintext column — read-only fallback for pre-encryption rows. */
+  extracted_facts: Record<string, unknown> | null
+  /** AES-256-GCM ciphertext of the JSON-stringified facts payload. */
+  extracted_facts_encrypted: string | null
   form_progress: Record<string, unknown>
   created_at: Date
   updated_at: Date

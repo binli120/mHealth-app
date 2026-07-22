@@ -29,8 +29,17 @@ const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
 /**
  * Render a human-readable block of facts already known from prior sessions.
  * Returns an empty string when no facts are available (first session).
+ *
+ * @param isStale Set true when the facts are older than MEMORY_STALE_DAYS
+ *   (see lib/agents/memory/load.ts). Changes the framing from "don't ask
+ *   again" to "confirm before relying on this" — income/household size
+ *   drift over time and stale reuse can misinform an eligibility answer.
  */
-function buildKnownFactsSection(facts: Partial<ScreenerData>): string {
+function buildKnownFactsSection(
+  facts: Partial<ScreenerData>,
+  isStale: boolean,
+  factAgeDays: number,
+): string {
   const lines: string[] = []
 
   if (facts.age !== undefined) lines.push(`- Age: ${facts.age}`)
@@ -45,6 +54,15 @@ function buildKnownFactsSection(facts: Partial<ScreenerData>): string {
 
   if (lines.length === 0) return ""
 
+  if (isStale) {
+    return [
+      `The following facts were captured ${factAgeDays} days ago and may be out of date.`,
+      "Briefly confirm income, household size, and insurance status are still accurate",
+      "before relying on them — do not silently reuse them if the user indicates anything changed.",
+      ...lines,
+    ].join("\n")
+  }
+
   return [
     "The following facts are already known from this user's prior sessions.",
     "Do NOT ask for information that is already listed here.",
@@ -57,16 +75,21 @@ function buildKnownFactsSection(facts: Partial<ScreenerData>): string {
 /**
  * Build the system prompt for the BenefitAdvisorAgent.
  *
- * @param language   Response language (defaults to English).
- * @param knownFacts Facts already persisted from prior sessions (Phase 4).
- *                   When non-empty, the agent skips questions it already knows.
+ * @param language    Response language (defaults to English).
+ * @param knownFacts  Facts already persisted from prior sessions (Phase 4).
+ *                    When non-empty, the agent skips questions it already knows.
+ * @param isStale     True when knownFacts are older than MEMORY_STALE_DAYS —
+ *                    the agent is told to confirm rather than silently reuse.
+ * @param factAgeDays Age of knownFacts in days, surfaced in the stale framing.
  */
 export function buildBenefitAdvisorAgentSystemPrompt(
   language: SupportedLanguage,
   knownFacts: Partial<ScreenerData> = {},
+  isStale = false,
+  factAgeDays = 0,
 ): string {
   const lang = LANGUAGE_LABELS[language] ?? "English"
-  const factSection = buildKnownFactsSection(knownFacts)
+  const factSection = buildKnownFactsSection(knownFacts, isStale, factAgeDays)
 
   return [
     `You are a compassionate MassHealth benefit advisor. Always respond in ${lang}.`,

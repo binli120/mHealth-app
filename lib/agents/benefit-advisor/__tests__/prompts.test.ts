@@ -86,4 +86,24 @@ describe("buildBenefitAdvisorAgentSystemPrompt", () => {
     const prompt = buildBenefitAdvisorAgentSystemPrompt("en")
     expect(prompt).not.toMatch(/already known from this user/i)
   })
+
+  // ── Staleness framing ────────────────────────────────────────────────────────
+
+  it("uses the 'do not ask again' framing when facts are fresh", () => {
+    const prompt = buildBenefitAdvisorAgentSystemPrompt("en", { age: 30 }, false, 5)
+    expect(prompt).toMatch(/already known from this user/i)
+    expect(prompt).not.toMatch(/may be out of date/i)
+  })
+
+  it("switches to a confirm-before-relying framing when facts are stale", () => {
+    const prompt = buildBenefitAdvisorAgentSystemPrompt("en", { age: 30 }, true, 120)
+    expect(prompt).toMatch(/120 days ago/i)
+    expect(prompt).toMatch(/may be out of date/i)
+    expect(prompt).toMatch(/confirm/i)
+  })
+
+  it("does not show staleness framing when there are no facts, even if isStale is true", () => {
+    const prompt = buildBenefitAdvisorAgentSystemPrompt("en", {}, true, 120)
+    expect(prompt).not.toMatch(/may be out of date/i)
+  })
 })

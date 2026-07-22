@@ -34,6 +34,10 @@ vi.mock("@/lib/agents/form-assistant/prompts", () => ({
   buildFormAssistantAgentSystemPrompt: vi.fn().mockReturnValue("form-assistant-system-prompt"),
 }))
 
+vi.mock("@/lib/agents/memory", () => ({
+  loadUserAgentMemory: vi.fn().mockResolvedValue(null),
+}))
+
 vi.mock("ai", () => {
   const fakeWriter = { write: vi.fn(), merge: vi.fn() }
   const fakeStream = Symbol("fakeStream")
@@ -231,24 +235,52 @@ describe("POST /api/agents/form-assistant — happy path", () => {
   it("defaults section to 'personal' when currentSection is omitted", async () => {
     const { buildFormAssistantAgentSystemPrompt } = await import("@/lib/agents/form-assistant/prompts")
     await POST(makeRequest({ messages: ONE_USER_MESSAGE }))
-    expect(buildFormAssistantAgentSystemPrompt).toHaveBeenCalledWith("en", "personal", expect.any(String))
+    expect(buildFormAssistantAgentSystemPrompt).toHaveBeenCalledWith("en", "personal", expect.any(String), {})
   })
 
   it("passes the provided currentSection to the prompt builder", async () => {
     const { buildFormAssistantAgentSystemPrompt } = await import("@/lib/agents/form-assistant/prompts")
     await POST(makeRequest({ messages: ONE_USER_MESSAGE, currentSection: "income" }))
-    expect(buildFormAssistantAgentSystemPrompt).toHaveBeenCalledWith("en", "income", expect.any(String))
+    expect(buildFormAssistantAgentSystemPrompt).toHaveBeenCalledWith("en", "income", expect.any(String), {})
   })
 
   it("defaults to 'en' when no language is provided", async () => {
     const { buildFormAssistantAgentSystemPrompt } = await import("@/lib/agents/form-assistant/prompts")
     await POST(makeRequest({ messages: ONE_USER_MESSAGE }))
-    expect(buildFormAssistantAgentSystemPrompt).toHaveBeenCalledWith("en", expect.any(String), expect.any(String))
+    expect(buildFormAssistantAgentSystemPrompt).toHaveBeenCalledWith(
+      "en", expect.any(String), expect.any(String), {},
+    )
   })
 
   it("uses the provided language when it is a supported locale", async () => {
     const { buildFormAssistantAgentSystemPrompt } = await import("@/lib/agents/form-assistant/prompts")
     await POST(makeRequest({ messages: ONE_USER_MESSAGE, language: "zh-CN" }))
-    expect(buildFormAssistantAgentSystemPrompt).toHaveBeenCalledWith("zh-CN", expect.any(String), expect.any(String))
+    expect(buildFormAssistantAgentSystemPrompt).toHaveBeenCalledWith(
+      "zh-CN", expect.any(String), expect.any(String), {},
+    )
+  })
+
+  it("passes persisted known facts (read-only) to the prompt when memory exists", async () => {
+    const { buildFormAssistantAgentSystemPrompt } = await import("@/lib/agents/form-assistant/prompts")
+    const { loadUserAgentMemory } = await import("@/lib/agents/memory")
+    const knownFacts = { annualIncome: 36000 }
+    vi.mocked(loadUserAgentMemory).mockResolvedValueOnce({
+      id: "memory-1",
+      userId: USER_ID,
+      sessionId: null,
+      extractedFacts: knownFacts,
+      formProgress: {},
+      createdAt: new Date("2026-01-01T00:00:00Z"),
+      updatedAt: new Date("2026-01-01T00:00:00Z"),
+      isStale: false,
+      factAgeDays: 0,
+    })
+
+    await POST(makeRequest({ messages: ONE_USER_MESSAGE, currentSection: "income" }))
+
+    expect(loadUserAgentMemory).toHaveBeenCalledWith(USER_ID)
+    expect(buildFormAssistantAgentSystemPrompt).toHaveBeenCalledWith(
+      "en", "income", expect.any(String), knownFacts,
+    )
   })
 })
