@@ -3,10 +3,20 @@
  * @email: blee@healthcompass.cloud
  *
  * System prompt for the FormAssistantAgent (Phase 2 ReAct version).
+ *
+ * Read-only memory: the route loads whatever the Benefit Advisor / Intake /
+ * Chat agents already learned (lib/agents/memory) and injects any fact
+ * relevant to the *current* form section. This agent never writes to
+ * memory itself — the real persistence for form data is the encrypted
+ * application-draft API (app/api/applications/[id]/draft, phi-draft), not
+ * this table. Known facts are only used to avoid re-asking; because this
+ * data ends up on an official application, the agent is told to confirm
+ * the value with the user rather than silently carry it over.
  */
 
 import type { SupportedLanguage } from "@/lib/i18n/languages"
 import type { FormSection } from "@/lib/masshealth/form-sections"
+import type { ScreenerData } from "@/lib/eligibility-engine"
 
 const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
   en: "English",
@@ -25,13 +35,45 @@ const SECTION_DESCRIPTIONS: Record<FormSection, string> = {
   documents: "required supporting documents",
 }
 
+/**
+ * Render only the known facts relevant to the current section — citizenship
+ * for personal, household size for household, income for income. Facts from
+ * other sections (pregnancy, Medicare, etc.) aren't part of this form's
+ * fields and would just be noise/unnecessary PHI exposure in this prompt.
+ */
+function buildKnownFactsSection(facts: Partial<ScreenerData>, currentSection: FormSection): string {
+  const lines: string[] = []
+
+  if (currentSection === "personal" && facts.citizenshipStatus !== undefined) {
+    lines.push(`- Citizenship status: ${facts.citizenshipStatus}`)
+  }
+  if (currentSection === "household" && facts.householdSize !== undefined) {
+    lines.push(`- Household size: ${facts.householdSize}`)
+  }
+  if (currentSection === "income" && facts.annualIncome !== undefined) {
+    lines.push(`- Annual income: $${facts.annualIncome.toLocaleString()}`)
+  }
+
+  if (lines.length === 0) return ""
+
+  return [
+    "The following was mentioned in an earlier session with a different MassHealth assistant:",
+    ...lines,
+    "This is going onto an official application — confirm it's still accurate with the applicant",
+    "rather than filling it in silently. Do not skip the question; use this to phrase it as a",
+    "confirmation instead of a blind ask (e.g. \"Last time you mentioned X — is that still correct?\").",
+  ].join("\n")
+}
+
 export function buildFormAssistantAgentSystemPrompt(
   language: SupportedLanguage,
   currentSection: FormSection,
   collectedSummary: string,
+  knownFacts: Partial<ScreenerData> = {},
 ): string {
   const lang = LANGUAGE_LABELS[language] ?? "English"
   const sectionFields = SECTION_DESCRIPTIONS[currentSection]
+  const factSection = buildKnownFactsSection(knownFacts, currentSection)
 
   return [
     `You are a friendly MassHealth application assistant. Always respond in ${lang}.`,
@@ -40,6 +82,7 @@ export function buildFormAssistantAgentSystemPrompt(
     `This section collects: ${sectionFields}.`,
     "",
     `Already collected:\n${collectedSummary || "Nothing yet."}`,
+    ...(factSection ? ["", factSection] : []),
     "",
     "You have two tools:",
     "",

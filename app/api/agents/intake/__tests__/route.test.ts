@@ -141,13 +141,23 @@ describe("POST /api/agents/intake — happy path", () => {
 
   it("passes the last user message to buildIntakeTools", async () => {
     await POST(makeRequest({ messages: CONVERSATION }))
-    expect(buildIntakeTools).toHaveBeenCalledWith("My name is David Chen")
+    expect(buildIntakeTools).toHaveBeenCalledWith({
+      lastUserMessage: "My name is David Chen",
+      messages: CONVERSATION,
+      language: "en",
+      userId: USER_ID,
+    })
   })
 
   it("passes an empty string to buildIntakeTools when there is no user message", async () => {
     const assistantOnly = [{ role: "assistant", content: "Welcome! What is your name?" }]
     await POST(makeRequest({ messages: assistantOnly }))
-    expect(buildIntakeTools).toHaveBeenCalledWith("")
+    expect(buildIntakeTools).toHaveBeenCalledWith({
+      lastUserMessage: "",
+      messages: assistantOnly,
+      language: "en",
+      userId: USER_ID,
+    })
   })
 
   it("defaults to 'en' when no language is provided", async () => {

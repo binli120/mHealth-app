@@ -597,8 +597,8 @@ flowchart TD
 |---|---|---|
 | Agent separation | Split monolithic route into specialist routes | Implemented for canonical `/api/agents/*` routes |
 | Streaming | AI SDK streaming responses | Implemented for canonical agents |
-| Tool use / ReAct | LLM calls typed tools | Implemented for chat, benefit advisor, form assistant, intake, appeal |
-| Persistent memory | `user_agent_memory` | Implemented for Benefit Advisor |
+| Tool use / ReAct | LLM calls typed tools | Implemented for chat, benefit advisor, form assistant, intake on `main`; appeal implemented on `origin/MH-03-appeal-assistants` (unmerged) |
+| Persistent memory | `user_agent_memory` | Implemented for chat (read-only), benefit advisor (read+write), intake (write), form assistant (read-only, section-filtered). Encrypted at rest (AES-256-GCM) with PHI audit logging; not wired for appeal (unmerged) or vision (stateless, no need) |
 | Reflection quality gate | Self-review before user delivery | Implemented for appeal letters and eligibility explanations |
 | RAG quality metadata | Surface scores, source tiers, citation coverage | Implemented in canonical retrieval tools via `rag` tool results and `data-masshealth` annotations |
 | Deterministic eligibility | Keep rules out of prompts | Preserved |
@@ -609,7 +609,7 @@ flowchart TD
 
 1. The legacy `app/api/chat/masshealth/route.ts` still contains older mode-dispatch logic. Prefer routing new clients through `/api/agents` and retire or slim the legacy route when safe.
 2. Supervisor routing does not currently include `appeal` or `vision` because those require structured inputs. If a unified UX needs them, add a separate intake step that gathers denial reason and document upload before routing.
-3. Persistent memory is currently benefit-advisor specific. Form assistant and intake could benefit from explicit progress memory, but privacy and data minimization need a tighter design before expanding persistence.
+3. ~~Persistent memory is currently benefit-advisor specific.~~ Resolved — chat, benefit advisor, intake, and form assistant all read/write `user_agent_memory` as of the encryption pass (see `docs/prompt.md`'s Memory section). Facts are AES-256-GCM encrypted at rest, merged in application code (not SQL, since ciphertext can't merge), and every read/write logs a PHI audit event. Remaining: `form_progress` column is still dead (no writer) — either wire it to something or drop it; and revisit memory for the appeal agent once `origin/MH-03-appeal-assistants` merges to `main`.
 4. Reflection is fail-open. That protects availability, but high-risk appeal production workflows may eventually need configurable fail-closed behavior when the review model is unavailable.
 5. RAG quality metadata is now surfaced for canonical agents. Legacy compatibility endpoints should either adopt the same `rag` metadata shape or stay clearly marked as legacy.
 
