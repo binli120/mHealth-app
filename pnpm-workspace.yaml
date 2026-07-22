@@ -4,10 +4,17 @@ packages:
 overrides:
   vite: "^6.0.0"
   lodash: "4.18.1"
-  fast-uri: "3.1.2"
+  fast-uri: ">=4.1.1"
   ws: ">=8.21.0"
   engine.io: ">=6.6.9"
   form-data: ">=4.0.6"
+  "brace-expansion@1": "^1.1.16"
+  "brace-expansion@2": "^2.1.2"
+  "brace-expansion@5": "^5.0.7"
+  "gray-matter>js-yaml": "^3.15.0"
+  "js-yaml@4": "^4.3.0"
+  "@opentelemetry/sdk-node>@opentelemetry/propagator-jaeger": "^2.9.0"
+  sharp: "^0.35.3"
 
 packageExtensions:
   "socket.io-adapter@*":
@@ -15,3 +22,11 @@ packageExtensions:
       ws: ">=8.21.0"
 
 dangerouslyAllowAllBuilds: true
+
+blockExoticSubdeps: true
+minimumReleaseAge: 10080
+minimumReleaseAgeExclude:
+  # Patched-CVE release, younger than the 7-day window — needed to close
+  # GHSA-4c8g-83qw-93j6 (fast-uri host confusion). Remove this exclude once
+  # the release is older than minimumReleaseAge on its own.
+  - fast-uri@4.1.1
