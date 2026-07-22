@@ -54,4 +54,23 @@ describe("buildChatAgentSystemPrompt", () => {
       expect(buildChatAgentSystemPrompt(lang).length).toBeGreaterThan(100)
     }
   })
+
+  // ── Known-facts injection (read-only memory) ─────────────────────────────────
+
+  it("does NOT include a known-facts section when knownFacts is empty or omitted", () => {
+    expect(buildChatAgentSystemPrompt("en")).not.toMatch(/already known about this user/i)
+    expect(buildChatAgentSystemPrompt("en", {})).not.toMatch(/already known about this user/i)
+  })
+
+  it("injects known facts already persisted from prior sessions", () => {
+    const prompt = buildChatAgentSystemPrompt("en", { age: 42, citizenshipStatus: "citizen" })
+    expect(prompt).toContain("Age: 42")
+    expect(prompt).toContain("citizen")
+    expect(prompt).toMatch(/already known about this user/i)
+  })
+
+  it("instructs the agent not to treat known facts as an eligibility determination", () => {
+    const prompt = buildChatAgentSystemPrompt("en", { age: 42 })
+    expect(prompt.toLowerCase()).toMatch(/redirect to the benefit advisor/i)
+  })
 })

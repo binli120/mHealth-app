@@ -152,17 +152,17 @@ describe("POST /api/agents/benefit-advisor — happy path", () => {
 
   it("defaults to 'en' when no language is provided", async () => {
     await POST(makeRequest({ messages: ONE_USER_MESSAGE }))
-    expect(buildBenefitAdvisorAgentSystemPrompt).toHaveBeenCalledWith("en", {})
+    expect(buildBenefitAdvisorAgentSystemPrompt).toHaveBeenCalledWith("en", {}, false, 0)
   })
 
   it("uses the provided language when it is a supported locale", async () => {
     await POST(makeRequest({ messages: ONE_USER_MESSAGE, language: "es" }))
-    expect(buildBenefitAdvisorAgentSystemPrompt).toHaveBeenCalledWith("es", {})
+    expect(buildBenefitAdvisorAgentSystemPrompt).toHaveBeenCalledWith("es", {}, false, 0)
   })
 
   it("falls back to 'en' for an unsupported language code", async () => {
     await POST(makeRequest({ messages: ONE_USER_MESSAGE, language: "klingon" }))
-    expect(buildBenefitAdvisorAgentSystemPrompt).toHaveBeenCalledWith("en", {})
+    expect(buildBenefitAdvisorAgentSystemPrompt).toHaveBeenCalledWith("en", {}, false, 0)
   })
 
   it("loads persisted memory and passes known facts to the prompt and tools", async () => {
@@ -175,12 +175,14 @@ describe("POST /api/agents/benefit-advisor — happy path", () => {
       formProgress: {},
       createdAt: new Date("2026-01-01T00:00:00Z"),
       updatedAt: new Date("2026-01-02T00:00:00Z"),
+      isStale: false,
+      factAgeDays: 1,
     })
 
     await POST(makeRequest({ messages: ONE_USER_MESSAGE }))
 
     expect(loadUserAgentMemory).toHaveBeenCalledWith(USER_ID)
-    expect(buildBenefitAdvisorAgentSystemPrompt).toHaveBeenCalledWith("en", knownFacts)
+    expect(buildBenefitAdvisorAgentSystemPrompt).toHaveBeenCalledWith("en", knownFacts, false, 1)
     expect(buildBenefitAdvisorTools).toHaveBeenCalledWith(
       ONE_USER_MESSAGE,
       "en",
@@ -188,5 +190,24 @@ describe("POST /api/agents/benefit-advisor — happy path", () => {
       USER_ID,
       knownFacts,
     )
+  })
+
+  it("passes isStale/factAgeDays through to the prompt when memory is stale", async () => {
+    const knownFacts = { age: 42 }
+    vi.mocked(loadUserAgentMemory).mockResolvedValue({
+      id: "memory-1",
+      userId: USER_ID,
+      sessionId: "sess-1",
+      extractedFacts: knownFacts,
+      formProgress: {},
+      createdAt: new Date("2026-01-01T00:00:00Z"),
+      updatedAt: new Date("2026-01-02T00:00:00Z"),
+      isStale: true,
+      factAgeDays: 120,
+    })
+
+    await POST(makeRequest({ messages: ONE_USER_MESSAGE }))
+
+    expect(buildBenefitAdvisorAgentSystemPrompt).toHaveBeenCalledWith("en", knownFacts, true, 120)
   })
 })

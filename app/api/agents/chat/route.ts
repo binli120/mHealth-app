@@ -27,6 +27,7 @@ import { checkRateLimitAsync, aiChatLimiter } from "@/lib/server/rate-limit"
 import { isMassHealthTopic, getMassHealthOutOfScopeResponse } from "@/lib/masshealth/chat-knowledge"
 import { buildChatTools } from "@/lib/agents/chat/tools"
 import { buildChatAgentSystemPrompt } from "@/lib/agents/chat/prompts"
+import { loadUserAgentMemory } from "@/lib/agents/memory"
 import type { ChatMessage } from "@/lib/masshealth/types"
 
 export const runtime = "nodejs"
@@ -104,6 +105,11 @@ export async function POST(request: Request) {
       })
     }
 
+    // Read-only: reuse whatever the Benefit Advisor / Intake agents already
+    // persisted so Chat doesn't ask a returning user to repeat themselves.
+    // Chat never writes back — it has no extraction tool.
+    const memory = await loadUserAgentMemory(authResult.userId).catch(() => null)
+
     // ── In-scope: ReAct loop with optional RAG retrieval ──────────────────────
     return createUIMessageStreamResponse({
       stream: createUIMessageStream({
@@ -116,7 +122,7 @@ export async function POST(request: Request) {
 
           const result = streamText({
             model: getOllamaModel(),
-            system: buildChatAgentSystemPrompt(language),
+            system: buildChatAgentSystemPrompt(language, memory?.extractedFacts ?? {}),
             messages,
             tools: buildChatTools(writer),
             stopWhen: stepCountIs(3),

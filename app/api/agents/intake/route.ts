@@ -98,8 +98,13 @@ export async function POST(request: Request) {
             model: getOllamaModel(),
             system: buildIntakeAgentSystemPrompt(language, payload.applicationType),
             messages,
-            tools: buildIntakeTools(lastUserMessage),
-            stopWhen: stepCountIs(3),
+            tools: buildIntakeTools({
+              lastUserMessage,
+              messages,
+              language,
+              userId: authResult.userId,
+            }),
+            stopWhen: stepCountIs(4),
             temperature: 0.2,
             abortSignal: AbortSignal.timeout(90_000),
             onStepFinish({ stepNumber, toolCalls, usage, finishReason }) {

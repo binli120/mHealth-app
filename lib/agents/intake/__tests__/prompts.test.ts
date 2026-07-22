@@ -12,6 +12,11 @@ describe("buildIntakeAgentSystemPrompt", () => {
     expect(prompt).toContain("extract_household_hints")
   })
 
+  it("references the extract_eligibility_facts tool", () => {
+    const prompt = buildIntakeAgentSystemPrompt("en")
+    expect(prompt).toContain("extract_eligibility_facts")
+  })
+
   it("includes the application type when provided", () => {
     const prompt = buildIntakeAgentSystemPrompt("en", "ACA-3")
     expect(prompt).toContain("ACA-3")

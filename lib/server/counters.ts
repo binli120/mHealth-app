@@ -33,6 +33,8 @@ export type CounterName =
   | "memory_hit"
   /** Recalled memory facts are older than the configured staleness threshold */
   | "memory_stale"
+  /** loadUserAgentMemory read a pre-encryption row (plaintext extracted_facts) */
+  | "memory_legacy_plaintext_read"
   /** retrieveRelevantChunks returned []; label: { reason: "no_match"|"error" } */
   | "rag_empty_result"
   /** Ollama /api/embeddings call failed (HTTP error or empty vector) */
