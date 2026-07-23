@@ -63,7 +63,14 @@ jobs:
     environment: dev
 
     steps:
+      # Explicit ref required: this repo's default branch is "dev", and
+      # actions/checkout defaults to the default branch (not the deployed
+      # commit) on workflow_run events. Without this, a workflow_run fired by
+      # "Deploy to Hostinger VPS" (main-only) would silently test dev instead
+      # of the commit that was just deployed.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - uses: pnpm/action-setup@v5
 
