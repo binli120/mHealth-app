@@ -77,7 +77,14 @@ test.describe("Landing Page", () => {
         (e) =>
           !e.includes("Warning:") &&
           // React emits this in dev mode when a CSP header blocks eval(); not an app error
-          !e.includes("eval() is not supported in this environment"),
+          !e.includes("eval() is not supported in this environment") &&
+          // Cloudflare's edge auto-injects its Email Address Obfuscation script
+          // (cdn-cgi/scripts/.../email-decode.min.js) when that zone setting is
+          // on. It isn't nonce-aware, so this site's strict CSP (nonce +
+          // strict-dynamic — which disables host-based allowlisting, so this
+          // can't be fixed by adding the path to script-src) correctly blocks
+          // it. Not an app bug; the real fix is a Cloudflare dashboard setting.
+          !e.includes("cdn-cgi/scripts/"),
       ),
       ...failedRequests,
     ]
