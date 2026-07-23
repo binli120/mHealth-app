@@ -41,6 +41,11 @@ export function checkVps({ repoRoot, timeoutMs = 15000 } = {}) {
       resolve({ name: "vps", status: "fail", detail: "ssh check timed out", durationMs: Date.now() - start })
     }, timeoutMs)
 
+    child.on("error", (err) => {
+      clearTimeout(timer)
+      resolve({ name: "vps", status: "fail", detail: `ssh spawn failed: ${err.message}`, durationMs: Date.now() - start })
+    })
+
     child.on("close", (code) => {
       clearTimeout(timer)
       resolve(classifySshExit({ code, stderr, durationMs: Date.now() - start }))
