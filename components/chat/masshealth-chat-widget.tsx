@@ -455,7 +455,7 @@ export function MassHealthChatWidget({ mobileMode, onSaveAndExit, initialHistory
     <div
       role="dialog"
       aria-label="Sign in to use HealthCompass AI Assistant"
-      className="fixed left-5 bottom-24 z-40 w-[min(92vw,320px)] rounded-2xl border bg-card shadow-2xl overflow-hidden"
+      className="fixed left-5 md:left-auto md:right-5 bottom-24 z-40 w-[min(92vw,320px)] rounded-2xl border bg-card shadow-2xl overflow-hidden"
     >
       {/* Header stripe */}
       <div className="flex items-center justify-between border-b px-4 py-3">
@@ -505,7 +505,7 @@ export function MassHealthChatWidget({ mobileMode, onSaveAndExit, initialHistory
   // ── Auth loading mini-popup — tiny spinner while session resolves ──────────
   const loadingPopup = open && authStatus === "loading" ? (
     <div
-      className="fixed left-5 bottom-24 z-40 flex h-16 w-[min(92vw,320px)] items-center justify-center rounded-2xl border bg-card shadow-2xl"
+      className="fixed left-5 md:left-auto md:right-5 bottom-24 z-40 flex h-16 w-[min(92vw,320px)] items-center justify-center rounded-2xl border bg-card shadow-2xl"
       aria-busy="true"
     >
       <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -516,7 +516,7 @@ export function MassHealthChatWidget({ mobileMode, onSaveAndExit, initialHistory
     <>
       <Button
         size="icon-lg"
-        className="fixed left-5 bottom-5 z-50 h-14 w-14 rounded-full shadow-xl"
+        className="fixed left-5 md:left-auto md:right-5 bottom-5 z-50 h-14 w-14 rounded-full shadow-xl"
         aria-label={open ? copy.hideAssistant : copy.openAssistant}
         aria-expanded={open}
         onClick={() => setOpen((previous) => !previous)}
@@ -545,7 +545,7 @@ export function MassHealthChatWidget({ mobileMode, onSaveAndExit, initialHistory
         <section
           role="dialog"
           aria-label={copy.dialogLabel}
-          className="fixed left-5 bottom-24 z-40 flex h-[min(80vh,760px)] w-[min(92vw,440px)] flex-col overflow-hidden rounded-lg border bg-background shadow-2xl"
+          className="fixed left-5 md:left-auto md:right-5 bottom-24 z-40 flex h-[min(80vh,760px)] w-[min(92vw,440px)] flex-col overflow-hidden rounded-lg border bg-background shadow-2xl"
         >
           {/* Header */}
           <header className="border-b px-5 py-4 text-left">
