@@ -30,3 +30,8 @@ minimumReleaseAgeExclude:
   # GHSA-4c8g-83qw-93j6 (fast-uri host confusion). Remove this exclude once
   # the release is older than minimumReleaseAge on its own.
   - fast-uri@4.1.1
+  # Patched-CVE release, younger than the 7-day window — needed to close
+  # GHSA-6gpp-xcg3-4w24 (middleware/proxy bypass) and GHSA-m99w-x7hq-7vfj
+  # (Server Actions DoS). Remove once older than minimumReleaseAge on its own.
+  - next@16.2.11
+  - "@next/*"
