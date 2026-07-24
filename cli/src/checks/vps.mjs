@@ -21,14 +21,15 @@ export function classifySshExit({ code, stderr, durationMs }) {
   return { name: "vps", status: "fail", detail: tail, durationMs }
 }
 
-export function checkVps({ repoRoot, timeoutMs = 15000 } = {}) {
+export function checkVps({ repoRoot, timeoutMs = 8000 } = {}) {
   const start = Date.now()
   const scriptPath = path.join(repoRoot, "deploy", "check-services.sh")
+  const connectTimeoutSec = Math.max(1, Math.floor(timeoutMs / 1000))
 
   return new Promise((resolve) => {
     const child = spawn(
       "ssh",
-      ["-o", "ConnectTimeout=8", "-o", "BatchMode=yes", SSH_ALIAS, "bash -s"],
+      ["-o", `ConnectTimeout=${connectTimeoutSec}`, "-o", "BatchMode=yes", SSH_ALIAS, "bash -s"],
       { stdio: [fs.createReadStream(scriptPath), "pipe", "pipe"] },
     )
 

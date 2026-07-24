@@ -43,6 +43,7 @@ export function parseCliArgs(argv) {
     timeout: { type: "string" },
     json: { type: "boolean", default: false },
     quiet: { type: "boolean", default: false },
+    help: { type: "boolean", short: "h", default: false },
   }
   for (const category of ALL_CATEGORIES) {
     optionsSpec[category] = { type: "boolean", default: false }
@@ -57,12 +58,18 @@ export function parseCliArgs(argv) {
 
   const selected = ALL_CATEGORIES.filter((category) => values[category] === true)
 
+  const timeoutMs = values.timeout ? Number(values.timeout) : 8000
+  if (!Number.isFinite(timeoutMs)) {
+    throw new Error(`invalid arguments: --timeout must be a number, got "${values.timeout}"`)
+  }
+
   return {
     command,
     domain: values.domain || process.env.MH_DOMAIN || "healthcompass.cloud",
-    timeoutMs: values.timeout ? Number(values.timeout) : 8000,
+    timeoutMs,
     json: values.json,
     quiet: values.quiet,
+    help: values.help,
     categories: selected.length > 0 ? selected : [...ALL_CATEGORIES],
   }
 }
@@ -87,6 +94,26 @@ export async function runChecks(categories, opts) {
 
 export async function main(argv) {
   const args = parseCliArgs(argv)
+
+  if (args.help) {
+    const categoriesLine = ALL_CATEGORIES.map((category) => `--${category}`).join(" ")
+    console.log(`Usage: mh [check] [options]
+       mh update
+       mh version
+
+Runs all health checks by default. Pass category flags to narrow the run.
+
+Categories: ${categoriesLine}
+
+Options:
+  --domain <host>    Override the target domain (default: healthcompass.cloud)
+  --timeout <ms>     Network timeout in milliseconds (default: 8000)
+  --json             Machine-readable output
+  --quiet            Suppress live output from local checks
+  --help, -h         Show this help`)
+    return
+  }
+
   const repoRoot = resolveRepoRoot(import.meta.url)
 
   if (args.command === "version") {

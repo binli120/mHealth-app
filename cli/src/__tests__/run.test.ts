@@ -31,4 +31,13 @@ describe("parseCliArgs", () => {
   it("throws on unknown flags", () => {
     expect(() => parseCliArgs(["--bogus"])).toThrow()
   })
+
+  it("throws when --timeout is not a number", () => {
+    expect(() => parseCliArgs(["--timeout", "not-a-number"])).toThrow()
+  })
+
+  it("recognizes --help and -h", () => {
+    expect(parseCliArgs(["--help"]).help).toBe(true)
+    expect(parseCliArgs(["-h"]).help).toBe(true)
+  })
 })
