@@ -97,20 +97,25 @@ export async function main(argv) {
 
   if (args.help) {
     const categoriesLine = ALL_CATEGORIES.map((category) => `--${category}`).join(" ")
-    console.log(`Usage: mh [check] [options]
+    console.log(`Usage: mh [check] [category-flags] [options]
        mh update
        mh version
 
-Runs all health checks by default. Pass category flags to narrow the run.
+Runs all health checks by default. Pass one or more category flags to narrow the run.
 
-Categories: ${categoriesLine}
+Category flags (any combination; default is all of them):
+  ${categoriesLine}
 
 Options:
   --domain <host>    Override the target domain (default: healthcompass.cloud)
   --timeout <ms>     Network timeout in milliseconds (default: 8000)
   --json             Machine-readable output
   --quiet            Suppress live output from local checks
-  --help, -h         Show this help`)
+  --help, -h         Show this help
+
+Examples:
+  mh                       Run every check
+  mh check --lint --test   Run only lint and unit tests`)
     return
   }
 
