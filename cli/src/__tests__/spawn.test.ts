@@ -1,5 +1,7 @@
+import { realpathSync } from "node:fs"
+import { tmpdir } from "node:os"
 import { describe, expect, it } from "vitest"
-import { exitCodeToStatus } from "../checks/_spawn.mjs"
+import { exitCodeToStatus, runSpawnCheck } from "../checks/_spawn.mjs"
 
 describe("exitCodeToStatus", () => {
   it("maps exit code 0 to pass", () => {
@@ -13,5 +15,18 @@ describe("exitCodeToStatus", () => {
 
   it("maps null (process killed/never exited) to fail", () => {
     expect(exitCodeToStatus(null)).toBe("fail")
+  })
+})
+
+describe("runSpawnCheck", () => {
+  it("spawns the process in the given cwd, not the caller's cwd", async () => {
+    const dir = realpathSync(tmpdir())
+    const result = await runSpawnCheck(
+      "cwd-check",
+      "node",
+      ["-e", "process.exit(process.cwd() === process.argv[1] ? 0 : 1)", dir],
+      { quiet: true, cwd: dir },
+    )
+    expect(result.status).toBe("pass")
   })
 })

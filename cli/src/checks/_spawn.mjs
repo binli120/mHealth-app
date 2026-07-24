@@ -4,12 +4,13 @@ export function exitCodeToStatus(code) {
   return code === 0 ? "pass" : "fail"
 }
 
-export function runSpawnCheck(name, command, args, { quiet = false } = {}) {
+export function runSpawnCheck(name, command, args, { quiet = false, cwd } = {}) {
   const start = Date.now()
   return new Promise((resolve) => {
     const child = spawn(command, args, {
       stdio: quiet ? "ignore" : "inherit",
       shell: false,
+      cwd,
     })
 
     child.on("error", (err) => {

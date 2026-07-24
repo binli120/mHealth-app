@@ -17,10 +17,10 @@ export const ALL_CATEGORIES = ["lint", "test", "build", "e2e", "vps", "app", "db
 const COMMANDS = new Set(["check", "update", "version"])
 
 const RUNNERS = {
-  lint: (opts) => checkLint({ quiet: opts.quiet }),
-  test: (opts) => checkTest({ quiet: opts.quiet }),
-  build: (opts) => checkBuild({ quiet: opts.quiet }),
-  e2e: (opts) => checkE2e({ quiet: opts.quiet }),
+  lint: (opts) => checkLint({ quiet: opts.quiet, repoRoot: opts.repoRoot }),
+  test: (opts) => checkTest({ quiet: opts.quiet, repoRoot: opts.repoRoot }),
+  build: (opts) => checkBuild({ quiet: opts.quiet, repoRoot: opts.repoRoot }),
+  e2e: (opts) => checkE2e({ quiet: opts.quiet, repoRoot: opts.repoRoot }),
   vps: (opts) => checkVps({ repoRoot: opts.repoRoot, timeoutMs: opts.timeoutMs }),
   app: (opts) => checkApp({ domain: opts.domain, timeoutMs: opts.timeoutMs }),
   db: (opts) => checkDb({ domain: opts.domain, timeoutMs: opts.timeoutMs }),
