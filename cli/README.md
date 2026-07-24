@@ -1,8 +1,9 @@
 # mh — HealthCompass health-check CLI
 
 Runs every health check for this project from one command: lint, unit
-tests, build, e2e, VPS/container health, and the public app/api/mcp/
-openobserve/edge-TLS endpoints.
+tests, build, e2e, VPS/container health, the public app/api/mcp/
+openobserve/edge-TLS endpoints, and GitHub repo health (main CI, open
+PRs, unmerged local branches).
 
 ## Install
 
@@ -22,7 +23,7 @@ immediately — no relink needed.
     mh version                  # print CLI version + repo commit
 
 Category flags: `--lint --test --build --e2e --vps --app --db --mcp
---openobserve --edge`. Passing none runs all of them, in that order.
+--openobserve --edge --github`. Passing none runs all of them, in that order.
 
 ## VPS check setup
 
@@ -37,3 +38,13 @@ alias in your own `~/.ssh/config` — add one like this:
 
 If the alias isn't configured, `mh check` marks `vps` as `skip` (not
 `fail`) and prints this same instruction.
+
+## GitHub check
+
+The `--github` category shells out to the `gh` CLI, so it needs `gh` installed
+and authenticated (`gh auth login`) — if not, `mh check` marks `github` as
+`skip`. It reports three things in one check: the latest CI run status on
+`main`, open PRs (merge conflicts, failing checks, changes-requested
+reviews), and how many local branches aren't merged into `origin/main` yet.
+It's `fail` only if the latest `main` CI run failed; open-PR issues and
+unmerged branches are `warn` — informational, not a red flag on their own.

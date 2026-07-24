@@ -5,6 +5,7 @@ import { checkBuild } from "./checks/build.mjs"
 import { checkDb } from "./checks/db.mjs"
 import { checkE2e } from "./checks/e2e.mjs"
 import { checkEdge } from "./checks/edge.mjs"
+import { checkGithub } from "./checks/github.mjs"
 import { checkLint } from "./checks/lint.mjs"
 import { checkMcp } from "./checks/mcp.mjs"
 import { checkOpenobserve } from "./checks/openobserve.mjs"
@@ -13,7 +14,7 @@ import { checkVps } from "./checks/vps.mjs"
 import { deriveExitCode, formatJson, formatTable } from "./summary.mjs"
 import { getVersionInfo, resolveRepoRoot, updateSelf } from "./update.mjs"
 
-export const ALL_CATEGORIES = ["lint", "test", "build", "e2e", "vps", "app", "db", "mcp", "openobserve", "edge"]
+export const ALL_CATEGORIES = ["lint", "test", "build", "e2e", "vps", "app", "db", "mcp", "openobserve", "edge", "github"]
 const COMMANDS = new Set(["check", "update", "version"])
 
 const RUNNERS = {
@@ -27,6 +28,7 @@ const RUNNERS = {
   mcp: (opts) => checkMcp({ domain: opts.domain, timeoutMs: opts.timeoutMs }),
   openobserve: (opts) => checkOpenobserve({ domain: opts.domain, timeoutMs: opts.timeoutMs }),
   edge: (opts) => checkEdge({ domain: opts.domain, timeoutMs: opts.timeoutMs }),
+  github: (opts) => checkGithub({ repoRoot: opts.repoRoot, timeoutMs: opts.timeoutMs }),
 }
 
 export function parseCliArgs(argv) {
