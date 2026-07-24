@@ -279,6 +279,8 @@ pnpm test
 | `pnpm db:sync:prod` | Dump local public data and restore to cloud (`SUPABASE_DB_URL` required) |
 | `pnpm gen:test-license` | Generate a test PDF417 barcode + HTML DL mockup for identity verification testing |
 
+> **Full health check:** see [`cli/README.md`](cli/README.md) for the `mh` CLI — one command for lint, tests, build, e2e, VPS/container health, and public endpoint checks.
+
 ---
 
 ## Local Service URLs
