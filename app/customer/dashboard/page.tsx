@@ -73,6 +73,7 @@ import { DashboardTour } from "./dashboard-tour"
 import { UploadToApplicationDialog } from "@/components/dashboard/UploadToApplicationDialog"
 import { InsuranceSummaryCard } from "@/components/insurance-history/insurance-summary-card"
 import { ActionRequiredCard } from "@/components/dashboard/ActionRequiredCard"
+import { DeletePersonalDataCard } from "@/components/dashboard/delete-personal-data-card"
 
 interface DashboardWidgetTooltipProps {
   children: ReactNode
@@ -882,6 +883,9 @@ export default function CustomerDashboardPage() {
             </Card>
             </DashboardWidgetTooltip>
           </div>
+        </div>
+        <div className="mt-6">
+          <DeletePersonalDataCard />
         </div>
       </main>
 

@@ -189,6 +189,67 @@ export async function listStorageFolder(params: {
   return (data ?? []).map((f) => `${params.folderPath}/${f.name}`);
 }
 
+/** Recursively list every object below a storage prefix. */
+export async function listStoragePrefix(params: {
+  folderPath: string;
+  pageSize?: number;
+}): Promise<string[]> {
+  const supabase = getStorageAdminClient();
+  const pageSize = Math.min(Math.max(params.pageSize ?? 100, 1), 1000);
+  const files: string[] = [];
+  const folders = [params.folderPath.replace(/^\/+|\/+$/g, '')];
+
+  while (folders.length > 0) {
+    const folder = folders.pop() ?? '';
+    for (let offset = 0; ; offset += pageSize) {
+      const { data, error } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .list(folder, { limit: pageSize, offset, sortBy: { column: 'name', order: 'asc' } });
+      if (error) throw new Error('Storage inventory failed.');
+
+      for (const entry of data ?? []) {
+        const path = folder ? `${folder}/${entry.name}` : entry.name;
+        if (entry.id == null) folders.push(path);
+        else files.push(path);
+      }
+      if ((data?.length ?? 0) < pageSize) break;
+    }
+  }
+
+  return [...new Set(files)].sort();
+}
+
+/** Delete storage objects in provider-safe batches. Missing objects are harmless. */
+export async function deleteStoragePathsInBatches(params: {
+  storagePaths: string[];
+  batchSize?: number;
+}): Promise<void> {
+  const batchSize = Math.min(Math.max(params.batchSize ?? 100, 1), 1000);
+  const paths = [...new Set(params.storagePaths.filter(Boolean))];
+  for (let index = 0; index < paths.length; index += batchSize) {
+    await deleteFromStorage({ storagePaths: paths.slice(index, index + batchSize) });
+  }
+}
+
+/** Return the requested object paths that still exist after a delete attempt. */
+export async function findExistingStoragePaths(storagePaths: string[]): Promise<string[]> {
+  const requested = new Set(storagePaths.filter(Boolean));
+  const folders = new Set(
+    [...requested].map((storagePath) => {
+      const slash = storagePath.lastIndexOf('/');
+      return slash < 0 ? '' : storagePath.slice(0, slash);
+    }),
+  );
+  const existing: string[] = [];
+  for (const folderPath of folders) {
+    const paths = await listStoragePrefix({ folderPath });
+    for (const path of paths) {
+      if (requested.has(path)) existing.push(path);
+    }
+  }
+  return existing.sort();
+}
+
 /**
  * Create a time-limited signed URL so the browser can download a private file.
  * Default TTL: 1 hour.

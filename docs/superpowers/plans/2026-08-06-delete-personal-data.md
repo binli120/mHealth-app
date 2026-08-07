@@ -101,7 +101,7 @@
 - [ ] Delete foreign-key dependents explicitly where constraints use `SET NULL` or no cascade; use existing cascades only where verified in the current schema.
 - [ ] Remove customer communication/access records from both participant directions and delete customer-identifying audit payloads.
 - [ ] Remove applications before the applicant when required by current foreign keys, then remove applicant-owned profile, family, benefit, identity, and verification data.
-- [ ] Remove direct user-owned personal rows, including insurance history, notifications, help content, AI memory, analytics/session state, handoff/upload state, customer passkeys, and login-history data classified for deletion.
+- [ ] Remove direct user-owned personal rows, including insurance history, notifications, help content, AI memory, analytics/session state, handoff/upload state, and login-history data classified for deletion. Preserve authentication credentials, including passkeys.
 - [ ] Reset optional personal fields on `public.users` while preserving its ID, email/login linkage, active status, and `user_roles`.
 - [ ] Add SQL comments documenting the preserve/delete boundary and make reruns no-ops.
 - [ ] Verify inside the same transaction that no classified customer/application rows remain; rollback on residue.
