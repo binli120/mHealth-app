@@ -13,11 +13,15 @@ interface ResetContextRow {
 
 export async function assertCustomerRole(userId: string): Promise<boolean> {
   const { rows } = await getDbPool().query<{ allowed: boolean }>(
-    `SELECT EXISTS (
-       SELECT 1 FROM public.user_roles ur
-       JOIN public.roles r ON r.id = ur.role_id
-       WHERE ur.user_id = $1::uuid AND r.name IN ('applicant', 'customer', 'patient')
-     ) AS allowed`,
+    `SELECT
+       EXISTS (SELECT 1 FROM public.users WHERE id = $1::uuid)
+       AND NOT EXISTS (
+         SELECT 1
+         FROM public.user_roles ur
+         JOIN public.roles r ON r.id = ur.role_id
+         WHERE ur.user_id = $1::uuid
+           AND r.name IN ('admin', 'social_worker', 'reviewer', 'read_only_staff', 'case_reviewer', 'supervisor')
+       ) AS allowed`,
     [userId],
   )
   return rows[0]?.allowed ?? false
