@@ -107,10 +107,21 @@ BEGIN
   DELETE FROM public.applications WHERE id = ANY(v_application_ids);
   DELETE FROM public.applicants WHERE id = v_applicant_id;
 
-  UPDATE public.users
-  SET avatar_url = NULL,
-      last_active_at = NULL
-  WHERE id = p_user_id;
+  -- Older deployed schemas predate users.avatar_url. Profile avatars are
+  -- already removed with user_profiles/storage; clear this optional column
+  -- only where it exists so the reset works across supported schema versions.
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'users'
+      AND column_name = 'avatar_url'
+  ) THEN
+    EXECUTE 'UPDATE public.users SET avatar_url = NULL, last_active_at = NULL WHERE id = $1'
+      USING p_user_id;
+  ELSE
+    UPDATE public.users SET last_active_at = NULL WHERE id = p_user_id;
+  END IF;
 
   IF EXISTS (SELECT 1 FROM public.applicants WHERE user_id = p_user_id)
      OR EXISTS (SELECT 1 FROM public.notifications WHERE user_id = p_user_id)

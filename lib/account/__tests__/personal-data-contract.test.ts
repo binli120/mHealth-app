@@ -38,4 +38,12 @@ describe("personal-data table contract", () => {
       .map(([table]) => table)
     expect(required.filter((table) => !covered.has(table)).sort()).toEqual([])
   })
+
+  it("guards optional public.users columns used by the reset", () => {
+    const migration = fs.readFileSync(
+      path.join(process.cwd(), "supabase", "migrations", "20260806000001_personal_data_reset.sql"),
+      "utf8",
+    )
+    expect(migration).toMatch(/information_schema\.columns[\s\S]*column_name = 'avatar_url'/)
+  })
 })
