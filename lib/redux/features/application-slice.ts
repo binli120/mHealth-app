@@ -361,6 +361,15 @@ const applicationSlice = createSlice({
       target.submittedAt = null
       touchApplication(target)
     },
+    resetApplications() {
+      return {
+        activeApplicationId: DEFAULT_APPLICATION_ID,
+        applicationOrder: [DEFAULT_APPLICATION_ID],
+        applicationsById: {
+          [DEFAULT_APPLICATION_ID]: createApplicationRecord(DEFAULT_APPLICATION_ID),
+        },
+      }
+    },
   },
 })
 
@@ -376,6 +385,7 @@ export const {
   setApplicationWizardState,
   markApplicationSubmitted,
   resetNewApplicationForm,
+  resetApplications,
 } = applicationSlice.actions
 
 export const applicationReducer = applicationSlice.reducer

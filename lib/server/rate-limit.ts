@@ -198,6 +198,13 @@ export const helpQuestionLimiter = new DbRateLimiter({ limit: 5, windowMs: 60 * 
 /** Help Q&A — new answer: 20 per hour per user */
 export const helpAnswerLimiter = new DbRateLimiter({ limit: 20, windowMs: 60 * 60_000 })
 
+/** Personal-data reset — two attempts per hour per authenticated customer; fail closed. */
+export const personalDataResetLimiter = new DbRateLimiter({
+  limit: 2,
+  windowMs: 60 * 60_000,
+  failOpen: false,
+})
+
 // ── Helper ────────────────────────────────────────────────────────────────────
 
 /** Extract the best available client IP from a Next.js Request. */
