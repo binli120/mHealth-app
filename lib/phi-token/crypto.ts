@@ -15,6 +15,16 @@
 const ALGORITHM = "AES-GCM"
 const KEY_LENGTH = 256
 const IV_LENGTH = 12
+const WEB_CRYPTO_UNAVAILABLE_MESSAGE =
+  "Secure browser encryption is unavailable. Open this app at http://localhost:3001 and try again."
+
+function getWebCrypto(): Crypto {
+  const cryptoApi = globalThis.crypto
+  if (!cryptoApi?.subtle || typeof cryptoApi.getRandomValues !== "function") {
+    throw new Error(WEB_CRYPTO_UNAVAILABLE_MESSAGE)
+  }
+  return cryptoApi
+}
 
 function toBase64(bytes: Uint8Array): string {
   return btoa(String.fromCharCode(...bytes))
@@ -25,28 +35,29 @@ function fromBase64(b64: string): Uint8Array {
 }
 
 export async function generateKey(): Promise<CryptoKey> {
-  return crypto.subtle.generateKey({ name: ALGORITHM, length: KEY_LENGTH }, true, [
+  return getWebCrypto().subtle.generateKey({ name: ALGORITHM, length: KEY_LENGTH }, true, [
     "encrypt",
     "decrypt",
   ])
 }
 
 export async function exportKeyBase64(key: CryptoKey): Promise<string> {
-  const raw = await crypto.subtle.exportKey("raw", key)
+  const raw = await getWebCrypto().subtle.exportKey("raw", key)
   return toBase64(new Uint8Array(raw))
 }
 
 export async function importKeyBase64(b64: string): Promise<CryptoKey> {
-  return crypto.subtle.importKey("raw", fromBase64(b64), { name: ALGORITHM }, false, ["decrypt"])
+  return getWebCrypto().subtle.importKey("raw", fromBase64(b64), { name: ALGORITHM }, false, ["decrypt"])
 }
 
 export async function encryptJson(
   value: unknown,
   key: CryptoKey,
 ): Promise<{ iv: string; ciphertext: string }> {
-  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH))
+  const cryptoApi = getWebCrypto()
+  const iv = cryptoApi.getRandomValues(new Uint8Array(IV_LENGTH))
   const encoded = new TextEncoder().encode(JSON.stringify(value))
-  const ciphertextBuffer = await crypto.subtle.encrypt({ name: ALGORITHM, iv }, key, encoded)
+  const ciphertextBuffer = await cryptoApi.subtle.encrypt({ name: ALGORITHM, iv }, key, encoded)
   return {
     iv: toBase64(iv),
     ciphertext: toBase64(new Uint8Array(ciphertextBuffer)),
@@ -54,7 +65,7 @@ export async function encryptJson(
 }
 
 export async function decryptJson(iv: string, ciphertext: string, key: CryptoKey): Promise<unknown> {
-  const plainBuffer = await crypto.subtle.decrypt(
+  const plainBuffer = await getWebCrypto().subtle.decrypt(
     { name: ALGORITHM, iv: fromBase64(iv) },
     key,
     fromBase64(ciphertext),
