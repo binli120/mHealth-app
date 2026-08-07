@@ -134,11 +134,31 @@ async function findApplicantIdForUser(userId: string): Promise<string | null> {
 
 async function requireApplicantIdForUser(userId: string): Promise<string> {
   const applicantId = await findApplicantIdForUser(userId)
-  if (!applicantId) {
+  if (applicantId) return applicantId
+
+  const pool = getDbPool()
+  const { rows } = await pool.query<{ id: string }>(
+    `INSERT INTO public.applicants (user_id)
+     SELECT u.id
+     FROM public.users u
+     WHERE u.id = $1::uuid
+       AND NOT EXISTS (
+         SELECT 1
+         FROM public.user_roles ur
+         JOIN public.roles r ON r.id = ur.role_id
+         WHERE ur.user_id = u.id
+           AND r.name IN ('admin', 'social_worker', 'reviewer', 'read_only_staff', 'case_reviewer', 'supervisor')
+       )
+     ON CONFLICT (user_id) DO UPDATE SET user_id = EXCLUDED.user_id
+     RETURNING id`,
+    [userId],
+  )
+
+  if (rows.length === 0) {
     throw new ApplicationDraftAccessError("Applicant profile was not found for the current user.")
   }
 
-  return applicantId
+  return String(rows[0].id)
 }
 
 /**
@@ -566,6 +586,16 @@ export async function swapPhiDraftResumeId(params: {
     ? await resolveApplicantIdWithSwAccess(params.userId, params.actingForUserId)
     : await requireApplicantIdForUser(params.userId)
   const pool = getDbPool()
+
+  // Save & Exit can run before the best-effort safe-draft autosave. Ensure the
+  // authenticated owner has a blank draft so the PHI metadata update is not
+  // rejected merely because those two requests arrived out of order.
+  await pool.query(
+    `INSERT INTO public.applications (id, applicant_id, status, last_saved_at)
+     VALUES ($1::uuid, $2::uuid, 'draft', now())
+     ON CONFLICT (id) DO NOTHING`,
+    [params.applicationId, applicantId],
+  )
 
   const { rows } = await pool.query<{ old_id: string | null }>(
     `
