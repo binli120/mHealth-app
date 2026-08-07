@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { Loader2, Trash2 } from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
+import { CircleCheck, Loader2, Trash2 } from "lucide-react"
 
 import {
   AlertDialog,
@@ -42,13 +42,45 @@ interface DeletePersonalDataCardProps {
   onDeleted?: () => void
 }
 
+type PresenceStatus = "loading" | "present" | "empty" | "error"
+
+async function fetchPresenceStatus(): Promise<PresenceStatus> {
+  const response = await authenticatedFetch("/api/account/personal-data")
+  const payload = (await response.json().catch(() => ({}))) as { hasPersonalData?: boolean }
+  if (!response.ok || typeof payload.hasPersonalData !== "boolean") throw new Error()
+  return payload.hasPersonalData ? "present" : "empty"
+}
+
 export function DeletePersonalDataCard({ onDeleted }: DeletePersonalDataCardProps) {
   const dispatch = useAppDispatch()
   const [isOpen, setIsOpen] = useState(false)
   const [confirmation, setConfirmation] = useState("")
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState("")
+  const [presenceStatus, setPresenceStatus] = useState<PresenceStatus>("loading")
   const isConfirmed = confirmation === PERSONAL_DATA_CONFIRMATION_PHRASE
+
+  const loadPresence = useCallback(async () => {
+    try {
+      setPresenceStatus(await fetchPresenceStatus())
+    } catch {
+      setPresenceStatus("error")
+    }
+  }, [])
+
+  useEffect(() => {
+    let isCurrent = true
+    void fetchPresenceStatus()
+      .then((status) => {
+        if (isCurrent) setPresenceStatus(status)
+      })
+      .catch(() => {
+        if (isCurrent) setPresenceStatus("error")
+      })
+    return () => {
+      isCurrent = false
+    }
+  }, [])
 
   function handleOpenChange(open: boolean) {
     if (isDeleting) return
@@ -77,12 +109,58 @@ export function DeletePersonalDataCard({ onDeleted }: DeletePersonalDataCardProp
       dispatch(resetProfile())
       dispatch(resetApplications())
       setIsOpen(false)
+      setPresenceStatus("empty")
       if (onDeleted) onDeleted()
       else window.location.assign("/customer/dashboard")
     } catch {
       setError("We could not delete all of your data. Nothing is marked complete; please try again.")
       setIsDeleting(false)
     }
+  }
+
+  if (presenceStatus === "loading") {
+    return (
+      <Card>
+        <CardContent className="flex items-center gap-2 pt-6 text-sm text-muted-foreground" aria-live="polite">
+          <Loader2 className="h-4 w-4 animate-spin" /> Checking for personal data…
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (presenceStatus === "empty") {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <CircleCheck className="h-4 w-4 text-emerald-600" /> Personal data
+          </CardTitle>
+          <CardDescription>No personal data has been entered.</CardDescription>
+        </CardHeader>
+      </Card>
+    )
+  }
+
+  if (presenceStatus === "error") {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Personal data</CardTitle>
+          <CardDescription>We could not check whether personal data exists.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setPresenceStatus("loading")
+              void loadPresence()
+            }}
+          >
+            Try again
+          </Button>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (

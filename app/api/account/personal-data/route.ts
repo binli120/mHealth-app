@@ -4,7 +4,7 @@ import { createHash } from "node:crypto"
 import { resetPersonalData } from "@/lib/account/delete-personal-data"
 import { PERSONAL_DATA_CONFIRMATION_PHRASE } from "@/lib/account/personal-data-contract"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
-import { assertCustomerRole } from "@/lib/db/personal-data-reset"
+import { assertCustomerRole, hasCustomerPersonalData } from "@/lib/db/personal-data-reset"
 import { logServerError } from "@/lib/server/logger"
 import {
   checkRateLimitAsync,
@@ -12,6 +12,34 @@ import {
 } from "@/lib/server/rate-limit"
 
 export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
+
+export async function GET(request: Request) {
+  const authResult = await requireAuthenticatedUser(request)
+  if (!authResult.ok) return authResult.response
+
+  try {
+    if (!(await assertCustomerRole(authResult.userId))) {
+      return NextResponse.json({ error: "Forbidden." }, { status: 403 })
+    }
+
+    const hasPersonalData = await hasCustomerPersonalData(authResult.userId)
+    return NextResponse.json(
+      { hasPersonalData },
+      { headers: { "Cache-Control": "private, no-store" } },
+    )
+  } catch (error) {
+    logServerError("Personal data presence check failed", new Error("Personal data presence check failed."), {
+      route: "GET /api/account/personal-data",
+      userId: authResult.userId,
+      errorType: error instanceof Error ? error.name : "UnknownError",
+    })
+    return NextResponse.json(
+      { error: "Unable to check personal data. Please try again." },
+      { status: 500 },
+    )
+  }
+}
 
 export async function DELETE(request: Request) {
   const authResult = await requireAuthenticatedUser(request)

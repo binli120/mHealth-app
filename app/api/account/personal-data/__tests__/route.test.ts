@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NextResponse } from "next/server"
 
 vi.mock("@/lib/auth/require-auth", () => ({ requireAuthenticatedUser: vi.fn() }))
-vi.mock("@/lib/db/personal-data-reset", () => ({ assertCustomerRole: vi.fn() }))
+vi.mock("@/lib/db/personal-data-reset", () => ({
+  assertCustomerRole: vi.fn(),
+  hasCustomerPersonalData: vi.fn(),
+}))
 vi.mock("@/lib/account/delete-personal-data", () => ({ resetPersonalData: vi.fn() }))
 vi.mock("@/lib/server/rate-limit", () => ({
   checkRateLimitAsync: vi.fn(),
@@ -10,10 +13,10 @@ vi.mock("@/lib/server/rate-limit", () => ({
 }))
 vi.mock("@/lib/server/logger", () => ({ logServerError: vi.fn() }))
 
-import { DELETE } from "@/app/api/account/personal-data/route"
+import { DELETE, GET } from "@/app/api/account/personal-data/route"
 import { resetPersonalData } from "@/lib/account/delete-personal-data"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
-import { assertCustomerRole } from "@/lib/db/personal-data-reset"
+import { assertCustomerRole, hasCustomerPersonalData } from "@/lib/db/personal-data-reset"
 import { checkRateLimitAsync } from "@/lib/server/rate-limit"
 
 const USER_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
@@ -30,8 +33,54 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(requireAuthenticatedUser).mockResolvedValue({ ok: true, userId: USER_ID } as never)
   vi.mocked(assertCustomerRole).mockResolvedValue(true)
+  vi.mocked(hasCustomerPersonalData).mockResolvedValue(false)
   vi.mocked(checkRateLimitAsync).mockResolvedValue(null)
   vi.mocked(resetPersonalData).mockResolvedValue(undefined)
+})
+
+describe("GET /api/account/personal-data", () => {
+  it("rejects unauthenticated requests without querying personal data", async () => {
+    vi.mocked(requireAuthenticatedUser).mockResolvedValue({
+      ok: false,
+      response: NextResponse.json({ error: "Authentication required." }, { status: 401 }),
+    } as never)
+
+    expect((await GET(new Request("http://localhost/api/account/personal-data"))).status).toBe(401)
+    expect(hasCustomerPersonalData).not.toHaveBeenCalled()
+  })
+
+  it("rejects staff accounts", async () => {
+    vi.mocked(assertCustomerRole).mockResolvedValue(false)
+
+    expect((await GET(new Request("http://localhost/api/account/personal-data"))).status).toBe(403)
+    expect(hasCustomerPersonalData).not.toHaveBeenCalled()
+  })
+
+  it("returns personal-data presence for the authenticated customer", async () => {
+    vi.mocked(hasCustomerPersonalData).mockResolvedValue(true)
+
+    const response = await GET(new Request("http://localhost/api/account/personal-data"))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ hasPersonalData: true })
+    expect(hasCustomerPersonalData).toHaveBeenCalledWith(USER_ID)
+  })
+
+  it("returns false for an empty customer account", async () => {
+    const response = await GET(new Request("http://localhost/api/account/personal-data"))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ hasPersonalData: false })
+  })
+
+  it("returns a generic error when the presence query fails", async () => {
+    vi.mocked(hasCustomerPersonalData).mockRejectedValue(new Error("secret profile value"))
+
+    const response = await GET(new Request("http://localhost/api/account/personal-data"))
+
+    expect(response.status).toBe(500)
+    expect(JSON.stringify(await response.json())).not.toContain("secret profile value")
+  })
 })
 
 describe("DELETE /api/account/personal-data", () => {

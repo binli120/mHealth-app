@@ -11,6 +11,10 @@ interface ResetContextRow {
   storage_paths: string[] | null
 }
 
+interface PersonalDataPresenceRow {
+  has_personal_data: boolean
+}
+
 export async function assertCustomerRole(userId: string): Promise<boolean> {
   const { rows } = await getDbPool().query<{ allowed: boolean }>(
     `SELECT
@@ -25,6 +29,47 @@ export async function assertCustomerRole(userId: string): Promise<boolean> {
     [userId],
   )
   return rows[0]?.allowed ?? false
+}
+
+export async function hasCustomerPersonalData(
+  userId: string,
+  database: Queryable = getDbPool(),
+): Promise<boolean> {
+  const { rows } = await database.query<PersonalDataPresenceRow>(
+    `SELECT (
+       EXISTS (
+         SELECT 1 FROM public.applicants WHERE user_id = $1::uuid
+       )
+       OR EXISTS (
+         SELECT 1 FROM public.users u
+         WHERE u.id = $1::uuid AND NULLIF(to_jsonb(u)->>'avatar_url', '') IS NOT NULL
+       )
+       OR EXISTS (
+         SELECT 1 FROM public.applications a
+         JOIN public.applicants ap ON ap.id = a.applicant_id
+         WHERE ap.user_id = $1::uuid
+       )
+       OR EXISTS (
+         SELECT 1 FROM public.user_profiles up
+         JOIN public.applicants ap ON ap.id = up.applicant_id
+         WHERE ap.user_id = $1::uuid
+           AND (up.profile_data <> '{}'::jsonb OR up.bank_data <> '{}'::jsonb OR NULLIF(up.avatar_url, '') IS NOT NULL)
+       )
+       OR EXISTS (
+         SELECT 1 FROM public.family_profiles fp
+         JOIN public.applicants ap ON ap.id = fp.applicant_id
+         WHERE ap.user_id = $1::uuid AND fp.profile_data <> '{}'::jsonb
+       )
+       OR EXISTS (SELECT 1 FROM public.session_messages WHERE sender_id = $1::uuid)
+       OR EXISTS (SELECT 1 FROM public.sw_direct_messages WHERE sender_id = $1::uuid)
+       OR EXISTS (SELECT 1 FROM public.help_questions WHERE user_id = $1::uuid)
+       OR EXISTS (SELECT 1 FROM public.documents WHERE uploaded_by = $1::uuid)
+       OR EXISTS (SELECT 1 FROM public.mobile_upload_sessions WHERE user_id = $1::uuid AND status = 'completed')
+     ) AS has_personal_data`,
+    [userId],
+  )
+
+  return rows[0]?.has_personal_data ?? false
 }
 
 export async function getPersonalDataResetContext(
