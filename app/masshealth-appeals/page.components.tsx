@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Small presentational sub-components used exclusively by the MassHealth
  * Appeals page. Extracted here to keep page.tsx focused on page logic.

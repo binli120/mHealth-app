@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * GET /api/social-worker/messages
  * Returns all DM threads for the authenticated SW (one row per patient).

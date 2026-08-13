@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Password strength rules and scoring for the registration flow.
  *

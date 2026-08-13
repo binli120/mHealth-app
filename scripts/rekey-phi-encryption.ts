@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * PHI key-rotation migration: re-encrypts every *_encrypted column on the
  * applicants table from the old AES-256-GCM key (v1: prefix) to a freshly

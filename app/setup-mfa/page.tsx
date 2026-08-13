@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Standalone MFA setup page — reached after email-confirmation in production.
  *

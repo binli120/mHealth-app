@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 // The Web Speech API (SpeechRecognition) is not part of lib.dom.d.ts —

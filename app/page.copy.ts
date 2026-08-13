@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 /**
@@ -244,7 +244,7 @@ const EN: LandingCopy = {
   mailingListError: "Enter a valid email address.",
   footerProgramLinks: ["MassHealth", "SNAP / Food Assistance", "EITC Tax Credits", "LIHEAP Energy Aid"],
   footerPlatformLinks: ["Eligibility Checker", "Benefit Stack Tool", "Live Assistance", "Appeal Assistance", "Appeal Letter (AI)", "Knowledge Center", "Create Account"],
-  footerCopyright: "© 2026 HealthCompass MA. Not affiliated with the Commonwealth of Massachusetts. All rights reserved.",
+  footerCopyright: "© 2026 Comura Solutions, LLC. Not affiliated with the Commonwealth of Massachusetts. All rights reserved.",
 }
 
 // ── Spanish ───────────────────────────────────────────────────────────────────
@@ -378,7 +378,7 @@ const ES: LandingCopy = {
   mailingListError: "Ingresa un correo válido.",
   footerProgramLinks: ["MassHealth", "SNAP / Asistencia Alimentaria", "Créditos Fiscales EITC", "Ayuda Energética LIHEAP"],
   footerPlatformLinks: ["Verificador de Elegibilidad", "Herramienta de Acumulación", "Asistencia en Vivo", "Asistencia para Apelaciones", "Carta de Apelación (IA)", "Centro de Conocimiento", "Crear Cuenta"],
-  footerCopyright: "© 2026 HealthCompass MA. No afiliado con el Commonwealth de Massachusetts. Todos los derechos reservados.",
+  footerCopyright: "© 2026 Comura Solutions, LLC. No afiliado con el Commonwealth de Massachusetts. Todos los derechos reservados.",
 }
 
 // ── Chinese (Simplified) ──────────────────────────────────────────────────────
@@ -512,7 +512,7 @@ const ZH_CN: LandingCopy = {
   mailingListError: "请输入有效的电子邮件地址。",
   footerProgramLinks: ["MassHealth", "SNAP / 食品援助", "EITC税收抵免", "LIHEAP能源援助"],
   footerPlatformLinks: ["资格检查器", "福利叠加工具", "实时援助", "申诉援助", "申诉信 (AI)", "知识中心", "创建账户"],
-  footerCopyright: "© 2026 HealthCompass MA。与马萨诸塞州联邦政府无关联。版权所有。",
+  footerCopyright: "© 2026 Comura Solutions, LLC。与马萨诸塞州联邦政府无关联。版权所有。",
 }
 
 // ── Haitian Creole ────────────────────────────────────────────────────────────
@@ -646,7 +646,7 @@ const HT: LandingCopy = {
   mailingListError: "Antre yon imèl ki valid.",
   footerProgramLinks: ["MassHealth", "SNAP / Asistans Manje", "Kredi Taks EITC", "Èd Enèji LIHEAP"],
   footerPlatformLinks: ["Verifikateur Kalifikasyon", "Zouti Akimilasyon Benefis", "Asistans an Dirèk", "Asistans pou Apèl", "Lèt Apèl (AI)", "Sant Konesans", "Kreye Kont"],
-  footerCopyright: "© 2026 HealthCompass MA. Pa afilye avèk Commonwealth of Massachusetts. Tout dwa rezève.",
+  footerCopyright: "© 2026 Comura Solutions, LLC. Pa afilye avèk Commonwealth of Massachusetts. Tout dwa rezève.",
 }
 
 // ── Portuguese (Brazil) ───────────────────────────────────────────────────────
@@ -780,7 +780,7 @@ const PT_BR: LandingCopy = {
   mailingListError: "Insira um e-mail válido.",
   footerProgramLinks: ["MassHealth", "SNAP / Assistência Alimentar", "Créditos Fiscais EITC", "Auxílio Energia LIHEAP"],
   footerPlatformLinks: ["Verificador de Elegibilidade", "Ferramenta de Acumulação", "Assistência ao Vivo", "Assistência para Recurso", "Carta de Recurso (IA)", "Centro de Conhecimento", "Criar Conta"],
-  footerCopyright: "© 2026 HealthCompass MA. Não afiliado ao Commonwealth de Massachusetts. Todos os direitos reservados.",
+  footerCopyright: "© 2026 Comura Solutions, LLC. Não afiliado ao Commonwealth de Massachusetts. Todos os direitos reservados.",
 }
 
 // ── Vietnamese ────────────────────────────────────────────────────────────────
@@ -914,7 +914,7 @@ const VI: LandingCopy = {
   mailingListError: "Nhập địa chỉ email hợp lệ.",
   footerProgramLinks: ["MassHealth", "SNAP / Hỗ Trợ Thực Phẩm", "Tín Thuế EITC", "Hỗ Trợ Năng Lượng LIHEAP"],
   footerPlatformLinks: ["Kiểm Tra Tư Cách", "Công Cụ Tích Lũy Phúc Lợi", "Hỗ Trợ Trực Tiếp", "Hỗ Trợ Kháng Cáo", "Thư Kháng Cáo (AI)", "Trung Tâm Kiến Thức", "Tạo Tài Khoản"],
-  footerCopyright: "© 2026 HealthCompass MA. Không liên kết với Commonwealth of Massachusetts. Bảo lưu mọi quyền.",
+  footerCopyright: "© 2026 Comura Solutions, LLC. Không liên kết với Commonwealth of Massachusetts. Bảo lưu mọi quyền.",
 }
 
 // ── Lookup ────────────────────────────────────────────────────────────────────

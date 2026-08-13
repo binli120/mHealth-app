@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Pure (no JSX, no hooks) question-queue engine for the ACA-3 intake chat.
  * Extracted from intake-chat.tsx so the question-building logic can be

@@ -9,7 +9,7 @@
  *        wire; it is only used server-side (e.g. PDF generation).
  *
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import { NextResponse } from "next/server"

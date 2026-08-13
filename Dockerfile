@@ -1,5 +1,5 @@
 # @author: Bin Lee
-# @email: blee@healthcompass.cloud
+# @email: blee@comura.ai
 
 # ── Stage 1: install dependencies ───────────────────────────────────────────
 FROM node:22-alpine AS deps

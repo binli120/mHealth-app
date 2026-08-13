@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * POST   /api/handoff  — create session (authenticated)
  * GET    /api/handoff?token=xxx — poll status (authenticated)

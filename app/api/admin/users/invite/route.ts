@@ -3,7 +3,7 @@
  * Admin creates an invitation for a user email, optionally linked to a company.
  * Sends the invitation link via Resend; logs the link via logServerInfo in dev if no API key is set.
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import { NextResponse } from "next/server"

@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * POST /api/messages/[userId]/upload
  * Upload a voice recording or image to a direct message thread.

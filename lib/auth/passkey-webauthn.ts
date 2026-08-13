@@ -1,7 +1,7 @@
 /**
  * WebAuthn request helpers for admin passkeys.
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import "server-only"

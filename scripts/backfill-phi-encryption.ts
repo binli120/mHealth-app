@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * One-time backfill: encrypt existing plaintext PHI columns on the applicants
  * table into the new *_encrypted columns added by migration

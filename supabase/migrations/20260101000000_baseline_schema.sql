@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Baseline Schema — synthesized from 43 incremental migrations
--- @author: Bin Lee <blee@healthcompass.cloud>
+-- @author: Bin Lee <blee@comura.ai>
 --
 -- Covers migrations:
 --   20260301133000 through 20260528100000

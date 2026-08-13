@@ -1,7 +1,7 @@
 /**
  * Server-side DB helpers for patient/user passkey credentials.
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import "server-only"

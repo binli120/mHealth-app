@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Localised copy for the MFA enrolment UI (MfaEnrollStep + /setup-mfa page).
  */

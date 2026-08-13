@@ -4,7 +4,7 @@
  * Social worker view of a patient — renders the exact same dashboard
  * experience the patient sees, in read-only mode.
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import { useCallback, useEffect, useMemo, useReducer } from "react"

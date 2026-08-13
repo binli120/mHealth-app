@@ -18,7 +18,7 @@
 - Migration filename prefix: `20260628000001_` (increment if collision)
 - All new API routes: follow `requireAuthenticatedUser` + `logServerError` pattern from `lib/auth/require-auth.ts` and `lib/server/logger.ts`
 - Test file convention: `__tests__/route.test.ts` next to route, `vi.mock` before imports
-- Author header on all new files: `@author: Bin Lee\n * @email: blee@healthcompass.cloud`
+- Author header on all new files: `@author: Bin Lee\n * @email: blee@comura.ai`
 
 ---
 
@@ -246,7 +246,7 @@ Expected: `Cannot find module '@/lib/db/mobile-handoff-session'`
 // lib/db/mobile-handoff-session.ts
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * DB layer — universal desktop→mobile handoff sessions
  */
@@ -533,7 +533,7 @@ Expected: `Cannot find module '@/app/api/handoff/route'`
 // app/api/handoff/route.ts
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * POST   /api/handoff  — create session (authenticated)
  * GET    /api/handoff?token=xxx — poll status (authenticated)
@@ -756,7 +756,7 @@ Expected: `Cannot find module`
 // app/api/handoff/[token]/exchange/route.ts
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * POST /api/handoff/[token]/exchange — unauthenticated, single-use
  * Mobile device claims the token and receives the Supabase refresh token + context.
@@ -797,7 +797,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
 // app/api/handoff/[token]/complete/route.ts
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * POST /api/handoff/[token]/complete — authenticated (mobile has session from exchange)
  */
@@ -1160,7 +1160,7 @@ export default function MobileAlreadyClaimedPage() {
 // app/mobile/[token]/page.tsx
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * /mobile/[token] — server component, renders MobileShell client component.
  * No auth — token is the credential.
@@ -1181,7 +1181,7 @@ export default async function MobileHandoffPage({ params }: PageProps) {
 // app/mobile/[token]/shell.tsx
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Exchanges the one-time token for a Supabase session, then renders
  * the appropriate context component.
@@ -1345,7 +1345,7 @@ git commit -m "feat: add mobile handoff shell and terminal pages"
 // components/handoff/mobile-voice-recorder.tsx
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Full-screen voice recorder for the voice_message handoff context.
  * Mirrors the recording logic in app/social-worker/messages/[patientId]/page.tsx.

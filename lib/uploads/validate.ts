@@ -8,7 +8,7 @@
  *   // result.mimeType is the normalised, verified MIME type
  *
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import { VISION_UPLOAD_FORMAT_LABEL, VISION_UPLOAD_MIME_TYPES } from "./accepted-types"

@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 export const COOKIE_CONSENT_COOKIE = "hc_cookie_consent"

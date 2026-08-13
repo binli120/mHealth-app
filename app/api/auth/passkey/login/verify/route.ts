@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import { verifyAuthenticationResponse, type AuthenticationResponseJSON } from "@simplewebauthn/server"

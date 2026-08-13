@@ -1,5 +1,5 @@
 -- @author: Bin Lee
--- @email: blee@healthcompass.cloud
+-- @email: blee@comura.ai
 
 select c.relname as table_name, c.relrowsecurity as rls_enabled
 from pg_class c

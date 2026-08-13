@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Migration: add require_2fa_reviewer + require_2fa_social_worker settings
--- @author: Bin Lee <blee@healthcompass.cloud>
+-- @author: Bin Lee <blee@comura.ai>
 --
 -- Adds two new admin_settings rows that gate aal2 (MFA) enforcement for the
 -- reviewer and social-worker auth guards.  Both default to 'false' so existing

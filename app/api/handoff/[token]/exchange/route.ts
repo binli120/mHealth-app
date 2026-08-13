@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * POST /api/handoff/[token]/exchange — unauthenticated, single-use
  * Mobile device claims the token and receives the Supabase refresh token + context.

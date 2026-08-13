@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Pure (no JSX, no hooks) state logic for the ACA-3 form wizard.
  * Extracted from form-wizard.tsx so these functions can be unit-tested

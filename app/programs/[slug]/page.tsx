@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Public, fully server-rendered landing page for one benefit program.
  * Everything here must be crawlable HTML — no client components, no

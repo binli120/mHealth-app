@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Pure helper functions shared by both ACA-3 eligibility engines:
  *   • aca3-eligibility-engine.ts  (new applicant)

@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Pure (no JSX, no hooks) answer-parsing and display helpers for the ACA-3
  * intake chat.  Extracted from intake-chat.tsx so these functions can be

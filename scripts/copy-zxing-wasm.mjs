@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Copies the zxing-wasm reader binary into public/ so the PDF417 scanner
  * (lib/identity/pdf417-scanner.ts) can load it from /wasm/zxing_reader.wasm.

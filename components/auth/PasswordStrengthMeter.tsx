@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Inline password strength meter shown below the password input.
  * Displays a segmented bar + individual rule checklist.

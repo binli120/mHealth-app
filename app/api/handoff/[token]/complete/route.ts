@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * POST /api/handoff/[token]/complete — authenticated (mobile has session from exchange)
  */

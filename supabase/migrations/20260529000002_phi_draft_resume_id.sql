@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Migration: phi_draft_resume_id + phi_draft_key_enc columns on applications
--- @author: Bin Lee <blee@healthcompass.cloud>
+-- @author: Bin Lee <blee@comura.ai>
 --
 -- Adds the PHI draft resume columns to applications if they are missing.
 -- The baseline schema (20260101000000) already includes these for fresh

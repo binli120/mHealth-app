@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 export const CUSTOMER_SUPPORT_EMAIL = "customer_supports@healthcompass.cloud"

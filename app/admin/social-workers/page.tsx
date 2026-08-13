@@ -2,7 +2,7 @@
 
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import { Suspense, useEffect, useState, useCallback } from "react"

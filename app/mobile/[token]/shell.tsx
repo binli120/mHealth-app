@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Exchanges the one-time token for a Supabase session, then renders
  * the appropriate context component.

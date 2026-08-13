@@ -121,7 +121,7 @@ Move these functions from `form-wizard.tsx` to the new file:
 ```typescript
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 "use client"
@@ -229,7 +229,7 @@ git commit -m "refactor(aca3): extract form-wizard-context.tsx — context + hyd
 ```typescript
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 "use client"
@@ -374,7 +374,7 @@ These are lines ~1918–2387 of the current `form-wizard.tsx` (after Tasks 1–2
 ```typescript
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 "use client"
@@ -478,7 +478,7 @@ These are ~lines 2368–2881 in the current file (line numbers shift as earlier 
 ```typescript
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 "use client"
@@ -565,7 +565,7 @@ git commit -m "refactor(aca3): extract form-wizard-steps.tsx — Steps 1-3 + Per
 ```typescript
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 "use client"
@@ -635,7 +635,7 @@ git commit -m "refactor(aca3): extract form-wizard-review-step.tsx — ReviewPdf
 ```typescript
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 "use client"
@@ -726,7 +726,7 @@ git commit -m "refactor(aca3): extract form-wizard-submit-step.tsx — ValidateA
 ```typescript
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Re-exports shared types used across intake-chat sub-modules and tests.
  */
@@ -843,7 +843,7 @@ These functions handle how the chat turns wizard schema into a flat question que
 ```typescript
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import {
@@ -1010,7 +1010,7 @@ import {
 ```typescript
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import {
@@ -1165,7 +1165,7 @@ All constants and all exported utility functions (lines ~100–818). These are a
 ```typescript
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import { createUuid } from "@/lib/utils/random-id"
@@ -1295,7 +1295,7 @@ git commit -m "refactor(aca3): extract application-assistant-utils.ts — all ut
 ```typescript
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 "use client"

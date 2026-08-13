@@ -4,7 +4,7 @@
  * still retrieved during the research step.
  *
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 export interface AppealCategoryEntry {

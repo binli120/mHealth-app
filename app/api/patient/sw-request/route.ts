@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Patient engagement request endpoints.
  * GET  /api/patient/sw-request        — list this patient's requests

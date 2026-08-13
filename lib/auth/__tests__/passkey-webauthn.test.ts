@@ -1,7 +1,7 @@
 /**
  * Unit tests for lib/auth/passkey-webauthn.ts
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest"

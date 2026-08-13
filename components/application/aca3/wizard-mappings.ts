@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Pure mapping functions that transform wizard state into downstream shapes:
  *   • MassHealthAcaPayload  — PDF generation

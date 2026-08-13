@@ -1,5 +1,5 @@
 # @author: Bin Lee
-# @email: blee@healthcompass.cloud
+# @email: blee@comura.ai
 
 FROM node:20-alpine
 WORKDIR /app

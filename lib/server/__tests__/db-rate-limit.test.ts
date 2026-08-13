@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Unit tests for DbRateLimiter. The Postgres pool is mocked so no real DB
  * is required — we verify the SQL arguments and that allowed/remaining/resetAt

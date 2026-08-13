@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import { createClient, type Session, type SupabaseClient, type User } from "@supabase/supabase-js"

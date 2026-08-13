@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Reusable TOTP enrolment card used in two places:
  *   1. Inline inside the registration flow (immediate session, dev mode / auto-confirm)

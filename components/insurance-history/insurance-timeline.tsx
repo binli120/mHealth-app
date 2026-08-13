@@ -1,7 +1,7 @@
 // components/insurance-history/insurance-timeline.tsx
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 "use client"

@@ -17,7 +17,7 @@
  * indefinitely for audit purposes.
  *
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import { NextResponse } from "next/server"

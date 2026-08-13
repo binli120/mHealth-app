@@ -2,7 +2,7 @@
  * Shared upload MIME contracts used by client pickers and server validators.
  *
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 export const VISION_UPLOAD_MIME_TYPES = [

@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Handles both OAuth flows Supabase JS v2 may use:
  *   - PKCE  → ?code=... in query params (exchangeCodeForSession)

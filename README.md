@@ -1137,8 +1137,8 @@ The eligibility engine uses hardcoded HHS Federal Poverty Level (FPL) guidelines
 
 ## License
 
-Copyright © 2026 HealthCompass MA. All rights reserved.
+Copyright © 2026 Comura Solutions, LLC. All rights reserved.
 
-This software and its source code are the proprietary and confidential property of HealthCompass MA. Unauthorized copying, distribution, modification, or use — in whole or in part — is strictly prohibited without prior written permission.
+This software and its source code are the proprietary and confidential property of Comura Solutions, LLC. Unauthorized copying, distribution, modification, or use — in whole or in part — is strictly prohibited without prior written permission.
 
-See [`LICENSE`](./LICENSE) for full terms. Licensing inquiries: blee@healthcompass.cloud
+See [`LICENSE`](./LICENSE) for full terms. Licensing inquiries: blee@comura.ai

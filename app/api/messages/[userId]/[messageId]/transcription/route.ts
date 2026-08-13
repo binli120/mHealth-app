@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * PATCH /api/messages/[userId]/[messageId]/transcription
  * Update the transcription and language for an existing voice message.

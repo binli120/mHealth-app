@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * GET /api/masshealth/appeals/categories
  * Proxy → masshealth-analysis service: GET /masshealth/appeals/categories

@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Round-trip test for the synthetic test driver license:
  *   build AAMVA payload → render PDF417 (bwip-js) → decode (zxing-wasm)

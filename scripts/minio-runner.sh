@@ -1,5 +1,5 @@
 # @author: Bin Lee
-# @email: blee@healthcompass.cloud
+# @email: blee@comura.ai
 
 docker run -p 9000:9000 -p 9001:9001 \
   -e "MINIO_ROOT_USER=admin" \

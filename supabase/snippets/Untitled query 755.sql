@@ -1,5 +1,5 @@
 -- @author: Bin Lee
--- @email: blee@healthcompass.cloud
+-- @email: blee@comura.ai
 
 CREATE TABLE notifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

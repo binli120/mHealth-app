@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Live-camera PDF417 scanner built on zxing-wasm (zxing-cpp).
  *

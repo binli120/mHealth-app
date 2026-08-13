@@ -1,5 +1,5 @@
 #!/bin/sh
 # @author: Bin Lee
-# @email: blee@healthcompass.cloud
+# @email: blee@comura.ai
 
 pnpm exec vitest run --reporter=verbose "$@"

@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Shared helpers for reading and writing encrypted PHI columns on the
  * applicants table.  All PHI is stored exclusively in *_encrypted columns

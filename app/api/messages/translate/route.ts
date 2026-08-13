@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * POST /api/messages/translate
  * Translate a voice message transcription to English using Ollama (llama3.2).

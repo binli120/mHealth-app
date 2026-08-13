@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Full-screen voice recorder for the voice_message handoff context.
  * Mirrors the recording logic in app/social-worker/messages/[patientId]/page.tsx.

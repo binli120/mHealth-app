@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * POST /api/applications/[applicationId]/mobile-upload-session
  *   Creates a cross-device upload session.

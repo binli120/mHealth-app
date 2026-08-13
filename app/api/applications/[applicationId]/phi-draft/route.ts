@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * PHI draft blob — encrypted applicant PHI stored in Supabase Storage.
  *

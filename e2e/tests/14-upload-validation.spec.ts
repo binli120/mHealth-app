@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * E2E tests for server-side upload validation (lib/uploads/validate.ts).
  *

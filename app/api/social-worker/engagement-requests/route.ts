@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * GET /api/social-worker/engagement-requests
  * Returns pending engagement requests directed at the authenticated SW.

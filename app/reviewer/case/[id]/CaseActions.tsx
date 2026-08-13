@@ -2,7 +2,7 @@
 
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import { useMemo, useState, type FormEvent } from "react"

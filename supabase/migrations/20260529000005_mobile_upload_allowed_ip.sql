@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Migration: add allowed_ip to mobile_upload_sessions
--- @author: Bin Lee <blee@healthcompass.cloud>
+-- @author: Bin Lee <blee@comura.ai>
 --
 -- Stores the client IP address captured when the session is created so that
 -- the public upload endpoint can reject requests from a different device.

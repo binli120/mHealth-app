@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Baseline Seed Data — synthesized from 43 incremental migrations
--- @author: Bin Lee <blee@healthcompass.cloud>
+-- @author: Bin Lee <blee@comura.ai>
 --
 -- Contains only DML (INSERT … ON CONFLICT DO NOTHING / DO UPDATE).
 -- All DDL lives in 20260101000000_baseline_schema.sql.

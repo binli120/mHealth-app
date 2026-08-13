@@ -1,7 +1,7 @@
 /**
  * Unit tests for app/api/auth/passkey/login/verify/route.ts
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest"

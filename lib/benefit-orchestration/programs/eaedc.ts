@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 // EAEDC (Emergency Aid to the Elderly, Disabled and Children) evaluator

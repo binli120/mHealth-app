@@ -55,7 +55,7 @@ Create `app/api/rag/ingest/__tests__/route.test.ts`:
 ```typescript
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -570,7 +570,7 @@ Create `lib/server/__tests__/db-rate-limit.test.ts`:
 ```typescript
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Unit tests for DbRateLimiter. The Postgres pool is mocked so no real DB
  * is required — we verify the SQL arguments and that allowed/remaining/resetAt

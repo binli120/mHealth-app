@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Static content for the public, server-rendered program landing pages
  * (/programs/[slug]). These pages exist for SEO: each one targets the

@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * CompassIcon avatar and MessageBubble sub-component for the application assistant.
  */

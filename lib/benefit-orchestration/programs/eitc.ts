@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 // EITC evaluator — Federal Earned Income Tax Credit + MA EITC (40% of federal)

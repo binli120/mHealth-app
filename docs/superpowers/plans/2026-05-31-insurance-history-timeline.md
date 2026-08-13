@@ -191,7 +191,7 @@ git commit -m "feat: add insurance history shared types"
 // lib/db/insurance-history.ts
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import "server-only"
@@ -658,7 +658,7 @@ Expected: FAIL — module not found.
 // lib/insurance-history/explanation-engine.ts
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import type { CoverageRecord, ChangeFactor, InsuranceExplanation } from "@/lib/insurance-history/types"
@@ -850,7 +850,7 @@ git commit -m "feat: add insurance explanation engine with rules templates and u
 // app/api/insurance-history/records/route.ts
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import { NextResponse } from "next/server"
@@ -910,7 +910,7 @@ export async function POST(request: Request) {
 // app/api/insurance-history/records/[id]/route.ts
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import { NextResponse } from "next/server"
@@ -979,7 +979,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 // app/api/insurance-history/explain/route.ts
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import { NextResponse } from "next/server"
@@ -1078,7 +1078,7 @@ git commit -m "feat: add insurance history API routes (records CRUD + explain)"
 // components/insurance-history/insurance-summary-card.tsx
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 "use client"
@@ -1143,7 +1143,7 @@ export function InsuranceSummaryCard({ latest }: InsuranceSummaryCardProps) {
 // components/insurance-history/timeline-entry.tsx
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 "use client"
@@ -1263,7 +1263,7 @@ export function TimelineEntry({ item, isFirst, isLast, onEdit }: TimelineEntryPr
 // components/insurance-history/insurance-timeline.tsx
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 "use client"
@@ -1338,7 +1338,7 @@ export function InsuranceTimeline({ items }: InsuranceTimelineProps) {
 // components/insurance-history/coverage-form.tsx
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 "use client"
@@ -1549,7 +1549,7 @@ git commit -m "feat: add insurance history components (summary card, timeline, e
 // app/customer/insurance-history/page.tsx
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import { redirect } from "next/navigation"
@@ -1781,7 +1781,7 @@ git commit -m "feat: auto-populate insurance coverage record on application appr
 // e2e/pages/insurance-history.page.ts
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import { Page, expect } from "@playwright/test"
@@ -1843,7 +1843,7 @@ export class InsuranceHistoryPage {
 // e2e/tests/17-insurance-history.spec.ts
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import { test, expect } from "@playwright/test"

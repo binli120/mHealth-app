@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * POST /api/masshealth/benefit-policy-updates/notify
  * Checks saved applications for MassHealth policy updates and

@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Migration: user_agent_memory table
--- @author: Bin Lee <blee@healthcompass.cloud>
+-- @author: Bin Lee <blee@comura.ai>
 --
 -- Creates the user_agent_memory table if it does not already exist on the
 -- target database.  The baseline schema (20260101000000) already contains

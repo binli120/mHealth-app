@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * /mobile/[token] — server component, renders MobileShell client component.
  * No auth — token is the credential.

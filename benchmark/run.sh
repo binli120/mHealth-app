@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # @author: Bin Lee
-# @email: blee@healthcompass.cloud
+# @email: blee@comura.ai
 
 # Usage:
 #   ./benchmark/run.sh smoke

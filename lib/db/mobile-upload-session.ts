@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * DB layer — cross-device document upload sessions
  * Mirrors the pattern from mobile-verify-session.ts

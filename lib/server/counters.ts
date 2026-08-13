@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Lightweight observability counters backed by the existing logger/OpenObserve
  * pipeline.  Each increment emits a structured `metric.counter` log event that

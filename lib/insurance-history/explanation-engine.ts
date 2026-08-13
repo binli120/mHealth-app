@@ -1,7 +1,7 @@
 // lib/insurance-history/explanation-engine.ts
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 import type { CoverageRecord, ChangeFactor } from "@/lib/insurance-history/types"

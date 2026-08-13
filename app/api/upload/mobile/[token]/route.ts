@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * GET /api/upload/mobile/[token]
  *   Public — mobile device checks whether the token is still valid.

@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 export const SSN_CHAT_HANDOFF_MESSAGE = "Please enter your SSN directly in the form, then come back here."

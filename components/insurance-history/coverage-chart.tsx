@@ -1,7 +1,7 @@
 // components/insurance-history/coverage-chart.tsx
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 "use client"

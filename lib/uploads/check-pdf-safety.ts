@@ -10,7 +10,7 @@
  * attack vectors while keeping the check fast and dependency-free.
  *
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  */
 
 export interface PdfSafetyResult {

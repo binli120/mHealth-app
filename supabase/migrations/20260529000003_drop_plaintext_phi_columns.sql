@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Migration: drop plaintext PHI columns from applicants
--- @author: Bin Lee <blee@healthcompass.cloud>
+-- @author: Bin Lee <blee@comura.ai>
 --
 -- Removes the 10 plaintext PHI columns that were superseded by the
 -- AES-256-GCM *_encrypted equivalents.  All data was nulled or migrated

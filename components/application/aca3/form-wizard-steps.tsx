@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Step components extracted from form-wizard.tsx:
  *   StepContainer, Step1ProgramSelection, Step2PrimaryApplicant,

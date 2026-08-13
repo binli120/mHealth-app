@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Patient-side 1:1 direct chat panel with their assigned social worker.
  * Supports text messages, voice recording, and image uploads.

@@ -1,6 +1,6 @@
 /**
  * @author: Bin Lee
- * @email: blee@healthcompass.cloud
+ * @email: blee@comura.ai
  *
  * Unit tests for GET /api/admin/phi-audit
  * Auth and DB are mocked; only route handler logic is exercised.
