@@ -15,6 +15,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
+import { parseJsonBody } from "@/lib/api/validation"
 import { logServerError } from "@/lib/server/logger"
 import { checkRateLimitAsync, getClientIp, ssnSubmitLimiter } from "@/lib/server/rate-limit"
 import {
@@ -58,16 +59,9 @@ export async function GET(request: Request) {
 // ── POST ──────────────────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
-  let body: z.infer<typeof postBodySchema>
-  try {
-    body = postBodySchema.parse(await request.json())
-  } catch (error) {
-    const message =
-      error instanceof z.ZodError
-        ? error.errors[0]?.message ?? "Invalid SSN format."
-        : "Invalid request body."
-    return NextResponse.json({ ok: false, error: message }, { status: 400 })
-  }
+  const parsed = await parseJsonBody(request, postBodySchema)
+  if (!parsed.ok) return parsed.response
+  const body = parsed.data
 
   const authResult = await requireAuthenticatedUser(request)
   if (!authResult.ok) return authResult.response

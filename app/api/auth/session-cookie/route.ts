@@ -4,11 +4,17 @@
  */
 
 import { NextResponse } from "next/server"
+import { z } from "zod"
 
 import { logLoginEvent } from "@/lib/db/admin-access"
+import { parseJsonBody } from "@/lib/api/validation"
 import { getAnalyticsIpHash, getAnalyticsUserHash } from "@/lib/server/customer-analytics"
 import { logServerInfo } from "@/lib/server/logger"
 import { getSupabaseServerClient } from "@/lib/supabase/server"
+
+const postBodySchema = z.object({
+  accessToken: z.string().trim().min(1, "accessToken is required."),
+})
 
 const DEFAULT_ACCESS_TOKEN_MAX_AGE = 60 * 60
 // Long-lived hint cookie checked by the proxy to allow the Supabase refresh-token
@@ -35,23 +41,9 @@ function getJwtMaxAge(token: string): number {
 }
 
 export async function POST(request: Request) {
-  let body: { accessToken?: unknown }
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json(
-      { ok: false, error: "Request body must be valid JSON." },
-      { status: 400 },
-    )
-  }
-
-  const accessToken = typeof body.accessToken === "string" ? body.accessToken.trim() : ""
-  if (!accessToken) {
-    return NextResponse.json(
-      { ok: false, error: "accessToken is required." },
-      { status: 400 },
-    )
-  }
+  const parsed = await parseJsonBody(request, postBodySchema)
+  if (!parsed.ok) return parsed.response
+  const { accessToken } = parsed.data
 
   const { data, error } = await getSupabaseServerClient().auth.getUser(accessToken)
   if (error || !data.user?.id) {

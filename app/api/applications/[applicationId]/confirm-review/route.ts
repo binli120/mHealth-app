@@ -4,11 +4,13 @@
  */
 
 import { NextResponse } from "next/server"
+import { z } from "zod"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
+import { parseParams, uuidSchema } from "@/lib/api/validation"
 import { confirmCustomerReview } from "@/lib/db/application-drafts"
 import { logServerError } from "@/lib/server/logger"
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const paramsSchema = z.object({ applicationId: uuidSchema })
 
 interface RouteContext {
   params: Promise<{ applicationId: string }>
@@ -18,11 +20,9 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   const authResult = await requireAuthenticatedUser(request)
   if (!authResult.ok) return authResult.response
 
-  const { applicationId } = await params
-
-  if (!UUID_PATTERN.test(applicationId)) {
-    return NextResponse.json({ ok: false, error: "Invalid applicationId." }, { status: 400 })
-  }
+  const parsedParams = parseParams(await params, paramsSchema)
+  if (!parsedParams.ok) return parsedParams.response
+  const { applicationId } = parsedParams.data
 
   try {
     await confirmCustomerReview(applicationId, authResult.userId)

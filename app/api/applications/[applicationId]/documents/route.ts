@@ -5,8 +5,10 @@
 
 import { NextResponse } from "next/server"
 import { randomUUID } from "crypto"
+import { z } from "zod"
 
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
+import { parseParams, uuidSchema } from "@/lib/api/validation"
 import {
   insertDocument,
   listDocumentsByApplication,
@@ -25,12 +27,7 @@ import { validateUpload } from "@/lib/uploads/validate"
 import { createAndUploadDocumentArtifacts } from "@/lib/uploads/document-artifacts"
 import { validateUploadedDocument } from "@/lib/masshealth/document-validation-workflow"
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const paramsSchema = z.object({ applicationId: uuidSchema })
 
 interface RouteContext {
   params: Promise<{ applicationId: string }>
@@ -55,13 +52,9 @@ export async function GET(request: Request, context: RouteContext) {
     const authResult = await requireAuthenticatedUser(request)
     if (!authResult.ok) return authResult.response
 
-    const { applicationId } = await context.params
-    if (!UUID_PATTERN.test(applicationId)) {
-      return NextResponse.json(
-        { ok: false, error: "applicationId must be a valid UUID." },
-        { status: 400 },
-      )
-    }
+    const parsedParams = parseParams(await context.params, paramsSchema)
+    if (!parsedParams.ok) return parsedParams.response
+    const { applicationId } = parsedParams.data
 
     const accessToken = extractBearerToken(request)
     const docs = await listDocumentsByApplication(authResult.userId, applicationId)
@@ -110,13 +103,9 @@ export async function POST(request: Request, context: RouteContext) {
     const rlResponse = await checkRateLimitAsync(documentUploadLimiter, `doc-upload:${authResult.userId}`)
     if (rlResponse) return rlResponse
 
-    const { applicationId } = await context.params
-    if (!UUID_PATTERN.test(applicationId)) {
-      return NextResponse.json(
-        { ok: false, error: "applicationId must be a valid UUID." },
-        { status: 400 },
-      )
-    }
+    const parsedParams = parseParams(await context.params, paramsSchema)
+    if (!parsedParams.ok) return parsedParams.response
+    const { applicationId } = parsedParams.data
 
     // Parse multipart body
     let formData: FormData

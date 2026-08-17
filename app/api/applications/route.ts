@@ -4,7 +4,10 @@
  */
 
 import { NextResponse } from "next/server"
+import { z } from "zod"
 
+import { APPLICATION_STATUSES } from "@/lib/application-status"
+import { parseJsonBody, parseQuery, uuidSchema } from "@/lib/api/validation"
 import {
   ApplicationDraftAccessError,
   createApplicationDraft,
@@ -12,7 +15,17 @@ import {
 } from "@/lib/db/application-drafts"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const listQuerySchema = z.object({
+  status: z.union([z.enum(APPLICATION_STATUSES), z.literal("")]).optional(),
+  q: z.string().trim().optional(),
+  limit: z.coerce.number().int().positive().optional(),
+  offset: z.coerce.number().int().nonnegative().optional(),
+})
+
+const createBodySchema = z.object({
+  applicationId: uuidSchema,
+  applicationType: z.string().trim().optional(),
+})
 
 function isApplicationDraftAccessError(error: unknown): boolean {
   return (
@@ -24,10 +37,6 @@ function isApplicationDraftAccessError(error: unknown): boolean {
   )
 }
 
-function isInvalidApplicationIdError(error: unknown): boolean {
-  return error instanceof Error && error.message.includes("Invalid applicationId")
-}
-
 export async function GET(request: Request) {
   try {
     const authResult = await requireAuthenticatedUser(request)
@@ -36,17 +45,13 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url)
-    const status = searchParams.get("status")
-    const query = searchParams.get("q")
-    const limitRaw = searchParams.get("limit")
-    const offsetRaw = searchParams.get("offset")
-
-    const limit = limitRaw ? Number.parseInt(limitRaw, 10) : undefined
-    const offset = offsetRaw ? Number.parseInt(offsetRaw, 10) : undefined
+    const parsedQuery = parseQuery(searchParams, listQuerySchema)
+    if (!parsedQuery.ok) return parsedQuery.response
+    const { status, q, limit, offset } = parsedQuery.data
 
     const { records, total } = await listApplicationDrafts(authResult.userId, {
-      status,
-      query,
+      status: status || null,
+      query: q,
       limit,
       offset,
     })
@@ -57,7 +62,6 @@ export async function GET(request: Request) {
       total,
     })
   } catch (error) {
-    const isValidationError = error instanceof Error && error.message === "Invalid status filter."
     const isAccessError = isApplicationDraftAccessError(error)
     const message =
       process.env.NODE_ENV === "development"
@@ -68,7 +72,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(
       { ok: false, error: message },
-      { status: isValidationError ? 400 : isAccessError ? 403 : 500 },
+      { status: isAccessError ? 403 : 500 },
     )
   }
 }
@@ -80,24 +84,15 @@ export async function POST(request: Request) {
       return authResult.response
     }
 
-    const body = (await request.json().catch(() => ({}))) as {
-      applicationId?: string
-      applicationType?: string
-    }
-
-    const requestedId = body.applicationId?.trim()
-    if (!requestedId || !UUID_PATTERN.test(requestedId)) {
-      return NextResponse.json(
-        { ok: false, error: "applicationId (UUID) is required." },
-        { status: 400 },
-      )
-    }
+    const parsedBody = await parseJsonBody(request, createBodySchema)
+    if (!parsedBody.ok) return parsedBody.response
+    const { applicationId, applicationType } = parsedBody.data
 
     const actingFor = request.headers.get("X-Acting-For-Patient") ?? undefined
     const record = await createApplicationDraft({
       userId: authResult.userId,
-      applicationId: requestedId,
-      applicationType: body.applicationType,
+      applicationId,
+      applicationType,
       actingForUserId: actingFor,
     })
 
@@ -108,7 +103,6 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     const isAccessError = isApplicationDraftAccessError(error)
-    const isValidationError = isInvalidApplicationIdError(error)
     const message =
       process.env.NODE_ENV === "development"
         ? error instanceof Error
@@ -118,7 +112,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       { ok: false, error: message },
-      { status: isValidationError ? 400 : isAccessError ? 403 : 500 },
+      { status: isAccessError ? 403 : 500 },
     )
   }
 }
