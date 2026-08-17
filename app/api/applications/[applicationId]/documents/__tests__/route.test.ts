@@ -105,6 +105,31 @@ describe("POST /api/applications/[applicationId]/documents — rate limiting", (
   })
 })
 
+describe("GET/POST /api/applications/[applicationId]/documents — validation", () => {
+  function makeBadContext() {
+    return { params: Promise.resolve({ applicationId: "not-a-uuid" }) }
+  }
+
+  it("GET returns 400 for a non-UUID applicationId", async () => {
+    const response = await GET(
+      new Request("http://localhost/api/applications/not-a-uuid/documents"),
+      makeBadContext(),
+    )
+    expect(response.status).toBe(400)
+    const json = await response.json()
+    expect(json.ok).toBe(false)
+    expect(listDocumentsByApplication).not.toHaveBeenCalled()
+  })
+
+  it("POST returns 400 for a non-UUID applicationId", async () => {
+    const response = await POST(makeRequest(), makeBadContext())
+    expect(response.status).toBe(400)
+    const json = await response.json()
+    expect(json.ok).toBe(false)
+    expect(uploadDocumentToStorage).not.toHaveBeenCalled()
+  })
+})
+
 describe("POST /api/applications/[applicationId]/documents", () => {
   it("returns signed artifact URLs for image documents", async () => {
     vi.mocked(listDocumentsByApplication).mockResolvedValue([
