@@ -3,11 +3,15 @@ name: E2E — Cloud Smoke Tests
 on:
   push:
     branches: [main]
-  # Run automatically after every successful deploy to production
+  # Run automatically after every successful deploy — legacy prod path
+  # (workflow_dispatch-only now, kept as a manual rollback) and the active
+  # staging pipeline. E2E_BASE_URL below picks the right domain per source
+  # workflow. Both branches listed since GH's workflow_run branch filter is
+  # shared across every workflow named here, not per-name.
   workflow_run:
-    workflows: ["Deploy to Hostinger VPS"]
+    workflows: ["Deploy to Hostinger VPS", "Deploy Staging (passive — dev database)"]
     types: [completed]
-    branches: [main]
+    branches: [main, dev]
   # Allow manual trigger against any branch/ref
   workflow_dispatch:
 
@@ -63,14 +67,21 @@ jobs:
     environment: dev
 
     steps:
-      # Explicit ref required: this repo's default branch is "dev", and
-      # actions/checkout defaults to the default branch (not the deployed
-      # commit) on workflow_run events. Without this, a workflow_run fired by
-      # "Deploy to Hostinger VPS" (main-only) would silently test dev instead
-      # of the commit that was just deployed.
+      # Explicit ref required — and workflow_run.head_sha is NOT safe to use
+      # here. Both deploy workflows can be workflow_dispatch'd against any
+      # ref, but their deploy scripts ignore that and hardcode what they
+      # actually check out on the VPS (deploy-staging.yml always resets to
+      # origin/dev, deploy.yml always resets to origin/main) — so
+      # head_sha reflects the *dispatch ref*, not what was actually
+      # deployed. E.g. dispatching staging against "main" would deploy
+      # dev's code but head_sha would point at main, and we'd run main's
+      # test files against a dev deployment. Hardcode the ref per source
+      # workflow instead, matching what each one really deploys. Falls
+      # back to github.sha for direct push/workflow_dispatch of this
+      # workflow itself, where the triggering ref IS the intended one.
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ github.event.workflow_run.name == 'Deploy Staging (passive — dev database)' && 'dev' || github.event.workflow_run.name == 'Deploy to Hostinger VPS' && 'main' || github.sha }}
 
       - uses: pnpm/action-setup@v5
 
@@ -89,7 +100,9 @@ jobs:
         run: pnpm test:e2e
         env:
           CI: "true"
-          E2E_BASE_URL: "https://${{ secrets.DOMAIN }}"
+          # Staging deploys test staging.healthcompass.cloud; everything else
+          # (legacy prod deploy, manual dispatch, push:main) tests DOMAIN.
+          E2E_BASE_URL: "https://${{ github.event.workflow_run.name == 'Deploy Staging (passive — dev database)' && secrets.STAGING_DOMAIN || secrets.DOMAIN }}"
           # Explicit credentials — fall back to demo-data.ts defaults when the
           # secrets are absent (e.g. forks / PRs from external contributors).
           # Accounts must exist in the cloud Supabase project.
