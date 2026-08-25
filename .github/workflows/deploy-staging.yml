@@ -1,0 +1,142 @@
+name: Deploy Staging (passive — dev database)
+
+# Passive deployment: auto-deploys on every push to `dev`, points at the
+# EXISTING dev Supabase project (same DB dev already uses). Runs as a
+# second stack on the same VPS as the live prod deploy (docker-compose.yml),
+# sharing its Traefik/Ollama/Whisper via docker-compose.app-only.yml.
+#
+# Does not touch the live prod deploy (.github/workflows/deploy.yml).
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    name: CI Gate
+    uses: ./.github/workflows/ci.yml
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: read
+      issues: write
+
+  deploy:
+    name: SSH → VPS → docker compose up (staging stack)
+    needs: [ci]
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Reuses the `dev` GH environment (not a separate `staging` one): all
+    # infra secrets this job needs (VPS_HOST/VPS_USER/VPS_SSH_KEY/GH_PAT/
+    # REPO_SLUG/GROQ_API_KEY/RESEND_API_KEY) plus the dev-DB app secrets
+    # (DATABASE_URL/NEXT_PUBLIC_SUPABASE_*/etc.) already live there — a
+    # separate `staging` environment would start with none of them and
+    # GH environment secrets don't cascade. Only STAGING_APP_DIR/
+    # STAGING_DOMAIN needed adding on top.
+    environment: dev
+
+    steps:
+      - name: Preflight SSH reachability
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_SSH_PORT: ${{ secrets.VPS_SSH_PORT || '22' }}
+        run: |
+          set -euo pipefail
+          if [ -z "${VPS_HOST:-}" ]; then
+            echo "::error::VPS_HOST secret is empty or missing."
+            exit 1
+          fi
+          if ! timeout 15 bash -c "</dev/tcp/${VPS_HOST}/${VPS_SSH_PORT}" 2>/dev/null; then
+            echo "::error::Cannot reach the configured VPS over TCP port ${VPS_SSH_PORT}."
+            exit 1
+          fi
+
+      - name: Deploy to VPS (staging stack)
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+        with:
+          host:        ${{ secrets.VPS_HOST }}
+          username:    ${{ secrets.VPS_USER }}
+          key:         ${{ secrets.VPS_SSH_KEY }}
+          port:        ${{ secrets.VPS_SSH_PORT || '22' }}
+          timeout:     60s
+          script_stop: true
+          script: |
+            set -euo pipefail
+
+            APP_DIR="${{ secrets.STAGING_APP_DIR }}"
+            REPO_URL="https://${{ secrets.GH_PAT }}@github.com/${{ secrets.REPO_SLUG }}.git"
+
+            if ! command -v docker &>/dev/null; then
+              curl -fsSL https://get.docker.com | sh
+            fi
+            systemctl enable docker --now || true
+
+            echo "▶ Deploying staging stack to $APP_DIR"
+            if [ -d "$APP_DIR/.git" ]; then
+              REMOTE=$(git -C "$APP_DIR" remote get-url origin 2>/dev/null || echo "")
+              if [ -z "$REMOTE" ]; then
+                rm -rf "$APP_DIR"
+              fi
+            fi
+            mkdir -p "$APP_DIR"
+            if [ ! -d "$APP_DIR/.git" ]; then
+              git clone "$REPO_URL" "$APP_DIR"
+            fi
+            cd "$APP_DIR"
+            git remote set-url origin "$REPO_URL"
+            git fetch --all --prune
+            git reset --hard origin/dev
+
+            echo "⚙️  Writing .env.production.local (staging)..."
+            ENV_FILE="$APP_DIR/.env.production.local"
+            printf '%s\n' \
+              "STACK_NAME=staging" \
+              "DOMAIN=${{ secrets.STAGING_DOMAIN }}" \
+              "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+              "NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" \
+              "NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+              "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}" \
+              "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+              "OLLAMA_BASE_URL=http://ollama:11434" \
+              "OLLAMA_MODEL=llama3.2:1b" \
+              "WHISPER_BASE_URL=http://whisper:9000" \
+              "GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" \
+              "RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}" \
+              "FROM_EMAIL=${{ secrets.FROM_EMAIL }}" \
+              "NEXT_PUBLIC_APP_URL=https://${{ secrets.STAGING_DOMAIN }}" \
+              "MCP_CLIENT_ID=${{ secrets.MCP_CLIENT_ID }}" \
+              "MCP_CLIENT_SECRET=${{ secrets.MCP_CLIENT_SECRET }}" \
+              "PROFILE_ENCRYPTION_KEY=${{ secrets.PROFILE_ENCRYPTION_KEY }}" \
+              "ADMIN_PASSKEY_SESSION_SECRET=${{ secrets.ADMIN_PASSKEY_SESSION_SECRET }}" \
+              > "$ENV_FILE"
+            chmod 600 "$ENV_FILE"
+
+            docker compose -f docker-compose.app-only.yml --env-file "$ENV_FILE" -p masshealth-staging up -d --build --remove-orphans
+
+            echo "⏳ Waiting for staging app (up to 2 min)..."
+            for i in $(seq 1 24); do
+              if docker compose -f docker-compose.app-only.yml -p masshealth-staging exec -T app node -e "fetch('http://127.0.0.1:3000/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))" > /dev/null 2>&1; then
+                echo "✅ Staging app is up after $((i * 5))s"
+                break
+              fi
+              if [ "$i" = "24" ]; then
+                echo "❌ Staging app did not start — last 80 log lines:" >&2
+                docker compose -f docker-compose.app-only.yml -p masshealth-staging logs --tail=80 app
+                exit 1
+              fi
+              sleep 5
+            done
+
+            docker image prune -f
+            echo "🚀 Staging deploy complete"
+
+      - name: Notify on failure
+        if: failure()
+        run: echo "::error::Staging deploy failed — check logs above"
