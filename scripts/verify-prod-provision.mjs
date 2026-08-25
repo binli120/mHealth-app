@@ -35,7 +35,12 @@ if (!adminEmail) {
   process.exit(1)
 }
 
-const REQUIRED_SYSTEM_ROLES = [
+// Mix of is_system=true (admin/applicant/social_worker/reviewer) and
+// is_system=false (read_only_staff/case_reviewer/supervisor) roles — see
+// 20260101000001_baseline_seed.sql. is_system is an app-level distinction
+// (e.g. whether a role can be deleted via an admin UI), unrelated to
+// whether baseline_seed.sql ran — so this check doesn't filter on it.
+const REQUIRED_ROLES = [
   "admin",
   "applicant",
   "social_worker",
@@ -87,14 +92,12 @@ try {
   if (installedExts.has("pg_trgm")) pass("Extension: pg_trgm installed")
   else fail("Extension: pg_trgm missing — fuzzy search (glossary/Q&A) will fail")
 
-  // ── 3. System roles ─────────────────────────────────────────────────────
-  const rolesResult = await pool.query(
-    `SELECT name FROM public.roles WHERE is_system = true`,
-  )
+  // ── 3. Roles ─────────────────────────────────────────────────────────────
+  const rolesResult = await pool.query(`SELECT name FROM public.roles`)
   const seededRoles = new Set(rolesResult.rows.map((r) => r.name))
-  const missingRoles = REQUIRED_SYSTEM_ROLES.filter((r) => !seededRoles.has(r))
+  const missingRoles = REQUIRED_ROLES.filter((r) => !seededRoles.has(r))
   if (missingRoles.length === 0) {
-    pass(`Roles: all ${REQUIRED_SYSTEM_ROLES.length} system roles present`)
+    pass(`Roles: all ${REQUIRED_ROLES.length} roles present`)
   } else {
     fail(`Roles: missing ${missingRoles.join(", ")} — re-run baseline_seed.sql`)
   }
