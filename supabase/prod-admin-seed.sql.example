@@ -8,8 +8,8 @@
 -- Usage (after baseline_schema.sql + baseline_seed.sql are applied to the
 -- prod project):
 --   psql "$DATABASE_DIRECT_URL_PROD" \
---     -v admin_email="'$PROD_ADMIN_EMAIL'" \
---     -v admin_password="'$PROD_ADMIN_INITIAL_PASSWORD'" \
+--     -v admin_email="$PROD_ADMIN_EMAIL" \
+--     -v admin_password="$PROD_ADMIN_INITIAL_PASSWORD" \
 --     -f supabase/prod-admin-seed.sql
 --
 -- Copy this file to supabase/prod-admin-seed.sql (gitignored) to fill in
@@ -21,16 +21,25 @@
 -- login will require MFA setup immediately).
 -- =============================================================================
 
+-- psql's :'var' substitution does NOT run inside a dollar-quoted string —
+-- the whole DO $$ ... $$ body below is one dollar-quoted region to psql's
+-- client-side lexer, regardless of the PL/pgSQL inside it, so :'admin_email'
+-- used directly in the DECLARE line would reach Postgres as literal text
+-- and fail. Substitute here instead, outside the $$ block, into
+-- session-local settings the block reads back via current_setting().
+SELECT set_config('app.prod_admin_email', :'admin_email', false);
+SELECT set_config('app.prod_admin_password', :'admin_password', false);
+
 DO $$
 DECLARE
   v_user_id UUID;
   v_admin_role_id INT;
-  v_email TEXT := :admin_email;
-  v_password TEXT := :admin_password;
+  v_email TEXT := current_setting('app.prod_admin_email', true);
+  v_password TEXT := current_setting('app.prod_admin_password', true);
   v_instance_id UUID := '00000000-0000-0000-0000-000000000000';
 BEGIN
   IF v_email IS NULL OR v_email = '' THEN
-    RAISE EXCEPTION 'admin_email psql variable is required (-v admin_email="''you@example.com''")';
+    RAISE EXCEPTION 'admin_email psql variable is required (-v admin_email="you@example.com")';
   END IF;
   IF v_password IS NULL OR length(v_password) < 16 THEN
     RAISE EXCEPTION 'admin_password psql variable is required and must be >= 16 chars';
