@@ -18,6 +18,8 @@ node_modules/
 .env*.local
 .env.production
 .env.prod
+.env.prod-instance
+supabase/prod-admin-seed.sql
 database/dumps/
 .DS_Store
 storybook-static/

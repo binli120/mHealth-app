@@ -1,9 +1,12 @@
-name: Deploy to Hostinger VPS
+name: Deploy to Hostinger VPS (legacy — retired, manual fallback only)
+
+# Retired 2026-08-25: push:main now goes to deploy-prod.yml (dedicated prod
+# Supabase project, healthcompass.cloud). This workflow is kept as a manual
+# rollback path only — do not re-enable push:main without repointing its
+# DOMAIN/APP_DIR secrets away from healthcompass.cloud, or it will collide
+# with deploy-prod.yml's Traefik router for the same domain.
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 concurrency:
