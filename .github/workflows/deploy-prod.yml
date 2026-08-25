@@ -32,8 +32,11 @@ jobs:
   ci:
     name: CI Gate
     uses: ./.github/workflows/ci.yml
-    secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    # No secrets: block — ci.yml's workflow_call trigger doesn't declare any
+    # accepted secrets, so passing GITHUB_TOKEN explicitly is invalid syntax
+    # (GH rejects the whole workflow at parse time). The automatic
+    # GITHUB_TOKEN is available inside ci.yml regardless — it doesn't need
+    # to be passed through workflow_call.
     permissions:
       contents: read
       issues: write
