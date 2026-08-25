@@ -58,6 +58,19 @@ Built so far: `docker-compose.app-only.yml`, `deploy-staging.yml`, `deploy-prod.
       workflow_dispatch-only). Old `deploy.yml` retired to
       workflow_dispatch-only (manual rollback path) so it can't collide
       with `deploy-prod.yml` on `healthcompass.cloud`.
+- [x] Retiring the trigger doesn't stop containers already running from the
+      old `deploy.yml`'s primary `docker-compose.yml` stack — its `app`,
+      `masshealth-analysis`, and `mcp-server` services all carry Traefik
+      routers on `Host(\`${DOMAIN}\`)`, same domain the new prod-v2 stack
+      now owns. `deploy-prod.yml` now stops those three (by Compose service
+      label, excluding its own/staging's containers) before bringing up
+      `masshealth-prod`, every run — so a manual `deploy.yml` rollback that
+      brings them back gets re-retired on the next real prod deploy.
+      `traefik`/`ollama`/`whisper` from that same primary stack are left
+      running — staging and prod-v2 both depend on them.
+      If `deploy.yml` is ever run manually as a rollback, remember prod-v2
+      is still up and will keep winning the domain unless you also stop
+      `masshealth-prod`'s `app`/`mcp-server` by hand.
 - [ ] Next push to `dev` will auto-run staging — watch it, confirm the
       staging stack comes up on `staging.healthcompass.cloud`
 - [ ] Next push to `main` will auto-run prod — with placeholder Supabase

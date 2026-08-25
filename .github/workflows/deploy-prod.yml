@@ -124,6 +124,31 @@ jobs:
               > "$ENV_FILE"
             chmod 600 "$ENV_FILE"
 
+            echo "🔻 Retiring legacy app/analysis/mcp routers on ${{ secrets.PROD_DOMAIN }}..."
+            # The primary docker-compose.yml stack (deployed by the old, now
+            # manual-only deploy.yml) still runs its own app/masshealth-analysis/
+            # mcp-server containers, all with Traefik routers on Host(`${DOMAIN}`) —
+            # the same domain this prod-v2 stack now owns. Traefik/Ollama/Whisper
+            # from that stack must keep running (this stack depends on them), so
+            # we can't just stop the whole legacy stack — only the three
+            # app-facing services that collide on this host. Matched by Compose
+            # service label (not APP_DIR, which lives in a different GH
+            # environment) and explicitly excluded from our own stacks so this
+            # never touches the staging or prod-v2 app/mcp containers themselves.
+            LEGACY_IDS=$(docker ps -q \
+              --filter "label=com.docker.compose.service=app" \
+              --filter "label=com.docker.compose.service=mcp-server" \
+              --filter "label=com.docker.compose.service=masshealth-analysis")
+            for cid in $LEGACY_IDS; do
+              project=$(docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' "$cid" 2>/dev/null || echo "")
+              case "$project" in
+                masshealth-staging|masshealth-prod) continue ;;
+              esac
+              name=$(docker inspect -f '{{ .Name }}' "$cid" 2>/dev/null || echo "$cid")
+              echo "  stopping legacy container $name (project=$project)"
+              docker stop "$cid" > /dev/null
+            done
+
             docker compose -f docker-compose.app-only.yml --env-file "$ENV_FILE" -p masshealth-prod up -d --build --remove-orphans
 
             echo "⏳ Waiting for prod-v2 app (up to 2 min)..."
