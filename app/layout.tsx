@@ -14,6 +14,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { CookieConsentBanner } from '@/components/privacy/cookie-consent-banner'
 import { GlossaryProvider } from '@/lib/glossary/GlossaryContext'
 import { SiteFooter } from '@/components/layout/site-footer'
+import { Toaster } from '@/components/ui/sonner'
 import {
   COOKIE_CONSENT_COOKIE,
   hasAnalyticsCookieConsent,
@@ -133,6 +134,7 @@ export default async function RootLayout({
             v{process.env.NEXT_PUBLIC_APP_VERSION}
           </footer>
           <CookieConsentBanner initialConsent={cookieConsent} />
+          <Toaster richColors position="top-center" />
         </ThemeProvider>
       </body>
     </html>

@@ -5,7 +5,7 @@
 
 "use client"
 
-import { type FormEvent, type RefObject, useCallback, useEffect, useRef, useState } from "react"
+import { type FormEvent, type RefObject, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { ArrowLeft, Loader2, Mic, MicOff, Pencil, RotateCcw, SendHorizontal } from "lucide-react"
 import { toast } from "sonner"
 
@@ -29,6 +29,17 @@ const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
   "pt-BR": "PT",
   es: "ES",
   vi: "VI",
+}
+
+// BCP-47 tags for the Web Speech API. Haitian Creole has no speech engine;
+// French is the closest fallback so the button still does something.
+const SPEECH_LANG: Record<SupportedLanguage, string> = {
+  en: "en-US",
+  "zh-CN": "zh-CN",
+  ht: "fr-FR",
+  "pt-BR": "pt-BR",
+  es: "es-US",
+  vi: "vi-VN",
 }
 
 export interface IntakeChatCopy {
@@ -108,59 +119,216 @@ export function IntakeChatPanel({
   const inputRef = useRef<HTMLInputElement>(null)
   const [isListening, setIsListening] = useState(false)
   const [isVoiceProcessing, setIsVoiceProcessing] = useState(false)
+  const [voiceError, setVoiceError] = useState<string | null>(null)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const baseDraftRef = useRef("")        // draft text present when recording started
+  const finalTranscriptRef = useRef("")  // final segments accumulated this session
+  const stopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Live mic-permission state, kept in a ref so async callbacks read the latest value.
+  const micPermissionRef = useRef<PermissionState | "unknown">("unknown")
 
-  const speechSupported = typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)
+  // `window` is undefined during SSR; a render-time check would desync hydration.
+  // useSyncExternalStore renders `false` on the server, then the real value once mounted.
+  const speechSupported = useSyncExternalStore(
+    () => () => {},
+    () => "SpeechRecognition" in window || "webkitSpeechRecognition" in window,
+    () => false,
+  )
+
+  // Tear down any live recognition if the panel unmounts mid-session.
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.abort()
+      if (stopTimeoutRef.current) clearTimeout(stopTimeoutRef.current)
+    }
+  }, [])
+
+  // Track the mic permission so we can (a) give targeted recovery steps when it
+  // was blocked earlier and (b) auto-clear the error the moment the user flips
+  // it back to "Allow" in the browser's site settings.
+  useEffect(() => {
+    const permissions = navigator.permissions
+    if (!permissions?.query) return
+    let status: PermissionStatus | null = null
+    const onChange = () => {
+      if (!status) return
+      micPermissionRef.current = status.state
+      if (status.state === "granted") setVoiceError(null)
+    }
+    permissions
+      .query({ name: "microphone" as PermissionName })
+      .then((result) => {
+        status = result
+        micPermissionRef.current = result.state
+        result.addEventListener("change", onChange)
+      })
+      .catch(() => {
+        /* Firefox/Safari: "microphone" not queryable — fall back to start() */
+      })
+    return () => {
+      status?.removeEventListener("change", onChange)
+    }
+  }, [])
 
   const voiceErrorMessage = (error: string) => {
     switch (error) {
       case "not-allowed":
       case "service-not-allowed":
         return "Microphone access denied. Enable microphone permissions in your browser to use voice input."
+      case "denied-blocked":
+        return "Microphone is blocked for this site. Open the site permissions (the icon just left of the web address) → set Microphone to Allow → reload, then try again."
       case "no-speech":
         return "No speech detected. Try again."
       case "network":
         return "Voice input needs an internet connection."
       case "audio-capture":
         return "No microphone found on this device."
+      case "language-not-supported":
+        return "Voice input isn't available for this language. Try English or type your answer."
+      case "browser-unsupported":
+        return "Voice input isn't supported in this browser."
       default:
         return "Voice input failed. Please try again or type your answer."
     }
   }
 
-  const toggleVoiceInput = useCallback(() => {
-    if (isListening) {
-      setIsVoiceProcessing(true)
-      recognitionRef.current?.stop()
-      return
+  const clearStopTimeout = useCallback(() => {
+    if (stopTimeoutRef.current) {
+      clearTimeout(stopTimeoutRef.current)
+      stopTimeoutRef.current = null
     }
+  }, [])
+
+  const stopListening = useCallback(() => {
+    const rec = recognitionRef.current
+    if (!rec) return
+    setIsVoiceProcessing(true)
+    try {
+      rec.stop()
+    } catch {
+      /* already stopped */
+    }
+    // Some engines never fire `onend` after stop() — force-settle after 3s.
+    stopTimeoutRef.current = setTimeout(() => {
+      try {
+        rec.abort()
+      } catch {
+        /* noop */
+      }
+      setIsListening(false)
+      setIsVoiceProcessing(false)
+    }, 3000)
+  }, [])
+
+  const reportVoiceError = useCallback((code: string) => {
+    const message = voiceErrorMessage(code)
+    setVoiceError(message)
+    toast.error(message)
+  }, [])
+
+  // Explicitly request the mic before starting recognition. When the permission
+  // is in the "prompt" state this reliably surfaces the native dialog (some
+  // Chromium builds don't show it for SpeechRecognition alone) — that's the
+  // user's second chance to accept. When it was already blocked, the browser
+  // won't re-prompt from script, so we return a code that tells them how to
+  // un-block it in site settings.
+  const ensureMicAccess = useCallback(async (): Promise<boolean> => {
+    if (micPermissionRef.current === "granted") return true
+    if (micPermissionRef.current === "denied") {
+      reportVoiceError("denied-blocked")
+      return false
+    }
+    const media = navigator.mediaDevices
+    if (!media?.getUserMedia) return true // Safari etc. — let start() do the asking
+    try {
+      const stream = await media.getUserMedia({ audio: true })
+      stream.getTracks().forEach((t) => t.stop()) // release immediately; SR opens its own
+      micPermissionRef.current = "granted"
+      return true
+    } catch (err) {
+      const name = err instanceof DOMException ? err.name : ""
+      if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+        reportVoiceError("audio-capture")
+      } else {
+        // NotAllowedError / SecurityError — dismissed or blocked
+        micPermissionRef.current = "denied"
+        reportVoiceError("denied-blocked")
+      }
+      return false
+    }
+  }, [reportVoiceError])
+
+  const startListening = useCallback(async () => {
+    setVoiceError(null)
     const SR = window.SpeechRecognition ?? window.webkitSpeechRecognition
     if (!SR) {
-      toast.error("Voice input isn't supported in this browser.")
+      reportVoiceError("browser-unsupported")
+      return
+    }
+    setIsVoiceProcessing(true)
+    const granted = await ensureMicAccess()
+    if (!granted) {
+      setIsVoiceProcessing(false)
       return
     }
     const recognition = new SR()
-    recognition.lang = selectedLanguage === "zh-CN" ? "zh-CN" : selectedLanguage === "ht" ? "fr-HT" : selectedLanguage === "pt-BR" ? "pt-BR" : selectedLanguage === "es" ? "es-US" : selectedLanguage === "vi" ? "vi-VN" : "en-US"
-    recognition.interimResults = false
-    recognition.onresult = (event) => {
-      const transcript = Array.from(event.results).map(r => r[0].transcript).join(" ")
-      onDraftChange((draft + " " + transcript).trimStart())
-    }
-    recognition.onend = () => {
-      setIsListening(false)
+    recognition.lang = SPEECH_LANG[selectedLanguage] ?? "en-US"
+    // `continuous` keeps the mic open across pauses instead of stopping after
+    // the first phrase; `interimResults` streams partial text for live feedback.
+    recognition.continuous = true
+    recognition.interimResults = true
+    recognition.maxAlternatives = 1
+
+    baseDraftRef.current = draft ? draft.trimEnd() + " " : ""
+    finalTranscriptRef.current = ""
+
+    recognition.onstart = () => {
+      setVoiceError(null)
+      setIsListening(true)
       setIsVoiceProcessing(false)
     }
+    recognition.onresult = (event) => {
+      let interim = ""
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const res = event.results[i]
+        if (res.isFinal) {
+          finalTranscriptRef.current += res[0].transcript + " "
+        } else {
+          interim += res[0].transcript
+        }
+      }
+      onDraftChange((baseDraftRef.current + finalTranscriptRef.current + interim).trimStart())
+    }
     recognition.onerror = (event) => {
+      clearStopTimeout()
       setIsListening(false)
       setIsVoiceProcessing(false)
       if (event.error !== "aborted") {
-        toast.error(voiceErrorMessage(event.error))
+        reportVoiceError(event.error)
       }
     }
+    recognition.onend = () => {
+      clearStopTimeout()
+      setIsListening(false)
+      setIsVoiceProcessing(false)
+      // Commit finals only — drop any trailing interim text.
+      onDraftChange((baseDraftRef.current + finalTranscriptRef.current).trimEnd())
+    }
+
     recognitionRef.current = recognition
-    recognition.start()
-    setIsListening(true)
-  }, [isListening, selectedLanguage, draft, onDraftChange])
+    try {
+      recognition.start() // permission already granted above; waiting for onstart
+    } catch {
+      recognitionRef.current = null
+      setIsVoiceProcessing(false)
+      reportVoiceError("audio-capture")
+    }
+  }, [selectedLanguage, draft, onDraftChange, clearStopTimeout, reportVoiceError, ensureMicAccess])
+
+  const toggleVoiceInput = useCallback(() => {
+    if (isListening) stopListening()
+    else void startListening()
+  }, [isListening, startListening, stopListening])
 
   useEffect(() => {
     if (isLoading) return
@@ -267,6 +435,9 @@ export function IntakeChatPanel({
                 <SendHorizontal className="h-5 w-5" />
               </Button>
             </div>
+            {voiceError && (
+              <p className="mt-1.5 text-xs text-destructive" role="alert">{voiceError}</p>
+            )}
           </form>
         </div>
       </div>
@@ -360,11 +531,30 @@ export function IntakeChatPanel({
             />
           )}
           <div className="flex items-center gap-2">
+            {speechSupported && (
+              <Button
+                type="button"
+                variant={isListening ? "destructive" : "outline"}
+                size="icon"
+                className="shrink-0"
+                onClick={toggleVoiceInput}
+                disabled={disableInput || isVoiceProcessing}
+                aria-label={isListening ? "Stop voice input" : "Voice input"}
+              >
+                {isVoiceProcessing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : isListening ? (
+                  <MicOff className="h-4 w-4" />
+                ) : (
+                  <Mic className="h-4 w-4" />
+                )}
+              </Button>
+            )}
             <Input
               ref={inputRef}
               value={draft}
               onChange={(event) => onDraftChange(event.target.value)}
-              placeholder={copy.placeholder}
+              placeholder={isVoiceProcessing ? "Processing…" : isListening ? "Listening…" : copy.placeholder}
               disabled={disableInput}
             />
             <Button type="submit" disabled={disableSubmit}>
@@ -372,6 +562,9 @@ export function IntakeChatPanel({
               {copy.send}
             </Button>
           </div>
+          {voiceError && (
+            <p className="text-xs text-destructive" role="alert">{voiceError}</p>
+          )}
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs text-muted-foreground">
               This intake flow follows the ACA-3 schema and saves directly to your wizard draft.
