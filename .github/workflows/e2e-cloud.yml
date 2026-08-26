@@ -15,8 +15,11 @@ on:
   # Allow manual trigger against any branch/ref
   workflow_dispatch:
 
+# Scope the group per target branch so a staging deploy (dev) and a prod
+# deploy (main) finishing close together don't cancel each other's E2E run.
+# Within one branch, a newer run still supersedes the older one.
 concurrency:
-  group: e2e-cloud
+  group: e2e-cloud-${{ github.event.workflow_run.head_branch || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
