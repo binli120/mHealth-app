@@ -106,6 +106,11 @@ jobs:
           # Staging deploys test staging.healthcompass.cloud; everything else
           # (legacy prod deploy, manual dispatch, push:main) tests DOMAIN.
           E2E_BASE_URL: "https://${{ github.event.workflow_run.name == 'Deploy Staging (passive — dev database)' && secrets.STAGING_DOMAIN || secrets.DOMAIN }}"
+          # Lets the specs' IS_CLOUD_SUPABASE guard evaluate true so MFA-gated
+          # reviewer/admin flows (which need aal2 and can't complete TOTP in
+          # automation) are skipped instead of failing. Both deploy paths this
+          # workflow chains off run against the dev Supabase project.
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           # Explicit credentials — fall back to demo-data.ts defaults when the
           # secrets are absent (e.g. forks / PRs from external contributors).
           # Accounts must exist in the cloud Supabase project.
