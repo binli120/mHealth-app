@@ -171,7 +171,7 @@ describe("buildDashboardGreeting", () => {
 
     expect(greeting.heading).toBe("Good afternoon, John. Want to continue your unfinished application?")
     expect(greeting.message).toContain("ACA-3-AP was last saved")
-    expect(greeting.cta).toEqual({ href: "/application/new?applicationId=latest-draft&mode=wizard", label: "Continue application" })
+    expect(greeting.cta).toEqual({ href: "/application/new?applicationId=latest-draft&mode=chat", label: "Continue application" })
   })
 
   it("welcomes a user with no applications", () => {
