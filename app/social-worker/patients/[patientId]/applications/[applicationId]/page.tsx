@@ -24,8 +24,8 @@ export default function SWEditApplicationPage() {
   const params = useParams()
   const patientId     = params.patientId     as string
   const applicationId = params.applicationId as string
-  const [entryMode, setEntryMode] = useState<ApplicationEntryMode>("wizard")
-  const [hasOpenedChat, setHasOpenedChat] = useState(false)
+  const [entryMode, setEntryMode] = useState<ApplicationEntryMode>("chat")
+  const [hasOpenedChat, setHasOpenedChat] = useState(true)
 
   return (
     <div className="container mx-auto space-y-4 px-4 py-6">
