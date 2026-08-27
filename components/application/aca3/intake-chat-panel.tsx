@@ -187,6 +187,8 @@ export function IntakeChatPanel({
         return "Voice input isn't available for this language. Try English or type your answer."
       case "browser-unsupported":
         return "Voice input isn't supported in this browser."
+      case "insecure-context":
+        return "Voice input needs a secure (HTTPS) connection. Open this page over HTTPS and try again."
       default:
         return "Voice input failed. Please try again or type your answer."
     }
@@ -260,6 +262,14 @@ export function IntakeChatPanel({
 
   const startListening = useCallback(async () => {
     setVoiceError(null)
+    // Web Speech + getUserMedia are gated to secure contexts. Over plain http on
+    // a LAN IP (e.g. the mobile-handoff QR in dev) `navigator.mediaDevices` is
+    // undefined and SpeechRecognition.start() fails with a misleading
+    // "not-allowed" — surface the real reason instead.
+    if (typeof window !== "undefined" && window.isSecureContext === false) {
+      reportVoiceError("insecure-context")
+      return
+    }
     const SR = window.SpeechRecognition ?? window.webkitSpeechRecognition
     if (!SR) {
       reportVoiceError("browser-unsupported")

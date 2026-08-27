@@ -36,6 +36,13 @@ export function MobileVoiceRecorder({ patientId, conversationId, onSaveAndExit }
 
   const startRecording = useCallback(async () => {
     setError(null)
+    // getUserMedia is only exposed in a secure context. The mobile-handoff QR
+    // points at plain http on a LAN IP in dev, where `navigator.mediaDevices`
+    // is undefined — report that instead of a bogus permission error.
+    if (typeof window !== "undefined" && window.isSecureContext === false) {
+      setError("Voice recording needs a secure (HTTPS) connection. Open this page over HTTPS and try again.")
+      return
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const mr = new MediaRecorder(stream)
