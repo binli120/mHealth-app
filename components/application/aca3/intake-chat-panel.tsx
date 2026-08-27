@@ -234,10 +234,10 @@ export function IntakeChatPanel({
   // un-block it in site settings.
   const ensureMicAccess = useCallback(async (): Promise<boolean> => {
     if (micPermissionRef.current === "granted") return true
-    if (micPermissionRef.current === "denied") {
-      reportVoiceError("denied-blocked")
-      return false
-    }
+    // Don't trust a cached "denied": an OS-level or site-settings change never
+    // fires the Permissions API `change` event, so re-probe getUserMedia every
+    // time — it's the real source of truth and lets the panel recover without a
+    // full page reload.
     const media = navigator.mediaDevices
     if (!media?.getUserMedia) return true // Safari etc. — let start() do the asking
     try {
