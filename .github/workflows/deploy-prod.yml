@@ -135,10 +135,18 @@ jobs:
             # service label (not APP_DIR, which lives in a different GH
             # environment) and explicitly excluded from our own stacks so this
             # never touches the staging or prod-v2 app/mcp containers themselves.
-            LEGACY_IDS=$(docker ps -q \
-              --filter "label=com.docker.compose.service=app" \
-              --filter "label=com.docker.compose.service=mcp-server" \
-              --filter "label=com.docker.compose.service=masshealth-analysis")
+            #
+            # One `docker ps` call per service name: repeating
+            # --filter "label=com.docker.compose.service=..." on a single call
+            # ANDs the clauses (a container would need all three values on its
+            # one service label), which matches nothing. Union the per-service
+            # results instead; the loop below de-dups intent via the project
+            # guard and tolerates a container that has already stopped.
+            LEGACY_IDS=$(
+              for svc in app mcp-server masshealth-analysis; do
+                docker ps -q --filter "label=com.docker.compose.service=$svc"
+              done
+            )
             for cid in $LEGACY_IDS; do
               project=$(docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' "$cid" 2>/dev/null || echo "")
               case "$project" in
