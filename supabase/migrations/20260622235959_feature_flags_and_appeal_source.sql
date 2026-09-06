@@ -15,7 +15,7 @@
 -- 20260623000008 so a fresh `supabase db reset` creates these tables before
 -- that file's policies reference them.
 --
--- Idempotent: CREATE TABLE IF NOT EXISTS is a no-op on dev/existing installs.
+-- Idempotent: each guarded CREATE is a no-op on dev / existing installs.
 -- =============================================================================
 
 BEGIN;

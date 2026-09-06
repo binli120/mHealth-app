@@ -26,6 +26,9 @@ export const PERSONAL_DATA_TABLE_CLASSIFICATION = {
   user_agent_memory: "delete", rate_limit_counters: "delete", insurance_coverage_records: "delete",
   insurance_explanations: "delete", glossary_terms: "shared", help_questions: "delete",
   help_answers: "delete", mobile_handoff_sessions: "delete",
+  feature_flags: "shared", feature_flag_env_overrides: "shared",
+  mh_appeal_source_documents: "shared", mh_appeal_source_chunks: "shared",
+  mh_denial_patterns: "shared",
 } as const satisfies Record<string, "delete" | "preserve" | "shared">
 
 export const CASCADE_DELETED_TABLES = [
