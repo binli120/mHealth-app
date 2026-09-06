@@ -26,6 +26,17 @@ describe("PATCH /api/applications/[applicationId]/confirm-review", () => {
     expect(res.status).toBe(401)
   })
 
+  it("returns 400 for a non-UUID applicationId when authenticated", async () => {
+    mockRequireAuth.mockResolvedValue({ ok: true, userId: "user-1" })
+    const res = await PATCH(new Request("http://test/api/applications/not-a-uuid/confirm-review"), {
+      params: Promise.resolve({ applicationId: "not-a-uuid" }),
+    })
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.ok).toBe(false)
+    expect(mockConfirmCustomerReview).not.toHaveBeenCalled()
+  })
+
   it("calls confirmCustomerReview and returns ok:true on success", async () => {
     const applicationId = "11111111-1111-4111-8111-111111111111"
     mockRequireAuth.mockResolvedValue({ ok: true, userId: "user-1" })

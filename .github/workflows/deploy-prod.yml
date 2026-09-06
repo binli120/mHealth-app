@@ -1,0 +1,219 @@
+name: Deploy Prod (active — new prod Supabase project)
+
+# Active deployment: fires on push to `main`, targets a NEW dedicated prod
+# Supabase project (separate from the dev DB the old live site and staging
+# stack use). Runs as its own stack on the VPS, sharing Traefik/Ollama/
+# Whisper via docker-compose.app-only.yml. Owns healthcompass.cloud.
+#
+# Cut over 2026-08-25: this replaced .github/workflows/deploy.yml as the
+# push:main deploy target. That workflow is now workflow_dispatch-only
+# (manual rollback path) — do not re-enable its push:main trigger while
+# this one targets the same domain, or their Traefik routers will collide.
+#
+# `environment: production` has a required reviewer (binli120) configured in
+# GitHub repo settings (Settings → Environments → production → Required
+# reviewers) so this can't fire without a human approval, even on push.
+#
+# PROD_* secrets: real values, set 2026-09-05. The dedicated prod Supabase
+# project (ref wyuudqskzrdlvdvelbos) is provisioned — all 26 migrations
+# applied, admin seeded, `pnpm db:verify:prod` green. See TODO-prod-supabase.md.
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod-v2
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    name: CI Gate
+    uses: ./.github/workflows/ci.yml
+    # No secrets: block — ci.yml's workflow_call trigger doesn't declare any
+    # accepted secrets, so passing GITHUB_TOKEN explicitly is invalid syntax
+    # (GH rejects the whole workflow at parse time). The automatic
+    # GITHUB_TOKEN is available inside ci.yml regardless — it doesn't need
+    # to be passed through workflow_call.
+    permissions:
+      contents: read
+      issues: write
+
+  deploy:
+    name: SSH → VPS → docker compose up (prod-v2 stack)
+    needs: [ci]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+
+    steps:
+      - name: Preflight SSH reachability
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_SSH_PORT: ${{ secrets.VPS_SSH_PORT || '22' }}
+        run: |
+          set -euo pipefail
+          if [ -z "${VPS_HOST:-}" ]; then
+            echo "::error::VPS_HOST secret is empty or missing."
+            exit 1
+          fi
+          if ! timeout 15 bash -c "</dev/tcp/${VPS_HOST}/${VPS_SSH_PORT}" 2>/dev/null; then
+            echo "::error::Cannot reach the configured VPS over TCP port ${VPS_SSH_PORT}."
+            exit 1
+          fi
+
+      - name: Deploy to VPS (prod-v2 stack)
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+        with:
+          host:        ${{ secrets.VPS_HOST }}
+          username:    ${{ secrets.VPS_USER }}
+          key:         ${{ secrets.VPS_SSH_KEY }}
+          port:        ${{ secrets.VPS_SSH_PORT || '22' }}
+          timeout:     60s
+          script_stop: true
+          script: |
+            set -euo pipefail
+
+            APP_DIR="${{ secrets.PROD_APP_DIR }}"
+            REPO_URL="https://${{ secrets.GH_PAT }}@github.com/${{ secrets.REPO_SLUG }}.git"
+
+            if ! command -v docker &>/dev/null; then
+              curl -fsSL https://get.docker.com | sh
+            fi
+            systemctl enable docker --now || true
+
+            echo "▶ Deploying prod-v2 stack to $APP_DIR"
+            if [ -d "$APP_DIR/.git" ]; then
+              REMOTE=$(git -C "$APP_DIR" remote get-url origin 2>/dev/null || echo "")
+              if [ -z "$REMOTE" ]; then
+                rm -rf "$APP_DIR"
+              fi
+            fi
+            mkdir -p "$APP_DIR"
+            if [ ! -d "$APP_DIR/.git" ]; then
+              git clone "$REPO_URL" "$APP_DIR"
+            fi
+            cd "$APP_DIR"
+            git remote set-url origin "$REPO_URL"
+            git fetch --all --prune
+            git reset --hard origin/main
+
+            echo "⚙️  Writing .env.production.local (prod-v2)..."
+            ENV_FILE="$APP_DIR/.env.production.local"
+            printf '%s\n' \
+              "STACK_NAME=prod" \
+              "DOMAIN=${{ secrets.PROD_DOMAIN }}" \
+              "DATABASE_URL=${{ secrets.PROD_DATABASE_URL }}" \
+              "NEXT_PUBLIC_SUPABASE_URL=${{ secrets.PROD_SUPABASE_URL }}" \
+              "NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.PROD_SUPABASE_ANON_KEY }}" \
+              "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ secrets.PROD_SUPABASE_PUBLISHABLE_KEY }}" \
+              "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.PROD_SUPABASE_SERVICE_ROLE_KEY }}" \
+              "OLLAMA_BASE_URL=http://ollama:11434" \
+              "OLLAMA_MODEL=llama3.2:1b" \
+              "WHISPER_BASE_URL=http://whisper:9000" \
+              "GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" \
+              "RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}" \
+              "FROM_EMAIL=${{ secrets.PROD_FROM_EMAIL }}" \
+              "NEXT_PUBLIC_APP_URL=https://${{ secrets.PROD_DOMAIN }}" \
+              "MCP_CLIENT_ID=${{ secrets.PROD_MCP_CLIENT_ID }}" \
+              "MCP_CLIENT_SECRET=${{ secrets.PROD_MCP_CLIENT_SECRET }}" \
+              "PROFILE_ENCRYPTION_KEY=${{ secrets.PROD_PROFILE_ENCRYPTION_KEY }}" \
+              "ADMIN_PASSKEY_SESSION_SECRET=${{ secrets.PROD_ADMIN_PASSKEY_SESSION_SECRET }}" \
+              > "$ENV_FILE"
+            chmod 600 "$ENV_FILE"
+
+            # ── Identify the legacy app-facing containers (do NOT stop them yet) ──
+            # The primary docker-compose.yml stack (deployed by the old, now
+            # manual-only deploy.yml) still runs its own app/masshealth-analysis/
+            # mcp-server containers, all with Traefik routers on Host(`${DOMAIN}`) —
+            # the same domain this prod-v2 stack now owns. Traefik/Ollama/Whisper
+            # from that stack must keep running (this stack depends on them), so
+            # we can't just stop the whole legacy stack — only the three
+            # app-facing services that collide on this host. Matched by Compose
+            # service label (not APP_DIR, which lives in a different GH
+            # environment) and explicitly excluded from our own stacks so this
+            # never touches the staging or prod-v2 app/mcp containers themselves.
+            #
+            # One `docker ps` call per service name: repeating
+            # --filter "label=com.docker.compose.service=..." on a single call
+            # ANDs the clauses (a container would need all three values on its
+            # one service label), which matches nothing. Union the per-service
+            # results instead; the loop below de-dups intent via the project
+            # guard and tolerates a container that has already stopped.
+            #
+            # Cutover order matters: the legacy stack stays up and serving the
+            # domain through the build + health check. If the new image build,
+            # `compose up`, or the health loop fails, we tear the half-started
+            # prod-v2 stack back down and leave legacy running — a failed deploy
+            # must not become an outage. Legacy is only retired AFTER prod-v2
+            # passes its health check. During the overlap both stacks have a
+            # router for Host(`${PROD_DOMAIN}`); Traefik keeps the first-seen
+            # (legacy) and logs the duplicate as skipped, so traffic stays on
+            # legacy until we stop it below.
+            LEGACY_IDS=$(
+              for svc in app mcp-server masshealth-analysis; do
+                docker ps -q --filter "label=com.docker.compose.service=$svc"
+              done
+            )
+            LEGACY_RETIRE_IDS=""
+            for cid in $LEGACY_IDS; do
+              project=$(docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' "$cid" 2>/dev/null || echo "")
+              case "$project" in
+                masshealth-staging|masshealth-prod) continue ;;
+              esac
+              LEGACY_RETIRE_IDS="$LEGACY_RETIRE_IDS $cid"
+            done
+
+            rollback_to_legacy() {
+              echo "↩️  Deploy failed — removing half-started prod-v2 stack, keeping legacy live" >&2
+              docker compose -f docker-compose.app-only.yml -p masshealth-prod down --remove-orphans || true
+              # Legacy was never stopped on this path; restart defensively in
+              # case a future change reintroduces an earlier stop.
+              for cid in $LEGACY_RETIRE_IDS; do
+                docker start "$cid" > /dev/null 2>&1 || true
+              done
+            }
+
+            echo "▶ Building and starting prod-v2 stack (legacy still live)..."
+            if ! docker compose -f docker-compose.app-only.yml --env-file "$ENV_FILE" -p masshealth-prod up -d --build --remove-orphans; then
+              rollback_to_legacy
+              echo "::error::prod-v2 build/startup failed — legacy stack left running" >&2
+              exit 1
+            fi
+
+            echo "⏳ Waiting for prod-v2 app (up to 2 min)..."
+            PROD_HEALTHY=0
+            for i in $(seq 1 24); do
+              if docker compose -f docker-compose.app-only.yml -p masshealth-prod exec -T app node -e "fetch('http://127.0.0.1:3000/api/health/db').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))" > /dev/null 2>&1; then
+                echo "✅ Prod-v2 app is up after $((i * 5))s"
+                PROD_HEALTHY=1
+                break
+              fi
+              sleep 5
+            done
+
+            if [ "$PROD_HEALTHY" != "1" ]; then
+              echo "❌ Prod-v2 app did not pass health check — last 80 log lines:" >&2
+              docker compose -f docker-compose.app-only.yml -p masshealth-prod logs --tail=80 app || true
+              rollback_to_legacy
+              echo "::error::prod-v2 health check failed — legacy stack left running" >&2
+              exit 1
+            fi
+
+            # ── prod-v2 is healthy — now retire the legacy app-facing containers ──
+            echo "🔻 Retiring legacy app/analysis/mcp containers on ${{ secrets.PROD_DOMAIN }}..."
+            for cid in $LEGACY_RETIRE_IDS; do
+              name=$(docker inspect -f '{{ .Name }}' "$cid" 2>/dev/null || echo "$cid")
+              project=$(docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' "$cid" 2>/dev/null || echo "")
+              echo "  stopping legacy container $name (project=$project)"
+              docker stop "$cid" > /dev/null || true
+            done
+
+            docker image prune -f
+            echo "🚀 Prod-v2 deploy complete"
+
+      - name: Notify on failure
+        if: failure()
+        run: echo "::error::Prod-v2 deploy failed — check logs above"

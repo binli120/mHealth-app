@@ -16,6 +16,7 @@ import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 import { notifyStatusChange } from "@/lib/notifications/service"
 import { notifyBenefitPolicyUpdatesForApplication } from "@/lib/masshealth/benefit-policy-change-notifier"
 import { logServerError } from "@/lib/server/logger"
+import { parseParams, uuidSchema } from "@/lib/api/validation"
 import {
   ERROR_APPLICATION_DRAFT_NOT_FOUND,
   ERROR_LOAD_DRAFT_FAILED,
@@ -29,7 +30,7 @@ import {
   STATUS_NOT_FOUND,
 } from "./constants"
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const paramsSchema = z.object({ applicationId: uuidSchema })
 
 // Allowlist known application types; lowercase alphanumeric + hyphens only
 const draftBodySchema = z.object({
@@ -71,13 +72,9 @@ export async function GET(request: Request, context: RouteContext) {
       return authResult.response
     }
 
-    const { applicationId } = await context.params
-    if (!UUID_PATTERN.test(applicationId)) {
-      return NextResponse.json(
-        { ok: false, error: "applicationId (UUID) is required." },
-        { status: STATUS_BAD_REQUEST },
-      )
-    }
+    const parsedParams = parseParams(await context.params, paramsSchema)
+    if (!parsedParams.ok) return parsedParams.response
+    const { applicationId } = parsedParams.data
 
     const actingFor = request.headers.get("X-Acting-For-Patient") ?? undefined
     const record = await getApplicationDraft(authResult.userId, applicationId, actingFor)
@@ -115,13 +112,9 @@ export async function PUT(request: Request, context: RouteContext) {
       return authResult.response
     }
 
-    const { applicationId } = await context.params
-    if (!UUID_PATTERN.test(applicationId)) {
-      return NextResponse.json(
-        { ok: false, error: "applicationId (UUID) is required." },
-        { status: STATUS_BAD_REQUEST },
-      )
-    }
+    const parsedParams = parseParams(await context.params, paramsSchema)
+    if (!parsedParams.ok) return parsedParams.response
+    const { applicationId } = parsedParams.data
 
     // Guard body size before parsing (prevents unbounded wizardState blobs)
     const rawBody = await request.text()
@@ -215,10 +208,9 @@ export async function DELETE(request: Request, context: RouteContext) {
     const authResult = await requireAuthenticatedUser(request)
     if (!authResult.ok) return authResult.response
 
-    const { applicationId } = await context.params
-    if (!UUID_PATTERN.test(applicationId)) {
-      return NextResponse.json({ ok: false, error: "Invalid applicationId." }, { status: STATUS_BAD_REQUEST })
-    }
+    const parsedParams = parseParams(await context.params, paramsSchema)
+    if (!parsedParams.ok) return parsedParams.response
+    const { applicationId } = parsedParams.data
 
     const actingFor = request.headers.get("X-Acting-For-Patient") ?? undefined
 

@@ -54,8 +54,10 @@ const securityHeaders = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
   // Limit referrer information sent to third parties
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  // Restrict browser feature access — camera allowed for identity scan
-  { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=(), payment=()" },
+  // Restrict browser feature access — camera for identity scan, microphone for
+  // intake-chat voice input. proxy.ts sends the authoritative per-request value;
+  // keep this fallback in sync.
+  { key: "Permissions-Policy", value: "camera=(self), microphone=(self), geolocation=(), payment=()" },
 ]
 
 /** @type {import('next').NextConfig} */

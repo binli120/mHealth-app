@@ -11,6 +11,18 @@ import { hasSupabaseAuthState } from "../auth-state"
 const USER_AUTH_FILE = path.join(__dirname, "../.auth/user.json")
 const REVIEWER_AUTH_FILE = path.join(__dirname, "../.auth/reviewer.json")
 
+// requireReviewer bypasses MFA only when isLocalAuthHelperEnabled() is true,
+// which requires a non-cloud Supabase URL. With cloud Supabase, an E2E
+// session is always aal1 (password only) and cannot complete TOTP in
+// automation — same constraint documented in admin-sidebar.spec.ts for the
+// admin gate. require_2fa_reviewer is force-corrected to 'true' on every
+// baseline seed (see 98e916c), so this now applies to every cloud run.
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""
+const IS_CLOUD_SUPABASE =
+  Boolean(SUPABASE_URL) &&
+  !SUPABASE_URL.includes("localhost") &&
+  !SUPABASE_URL.includes("127.0.0.1")
+
 // Applicant accounts must not be able to read reviewer pages or server-rendered reviewer data.
 test.describe("Reviewer / Staff Portal access control", () => {
   test.use({ storageState: path.join(__dirname, "../.auth/user.json") })
@@ -63,6 +75,10 @@ test.describe("Reviewer Case Management", () => {
 
   test.beforeEach(({ page }) => {
     test.skip(!hasSupabaseAuthState(REVIEWER_AUTH_FILE), "No reviewer auth session — run global.setup.ts once to create the reviewer account")
+    test.skip(
+      IS_CLOUD_SUPABASE,
+      "Cloud Supabase detected: reviewer gate requires MFA (aal2) which cannot be completed in automation. Run against a local Supabase instance.",
+    )
     reviewer = new ReviewerPage(page)
   })
 

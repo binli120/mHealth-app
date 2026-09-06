@@ -18,7 +18,7 @@ export function buildApplicationHref(
 }
 
 export function buildApplicationContinueHref(applicationId: string): string {
-  return buildApplicationHref(applicationId, "wizard")
+  return buildApplicationHref(applicationId, "chat")
 }
 
 export function buildApplicationStartHref(applicationId: string): string {

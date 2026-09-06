@@ -1,0 +1,122 @@
+# =============================================================================
+# App-only compose overlay — for stacks that share the primary stack's
+# Traefik, Ollama, Whisper, and OpenObserve (declared in docker-compose.yml).
+#
+# Used by the staging and prod-v2 deploy pipelines. Each stack is deployed
+# with its own `-p <project-name>` (COMPOSE_PROJECT_NAME) and its own
+# .env.production.local (own DOMAIN, own Supabase project, own secrets) —
+# container names are auto-prefixed by the project name so multiple stacks
+# can coexist on one VPS without colliding.
+#
+# Requires the primary stack (docker-compose.yml) already running on this
+# host: shares its `proxy` (Traefik) and `healthcompass-internal` (Ollama/
+# Whisper) networks, and its Traefik instance for TLS/routing.
+#
+# STACK_NAME must be set in the env file (e.g. STACK_NAME=staging) — used to
+# namespace Traefik router/service names so they don't collide with the
+# primary stack's `app`/`mcp` routers or with each other.
+# =============================================================================
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+        NEXT_PUBLIC_MASSHEALTH_FORMS_BASE_URL: ${NEXT_PUBLIC_MASSHEALTH_FORMS_BASE_URL:-}
+        NEXT_PUBLIC_MASSHEALTH_ANALYSIS_BASE_URL: ${NEXT_PUBLIC_MASSHEALTH_ANALYSIS_BASE_URL:-}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_ENABLED: ${NEXT_PUBLIC_OPENOBSERVE_RUM_ENABLED:-false}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_CLIENT_TOKEN: ${NEXT_PUBLIC_OPENOBSERVE_RUM_CLIENT_TOKEN:-}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_APPLICATION_ID: ${NEXT_PUBLIC_OPENOBSERVE_RUM_APPLICATION_ID:-healthcompass-web}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_SITE: ${NEXT_PUBLIC_OPENOBSERVE_RUM_SITE:-}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_SERVICE: ${NEXT_PUBLIC_OPENOBSERVE_RUM_SERVICE:-healthcompass-web}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_ENV: ${NEXT_PUBLIC_OPENOBSERVE_RUM_ENV:-production}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_VERSION: ${NEXT_PUBLIC_OPENOBSERVE_RUM_VERSION:-}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_ORG: ${NEXT_PUBLIC_OPENOBSERVE_RUM_ORG:-default}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_INSECURE_HTTP: ${NEXT_PUBLIC_OPENOBSERVE_RUM_INSECURE_HTTP:-false}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_API_VERSION: ${NEXT_PUBLIC_OPENOBSERVE_RUM_API_VERSION:-v1}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_SESSION_SAMPLE_RATE: ${NEXT_PUBLIC_OPENOBSERVE_RUM_SESSION_SAMPLE_RATE:-100}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_REPLAY_SAMPLE_RATE: ${NEXT_PUBLIC_OPENOBSERVE_RUM_REPLAY_SAMPLE_RATE:-0}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_SESSION_REPLAY_ENABLED: ${NEXT_PUBLIC_OPENOBSERVE_RUM_SESSION_REPLAY_ENABLED:-false}
+        NEXT_PUBLIC_OPENOBSERVE_RUM_PRIVACY_LEVEL: ${NEXT_PUBLIC_OPENOBSERVE_RUM_PRIVACY_LEVEL:-mask-user-input}
+    image: healthcompass-ma:${STACK_NAME}
+    restart: unless-stopped
+    expose:
+      - "3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL_PROD: ${DATABASE_URL_PROD:-}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://${DOMAIN}}
+      FROM_EMAIL: ${FROM_EMAIL:-}
+      OPENOBSERVE_URL: ${OPENOBSERVE_URL:-}
+      OPENOBSERVE_USER: ${OPENOBSERVE_USER:-}
+      OPENOBSERVE_PASSWORD: ${OPENOBSERVE_PASSWORD:-}
+      OPENOBSERVE_ORG: ${OPENOBSERVE_ORG:-default}
+      OPENOBSERVE_STREAM: ${OPENOBSERVE_STREAM:-mhealth_app}
+      HEALTHCHECK_SIDECAR_URL: ${HEALTHCHECK_SIDECAR_URL:-}
+      NEXT_PUBLIC_OPENOBSERVE_RUM_SITE: ${NEXT_PUBLIC_OPENOBSERVE_RUM_SITE:-}
+      NEXT_PUBLIC_OPENOBSERVE_RUM_INSECURE_HTTP: ${NEXT_PUBLIC_OPENOBSERVE_RUM_INSECURE_HTTP:-false}
+      WHISPER_BASE_URL: ${WHISPER_BASE_URL:-http://whisper:9000}
+      PROFILE_ENCRYPTION_KEY: ${PROFILE_ENCRYPTION_KEY}
+      ADMIN_PASSKEY_SESSION_SECRET: ${ADMIN_PASSKEY_SESSION_SECRET}
+      MCP_CLIENT_ID: ${MCP_CLIENT_ID:-}
+      MCP_CLIENT_SECRET: ${MCP_CLIENT_SECRET:-}
+    env_file:
+      - .env.production.local
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${STACK_NAME}-app.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.${STACK_NAME}-app.entrypoints=websecure"
+      - "traefik.http.routers.${STACK_NAME}-app.tls=true"
+      - "traefik.http.routers.${STACK_NAME}-app.tls.certresolver=le"
+      - "traefik.http.services.${STACK_NAME}-app.loadbalancer.server.port=3000"
+      - "traefik.http.middlewares.${STACK_NAME}-app-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.routers.${STACK_NAME}-app.middlewares=${STACK_NAME}-app-headers"
+    networks:
+      - proxy
+      - internal
+
+  mcp-server:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile
+    image: healthcompass-mcp:${STACK_NAME}
+    restart: unless-stopped
+    expose:
+      - "3001"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      BASE_URL: https://${DOMAIN}
+      DATABASE_URL: ${DATABASE_URL}
+      MCP_CLIENT_ID: ${MCP_CLIENT_ID:-}
+      MCP_CLIENT_SECRET: ${MCP_CLIENT_SECRET:-}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${STACK_NAME}-mcp.rule=Host(`${DOMAIN}`) && (PathPrefix(`/mcp`) || PathPrefix(`/authorize`) || PathPrefix(`/token`) || PathPrefix(`/.well-known/oauth-authorization-server`))"
+      - "traefik.http.routers.${STACK_NAME}-mcp.entrypoints=websecure"
+      - "traefik.http.routers.${STACK_NAME}-mcp.tls=true"
+      - "traefik.http.routers.${STACK_NAME}-mcp.tls.certresolver=le"
+      - "traefik.http.routers.${STACK_NAME}-mcp.priority=100"
+      - "traefik.http.services.${STACK_NAME}-mcp.loadbalancer.server.port=3001"
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    name: proxy
+    external: true
+  internal:
+    name: healthcompass-internal
+    external: true

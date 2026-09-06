@@ -7,6 +7,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
+import { parseJsonBody } from "@/lib/api/validation"
 import { logServerError } from "@/lib/server/logger"
 import { updateApplicantInfo } from "@/lib/db/user-profile"
 import {
@@ -42,9 +43,8 @@ export async function PUT(request: Request) {
     const authResult = await requireAuthenticatedUser(request)
     if (!authResult.ok) return authResult.response
 
-    const body = (await request.json().catch(() => null)) as unknown
-    const parsed = applicantSchema.safeParse(body)
-    if (!parsed.success) {
+    const parsed = await parseJsonBody(request, applicantSchema)
+    if (!parsed.ok) {
       return NextResponse.json({ ok: false, error: ERROR_USER_PROFILE_INVALID_PAYLOAD }, { status: 400 })
     }
 

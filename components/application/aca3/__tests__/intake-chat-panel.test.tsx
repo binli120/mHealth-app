@@ -3,9 +3,11 @@
  * @email: blee@comura.ai
  */
 
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect, vi, afterEach } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
 import { createRef } from "react"
+
+vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
 
 import { IntakeChatPanel, type IntakeChatCopy } from "@/components/application/aca3/intake-chat-panel"
 import type { IntakeMessage } from "@/components/application/aca3/intake-chat-message-bubble"
@@ -145,5 +147,38 @@ describe("IntakeChatPanel", () => {
   it("renders the language selector", () => {
     renderPanel()
     expect(screen.getByRole("button", { name: "EN" })).toBeInTheDocument()
+  })
+
+  describe("voice input in an insecure context", () => {
+    afterEach(() => {
+      Object.defineProperty(window, "isSecureContext", { value: true, configurable: true })
+    })
+
+    it("reports an HTTPS-required error instead of attempting speech recognition", () => {
+      Object.defineProperty(window, "isSecureContext", { value: false, configurable: true })
+      const startSpy = vi.fn()
+      // If SpeechRecognition were constructed, .start() would run — assert it never is.
+      ;(window as unknown as { SpeechRecognition: unknown }).SpeechRecognition = class {
+        continuous = false
+        interimResults = false
+        maxAlternatives = 1
+        lang = ""
+        onstart: (() => void) | null = null
+        onresult: (() => void) | null = null
+        onerror: (() => void) | null = null
+        onend: (() => void) | null = null
+        start = startSpy
+        stop = vi.fn()
+        abort = vi.fn()
+      }
+
+      renderPanel()
+      fireEvent.click(screen.getByRole("button", { name: "Voice input" }))
+
+      expect(screen.getByRole("alert")).toHaveTextContent(/secure \(HTTPS\) connection/i)
+      expect(startSpy).not.toHaveBeenCalled()
+
+      delete (window as unknown as { SpeechRecognition?: unknown }).SpeechRecognition
+    })
   })
 })

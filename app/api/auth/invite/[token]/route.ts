@@ -6,10 +6,12 @@
  */
 
 import { NextResponse } from "next/server"
+import { z } from "zod"
 import { getDbPool } from "@/lib/db/server"
 import { claimInvitationByToken, getInvitationByToken } from "@/lib/db/invitations"
 import { encryptApplicantField } from "@/lib/db/applicant-fields"
 import { toUserFacingError } from "@/lib/errors/user-facing"
+import { parseJsonBody, passwordSchema } from "@/lib/api/validation"
 import {
   checkRateLimitAsync,
   getClientIp,
@@ -18,6 +20,12 @@ import {
 } from "@/lib/server/rate-limit"
 
 export const runtime = "nodejs"
+
+const acceptBodySchema = z.object({
+  firstName: z.string().trim().optional(),
+  lastName: z.string().trim().optional(),
+  password: passwordSchema,
+})
 
 const DEFAULT_INSTANCE_ID = "00000000-0000-0000-0000-000000000000"
 
@@ -65,23 +73,12 @@ export async function POST(
   if (limited) return limited
 
   const { token } = await params
-  const body = (await request.json().catch(() => ({}))) as {
-    firstName?: string
-    lastName?: string
-    password?: string
-  }
+  const parsed = await parseJsonBody(request, acceptBodySchema)
+  if (!parsed.ok) return parsed.response
 
-  // Validate inputs
-  if (!body.password || body.password.length < 8) {
-    return NextResponse.json(
-      { ok: false, error: "Password must be at least 8 characters." },
-      { status: 400 },
-    )
-  }
-
-  const firstName = body.firstName?.trim() || null
-  const lastName = body.lastName?.trim() || null
-  const password = body.password
+  const firstName = parsed.data.firstName || null
+  const lastName = parsed.data.lastName || null
+  const password = parsed.data.password
 
   const pool = getDbPool()
   const client = await pool.connect()

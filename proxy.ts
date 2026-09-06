@@ -94,15 +94,18 @@ export function proxy(request: NextRequest): NextResponse {
   response.headers.set("X-Content-Type-Options", "nosniff")
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
   // Allow camera on the mobile document-upload and license-scan pages;
-  // block it everywhere else.
+  // block it everywhere else. Microphone is allowed for same-origin everywhere
+  // — the intake chat's voice input (Web Speech) needs it and it can't be
+  // scoped to one path prefix (it renders under /application, /social-worker,
+  // and /mobile). Framing is already blocked via X-Frame-Options: DENY.
   const allowsCamera =
     request.nextUrl.pathname.startsWith("/upload/mobile/") ||
     request.nextUrl.pathname.startsWith("/verify/mobile/")
   response.headers.set(
     "Permissions-Policy",
     allowsCamera
-      ? "camera=(self), microphone=(), geolocation=()"
-      : "camera=(), microphone=(), geolocation=()",
+      ? "camera=(self), microphone=(self), geolocation=()"
+      : "camera=(), microphone=(self), geolocation=()",
   )
 
   return response
