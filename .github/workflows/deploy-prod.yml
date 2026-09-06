@@ -124,7 +124,7 @@ jobs:
               > "$ENV_FILE"
             chmod 600 "$ENV_FILE"
 
-            echo "🔻 Retiring legacy app/analysis/mcp routers on ${{ secrets.PROD_DOMAIN }}..."
+            # ── Identify the legacy app-facing containers (do NOT stop them yet) ──
             # The primary docker-compose.yml stack (deployed by the old, now
             # manual-only deploy.yml) still runs its own app/masshealth-analysis/
             # mcp-server containers, all with Traefik routers on Host(`${DOMAIN}`) —
@@ -142,35 +142,73 @@ jobs:
             # one service label), which matches nothing. Union the per-service
             # results instead; the loop below de-dups intent via the project
             # guard and tolerates a container that has already stopped.
+            #
+            # Cutover order matters: the legacy stack stays up and serving the
+            # domain through the build + health check. If the new image build,
+            # `compose up`, or the health loop fails, we tear the half-started
+            # prod-v2 stack back down and leave legacy running — a failed deploy
+            # must not become an outage. Legacy is only retired AFTER prod-v2
+            # passes its health check. During the overlap both stacks have a
+            # router for Host(`${PROD_DOMAIN}`); Traefik keeps the first-seen
+            # (legacy) and logs the duplicate as skipped, so traffic stays on
+            # legacy until we stop it below.
             LEGACY_IDS=$(
               for svc in app mcp-server masshealth-analysis; do
                 docker ps -q --filter "label=com.docker.compose.service=$svc"
               done
             )
+            LEGACY_RETIRE_IDS=""
             for cid in $LEGACY_IDS; do
               project=$(docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' "$cid" 2>/dev/null || echo "")
               case "$project" in
                 masshealth-staging|masshealth-prod) continue ;;
               esac
-              name=$(docker inspect -f '{{ .Name }}' "$cid" 2>/dev/null || echo "$cid")
-              echo "  stopping legacy container $name (project=$project)"
-              docker stop "$cid" > /dev/null
+              LEGACY_RETIRE_IDS="$LEGACY_RETIRE_IDS $cid"
             done
 
-            docker compose -f docker-compose.app-only.yml --env-file "$ENV_FILE" -p masshealth-prod up -d --build --remove-orphans
+            rollback_to_legacy() {
+              echo "↩️  Deploy failed — removing half-started prod-v2 stack, keeping legacy live" >&2
+              docker compose -f docker-compose.app-only.yml -p masshealth-prod down --remove-orphans || true
+              # Legacy was never stopped on this path; restart defensively in
+              # case a future change reintroduces an earlier stop.
+              for cid in $LEGACY_RETIRE_IDS; do
+                docker start "$cid" > /dev/null 2>&1 || true
+              done
+            }
+
+            echo "▶ Building and starting prod-v2 stack (legacy still live)..."
+            if ! docker compose -f docker-compose.app-only.yml --env-file "$ENV_FILE" -p masshealth-prod up -d --build --remove-orphans; then
+              rollback_to_legacy
+              echo "::error::prod-v2 build/startup failed — legacy stack left running" >&2
+              exit 1
+            fi
 
             echo "⏳ Waiting for prod-v2 app (up to 2 min)..."
+            PROD_HEALTHY=0
             for i in $(seq 1 24); do
               if docker compose -f docker-compose.app-only.yml -p masshealth-prod exec -T app node -e "fetch('http://127.0.0.1:3000/api/health/db').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))" > /dev/null 2>&1; then
                 echo "✅ Prod-v2 app is up after $((i * 5))s"
+                PROD_HEALTHY=1
                 break
               fi
-              if [ "$i" = "24" ]; then
-                echo "❌ Prod-v2 app did not start — last 80 log lines:" >&2
-                docker compose -f docker-compose.app-only.yml -p masshealth-prod logs --tail=80 app
-                exit 1
-              fi
               sleep 5
+            done
+
+            if [ "$PROD_HEALTHY" != "1" ]; then
+              echo "❌ Prod-v2 app did not pass health check — last 80 log lines:" >&2
+              docker compose -f docker-compose.app-only.yml -p masshealth-prod logs --tail=80 app || true
+              rollback_to_legacy
+              echo "::error::prod-v2 health check failed — legacy stack left running" >&2
+              exit 1
+            fi
+
+            # ── prod-v2 is healthy — now retire the legacy app-facing containers ──
+            echo "🔻 Retiring legacy app/analysis/mcp containers on ${{ secrets.PROD_DOMAIN }}..."
+            for cid in $LEGACY_RETIRE_IDS; do
+              name=$(docker inspect -f '{{ .Name }}' "$cid" 2>/dev/null || echo "$cid")
+              project=$(docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' "$cid" 2>/dev/null || echo "")
+              echo "  stopping legacy container $name (project=$project)"
+              docker stop "$cid" > /dev/null || true
             done
 
             docker image prune -f
