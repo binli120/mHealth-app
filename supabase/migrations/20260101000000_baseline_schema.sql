@@ -1840,5 +1840,7 @@ CREATE POLICY "masshealth_dev_staff_all" ON storage.objects FOR ALL TO authentic
     bucket_id = 'masshealth-dev'
     AND public.is_staff()
   );
+-- Note: masshealth_dev_delete_own is FOR DELETE, which supports USING only
+-- (no WITH CHECK — Postgres rejects WITH CHECK on SELECT/DELETE policies).
 
 COMMIT;

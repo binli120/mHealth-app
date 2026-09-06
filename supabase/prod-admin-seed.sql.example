@@ -71,6 +71,7 @@ BEGIN
         'email', v_email,
         'first_name', 'Admin',
         'last_name', 'User',
+        'role', 'admin',
         'email_verified', true,
         'phone_verified', false
       ),

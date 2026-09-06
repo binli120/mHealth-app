@@ -10,13 +10,13 @@ name: Deploy Prod (active — new prod Supabase project)
 # (manual rollback path) — do not re-enable its push:main trigger while
 # this one targets the same domain, or their Traefik routers will collide.
 #
-# `environment: production` should have a required reviewer configured in
+# `environment: production` has a required reviewer (binli120) configured in
 # GitHub repo settings (Settings → Environments → production → Required
 # reviewers) so this can't fire without a human approval, even on push.
 #
-# PROD_* secrets: using placeholder values until the new Supabase project
-# is provisioned (see TODO-prod-supabase.md). Deploys will fail health
-# checks against a placeholder DB — expected until real secrets are set.
+# PROD_* secrets: real values, set 2026-09-05. The dedicated prod Supabase
+# project (ref wyuudqskzrdlvdvelbos) is provisioned — all 26 migrations
+# applied, admin seeded, `pnpm db:verify:prod` green. See TODO-prod-supabase.md.
 
 on:
   push:
