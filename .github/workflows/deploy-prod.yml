@@ -152,17 +152,18 @@ jobs:
             # router for Host(`${PROD_DOMAIN}`); Traefik keeps the first-seen
             # (legacy) and logs the duplicate as skipped, so traffic stays on
             # legacy until we stop it below.
-            LEGACY_IDS=$(
-              for svc in app mcp-server masshealth-analysis; do
-                docker ps -q --filter "label=com.docker.compose.service=$svc"
-              done
-            )
+            # NOTE: this runs through the VPS root account's login shell, which
+            # is zsh — keep it POSIX-plain. zsh -c chokes on `case … ) x ;;`
+            # (parse error near `;`) and on multi-line `$( … for … done )`, so
+            # the service union is a one-liner and the self-stack skip is an
+            # `if`, not a `case`.
+            LEGACY_IDS=$(for svc in app mcp-server masshealth-analysis; do docker ps -q --filter "label=com.docker.compose.service=$svc"; done)
             LEGACY_RETIRE_IDS=""
             for cid in $LEGACY_IDS; do
               project=$(docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' "$cid" 2>/dev/null || echo "")
-              case "$project" in
-                masshealth-staging|masshealth-prod) continue ;;
-              esac
+              if [ "$project" = "masshealth-staging" ] || [ "$project" = "masshealth-prod" ]; then
+                continue
+              fi
               LEGACY_RETIRE_IDS="$LEGACY_RETIRE_IDS $cid"
             done
 
