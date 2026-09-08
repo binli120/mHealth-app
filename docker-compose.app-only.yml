@@ -72,6 +72,10 @@ services:
       ADMIN_PASSKEY_SESSION_SECRET: ${ADMIN_PASSKEY_SESSION_SECRET}
       MCP_CLIENT_ID: ${MCP_CLIENT_ID:-}
       MCP_CLIENT_SECRET: ${MCP_CLIENT_SECRET:-}
+      # Shared secret the retention scheduler presents to
+      # /api/cron/purge-identity-extractions. Without it the route falls back
+      # to "localhost only" and the scheduler's request is rejected.
+      CRON_SECRET: ${CRON_SECRET:-}
     env_file:
       - .env.production.local
     labels:
@@ -112,6 +116,53 @@ services:
       - "traefik.http.services.${STACK_NAME}-mcp.loadbalancer.server.port=3001"
     networks:
       - proxy
+
+  # Retention scheduler — replaces the Vercel `crons` entry in vercel.json,
+  # which does nothing on this VPS. Hits the data-minimization route once a
+  # day so extraction PHI older than the route's RETENTION_DAYS is actually
+  # purged in prod/staging.
+  #
+  # Reaches the app over the internal network as `app:3000` (no public
+  # round-trip, no Traefik). Presents CRON_SECRET as a bearer token — the
+  # route 401s otherwise. Date-guarded so a slow poll can't double-fire.
+  scheduler:
+    image: alpine:3.20
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      CRON_SECRET: ${CRON_SECRET:-}
+      SCHEDULER_TARGET_URL: ${SCHEDULER_TARGET_URL:-http://app:3000/api/cron/purge-identity-extractions}
+      SCHEDULER_RUN_AT: ${SCHEDULER_RUN_AT:-03:00}
+      TZ: ${SCHEDULER_TZ:-America/New_York}
+    # NOTE: `$$` escapes Compose interpolation so the shell (not Compose) does
+    # the expansion. Plain `$VAR` here would be substituted at `compose up`
+    # time and also leak CRON_SECRET into `docker inspect` / `compose config`.
+    command:
+      - sh
+      - -c
+      - |
+        set -eu
+        apk add --no-cache curl tzdata >/dev/null
+        if [ -z "$${CRON_SECRET:-}" ]; then
+          echo "scheduler: CRON_SECRET is empty — refusing to start (route would 401)." >&2
+          exit 1
+        fi
+        echo "scheduler: will GET $$SCHEDULER_TARGET_URL daily at $$SCHEDULER_RUN_AT $$TZ"
+        last=""
+        while true; do
+          today="$$(date +%Y-%m-%d)"
+          now="$$(date +%H:%M)"
+          if [ "$$now" = "$$SCHEDULER_RUN_AT" ] && [ "$$last" != "$$today" ]; then
+            last="$$today"
+            code="$$(curl -fsS -m 120 -o /tmp/cron_out -w '%{http_code}' \
+              -H "Authorization: Bearer $$CRON_SECRET" "$$SCHEDULER_TARGET_URL" || echo 000)"
+            echo "[$$(date -Is)] purge-identity-extractions -> HTTP $$code $$(cat /tmp/cron_out 2>/dev/null || true)"
+          fi
+          sleep 20
+        done
+    networks:
+      - internal
 
 networks:
   proxy:

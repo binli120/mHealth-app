@@ -197,6 +197,33 @@ try {
       `Schema: applicants has plaintext PHI columns: ${plaintextColsResult.rows.map((r) => r.column_name).join(", ")}`,
     )
   }
+
+  // ── 10. Privileged reset RPC is not reachable by untrusted roles ────────
+  // reset_customer_personal_data(uuid) is SECURITY DEFINER and wipes a
+  // user's records. On Supabase, default privileges grant EXECUTE on new
+  // public functions to anon/authenticated — 20260907000001 revokes it.
+  // A wrong grant here means POST /rest/v1/rpc/reset_customer_personal_data
+  // is an unauthenticated data-destruction endpoint.
+  const resetGrantResult = await pool.query(
+    `
+      SELECT
+        has_function_privilege('anon', 'public.reset_customer_personal_data(uuid)', 'EXECUTE')          AS anon_exec,
+        has_function_privilege('authenticated', 'public.reset_customer_personal_data(uuid)', 'EXECUTE')  AS auth_exec,
+        has_function_privilege('service_role', 'public.reset_customer_personal_data(uuid)', 'EXECUTE')    AS svc_exec
+    `,
+  )
+  const grant = resetGrantResult.rows[0]
+  if (grant.anon_exec || grant.auth_exec) {
+    fail(
+      "Privileges: reset_customer_personal_data(uuid) is EXECUTE-able by " +
+        `${[grant.anon_exec && "anon", grant.auth_exec && "authenticated"].filter(Boolean).join(" + ")} ` +
+        "— unauthenticated data wipe via /rest/v1/rpc. Run 20260907000001 and REVOKE on the live DB.",
+    )
+  } else if (!grant.svc_exec) {
+    fail("Privileges: reset_customer_personal_data(uuid) is not EXECUTE-able by service_role — reset path is broken.")
+  } else {
+    pass("Privileges: reset_customer_personal_data(uuid) restricted to service_role (not anon/authenticated)")
+  }
 } catch (error) {
   console.error("❌  Verification script errored:")
   console.error(error instanceof Error ? error.message : String(error))
