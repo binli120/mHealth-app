@@ -88,8 +88,14 @@ services:
       - "traefik.http.middlewares.${STACK_NAME}-app-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
       - "traefik.http.routers.${STACK_NAME}-app.middlewares=${STACK_NAME}-app-headers"
     networks:
-      - proxy
-      - internal
+      proxy: {}
+      internal:
+        # Stack-specific alias. `healthcompass-internal` is shared across the
+        # staging and prod-v2 projects, so the default `app` alias resolves to
+        # *either* stack's app container. The scheduler targets this alias so a
+        # prod purge can't be routed to the staging app (and vice versa).
+        aliases:
+          - "${STACK_NAME}-app"
 
   mcp-server:
     build:
@@ -122,8 +128,10 @@ services:
   # day so extraction PHI older than the route's RETENTION_DAYS is actually
   # purged in prod/staging.
   #
-  # Reaches the app over the internal network as `app:3000` (no public
-  # round-trip, no Traefik). Presents CRON_SECRET as a bearer token — the
+  # Reaches the app over the internal network as `${STACK_NAME}-app:3000` — a
+  # stack-specific alias, because the bare `app` alias on the shared
+  # healthcompass-internal network resolves to either stack. No public
+  # round-trip, no Traefik. Presents CRON_SECRET as a bearer token — the
   # route 401s otherwise. Date-guarded so a slow poll can't double-fire.
   scheduler:
     image: alpine:3.20
@@ -132,7 +140,9 @@ services:
       - app
     environment:
       CRON_SECRET: ${CRON_SECRET:-}
-      SCHEDULER_TARGET_URL: ${SCHEDULER_TARGET_URL:-http://app:3000/api/cron/purge-identity-extractions}
+      # STACK_NAME is always set by the deploy env file; target the
+      # stack-specific alias declared on the app service above.
+      SCHEDULER_TARGET_URL: http://${STACK_NAME}-app:3000/api/cron/purge-identity-extractions
       SCHEDULER_RUN_AT: ${SCHEDULER_RUN_AT:-03:00}
       TZ: ${SCHEDULER_TZ:-America/New_York}
     # NOTE: `$$` escapes Compose interpolation so the shell (not Compose) does
