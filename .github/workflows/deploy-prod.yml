@@ -205,7 +205,12 @@ jobs:
               LEGACY_RETIRE_IDS="$LEGACY_RETIRE_IDS $cid"
             done
 
-            COMPOSE="docker compose -f docker-compose.app-only.yml -p masshealth-prod"
+            # A function, not a string var. The VPS runs this script through
+            # zsh, which does NOT word-split an unquoted parameter expansion —
+            # `CMD="docker compose …"; $CMD up` looks for a command literally
+            # named "docker compose -f … -p masshealth-prod". A function passes
+            # its args through cleanly under both zsh and sh.
+            dcp() { docker compose -f docker-compose.app-only.yml -p masshealth-prod "$@"; }
 
             # ── Snapshot the currently-serving prod-v2 images BEFORE the build ──
             # `image:` in the compose file is a static tag (healthcompass-ma:prod,
@@ -216,8 +221,8 @@ jobs:
             # rolls back to. Empty on the very first deploy (no prod-v2 running
             # yet); then the legacy fallback below applies instead.
             HAVE_ROLLBACK=0
-            APP_CID=$($COMPOSE ps -q app 2>/dev/null | head -n1 || true)
-            MCP_CID=$($COMPOSE ps -q mcp-server 2>/dev/null | head -n1 || true)
+            APP_CID=$(dcp ps -q app 2>/dev/null | head -n1 || true)
+            MCP_CID=$(dcp ps -q mcp-server 2>/dev/null | head -n1 || true)
             if [ -n "${APP_CID:-}" ]; then
               PREV_APP_IMG=$(docker inspect -f '{{ .Image }}' "$APP_CID" 2>/dev/null || echo "")
               if [ -n "$PREV_APP_IMG" ]; then
@@ -240,9 +245,9 @@ jobs:
                   && docker tag healthcompass-mcp:prod-rollback healthcompass-mcp:prod
                 # --no-build: reuse the restored images, do not rebuild from the
                 # bad checkout. Keeps the last known-good prod-v2 stack serving.
-                $COMPOSE --env-file "$ENV_FILE" up -d --force-recreate --no-build --remove-orphans || true
+                dcp --env-file "$ENV_FILE" up -d --force-recreate --no-build --remove-orphans || true
                 for i in $(seq 1 24); do
-                  if $COMPOSE exec -T app node -e "fetch('http://127.0.0.1:3000/api/health/db').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))" > /dev/null 2>&1; then
+                  if dcp exec -T app node -e "fetch('http://127.0.0.1:3000/api/health/db').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))" > /dev/null 2>&1; then
                     echo "✅ Rolled back to previous prod-v2 image after $((i * 5))s" >&2
                     return 0
                   fi
@@ -255,14 +260,14 @@ jobs:
               # half-started stack down and leave the legacy stack (never
               # stopped on this path) serving the domain.
               echo "↩️  Deploy failed on first cutover — removing half-started prod-v2 stack, keeping legacy live" >&2
-              $COMPOSE down --remove-orphans || true
+              dcp down --remove-orphans || true
               for cid in $LEGACY_RETIRE_IDS; do
                 docker start "$cid" > /dev/null 2>&1 || true
               done
             }
 
             echo "▶ Building and starting prod-v2 stack (previous stack still live)..."
-            if ! $COMPOSE --env-file "$ENV_FILE" up -d --build --remove-orphans; then
+            if ! dcp --env-file "$ENV_FILE" up -d --build --remove-orphans; then
               rollback || true
               echo "::error::prod-v2 build/startup failed — see rollback result above" >&2
               exit 1
@@ -271,7 +276,7 @@ jobs:
             echo "⏳ Waiting for prod-v2 app (up to 2 min)..."
             PROD_HEALTHY=0
             for i in $(seq 1 24); do
-              if $COMPOSE exec -T app node -e "fetch('http://127.0.0.1:3000/api/health/db').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))" > /dev/null 2>&1; then
+              if dcp exec -T app node -e "fetch('http://127.0.0.1:3000/api/health/db').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))" > /dev/null 2>&1; then
                 echo "✅ Prod-v2 app is up after $((i * 5))s"
                 PROD_HEALTHY=1
                 break
@@ -281,7 +286,7 @@ jobs:
 
             if [ "$PROD_HEALTHY" != "1" ]; then
               echo "❌ Prod-v2 app did not pass health check — last 80 log lines:" >&2
-              $COMPOSE logs --tail=80 app || true
+              dcp logs --tail=80 app || true
               rollback || true
               echo "::error::prod-v2 health check failed — see rollback result above" >&2
               exit 1
