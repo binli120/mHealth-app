@@ -72,6 +72,10 @@ services:
       ADMIN_PASSKEY_SESSION_SECRET: ${ADMIN_PASSKEY_SESSION_SECRET}
       MCP_CLIENT_ID: ${MCP_CLIENT_ID:-}
       MCP_CLIENT_SECRET: ${MCP_CLIENT_SECRET:-}
+      # Shared secret the retention scheduler presents to
+      # /api/cron/purge-identity-extractions. Without it the route falls back
+      # to "localhost only" and the scheduler's request is rejected.
+      CRON_SECRET: ${CRON_SECRET:-}
     env_file:
       - .env.production.local
     labels:
@@ -84,8 +88,14 @@ services:
       - "traefik.http.middlewares.${STACK_NAME}-app-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
       - "traefik.http.routers.${STACK_NAME}-app.middlewares=${STACK_NAME}-app-headers"
     networks:
-      - proxy
-      - internal
+      proxy: {}
+      internal:
+        # Stack-specific alias. `healthcompass-internal` is shared across the
+        # staging and prod-v2 projects, so the default `app` alias resolves to
+        # *either* stack's app container. The scheduler targets this alias so a
+        # prod purge can't be routed to the staging app (and vice versa).
+        aliases:
+          - "${STACK_NAME}-app"
 
   mcp-server:
     build:
@@ -112,6 +122,74 @@ services:
       - "traefik.http.services.${STACK_NAME}-mcp.loadbalancer.server.port=3001"
     networks:
       - proxy
+
+  # Retention scheduler — replaces the Vercel `crons` entry in vercel.json,
+  # which does nothing on this VPS. Hits the data-minimization route once a
+  # day so extraction PHI older than the route's RETENTION_DAYS is actually
+  # purged in prod/staging.
+  #
+  # Reaches the app over the internal network as `${STACK_NAME}-app:3000` — a
+  # stack-specific alias, because the bare `app` alias on the shared
+  # healthcompass-internal network resolves to either stack. No public
+  # round-trip, no Traefik. Presents CRON_SECRET as a bearer token — the
+  # route 401s otherwise.
+  #
+  # Fires once per calendar day, at or after SCHEDULER_RUN_AT (so a late
+  # container start or an earlier failure still gets caught up that day). The
+  # success date is recorded only on a 2xx, so a transient 401/5xx / restart
+  # retries instead of skipping the purge until tomorrow.
+  scheduler:
+    image: alpine:3.20
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      CRON_SECRET: ${CRON_SECRET:-}
+      # STACK_NAME is always set by the deploy env file; target the
+      # stack-specific alias declared on the app service above.
+      SCHEDULER_TARGET_URL: http://${STACK_NAME}-app:3000/api/cron/purge-identity-extractions
+      SCHEDULER_RUN_AT: ${SCHEDULER_RUN_AT:-03:00}
+      TZ: ${SCHEDULER_TZ:-America/New_York}
+    # NOTE: `$$` escapes Compose interpolation so the shell (not Compose) does
+    # the expansion. Plain `$VAR` here would be substituted at `compose up`
+    # time and also leak CRON_SECRET into `docker inspect` / `compose config`.
+    command:
+      - sh
+      - -c
+      - |
+        set -eu
+        apk add --no-cache curl tzdata >/dev/null
+        if [ -z "$${CRON_SECRET:-}" ]; then
+          echo "scheduler: CRON_SECRET is empty — refusing to start (route would 401)." >&2
+          exit 1
+        fi
+        echo "scheduler: will GET $$SCHEDULER_TARGET_URL daily at/after $$SCHEDULER_RUN_AT $$TZ"
+        done_date=""
+        while true; do
+          today="$$(date +%Y-%m-%d)"
+          now="$$(date +%H:%M)"
+          # HH:MM is zero-padded 24h, so lexical order == chronological order.
+          latest="$$(printf '%s\n%s\n' "$$SCHEDULER_RUN_AT" "$$now" | sort | tail -n1)"
+          if [ "$$done_date" != "$$today" ] && [ "$$latest" = "$$now" ]; then
+            code="$$(curl -sS -m 120 -o /tmp/cron_out -w '%{http_code}' \
+              -H "Authorization: Bearer $$CRON_SECRET" "$$SCHEDULER_TARGET_URL" || true)"
+            : "$${code:=000}"
+            body="$$(cat /tmp/cron_out 2>/dev/null || true)"
+            case "$$code" in
+              2??)
+                done_date="$$today"
+                echo "[$$(date -Is)] purge-identity-extractions OK (HTTP $$code) $$body"
+                ;;
+              *)
+                echo "[$$(date -Is)] purge-identity-extractions FAILED (HTTP $$code) $$body — will retry" >&2
+                sleep 60
+                ;;
+            esac
+          fi
+          sleep 20
+        done
+    networks:
+      - internal
 
 networks:
   proxy:
