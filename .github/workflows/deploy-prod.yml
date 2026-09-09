@@ -106,22 +106,31 @@ jobs:
             git remote set-url origin "$REPO_URL"
             git fetch --all --prune
 
-            # Pin to the CI-validated commit, and refuse it unless it is
-            # actually on origin/<branch> (guards manual dispatch against
-            # deploying a ref that was never merged / CI'd for this branch).
+            # Pin to the CI-validated commit. Production only ever deploys
+            # origin/main: `git reset --hard origin/main` used to enforce that
+            # implicitly, but checking the passed SHA against origin/${DEPLOY_REF}
+            # is circular on workflow_dispatch (ref_name = the operator's chosen
+            # branch, sha = its tip), which would let a feature branch deploy
+            # unmerged code. So require the ref to be main AND the SHA to be an
+            # ancestor of origin/main. (The `production` GitHub environment also
+            # restricts deploys to main — this is the in-script backstop.)
             if [ -z "${DEPLOY_SHA:-}" ]; then
               echo "::error::DEPLOY_SHA was not passed through to the VPS script."
+              exit 1
+            fi
+            if [ "${DEPLOY_REF:-}" != "main" ]; then
+              echo "::error::deploy-prod only deploys origin/main (triggered ref: '${DEPLOY_REF:-}'). Dispatch from main."
               exit 1
             fi
             if ! git cat-file -e "${DEPLOY_SHA}^{commit}" 2>/dev/null; then
               echo "::error::commit ${DEPLOY_SHA} not found after fetch."
               exit 1
             fi
-            if ! git merge-base --is-ancestor "$DEPLOY_SHA" "origin/${DEPLOY_REF}"; then
-              echo "::error::${DEPLOY_SHA} is not on origin/${DEPLOY_REF} — refusing to deploy."
+            if ! git merge-base --is-ancestor "$DEPLOY_SHA" origin/main; then
+              echo "::error::${DEPLOY_SHA} is not on origin/main — refusing to deploy unmerged code to production."
               exit 1
             fi
-            echo "▶ Checking out CI-validated commit ${DEPLOY_SHA} (origin/${DEPLOY_REF})"
+            echo "▶ Checking out CI-validated commit ${DEPLOY_SHA} (origin/main)"
             git reset --hard "$DEPLOY_SHA"
 
             echo "⚙️  Writing .env.production.local (prod-v2)..."
