@@ -103,21 +103,27 @@ jobs:
             git remote set-url origin "$REPO_URL"
             git fetch --all --prune
 
-            # Pin to the CI-validated commit, and refuse it unless it is
-            # actually on origin/<branch>.
+            # Pin to the CI-validated commit. Staging only deploys origin/dev;
+            # checking against origin/${DEPLOY_REF} is circular on
+            # workflow_dispatch, so require the ref to be dev AND the SHA to be
+            # an ancestor of origin/dev.
             if [ -z "${DEPLOY_SHA:-}" ]; then
               echo "::error::DEPLOY_SHA was not passed through to the VPS script."
+              exit 1
+            fi
+            if [ "${DEPLOY_REF:-}" != "dev" ]; then
+              echo "::error::deploy-staging only deploys origin/dev (triggered ref: '${DEPLOY_REF:-}'). Dispatch from dev."
               exit 1
             fi
             if ! git cat-file -e "${DEPLOY_SHA}^{commit}" 2>/dev/null; then
               echo "::error::commit ${DEPLOY_SHA} not found after fetch."
               exit 1
             fi
-            if ! git merge-base --is-ancestor "$DEPLOY_SHA" "origin/${DEPLOY_REF}"; then
-              echo "::error::${DEPLOY_SHA} is not on origin/${DEPLOY_REF} — refusing to deploy."
+            if ! git merge-base --is-ancestor "$DEPLOY_SHA" origin/dev; then
+              echo "::error::${DEPLOY_SHA} is not on origin/dev — refusing to deploy."
               exit 1
             fi
-            echo "▶ Checking out CI-validated commit ${DEPLOY_SHA} (origin/${DEPLOY_REF})"
+            echo "▶ Checking out CI-validated commit ${DEPLOY_SHA} (origin/dev)"
             git reset --hard "$DEPLOY_SHA"
 
             echo "⚙️  Writing .env.production.local (staging)..."
