@@ -132,7 +132,12 @@ services:
   # stack-specific alias, because the bare `app` alias on the shared
   # healthcompass-internal network resolves to either stack. No public
   # round-trip, no Traefik. Presents CRON_SECRET as a bearer token — the
-  # route 401s otherwise. Date-guarded so a slow poll can't double-fire.
+  # route 401s otherwise.
+  #
+  # Fires once per calendar day, at or after SCHEDULER_RUN_AT (so a late
+  # container start or an earlier failure still gets caught up that day). The
+  # success date is recorded only on a 2xx, so a transient 401/5xx / restart
+  # retries instead of skipping the purge until tomorrow.
   scheduler:
     image: alpine:3.20
     restart: unless-stopped
@@ -158,16 +163,28 @@ services:
           echo "scheduler: CRON_SECRET is empty — refusing to start (route would 401)." >&2
           exit 1
         fi
-        echo "scheduler: will GET $$SCHEDULER_TARGET_URL daily at $$SCHEDULER_RUN_AT $$TZ"
-        last=""
+        echo "scheduler: will GET $$SCHEDULER_TARGET_URL daily at/after $$SCHEDULER_RUN_AT $$TZ"
+        done_date=""
         while true; do
           today="$$(date +%Y-%m-%d)"
           now="$$(date +%H:%M)"
-          if [ "$$now" = "$$SCHEDULER_RUN_AT" ] && [ "$$last" != "$$today" ]; then
-            last="$$today"
-            code="$$(curl -fsS -m 120 -o /tmp/cron_out -w '%{http_code}' \
-              -H "Authorization: Bearer $$CRON_SECRET" "$$SCHEDULER_TARGET_URL" || echo 000)"
-            echo "[$$(date -Is)] purge-identity-extractions -> HTTP $$code $$(cat /tmp/cron_out 2>/dev/null || true)"
+          # HH:MM is zero-padded 24h, so lexical order == chronological order.
+          latest="$$(printf '%s\n%s\n' "$$SCHEDULER_RUN_AT" "$$now" | sort | tail -n1)"
+          if [ "$$done_date" != "$$today" ] && [ "$$latest" = "$$now" ]; then
+            code="$$(curl -sS -m 120 -o /tmp/cron_out -w '%{http_code}' \
+              -H "Authorization: Bearer $$CRON_SECRET" "$$SCHEDULER_TARGET_URL" || true)"
+            : "$${code:=000}"
+            body="$$(cat /tmp/cron_out 2>/dev/null || true)"
+            case "$$code" in
+              2??)
+                done_date="$$today"
+                echo "[$$(date -Is)] purge-identity-extractions OK (HTTP $$code) $$body"
+                ;;
+              *)
+                echo "[$$(date -Is)] purge-identity-extractions FAILED (HTTP $$code) $$body — will retry" >&2
+                sleep 60
+                ;;
+            esac
           fi
           sleep 20
         done
