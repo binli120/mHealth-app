@@ -6,8 +6,10 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  extractFinalQuestionSentence,
   formatQuestionPrompt,
   parseAnswerValue,
+  toSpeakableQuestionText,
 } from "@/components/application/aca3/intake-chat-answer-parser"
 import type { IntakeQuestion } from "@/components/application/aca3/intake-chat-types"
 import type { SchemaField } from "@/components/application/aca3/types"
@@ -72,6 +74,32 @@ describe("intake chat answer parser", () => {
         }),
       ),
     ).toContain("Use MM/DD/YYYY")
+  })
+
+  it("speaks only the final question sentence, never the leading context", () => {
+    expect(
+      toSpeakableQuestionText("Here is some context you already gave me. What is your date of birth?"),
+    ).toBe("What is your date of birth?")
+  })
+
+  it("keeps the trailing prompt for option questions instead of reading the whole message", () => {
+    expect(
+      extractFinalQuestionSentence(
+        "Person 1: What coverage do you have? Options: Medicare, MassHealth, None. What is your answer?",
+      ),
+    ).toBe("What is your answer?")
+  })
+
+  it("falls back to the last sentence when there is no question mark", () => {
+    expect(extractFinalQuestionSentence("Use MM/DD/YYYY, or choose a date.")).toBe(
+      "Use MM/DD/YYYY, or choose a date.",
+    )
+  })
+
+  it("returns a lone question unchanged", () => {
+    expect(extractFinalQuestionSentence("Are you a Massachusetts resident?")).toBe(
+      "Are you a Massachusetts resident?",
+    )
   })
 
   it("treats none as an empty optional checkbox-group answer", () => {
