@@ -426,8 +426,32 @@ export function resolveSpeechLanguage(language: SupportedLanguage): string {
 
 // ── Speakable text converter ──────────────────────────────────────────────────
 
+/**
+ * Reduce a full assistant message to just its final question sentence so the
+ * "Play question" button and auto-speak never read the leading context/prefix
+ * aloud. Falls back to the last sentence when the text has no "?".
+ */
+export function extractFinalQuestionSentence(text: string): string {
+  const trimmed = text.trim()
+  if (!trimmed) {
+    return trimmed
+  }
+
+  const sentences = (trimmed.match(/[^.!?;\n]+[.!?;]*/g) ?? [trimmed])
+    .map((sentence) => sentence.trim())
+    .filter(Boolean)
+
+  for (let index = sentences.length - 1; index >= 0; index -= 1) {
+    if (sentences[index].endsWith("?")) {
+      return sentences[index]
+    }
+  }
+
+  return sentences[sentences.length - 1] ?? trimmed
+}
+
 export function toSpeakableQuestionText(text: string): string {
-  return text
+  return extractFinalQuestionSentence(text)
     .replace(/\(\s*MM\/DD\/YYYY\s*\)/gi, "")
     .replace(/\bMM\/DD\/YYYY\b/gi, "")
     .replace(/\s{2,}/g, " ")
