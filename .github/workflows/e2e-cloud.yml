@@ -84,21 +84,23 @@ jobs:
     environment: ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Deploy Prod (active — new prod Supabase project)') && 'production' || 'dev' }}
 
     steps:
-      # Explicit ref required — and workflow_run.head_sha is NOT safe to use
-      # here. Both deploy workflows can be workflow_dispatch'd against any
-      # ref, but their deploy scripts ignore that and hardcode what they
-      # actually check out on the VPS (deploy-staging.yml always resets to
-      # origin/dev, deploy.yml always resets to origin/main) — so
-      # head_sha reflects the *dispatch ref*, not what was actually
-      # deployed. E.g. dispatching staging against "main" would deploy
-      # dev's code but head_sha would point at main, and we'd run main's
-      # test files against a dev deployment. Hardcode the ref per source
-      # workflow instead, matching what each one really deploys. Falls
-      # back to github.sha for direct push/workflow_dispatch of this
-      # workflow itself, where the triggering ref IS the intended one.
+      # Check out the exact revision that was deployed, so the test files
+      # match the running code.
+      #
+      # Deploy Prod and Deploy Staging now deploy `github.sha` verbatim and
+      # refuse anything that isn't an ancestor of origin/main / origin/dev
+      # (and refuse a triggered ref that isn't main / dev). For a workflow_run
+      # from either, workflow_run.head_sha IS that deployed commit — use it.
+      #
+      # The legacy "Deploy to Hostinger VPS" (deploy.yml) still hardcodes
+      # `git reset --hard origin/main` regardless of dispatch ref, so its
+      # head_sha can't be trusted — pin that path to 'main'.
+      #
+      # Direct push / workflow_dispatch of THIS workflow: github.sha is the
+      # intended ref.
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.name == 'Deploy Staging (passive — dev database)' && 'dev' || (github.event.workflow_run.name == 'Deploy to Hostinger VPS' || github.event.workflow_run.name == 'Deploy Prod (active — new prod Supabase project)') && 'main' || github.sha }}
+          ref: ${{ (github.event.workflow_run.name == 'Deploy Prod (active — new prod Supabase project)' || github.event.workflow_run.name == 'Deploy Staging (passive — dev database)') && github.event.workflow_run.head_sha || github.event.workflow_run.name == 'Deploy to Hostinger VPS' && 'main' || github.sha }}
 
       - uses: pnpm/action-setup@v5
 
