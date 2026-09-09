@@ -29,8 +29,14 @@ export default function ForgotPasswordPage() {
 
     try {
       const supabase = getSupabaseClient()
+      // Land directly on the reset form. Supabase appends
+      // `#access_token=…&type=recovery` to this url; the reset-password page's
+      // browser client consumes the hash and lets the user set a new password.
+      // (Going via /auth/callback did not work: getSafeAuthNextPath rejects any
+      // `next` under /auth/, so the recovery session just fell through to the
+      // dashboard with no password prompt.)
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password`,
+        redirectTo: `${window.location.origin}/auth/reset-password`,
       })
 
       if (error) {

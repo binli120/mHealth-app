@@ -66,6 +66,12 @@ jobs:
 
       - name: Deploy to VPS (prod-v2 stack)
         uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+        env:
+          # Deploy the exact revision CI validated, not the branch tip at SSH
+          # time — a push (or a second approval) landing during the CI +
+          # approval window would otherwise ship untested code.
+          DEPLOY_SHA: ${{ github.sha }}
+          DEPLOY_REF: ${{ github.ref_name }}
         with:
           host:        ${{ secrets.VPS_HOST }}
           username:    ${{ secrets.VPS_USER }}
@@ -73,6 +79,7 @@ jobs:
           port:        ${{ secrets.VPS_SSH_PORT || '22' }}
           timeout:     60s
           script_stop: true
+          envs:        DEPLOY_SHA,DEPLOY_REF
           script: |
             set -euo pipefail
 
@@ -98,7 +105,24 @@ jobs:
             cd "$APP_DIR"
             git remote set-url origin "$REPO_URL"
             git fetch --all --prune
-            git reset --hard origin/main
+
+            # Pin to the CI-validated commit, and refuse it unless it is
+            # actually on origin/<branch> (guards manual dispatch against
+            # deploying a ref that was never merged / CI'd for this branch).
+            if [ -z "${DEPLOY_SHA:-}" ]; then
+              echo "::error::DEPLOY_SHA was not passed through to the VPS script."
+              exit 1
+            fi
+            if ! git cat-file -e "${DEPLOY_SHA}^{commit}" 2>/dev/null; then
+              echo "::error::commit ${DEPLOY_SHA} not found after fetch."
+              exit 1
+            fi
+            if ! git merge-base --is-ancestor "$DEPLOY_SHA" "origin/${DEPLOY_REF}"; then
+              echo "::error::${DEPLOY_SHA} is not on origin/${DEPLOY_REF} — refusing to deploy."
+              exit 1
+            fi
+            echo "▶ Checking out CI-validated commit ${DEPLOY_SHA} (origin/${DEPLOY_REF})"
+            git reset --hard "$DEPLOY_SHA"
 
             echo "⚙️  Writing .env.production.local (prod-v2)..."
             ENV_FILE="$APP_DIR/.env.production.local"
@@ -121,6 +145,7 @@ jobs:
               "MCP_CLIENT_SECRET=${{ secrets.PROD_MCP_CLIENT_SECRET }}" \
               "PROFILE_ENCRYPTION_KEY=${{ secrets.PROD_PROFILE_ENCRYPTION_KEY }}" \
               "ADMIN_PASSKEY_SESSION_SECRET=${{ secrets.PROD_ADMIN_PASSKEY_SESSION_SECRET }}" \
+              "CRON_SECRET=${{ secrets.PROD_CRON_SECRET }}" \
               > "$ENV_FILE"
             chmod 600 "$ENV_FILE"
 
@@ -143,15 +168,19 @@ jobs:
             # results instead; the loop below de-dups intent via the project
             # guard and tolerates a container that has already stopped.
             #
-            # Cutover order matters: the legacy stack stays up and serving the
-            # domain through the build + health check. If the new image build,
-            # `compose up`, or the health loop fails, we tear the half-started
-            # prod-v2 stack back down and leave legacy running — a failed deploy
-            # must not become an outage. Legacy is only retired AFTER prod-v2
-            # passes its health check. During the overlap both stacks have a
-            # router for Host(`${PROD_DOMAIN}`); Traefik keeps the first-seen
-            # (legacy) and logs the duplicate as skipped, so traffic stays on
-            # legacy until we stop it below.
+            # Cutover order matters: the previously-serving stack stays up
+            # through the build + health check, and a failed build / `compose
+            # up` / health loop must never become an outage.
+            #   - First cutover: the legacy docker-compose.yml stack is that
+            #     serving stack; on failure we tear the half-started prod-v2
+            #     stack down and leave legacy running. Legacy is retired only
+            #     AFTER prod-v2 passes its health check. During the overlap both
+            #     stacks route Host(`${PROD_DOMAIN}`); Traefik keeps the
+            #     first-seen (legacy) and skips the duplicate, so traffic stays
+            #     on legacy until we stop it below.
+            #   - Every deploy after that: legacy is gone. The rollback target
+            #     is the previous prod-v2 image, snapshotted to a *-rollback tag
+            #     before the build and restored on failure (see `rollback()`).
             # NOTE: this runs through the VPS root account's login shell, which
             # is zsh — keep it POSIX-plain. zsh -c chokes on `case … ) x ;;`
             # (parse error near `;`) and on multi-line `$( … for … done )`, so
@@ -167,27 +196,73 @@ jobs:
               LEGACY_RETIRE_IDS="$LEGACY_RETIRE_IDS $cid"
             done
 
-            rollback_to_legacy() {
-              echo "↩️  Deploy failed — removing half-started prod-v2 stack, keeping legacy live" >&2
-              docker compose -f docker-compose.app-only.yml -p masshealth-prod down --remove-orphans || true
-              # Legacy was never stopped on this path; restart defensively in
-              # case a future change reintroduces an earlier stop.
+            COMPOSE="docker compose -f docker-compose.app-only.yml -p masshealth-prod"
+
+            # ── Snapshot the currently-serving prod-v2 images BEFORE the build ──
+            # `image:` in the compose file is a static tag (healthcompass-ma:prod,
+            # healthcompass-mcp:prod), so `up --build` overwrites it in place and
+            # recreates the containers. Capture the image each running container
+            # is on right now and pin it under a *-rollback tag. After the first
+            # cutover this — not the legacy stack — is what a failed redeploy
+            # rolls back to. Empty on the very first deploy (no prod-v2 running
+            # yet); then the legacy fallback below applies instead.
+            HAVE_ROLLBACK=0
+            APP_CID=$($COMPOSE ps -q app 2>/dev/null | head -n1 || true)
+            MCP_CID=$($COMPOSE ps -q mcp-server 2>/dev/null | head -n1 || true)
+            if [ -n "${APP_CID:-}" ]; then
+              PREV_APP_IMG=$(docker inspect -f '{{ .Image }}' "$APP_CID" 2>/dev/null || echo "")
+              if [ -n "$PREV_APP_IMG" ]; then
+                docker tag "$PREV_APP_IMG" healthcompass-ma:prod-rollback
+                HAVE_ROLLBACK=1
+              fi
+            fi
+            if [ -n "${MCP_CID:-}" ]; then
+              PREV_MCP_IMG=$(docker inspect -f '{{ .Image }}' "$MCP_CID" 2>/dev/null || echo "")
+              if [ -n "$PREV_MCP_IMG" ]; then
+                docker tag "$PREV_MCP_IMG" healthcompass-mcp:prod-rollback
+              fi
+            fi
+
+            rollback() {
+              if [ "$HAVE_ROLLBACK" = "1" ]; then
+                echo "↩️  Deploy failed — restoring previous prod-v2 images and recreating" >&2
+                docker tag healthcompass-ma:prod-rollback healthcompass-ma:prod
+                docker image inspect healthcompass-mcp:prod-rollback > /dev/null 2>&1 \
+                  && docker tag healthcompass-mcp:prod-rollback healthcompass-mcp:prod
+                # --no-build: reuse the restored images, do not rebuild from the
+                # bad checkout. Keeps the last known-good prod-v2 stack serving.
+                $COMPOSE --env-file "$ENV_FILE" up -d --force-recreate --no-build --remove-orphans || true
+                for i in $(seq 1 24); do
+                  if $COMPOSE exec -T app node -e "fetch('http://127.0.0.1:3000/api/health/db').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))" > /dev/null 2>&1; then
+                    echo "✅ Rolled back to previous prod-v2 image after $((i * 5))s" >&2
+                    return 0
+                  fi
+                  sleep 5
+                done
+                echo "::error::Rollback health check FAILED — prod-v2 may be down, manual intervention required" >&2
+                return 1
+              fi
+              # First cutover only: no prior prod-v2 image exists. Tear the
+              # half-started stack down and leave the legacy stack (never
+              # stopped on this path) serving the domain.
+              echo "↩️  Deploy failed on first cutover — removing half-started prod-v2 stack, keeping legacy live" >&2
+              $COMPOSE down --remove-orphans || true
               for cid in $LEGACY_RETIRE_IDS; do
                 docker start "$cid" > /dev/null 2>&1 || true
               done
             }
 
-            echo "▶ Building and starting prod-v2 stack (legacy still live)..."
-            if ! docker compose -f docker-compose.app-only.yml --env-file "$ENV_FILE" -p masshealth-prod up -d --build --remove-orphans; then
-              rollback_to_legacy
-              echo "::error::prod-v2 build/startup failed — legacy stack left running" >&2
+            echo "▶ Building and starting prod-v2 stack (previous stack still live)..."
+            if ! $COMPOSE --env-file "$ENV_FILE" up -d --build --remove-orphans; then
+              rollback || true
+              echo "::error::prod-v2 build/startup failed — see rollback result above" >&2
               exit 1
             fi
 
             echo "⏳ Waiting for prod-v2 app (up to 2 min)..."
             PROD_HEALTHY=0
             for i in $(seq 1 24); do
-              if docker compose -f docker-compose.app-only.yml -p masshealth-prod exec -T app node -e "fetch('http://127.0.0.1:3000/api/health/db').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))" > /dev/null 2>&1; then
+              if $COMPOSE exec -T app node -e "fetch('http://127.0.0.1:3000/api/health/db').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))" > /dev/null 2>&1; then
                 echo "✅ Prod-v2 app is up after $((i * 5))s"
                 PROD_HEALTHY=1
                 break
@@ -197,13 +272,14 @@ jobs:
 
             if [ "$PROD_HEALTHY" != "1" ]; then
               echo "❌ Prod-v2 app did not pass health check — last 80 log lines:" >&2
-              docker compose -f docker-compose.app-only.yml -p masshealth-prod logs --tail=80 app || true
-              rollback_to_legacy
-              echo "::error::prod-v2 health check failed — legacy stack left running" >&2
+              $COMPOSE logs --tail=80 app || true
+              rollback || true
+              echo "::error::prod-v2 health check failed — see rollback result above" >&2
               exit 1
             fi
 
             # ── prod-v2 is healthy — now retire the legacy app-facing containers ──
+            # (no-op after the first cutover: legacy is already gone)
             echo "🔻 Retiring legacy app/analysis/mcp containers on ${{ secrets.PROD_DOMAIN }}..."
             for cid in $LEGACY_RETIRE_IDS; do
               name=$(docker inspect -f '{{ .Name }}' "$cid" 2>/dev/null || echo "$cid")
@@ -212,6 +288,14 @@ jobs:
               docker stop "$cid" > /dev/null || true
             done
 
+            # Deploy succeeded — the pre-build snapshot is now the rollback
+            # target for the NEXT deploy. Re-pin it to the image we just
+            # validated so a future failed redeploy restores this one.
+            docker tag healthcompass-ma:prod healthcompass-ma:prod-rollback
+            docker image inspect healthcompass-mcp:prod > /dev/null 2>&1 \
+              && docker tag healthcompass-mcp:prod healthcompass-mcp:prod-rollback
+
+            # Prune dangling images but KEEP the tagged *-rollback ones.
             docker image prune -f
             echo "🚀 Prod-v2 deploy complete"
 
