@@ -137,6 +137,8 @@ jobs:
             ENV_FILE="$APP_DIR/.env.production.local"
             printf '%s\n' \
               "STACK_NAME=prod" \
+              "NEXT_PUBLIC_BUILD_NUMBER=$(git rev-list --count HEAD)" \
+              "NEXT_PUBLIC_BUILD_SHA=$(git rev-parse --short HEAD)" \
               "DOMAIN=${{ secrets.PROD_DOMAIN }}" \
               "DATABASE_URL=${{ secrets.PROD_DATABASE_URL }}" \
               "NEXT_PUBLIC_SUPABASE_URL=${{ secrets.PROD_SUPABASE_URL }}" \
