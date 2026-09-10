@@ -151,4 +151,48 @@ describe("IntakeChat", () => {
     expect(screen.queryByText(/full name/i)).not.toBeInTheDocument()
     expect(screen.getByText(/date of birth/i)).toBeInTheDocument()
   })
+
+  it("resumes from the local form cache after a page refresh (empty Redux)", async () => {
+    const store = makeStore()
+    const view = render(
+      <Provider store={store}>
+        <IntakeChat onSwitchToWizard={vi.fn()} />
+      </Provider>,
+    )
+
+    await screen.findByText(/could you tell me about yourself/i)
+
+    fireEvent.change(screen.getByPlaceholderText(/type your answer/i), {
+      target: { value: "I need help applying." },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /send/i }))
+
+    await screen.findByText(/full name/i)
+
+    fireEvent.change(screen.getByPlaceholderText(/type your answer/i), {
+      target: { value: "Jane Doe" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /send/i }))
+
+    await waitFor(() => {
+      const cached = JSON.parse(
+        localStorage.getItem(`${FORM_CACHE_KEY_PREFIX}:${DEFAULT_APPLICATION_ID}`) ?? "{}",
+      ) as { data?: { contact?: Record<string, unknown> } }
+      expect(cached.data?.contact?.p1_name).toBe("Jane Doe")
+    })
+
+    view.unmount()
+
+    // A refresh drops Redux entirely; only localStorage survives. The chat must
+    // still resume rather than restart from the opening memo.
+    render(
+      <Provider store={makeStore()}>
+        <IntakeChat onSwitchToWizard={vi.fn()} />
+      </Provider>,
+    )
+
+    await screen.findByText(/continue where we left off/i)
+    expect(screen.queryByText(/could you tell me about yourself/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/full name/i)).not.toBeInTheDocument()
+  })
 })

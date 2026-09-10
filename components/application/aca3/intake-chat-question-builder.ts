@@ -30,6 +30,7 @@
 
 import {
   ACA3_SCHEMA,
+  DOB_FIELD_PATTERN,
   MAX_PERSON_COUNT,
   PERSON_SECTION_MAP,
 } from "@/lib/constant"
@@ -140,6 +141,64 @@ export function isRequiredInCurrentContext(field: SchemaField, contextValues: Re
   return Boolean(field.required)
 }
 
+const US_DATE_MIN_YEAR = 1900
+
+function daysInMonth(month: number, year: number): number {
+  return new Date(year, month, 0).getDate()
+}
+
+/**
+ * Validate a US-format date string. Requires a full 4-digit year — this is what
+ * stops a half-typed "01/12/1" from being accepted as the year 0001 — and
+ * rejects impossible calendar dates. `allowFuture` (default true) lets non-DOB
+ * date fields accept future dates; DOB fields pass `allowFuture: false`.
+ */
+export function validateUsDate(
+  input: string,
+  opts: { allowFuture?: boolean } = {},
+): { value: string | null; error: string | null } {
+  const allowFuture = opts.allowFuture ?? true
+  const match = input.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{1,4})$/)
+  if (!match) {
+    return { value: null, error: "Enter the date as MM/DD/YYYY." }
+  }
+
+  const month = Number(match[1])
+  const day = Number(match[2])
+  const yearRaw = match[3]
+  if (yearRaw.length < 4) {
+    return { value: null, error: "Enter a full 4-digit year." }
+  }
+
+  const year = Number(yearRaw)
+  const currentYear = new Date().getFullYear()
+  const maxYear = allowFuture ? currentYear + 20 : currentYear
+
+  if (month < 1 || month > 12) {
+    return { value: null, error: "Month must be between 01 and 12." }
+  }
+  if (year < US_DATE_MIN_YEAR || year > maxYear) {
+    return { value: null, error: `Year must be between ${US_DATE_MIN_YEAR} and ${maxYear}.` }
+  }
+  if (day < 1 || day > daysInMonth(month, year)) {
+    return { value: null, error: "That day is not valid for the month entered." }
+  }
+
+  if (!allowFuture) {
+    const parsed = new Date(year, month - 1, day)
+    parsed.setHours(0, 0, 0, 0)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    if (parsed.getTime() > today.getTime()) {
+      return { value: null, error: "Date of birth cannot be in the future." }
+    }
+  }
+
+  const mm = String(month).padStart(2, "0")
+  const dd = String(day).padStart(2, "0")
+  return { value: `${mm}/${dd}/${year}`, error: null }
+}
+
 export function validateParsedFieldValue(
   field: SchemaField,
   value: FieldValue,
@@ -172,6 +231,13 @@ export function validateParsedFieldValue(
     if (field.validation?.max !== undefined && numeric > field.validation.max) {
       return `Value must be at most ${field.validation.max}.`
     }
+  }
+
+  if (field.type === "date") {
+    const { error } = validateUsDate(String(value), {
+      allowFuture: !DOB_FIELD_PATTERN.test(field.id),
+    })
+    return error
   }
 
   if (field.type === "checkbox_group") {

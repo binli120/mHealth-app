@@ -9,6 +9,7 @@ import { Volume2 } from "lucide-react"
 
 import { ConversationBubble } from "@/components/shared/ConversationBubble"
 import { Button } from "@/components/ui/button"
+import { extractFinalQuestionSentence } from "@/components/application/aca3/intake-chat-answer-parser"
 import type { ChatMessage } from "@/lib/masshealth/chat-knowledge"
 
 export interface IntakeMessage extends ChatMessage {
@@ -52,9 +53,15 @@ export function IntakeMessageBubble({
 }) {
   const isUser = message.role === "user"
   const { prefix, question } = splitTrailingQuestion(message.content)
+
+  // Many schema prompts are labels ("Date of birth", "Street address") with no
+  // trailing "?", so keying the Play button off `question` alone hides it on most
+  // questions. Fall back to the message's final sentence for anything an
+  // assistant says that has real content to read aloud.
+  const speakable = question ?? extractFinalQuestionSentence(message.content)
   const footer =
-    !isUser && question ? (
-      <Button type="button" variant="ghost" size="sm" onClick={() => onSpeakQuestion(question)}>
+    !isUser && speakable.trim().length >= 6 ? (
+      <Button type="button" variant="ghost" size="sm" onClick={() => onSpeakQuestion(speakable)}>
         <Volume2 className="h-4 w-4" />
         Play question
       </Button>

@@ -89,8 +89,18 @@ describe("IntakeMessageBubble", () => {
     expect(screen.queryByRole("button", { name: /play question/i })).not.toBeInTheDocument()
   })
 
-  it("does not show 'Play question' button when assistant message has no trailing question", () => {
-    const message = makeMessage({ role: "assistant", content: "This is a plain statement." })
+  it("shows 'Play question' for label-style assistant prompts with no trailing '?'", () => {
+    // Most schema prompts are labels ("Date of birth", "Street address"), not
+    // questions — the button must still appear so they can be read aloud.
+    const onSpeakQuestion = vi.fn()
+    const message = makeMessage({ role: "assistant", content: "Thanks. First name, middle name, last name, and suffix" })
+    render(<IntakeMessageBubble message={message} onSpeakQuestion={onSpeakQuestion} />)
+    fireEvent.click(screen.getByRole("button", { name: /play question/i }))
+    expect(onSpeakQuestion).toHaveBeenCalledWith("First name, middle name, last name, and suffix")
+  })
+
+  it("does not show 'Play question' button for user messages even without a '?'", () => {
+    const message = makeMessage({ role: "user", content: "This is a plain statement." })
     render(<IntakeMessageBubble message={message} onSpeakQuestion={vi.fn()} />)
     expect(screen.queryByRole("button", { name: /play question/i })).not.toBeInTheDocument()
   })
