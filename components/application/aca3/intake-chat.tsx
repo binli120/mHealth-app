@@ -17,6 +17,7 @@ import {
 
 // (no constants needed directly in this file after extraction)
 import { useRouter } from "next/navigation"
+import { DOB_FIELD_PATTERN } from "@/lib/constant"
 import { isSupportedLanguage, SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/lib/i18n/languages"
 import { MASSHEALTH_APPLICATION_TYPES } from "@/lib/masshealth/application-types"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
@@ -454,7 +455,8 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
     return () => window.removeEventListener("popstate", onPopState)
   }, [intakeStarted])
 
-  // Restore previous session data from Redux cache or server draft on mount.
+  // Restore previous session data from Redux cache, local PHI cache, or server
+  // draft on mount.
   useEffect(() => {
     if (hydratedRef.current) {
       setHydrationPending(false)
@@ -466,6 +468,25 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
       hydratedRef.current = true
       setHydrationPending(false)
       return
+    }
+
+    // Then the local form cache. persistWizardData writes the full wizard state
+    // — including the PHI keys (contact/preApp/persons) that hold every intake
+    // answer — to this localStorage key after each answer. The server draft has
+    // that PHI stripped out, so on a page refresh (Redux is not persisted) this
+    // is the only place the answers survive.
+    try {
+      const rawLocal = window.localStorage.getItem(getFormCacheKey(resolvedApplicationId))
+      if (rawLocal) {
+        const parsedLocal = JSON.parse(rawLocal) as unknown
+        if (applyRestoredWizardState(parsedLocal)) {
+          hydratedRef.current = true
+          setHydrationPending(false)
+          return
+        }
+      }
+    } catch {
+      // Corrupt/unavailable local cache — fall through to the server draft.
     }
 
     // Fall back to server draft.
@@ -1183,7 +1204,7 @@ export function IntakeChat({ applicationId, actingForPatientId, skipServerDraft,
     const contextValues = buildContextValuesForQuestion(wizardData, currentQuestion)
     const isRequired = isRequiredInCurrentContext(field, contextValues)
     if (field.type === "checkbox") return { kind: "yes_no" }
-    if (field.type === "date") return { kind: "date" }
+    if (field.type === "date") return { kind: "date", noFuture: DOB_FIELD_PATTERN.test(field.id) }
     if (field.type === "phone") return { kind: "phone" }
     if (field.type === "ssn") return { kind: "ssn" }
     if (field.type === "checkbox_group" && field.options?.length) {
