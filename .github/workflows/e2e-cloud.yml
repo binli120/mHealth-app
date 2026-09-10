@@ -73,15 +73,20 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' || (github.event_name == 'push' && needs.changes.outputs.e2e == 'true' && needs.changes.outputs.app != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Prod deploys pull secrets (PROD_SUPABASE_URL / PROD_DOMAIN) from the
-    # `production` environment; every other source (staging deploy, legacy
-    # prod deploy, direct push, manual dispatch) uses `dev`. NOTE: `production`
-    # carries a required-reviewer rule, so a post-prod-deploy E2E run pauses
-    # for a second approval, and it has no E2E_* account secrets yet — the
-    # authenticated specs fall back to demo-data.ts defaults (which aren't
-    # seeded in the prod project) and self-skip via the IS_CLOUD_SUPABASE /
+    # Always the `dev` environment (no protection rules). We deliberately do
+    # NOT use `environment: production` here: a `workflow_run`-triggered job
+    # always executes against the repo default branch ref (`dev`), and the
+    # `production` environment's deployment-branch policy is locked to `main`,
+    # so GitHub rejects the job in ~10s ("Branch 'dev' is not allowed to
+    # deploy to production") before any step runs — and `production` also
+    # carries a required-reviewer rule that would otherwise stall the smoke.
+    # The prod target's two non-sensitive values (PROD_DOMAIN,
+    # PROD_SUPABASE_URL) are repo-level secrets, selected below by
+    # workflow_run.name. There are no E2E_* account secrets for the prod
+    # project — the authenticated specs fall back to demo-data.ts defaults
+    # (not seeded in prod) and self-skip via the IS_CLOUD_SUPABASE /
     # auth-state guards, leaving an unauthenticated smoke.
-    environment: ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Deploy Prod (active — new prod Supabase project)') && 'production' || 'dev' }}
+    environment: dev
 
     steps:
       # Check out the exact revision that was deployed, so the test files
