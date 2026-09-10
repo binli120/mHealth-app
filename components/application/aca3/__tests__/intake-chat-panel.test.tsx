@@ -124,7 +124,8 @@ describe("IntakeChatPanel", () => {
       onWidgetAnswer: vi.fn(),
     })
 
-    expect(screen.getByText(/use mm\/dd\/yyyy/i)).toBeInTheDocument()
+    expect(screen.getByText(/mm\/dd\/yyyy/i)).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /confirm date/i })).toBeInTheDocument()
   })
 
   it("shows a skip affordance for optional multi-select widgets", () => {

@@ -8,13 +8,14 @@
 import { useState } from "react"
 import { Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { validateUsDate } from "@/components/application/aca3/intake-chat-question-builder"
 import { cn } from "@/lib/utils"
 
 export type WidgetSpec =
   | { kind: "yes_no" }
   | { kind: "single_select"; options: string[] }
   | { kind: "multi_select"; options: string[]; optional?: boolean }
-  | { kind: "date" }
+  | { kind: "date"; noFuture?: boolean }
   | { kind: "phone" }
   | { kind: "ssn" }
 
@@ -162,26 +163,87 @@ function MultiSelectWidget({
   )
 }
 
-function DateWidget({ onAnswer, disabled }: { onAnswer: (v: string) => void; disabled?: boolean }) {
+/** Format up to 8 raw digits as M/D/Y segments: MM, MM/DD, MM/DD/YYYY. */
+function formatDateDigits(digits: string): string {
+  const d = digits.slice(0, 8)
+  if (d.length <= 2) return d
+  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`
+  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`
+}
+
+function DateWidget({
+  onAnswer,
+  disabled,
+  noFuture,
+}: {
+  onAnswer: (v: string) => void
+  disabled?: boolean
+  noFuture?: boolean
+}) {
+  const [display, setDisplay] = useState("")
+  const { value: validValue, error } = validateUsDate(display, { allowFuture: !noFuture })
+  const digitsEntered = display.replace(/\D/g, "").length
+
+  const commit = () => {
+    if (validValue) {
+      onAnswer(validValue)
+      setDisplay("")
+    }
+  }
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDisplay(formatDateDigits(e.target.value.replace(/\D/g, "")))
+  }
+
+  // A native date picker never yields a value until all three segments are set,
+  // so it's safe to accept its change directly.
+  const handlePickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value // YYYY-MM-DD
     if (!val) return
     const [year, month, day] = val.split("-")
     if (year && month && day) {
-      onAnswer(`${month}/${day}/${year}`)
+      setDisplay(`${month}/${day}/${year}`)
     }
   }
 
   return (
-    <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-      Use MM/DD/YYYY, or choose a date.
-      <input
-        type="date"
-        onChange={handleChange}
-        disabled={disabled}
-        className="w-fit rounded-md border bg-background px-3 py-1.5 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-      />
-    </label>
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="text"
+          inputMode="numeric"
+          value={display}
+          onChange={handleChange}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              // Keep the outer chat form from submitting the raw draft text.
+              e.preventDefault()
+              e.stopPropagation()
+              commit()
+            }
+          }}
+          placeholder="MM/DD/YYYY"
+          maxLength={10}
+          disabled={disabled}
+          className="w-36 rounded-md border bg-background px-3 py-1.5 font-mono text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+        />
+        <input
+          type="date"
+          aria-label="Pick a date"
+          onChange={handlePickerChange}
+          disabled={disabled}
+          className="w-fit rounded-md border bg-background px-2 py-1.5 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+        />
+        <Button size="sm" type="button" onClick={commit} disabled={disabled || !validValue}>
+          Confirm date
+        </Button>
+      </div>
+      {error && digitsEntered >= 8 ? (
+        <p className="text-xs text-destructive" role="alert">{error}</p>
+      ) : (
+        <p className="text-xs text-muted-foreground">Type MM/DD/YYYY, or pick a date, then Confirm.</p>
+      )}
+    </div>
   )
 }
 
@@ -249,7 +311,9 @@ export function IntakeQuestionWidget({ spec, onAnswer, disabled }: IntakeQuestio
           optional={spec.optional}
         />
       )}
-      {spec.kind === "date" && <DateWidget onAnswer={onAnswer} disabled={disabled} />}
+      {spec.kind === "date" && (
+        <DateWidget onAnswer={onAnswer} disabled={disabled} noFuture={spec.noFuture} />
+      )}
       {spec.kind === "phone" && <PhoneWidget onAnswer={onAnswer} disabled={disabled} />}
       {spec.kind === "ssn" && <SsnWidget onAnswer={onAnswer} disabled={disabled} />}
     </div>
