@@ -3,34 +3,94 @@
  * @email: blee@comura.ai
  */
 
-import { createRequire } from "node:module"
 import { PDFDocument } from "pdf-lib"
 
-// pdf-parse ships CJS only — its ESM build has no default export.
-// Use createRequire to force CJS resolution and bypass Turbopack's static ESM analysis.
-// NOTE: Do NOT call _require at module scope — pdfjs-dist (a pdf-parse dependency)
-// accesses DOMMatrix / process.getBuiltinModule at evaluation time which crashes the
-// Turbopack build worker on Node < 22. Load it lazily inside the exported function.
-const _require = createRequire(import.meta.url)
+// pdf-parse ships CJS only, and pdfjs-dist (a pdf-parse dependency) accesses
+// DOMMatrix / process.getBuiltinModule at module-eval time — importing it at
+// module scope crashes the Turbopack build worker on Node < 22. Load it
+// lazily inside the exported function via a dynamic import() with a literal
+// specifier: it's still lazy (not evaluated until called, same as the old
+// createRequire trick), but — unlike createRequire(...).require(name), which
+// routes through a renamed variable Next's static output-file tracer can't
+// recognize as a require call — a literal `import("pdf-parse")` IS
+// statically traceable, so the standalone build correctly discovers and
+// copies pdf-parse's full runtime dependency tree (pdf-parse + pdfjs-dist;
+// see outputFileTracingIncludes in next.config.mjs for why pdf-parse still
+// needs a manual assist there despite this).
+// Do NOT switch this to a static top-level import or a dynamic import with a
+// non-literal/templated specifier — both defeat one of the two properties above.
 type PdfParseFn = (buf: Buffer) => Promise<{ text: string }>
 
-function loadPdfParse(): PdfParseFn | null {
+// pdf-parse's CJS entry loads @napi-rs/canvas to polyfill DOMMatrix/ImageData/
+// Path2D for pdfjs-dist (needed outside a browser) — but that inner require is
+// itself not traceable by Next's output tracer (same blind spot as above, one
+// level deeper, inside a package we don't control), so the native binary
+// silently never reaches the standalone build and pdfjs-dist throws
+// `ReferenceError: DOMMatrix is not defined` in prod. Chasing @napi-rs/canvas's
+// per-platform native binary through manual tracing globs turned out to be a
+// combinatorial dead end (see PR discussion) — we only need pdfjs-dist to not
+// throw while it reads text content, not real canvas rendering, so a minimal
+// self-contained stub is the more robust fix. Idempotent — safe to call
+// per-request; does nothing once the globals already exist.
+function ensurePdfjsNodePolyfills(): void {
+  const g = globalThis as Record<string, unknown>
+  if (typeof g.DOMMatrix === "undefined") {
+    g.DOMMatrix = class DOMMatrix {
+      a = 1
+      b = 0
+      c = 0
+      d = 1
+      e = 0
+      f = 0
+      constructor(_init?: unknown) {}
+      multiplySelf(): DOMMatrix {
+        return this
+      }
+      translateSelf(): DOMMatrix {
+        return this
+      }
+      scaleSelf(): DOMMatrix {
+        return this
+      }
+      invertSelf(): DOMMatrix {
+        return this
+      }
+    }
+  }
+  if (typeof g.ImageData === "undefined") {
+    g.ImageData = class ImageData {
+      width: number
+      height: number
+      constructor(width: number, height: number) {
+        this.width = width
+        this.height = height
+      }
+    }
+  }
+  if (typeof g.Path2D === "undefined") {
+    g.Path2D = class Path2D {}
+  }
+}
+
+async function loadPdfParse(): Promise<PdfParseFn | null> {
   try {
-    const _mod = _require("pdf-parse") as unknown
+    ensurePdfjsNodePolyfills()
+    const mod = (await import("pdf-parse")) as Record<string, unknown> & { default?: unknown }
+    const defaultExport = mod.default
 
-    // pdf-parse < v2: exported as a plain function
-    if (typeof _mod === "function") return _mod as PdfParseFn
-
-    // pdf-parse < v2: .default is a function
-    if (typeof (_mod as { default?: unknown })?.default === "function")
-      return (_mod as { default: PdfParseFn }).default
+    // pdf-parse < v2: default export is a function
+    if (typeof defaultExport === "function") return defaultExport as PdfParseFn
 
     // pdf-parse v2.x: exports { PDFParse } class
     // new PDFParse({ data: Uint8Array, verbosity: 0 }).getText() → { text: string }
+    // Node's CJS/ESM interop may surface named exports on the namespace itself
+    // or nested under .default depending on how cjs-module-lexer parsed it —
+    // check both.
     type PDFParseV2Ctor = new (opts: { data: Uint8Array; verbosity: number }) => {
       getText(): Promise<{ text: string }>
     }
-    const PDFParseClass = (_mod as { PDFParse?: PDFParseV2Ctor }).PDFParse
+    const PDFParseClass = (mod.PDFParse ??
+      (defaultExport as Record<string, unknown> | undefined)?.PDFParse) as PDFParseV2Ctor | undefined
     if (typeof PDFParseClass === "function") {
       return async (buf: Buffer) => {
         const parser = new PDFParseClass({ data: new Uint8Array(buf), verbosity: 0 })
@@ -126,11 +186,11 @@ function getFieldValue(field: unknown): ExtractedField {
 
 export async function extractPdfJson({ bytes, fileName, fileSize }: ExtractPdfJsonInput) {
   const buffer = Buffer.from(bytes)
-  const pdfParse = loadPdfParse()
-  const [pdfDoc, parsed] = await Promise.all([
+  const [pdfDoc, pdfParse] = await Promise.all([
     PDFDocument.load(bytes, { ignoreEncryption: true }),
-    pdfParse ? pdfParse(buffer).catch(() => null) : Promise.resolve(null),
+    loadPdfParse(),
   ])
+  const parsed = pdfParse ? await pdfParse(buffer).catch(() => null) : null
 
   const form = pdfDoc.getForm()
   const fields = form.getFields().map(getFieldValue)
