@@ -8,6 +8,7 @@ import { cookies, headers } from 'next/headers'
 import { Suspense } from 'react'
 import { ConsentedAnalytics } from '@/components/analytics/consented-analytics'
 import { GrowthScripts } from '@/components/analytics/growth-scripts'
+import { BuildBanner } from '@/components/build-banner'
 import { ConditionalChatWidget } from '@/components/chat/conditional-chat-widget'
 import { ReduxProvider } from '@/components/providers/redux-provider'
 import { ThemeProvider } from '@/components/theme-provider'
@@ -119,6 +120,7 @@ export default async function RootLayout({
         {hasAnalyticsConsent && <GrowthScripts nonce={nonce} />}
       </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
+        <BuildBanner />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange nonce={nonce}>
           <ReduxProvider>
             <GlossaryProvider>

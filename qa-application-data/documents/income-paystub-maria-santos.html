@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Test Pay Stub — SANTOS, MARIA</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; background: #fff; color: #0f172a; padding: 40px 48px; width: 1100px; }
+  .head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #1d4ed8; padding-bottom: 16px; }
+  .emp-name { font-size: 30px; font-weight: 800; }
+  .emp-addr { font-size: 13px; color: #475569; margin-top: 6px; line-height: 1.5; }
+  .doc-title { text-align: right; }
+  .doc-title .k { font-size: 12px; letter-spacing: 2px; color: #475569; text-transform: uppercase; }
+  .doc-title .v { font-size: 22px; font-weight: 800; color: #1d4ed8; }
+  .cards { display: flex; gap: 20px; margin-top: 24px; }
+  .card { flex: 1; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px 18px; }
+  .card h3 { font-size: 12px; letter-spacing: 1px; color: #475569; text-transform: uppercase; margin-bottom: 10px; }
+  .row { display: flex; justify-content: space-between; font-size: 14px; padding: 3px 0; }
+  .row .lbl { color: #475569; }
+  .row .val { font-weight: 700; }
+  .totals { display: flex; gap: 20px; margin-top: 20px; }
+  .tot { flex: 1; background: #eff6ff; border-radius: 8px; padding: 16px 18px; }
+  .tot .k { font-size: 12px; letter-spacing: 1px; color: #475569; text-transform: uppercase; }
+  .tot .v { font-size: 26px; font-weight: 800; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 24px; }
+  th { background: #0f172a; color: #fff; font-size: 13px; text-align: right; padding: 10px 12px; }
+  th:first-child { text-align: left; }
+  td { border-bottom: 1px solid #e2e8f0; font-size: 14px; text-align: right; padding: 10px 12px; }
+  td:first-child { text-align: left; }
+  .foot { display: flex; justify-content: space-between; margin-top: 28px; font-size: 12px; }
+  .foot .sample { color: #b91c1c; font-weight: 700; }
+  .foot .id { color: #64748b; }
+  .watermark { position: fixed; top: 42%; left: 12%; font-size: 90px; font-weight: 900; color: rgba(185,28,28,0.12); transform: rotate(-18deg); letter-spacing: 6px; pointer-events: none; }
+</style>
+</head>
+<body>
+  <div class="watermark">SAMPLE — NOT VALID</div>
+
+  <div class="head">
+    <div>
+      <div class="emp-name">Harbor Light Home Care LLC</div>
+      <div class="emp-addr">15 Beacon Street, Boston, MA 02108<br />Payroll Department · payroll@example.test · EIN 04-3555123</div>
+    </div>
+    <div class="doc-title">
+      <div class="k">Earnings Statement</div>
+      <div class="v">TEST PAY STUB</div>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <h3>Employee</h3>
+      <div class="row"><span class="lbl">Name</span><span class="val">Maria Santos</span></div>
+      <div class="row"><span class="lbl">Employee ID</span><span class="val">TEST-2045</span></div>
+      <div class="row"><span class="lbl">Address</span><span class="val">123 Main St, Boston, MA 02101</span></div>
+      <div class="row"><span class="lbl">Status</span><span class="val">Active — Full Time</span></div>
+    </div>
+    <div class="card">
+      <h3>Pay Information</h3>
+      <div class="row"><span class="lbl">Pay Period</span><span class="val">08/01/2026 – 08/31/2026</span></div>
+      <div class="row"><span class="lbl">Pay Date</span><span class="val">09/04/2026</span></div>
+      <div class="row"><span class="lbl">Frequency</span><span class="val">Monthly</span></div>
+      <div class="row"><span class="lbl">Check No.</span><span class="val">DEMO-2045-0904</span></div>
+    </div>
+  </div>
+
+  <div class="totals">
+    <div class="tot"><div class="k">Gross Pay</div><div class="v">$3,500.00</div></div>
+    <div class="tot"><div class="k">Deductions</div><div class="v">$754.75</div></div>
+    <div class="tot"><div class="k">Net Pay</div><div class="v">$2,745.25</div></div>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Description</th><th>Hours</th><th>Rate</th><th>Current</th><th>YTD</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Regular Salary</td><td>160.00</td><td>$21.875</td><td>$3,500.00</td><td>$28,000.00</td></tr>
+      <tr><td>Overtime</td><td>0.00</td><td>—</td><td>$0.00</td><td>$0.00</td></tr>
+      <tr><td>Federal Income Tax</td><td>—</td><td>—</td><td>-$312.00</td><td>-$2,496.00</td></tr>
+      <tr><td>MA State Tax</td><td>—</td><td>—</td><td>-$175.00</td><td>-$1,400.00</td></tr>
+      <tr><td>FICA / Medicare</td><td>—</td><td>—</td><td>-$267.75</td><td>-$2,142.00</td></tr>
+    </tbody>
+  </table>
+
+  <div class="foot">
+    <span class="sample">SAMPLE DOCUMENT FOR SOFTWARE TESTING ONLY — synthetic data, no real person</span>
+    <span class="id">Document ID: DEMO-TEST-2045-09042026</span>
+  </div>
+</body>
+</html>

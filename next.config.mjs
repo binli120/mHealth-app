@@ -4,11 +4,33 @@
  */
 
 import path from "node:path"
+import { execSync } from "node:child_process"
 import { createRequire } from "node:module"
 import { fileURLToPath } from "node:url"
 
+import { composeAppVersion } from "./lib/build-version.mjs"
+
 const require = createRequire(import.meta.url)
 const { version } = require("./package.json")
+
+// ── Build stamp ──────────────────────────────────────────────────────────────
+//
+// The patch segment of the app version is the build number: `git rev-list
+// --count HEAD`. CI passes it (and the short SHA) as NEXT_PUBLIC_BUILD_NUMBER /
+// NEXT_PUBLIC_BUILD_SHA build args because `.git` is excluded from the Docker
+// build context. For a local `npm run build` we fall back to reading git
+// directly, then to "0" if even that fails.
+function readGit(command) {
+  try {
+    return execSync(command, { stdio: ["ignore", "pipe", "ignore"] }).toString().trim()
+  } catch {
+    return ""
+  }
+}
+
+const buildNumber = process.env.NEXT_PUBLIC_BUILD_NUMBER || readGit("git rev-list --count HEAD") || "0"
+const buildSha = process.env.NEXT_PUBLIC_BUILD_SHA || readGit("git rev-parse --short HEAD") || ""
+const appVersion = composeAppVersion(version, buildNumber)
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url))
 const projectNodeModules = path.join(projectRoot, "node_modules")
@@ -63,7 +85,8 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   env: {
-    NEXT_PUBLIC_APP_VERSION: version,
+    NEXT_PUBLIC_APP_VERSION: appVersion,
+    NEXT_PUBLIC_BUILD_SHA: buildSha,
   },
   output: "standalone",
   experimental: {
