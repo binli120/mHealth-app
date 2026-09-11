@@ -47,7 +47,18 @@ export interface AamvaLicenseData {
 
 export type AamvaParseResult =
   | { ok: true; data: AamvaLicenseData }
-  | { ok: false; error: string }
+  | { ok: false; error: string; diagnostics?: AamvaParseDiagnostics }
+
+/**
+ * Non-PHI parse diagnostics for logging on failure — element *codes* only
+ * (e.g. "DAG", "DAJ"), never the PHI values they hold, so this is safe to
+ * pass to logServerWarn/logServerError.
+ */
+export interface AamvaParseDiagnostics {
+  rawLength: number
+  aamvaVersion: number
+  foundCodes: string[]
+}
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -63,12 +74,16 @@ export function parseAamvaBarcode(raw: string): AamvaParseResult {
   }
 
   const elements = extractDataElements(raw)
-
-  if (Object.keys(elements).length === 0) {
-    return { ok: false, error: "No AAMVA data elements found in barcode" }
+  const aamvaVersion = detectAamvaVersion(raw)
+  const diagnostics: AamvaParseDiagnostics = {
+    rawLength: raw.length,
+    aamvaVersion,
+    foundCodes: Object.keys(elements).sort(),
   }
 
-  const aamvaVersion = detectAamvaVersion(raw)
+  if (Object.keys(elements).length === 0) {
+    return { ok: false, error: "No AAMVA data elements found in barcode", diagnostics }
+  }
 
   // ── Name ──────────────────────────────────────────────────────────────────
   // AAMVA v1  : DAA = "LAST,FIRST,MIDDLE"
@@ -89,7 +104,7 @@ export function parseAamvaBarcode(raw: string): AamvaParseResult {
   }
 
   if (!firstName && !lastName) {
-    return { ok: false, error: "Could not extract name from barcode" }
+    return { ok: false, error: "Could not extract name from barcode", diagnostics }
   }
 
   // ── Dates ─────────────────────────────────────────────────────────────────

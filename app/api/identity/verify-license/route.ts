@@ -23,7 +23,7 @@ import {
   saveVerificationAttempt,
   getApplicantIdForUser,
 } from "@/lib/db/identity-verification"
-import { logServerError } from "@/lib/server/logger"
+import { logServerError, logServerWarn } from "@/lib/server/logger"
 import { checkRateLimitAsync, identityVerifyLimiter } from "@/lib/server/rate-limit"
 
 // ─── GET — fetch current identity status ─────────────────────────────────────
@@ -87,6 +87,13 @@ export async function POST(request: Request) {
     // ── 1. Parse AAMVA barcode ─────────────────────────────────────────────
     const parseResult = parseAamvaBarcode(rawBarcode)
     if (!parseResult.ok) {
+      // diagnostics carry AAMVA element *codes* only (e.g. "DAG") — never
+      // the PHI values they hold — so this is safe to log.
+      logServerWarn("AAMVA barcode parse failed", {
+        module: "verify-license",
+        error: parseResult.error,
+        ...parseResult.diagnostics,
+      })
       return NextResponse.json(
         { ok: false, error: `Could not read license barcode: ${parseResult.error}` },
         { status: 422 },

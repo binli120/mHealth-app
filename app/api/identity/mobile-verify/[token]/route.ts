@@ -18,7 +18,7 @@ import {
   getApplicantProfileForVerification,
   saveVerificationAttempt,
 } from "@/lib/db/identity-verification"
-import { logServerError } from "@/lib/server/logger"
+import { logServerError, logServerWarn } from "@/lib/server/logger"
 
 interface RouteParams {
   params: Promise<{ token: string }>
@@ -100,6 +100,13 @@ export async function POST(request: Request, { params }: RouteParams) {
     // ── 3. Parse AAMVA barcode ───────────────────────────────────────────────
     const parseResult = parseAamvaBarcode(rawBarcode)
     if (!parseResult.ok) {
+      // diagnostics carry AAMVA element *codes* only (e.g. "DAG") — never
+      // the PHI values they hold — so this is safe to log.
+      logServerWarn("AAMVA barcode parse failed", {
+        module: "mobile-verify",
+        error: parseResult.error,
+        ...parseResult.diagnostics,
+      })
       return NextResponse.json(
         { ok: false, error: `Could not read license barcode: ${parseResult.error}` },
         { status: 422 },
