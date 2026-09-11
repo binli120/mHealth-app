@@ -18,6 +18,7 @@
 
 import { prepareZXingModule, readBarcodes } from "zxing-wasm/reader"
 import type { DecodeRequest, DecodeResponse } from "./pdf417-scanner.worker"
+import { isPlausibleAamvaPayload } from "./aamva-plausibility"
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -141,7 +142,10 @@ function createInlineDecoder(): DecoderHandle {
   return {
     async decode(imageData) {
       const results = await readBarcodes(imageData, READER_OPTIONS)
-      const hit = results.find((r) => r.isValid && r.text.trim().length > 0)
+      // Some licenses (e.g. NH) carry a second, short PDF417 with a
+      // state-internal code alongside the real AAMVA barcode — reject it so
+      // the caller keeps scanning for the genuine one. See aamva-plausibility.ts.
+      const hit = results.find((r) => r.isValid && isPlausibleAamvaPayload(r.text.trim()))
       return hit ? hit.text : null
     },
     dispose() {},
@@ -158,7 +162,10 @@ function createInlineDecoder(): DecoderHandle {
 export async function readPdf417FromImage(image: Blob): Promise<string | null> {
   ensureModulePrepared()
   const results = await readBarcodes(image, READER_OPTIONS)
-  const hit = results.find((r) => r.isValid && r.text.trim().length > 0)
+  // Some licenses (e.g. NH) carry a second, short PDF417 with a
+  // state-internal code alongside the real AAMVA barcode — reject it in
+  // favor of the genuine one. See aamva-plausibility.ts.
+  const hit = results.find((r) => r.isValid && isPlausibleAamvaPayload(r.text.trim()))
   return hit ? hit.text : null
 }
 

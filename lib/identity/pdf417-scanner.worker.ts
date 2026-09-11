@@ -10,6 +10,7 @@
  */
 
 import { prepareZXingModule, readBarcodes, type ReaderOptions } from "zxing-wasm/reader"
+import { isPlausibleAamvaPayload } from "./aamva-plausibility"
 
 prepareZXingModule({
   overrides: {
@@ -46,7 +47,10 @@ workerScope.onmessage = async (event: MessageEvent<DecodeRequest>) => {
   try {
     const imageData = new ImageData(new Uint8ClampedArray(buffer), width, height)
     const results = await readBarcodes(imageData, options)
-    const hit = results.find((r) => r.isValid && r.text.trim().length > 0)
+    // Some licenses (e.g. NH) carry a second, short PDF417 with a
+    // state-internal code alongside the real AAMVA barcode — reject it so
+    // the caller keeps scanning for the genuine one. See aamva-plausibility.ts.
+    const hit = results.find((r) => r.isValid && isPlausibleAamvaPayload(r.text.trim()))
     workerScope.postMessage({ id, ok: true, text: hit ? hit.text : null })
   } catch (err) {
     workerScope.postMessage({
