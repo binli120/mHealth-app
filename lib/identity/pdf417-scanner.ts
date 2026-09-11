@@ -64,6 +64,12 @@ const READER_OPTIONS: import("zxing-wasm/reader").ReaderOptions = {
   tryHarder: true,
   tryRotate: true, // 90°-step orientations (e.g. license held vertically)
   tryDownscale: true,
+  // Morphological closing pass before decode. The real AAMVA barcode's bars
+  // are much denser than a typical PDF417, so hand-shake blur that a coarser
+  // barcode shrugs off is enough to break individual modules apart —
+  // denoising helps recover those. Costs extra time per frame, worth it
+  // since decoding already happens off the main thread.
+  tryDenoise: true,
   // "Plain" keeps real control characters (\n, \x1e). The default "HRI"
   // mode renders them as "<LF>"/"<RS>" placeholders, which breaks AAMVA
   // line splitting in the parser.
@@ -187,8 +193,12 @@ export async function startPdf417Scan({
   const stream = await navigator.mediaDevices.getUserMedia({
     video: {
       facingMode: { ideal: "environment" },
-      width: { min: 1280, ideal: 1920 },
-      height: { min: 720, ideal: 1080 },
+      // ideal 4K (device caps to its max if lower): the real AAMVA barcode
+      // is dense enough that 1080p leaves too few sensor pixels per module
+      // at hand-held distance, especially on phones that digitally crop the
+      // requested resolution. min stays 720p so older devices still connect.
+      width: { min: 1280, ideal: 3840 },
+      height: { min: 720, ideal: 2160 },
     },
   })
 
