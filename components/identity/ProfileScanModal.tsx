@@ -188,7 +188,8 @@ export function ProfileScanModal({ open, onClose, onApply }: ProfileScanModalPro
           }, 750)
         },
         onError: (err) => {
-          console.warn("[ProfileScan]", err)
+          setCameraError(err instanceof Error ? err.message : "Could not read the barcode. Please try again.")
+          setCameraState("error")
         },
       })
       controlsRef.current = controls

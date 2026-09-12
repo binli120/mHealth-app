@@ -229,7 +229,8 @@ export function LicenseScannerModal() {
           }, 750)
         },
         onError: (err) => {
-          console.warn("[LicenseScanner]", err)
+          setCameraError(err instanceof Error ? err.message : "Could not read the barcode. Please try again.")
+          setScanState("idle")
         },
       })
       controlsRef.current = controls

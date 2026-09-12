@@ -166,12 +166,15 @@ export default function MobileVerifyPage() {
         if (cancelled) return
         setBarcodeFlash(true)
         setTimeout(() => {
+          if (cancelled) return
           setBarcodeFlash(false)
           void submitBarcode(raw)
         }, 750)
       },
       onError: (err) => {
-        console.warn("[MobileVerify] scan warning:", err)
+        if (cancelled) return
+        setScanError(err instanceof Error ? err.message : "Could not read the barcode. Please try again.")
+        setPageState("ready")
       },
       onDebug: (info) => {
         if (cancelled) return
@@ -185,8 +188,8 @@ export default function MobileVerifyPage() {
         // Detect torch capability after stream starts
         const track = (videoEl.srcObject as MediaStream | null)?.getVideoTracks()[0]
         if (track) {
-          const caps = track.getCapabilities() as Record<string, unknown>
-          if (caps.torch) setTorchAvailable(true)
+          const caps = track.getCapabilities?.() as Record<string, unknown> | undefined
+          if (caps?.torch) setTorchAvailable(true)
         }
       })
       .catch((err: unknown) => {
