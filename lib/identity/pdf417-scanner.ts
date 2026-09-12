@@ -22,6 +22,14 @@ import { isPlausibleAamvaPayload } from "./aamva-plausibility"
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
+export interface Pdf417ScanDebugInfo {
+  /** Actual resolution the browser negotiated — may be far below what was requested. */
+  videoWidth: number
+  videoHeight: number
+  /** Number of completed sweep passes (each covers all of SWEEP_ANGLES_DEG once). */
+  sweepCount: number
+}
+
 export interface Pdf417ScanOptions {
   /** Mounted <video> element the camera stream is attached to. */
   video: HTMLVideoElement
@@ -29,6 +37,13 @@ export interface Pdf417ScanOptions {
   onResult: (rawBarcode: string) => void
   /** Called for non-fatal decode-loop errors (scanning continues). */
   onError?: (error: unknown) => void
+  /**
+   * Called once resolution is known, then again after every sweep pass.
+   * Diagnostic only — lets a UI show live scan state on-device without
+   * needing devtools or server logs (nothing reaches the server while the
+   * loop never finds a plausible barcode at all).
+   */
+  onDebug?: (info: Pdf417ScanDebugInfo) => void
 }
 
 export interface Pdf417ScanControls {
@@ -187,6 +202,7 @@ export async function startPdf417Scan({
   video,
   onResult,
   onError,
+  onDebug,
 }: Pdf417ScanOptions): Promise<Pdf417ScanControls> {
   const decoder = createWorkerDecoder() ?? createInlineDecoder()
 
@@ -232,6 +248,8 @@ export async function startPdf417Scan({
       .catch(() => {})
   }
 
+  onDebug?.({ videoWidth: video.videoWidth, videoHeight: video.videoHeight, sweepCount: 0 })
+
   const canvas = document.createElement("canvas")
   const ctx = canvas.getContext("2d", { willReadFrequently: true })
 
@@ -256,6 +274,7 @@ export async function startPdf417Scan({
   }
 
   void (async () => {
+    let sweepCount = 0
     while (!stopped) {
       for (const angle of SWEEP_ANGLES_DEG) {
         if (stopped) return
@@ -274,6 +293,8 @@ export async function startPdf417Scan({
         // Yield between heavy decode attempts to keep the UI responsive.
         await delay(0)
       }
+      sweepCount += 1
+      onDebug?.({ videoWidth: video.videoWidth, videoHeight: video.videoHeight, sweepCount })
       await delay(SWEEP_PAUSE_MS)
     }
   })()

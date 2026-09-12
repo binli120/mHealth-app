@@ -19,7 +19,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useParams } from "next/navigation"
-import { startPdf417Scan, type Pdf417ScanControls } from "@/lib/identity/pdf417-scanner"
+import { startPdf417Scan, type Pdf417ScanControls, type Pdf417ScanDebugInfo } from "@/lib/identity/pdf417-scanner"
 import { ShieldCheck, ScanLine, XCircle, CheckCircle2, Clock, Loader2, AlertTriangle, Flashlight, FlashlightOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -41,6 +41,9 @@ export default function MobileVerifyPage() {
   const [barcodeFlash, setBarcodeFlash] = useState(false)
   const [torchOn, setTorchOn] = useState(false)
   const [torchAvailable, setTorchAvailable] = useState(false)
+  // On-device scan diagnostics (negotiated resolution + attempt count) — lets
+  // a stuck scan be diagnosed by reading the screen, no devtools/logs needed.
+  const [debugInfo, setDebugInfo] = useState<Pdf417ScanDebugInfo | null>(null)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const controlsRef = useRef<Pdf417ScanControls | null>(null)
@@ -169,6 +172,10 @@ export default function MobileVerifyPage() {
       },
       onError: (err) => {
         console.warn("[MobileVerify] scan warning:", err)
+      },
+      onDebug: (info) => {
+        if (cancelled) return
+        setDebugInfo(info)
       },
     })
       .then((controls) => {
@@ -359,10 +366,19 @@ export default function MobileVerifyPage() {
               )}
             </div>
 
+            {/* Live scan diagnostics — camera resolution + attempt count.
+                Temporary while we track down a hard-to-decode barcode; safe
+                to remove once scanning is reliable again. */}
+            {debugInfo && (
+              <p className="text-center font-mono text-[10px] text-muted-foreground/70">
+                {debugInfo.videoWidth}×{debugInfo.videoHeight} · pass #{debugInfo.sweepCount}
+              </p>
+            )}
+
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => { stopCamera(); setBarcodeFlash(false); setPageState("ready") }}
+              onClick={() => { stopCamera(); setBarcodeFlash(false); setDebugInfo(null); setPageState("ready") }}
             >
               Cancel
             </Button>
