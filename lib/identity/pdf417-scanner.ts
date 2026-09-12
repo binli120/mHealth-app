@@ -206,17 +206,31 @@ export async function startPdf417Scan({
 }: Pdf417ScanOptions): Promise<Pdf417ScanControls> {
   const decoder = createWorkerDecoder() ?? createInlineDecoder()
 
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: {
-      facingMode: { ideal: "environment" },
-      // ideal 4K (device caps to its max if lower): the real AAMVA barcode
-      // is dense enough that 1080p leaves too few sensor pixels per module
-      // at hand-held distance, especially on phones that digitally crop the
-      // requested resolution. min stays 720p so older devices still connect.
-      width: { min: 1280, ideal: 3840 },
-      height: { min: 720, ideal: 2160 },
-    },
-  })
+  // A bare getUserMedia() can hang indefinitely on some phones (observed:
+  // iOS) when asked for a resolution the camera negotiation doesn't like —
+  // it neither resolves nor rejects, so the whole scan silently stalls
+  // before the first onDebug callback ever fires. Race it against a timeout
+  // so a stall surfaces as a real, catchable error instead of infinite
+  // silence. (This is also why the earlier ideal:3840x2160 request was
+  // reverted to 1920x1080 below — the higher resolution triggered exactly
+  // this hang on the reporting device.)
+  const withTimeout = <T,>(promise: Promise<T>, ms: number, message: string): Promise<T> =>
+    Promise.race([
+      promise,
+      new Promise<T>((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
+    ])
+
+  const stream = await withTimeout(
+    navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: "environment" },
+        width: { min: 1280, ideal: 1920 },
+        height: { min: 720, ideal: 1080 },
+      },
+    }),
+    10_000,
+    "Camera did not start within 10s",
+  )
 
   let stopped = false
   const stop = () => {
@@ -230,7 +244,7 @@ export async function startPdf417Scan({
 
   try {
     video.srcObject = stream
-    await video.play()
+    await withTimeout(video.play(), 10_000, "Camera preview did not start within 10s")
   } catch (err) {
     stop()
     throw err
