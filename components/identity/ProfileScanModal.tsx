@@ -212,6 +212,12 @@ export function ProfileScanModal({ open, onClose, onApply }: ProfileScanModalPro
 
   // ── Phone QR session ────────────────────────────────────────────────────────
   const startPhoneSession = useCallback(async () => {
+    // A previous session's poll/countdown intervals must be dead before
+    // arming new ones — otherwise the old interval keeps polling its own
+    // (now server-expired) token, sees "expired", and calls stopPolling(),
+    // which clears the CURRENT refs and snaps this new session back to
+    // "idle" out from under it.
+    stopPolling()
     setPhoneState("creating")
     setPhoneError(null)
     try {
