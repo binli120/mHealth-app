@@ -136,6 +136,11 @@ test.describe("Authentication", () => {
     }
 
     await page.goto("/auth/login")
+    // Wait for hydration before interacting — on a cold/just-deployed instance
+    // a click that lands before React attaches the submit handler falls through
+    // to a native no-op click, leaving the page looking untouched (no error, no
+    // loading state, no navigation) and this assertion times out.
+    await page.waitForLoadState("networkidle")
     const uniqueEmail = `e2e-bad-creds-${Date.now()}@not-a-real-domain.example`
     await page.fill("#email", uniqueEmail)
     await page.fill("#password", "BadPasswordXYZ999!")
