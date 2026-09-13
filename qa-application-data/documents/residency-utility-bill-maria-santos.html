@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Test Utility Bill — SANTOS, MARIA</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; background: #fff; color: #0f172a; padding: 40px 48px; width: 1100px; }
+  .head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #047857; padding-bottom: 16px; }
+  .co { font-size: 28px; font-weight: 800; color: #047857; }
+  .co-sub { font-size: 13px; color: #475569; margin-top: 6px; line-height: 1.5; }
+  .stmt { text-align: right; font-size: 12px; color: #475569; letter-spacing: 1px; text-transform: uppercase; }
+  .stmt b { display: block; font-size: 20px; color: #0f172a; letter-spacing: 0; }
+  .grid { display: flex; gap: 24px; margin-top: 24px; }
+  .box { flex: 1; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px 18px; }
+  .box h3 { font-size: 12px; letter-spacing: 1px; color: #475569; text-transform: uppercase; margin-bottom: 10px; }
+  .box p { font-size: 14px; line-height: 1.7; }
+  .row { display: flex; justify-content: space-between; font-size: 14px; padding: 4px 0; }
+  .row .lbl { color: #475569; }
+  .row .val { font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; margin-top: 24px; }
+  th { background: #0f172a; color: #fff; font-size: 13px; text-align: right; padding: 10px 12px; }
+  th:first-child { text-align: left; }
+  td { border-bottom: 1px solid #e2e8f0; font-size: 14px; text-align: right; padding: 10px 12px; }
+  td:first-child { text-align: left; }
+  .amt-due { margin-top: 20px; background: #ecfdf5; border-radius: 8px; padding: 16px 18px; display: flex; justify-content: space-between; align-items: center; }
+  .amt-due .k { font-size: 13px; letter-spacing: 1px; color: #475569; text-transform: uppercase; }
+  .amt-due .v { font-size: 26px; font-weight: 800; }
+  .foot { margin-top: 28px; font-size: 12px; color: #b91c1c; font-weight: 700; }
+  .watermark { position: fixed; top: 44%; left: 14%; font-size: 88px; font-weight: 900; color: rgba(4,120,87,0.10); transform: rotate(-18deg); letter-spacing: 6px; pointer-events: none; }
+</style>
+</head>
+<body>
+  <div class="watermark">SAMPLE — NOT VALID</div>
+
+  <div class="head">
+    <div>
+      <div class="co">Bay State Electric &amp; Gas</div>
+      <div class="co-sub">P.O. Box 55000, Boston, MA 02205<br />Customer Service 1-800-555-0100 · baystateeg.example.test</div>
+    </div>
+    <div class="stmt">Monthly Statement<b>Aug 2026</b></div>
+  </div>
+
+  <div class="grid">
+    <div class="box">
+      <h3>Service Address</h3>
+      <p><b>Maria Santos</b><br />123 Main St<br />Boston, MA 02101<br />Suffolk County</p>
+    </div>
+    <div class="box">
+      <h3>Account Summary</h3>
+      <div class="row"><span class="lbl">Account Number</span><span class="val">DEMO-4471-0092</span></div>
+      <div class="row"><span class="lbl">Statement Date</span><span class="val">08/28/2026</span></div>
+      <div class="row"><span class="lbl">Billing Period</span><span class="val">07/27/2026 – 08/26/2026</span></div>
+      <div class="row"><span class="lbl">Due Date</span><span class="val">09/18/2026</span></div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Charge</th><th>Usage</th><th>Amount</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Electricity — delivery</td><td>412 kWh</td><td>$38.94</td></tr>
+      <tr><td>Electricity — supply</td><td>412 kWh</td><td>$49.02</td></tr>
+      <tr><td>Natural gas — delivery</td><td>18 therms</td><td>$21.15</td></tr>
+      <tr><td>Natural gas — supply</td><td>18 therms</td><td>$14.760</td></tr>
+      <tr><td>Distribution &amp; state charges</td><td>—</td><td>$11.83</td></tr>
+      <tr><td>Previous balance</td><td>—</td><td>$0.00</td></tr>
+    </tbody>
+  </table>
+
+  <div class="amt-due">
+    <span class="k">Total Amount Due</span>
+    <span class="v">$135.70</span>
+  </div>
+
+  <div class="foot">SAMPLE DOCUMENT FOR SOFTWARE TESTING ONLY — synthetic data, no real person or account.</div>
+</body>
+</html>

@@ -137,6 +137,8 @@ jobs:
             ENV_FILE="$APP_DIR/.env.production.local"
             printf '%s\n' \
               "STACK_NAME=prod" \
+              "NEXT_PUBLIC_BUILD_NUMBER=$(git rev-list --count HEAD)" \
+              "NEXT_PUBLIC_BUILD_SHA=$(git rev-parse --short HEAD)" \
               "DOMAIN=${{ secrets.PROD_DOMAIN }}" \
               "DATABASE_URL=${{ secrets.PROD_DATABASE_URL }}" \
               "NEXT_PUBLIC_SUPABASE_URL=${{ secrets.PROD_SUPABASE_URL }}" \
@@ -150,6 +152,8 @@ jobs:
               "RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}" \
               "FROM_EMAIL=${{ secrets.PROD_FROM_EMAIL }}" \
               "NEXT_PUBLIC_APP_URL=https://${{ secrets.PROD_DOMAIN }}" \
+              "NEXT_PUBLIC_MASSHEALTH_ANALYSIS_BASE_URL=${{ secrets.PROD_MASSHEALTH_ANALYSIS_BASE_URL }}" \
+              "MASSHEALTH_API_TOKEN=${{ secrets.PROD_MASSHEALTH_API_TOKEN }}" \
               "MCP_CLIENT_ID=${{ secrets.PROD_MCP_CLIENT_ID }}" \
               "MCP_CLIENT_SECRET=${{ secrets.PROD_MCP_CLIENT_SECRET }}" \
               "PROFILE_ENCRYPTION_KEY=${{ secrets.PROD_PROFILE_ENCRYPTION_KEY }}" \

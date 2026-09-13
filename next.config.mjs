@@ -4,11 +4,35 @@
  */
 
 import path from "node:path"
+// Also prepare the decoder when Next is started directly by a hosting platform.
+import "./scripts/copy-zxing-wasm.mjs"
+import { execSync } from "node:child_process"
 import { createRequire } from "node:module"
 import { fileURLToPath } from "node:url"
 
+import { composeAppVersion } from "./lib/build-version.mjs"
+
 const require = createRequire(import.meta.url)
 const { version } = require("./package.json")
+
+// ── Build stamp ──────────────────────────────────────────────────────────────
+//
+// The patch segment of the app version is the build number: `git rev-list
+// --count HEAD`. CI passes it (and the short SHA) as NEXT_PUBLIC_BUILD_NUMBER /
+// NEXT_PUBLIC_BUILD_SHA build args because `.git` is excluded from the Docker
+// build context. For a local `npm run build` we fall back to reading git
+// directly, then to "0" if even that fails.
+function readGit(command) {
+  try {
+    return execSync(command, { stdio: ["ignore", "pipe", "ignore"] }).toString().trim()
+  } catch {
+    return ""
+  }
+}
+
+const buildNumber = process.env.NEXT_PUBLIC_BUILD_NUMBER || readGit("git rev-list --count HEAD") || "0"
+const buildSha = process.env.NEXT_PUBLIC_BUILD_SHA || readGit("git rev-parse --short HEAD") || ""
+const appVersion = composeAppVersion(version, buildNumber)
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url))
 const projectNodeModules = path.join(projectRoot, "node_modules")
@@ -63,7 +87,8 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   env: {
-    NEXT_PUBLIC_APP_VERSION: version,
+    NEXT_PUBLIC_APP_VERSION: appVersion,
+    NEXT_PUBLIC_BUILD_SHA: buildSha,
   },
   output: "standalone",
   experimental: {
@@ -77,6 +102,29 @@ const nextConfig = {
   // Both use DOMMatrix / process.getBuiltinModule at module-eval time which
   // crashes the Turbopack build worker on Node < 22.
   serverExternalPackages: ["pdf-parse", "pdfjs-dist", "canvas"],
+  // lib/pdf/extract-pdf-json.ts lazily `import("pdf-parse")`s it — a literal
+  // specifier, so Next's standalone output tracer follows it and correctly
+  // auto-discovers pdf-parse + pdfjs-dist with zero manual assist. One file
+  // still needs a manual nudge: pdfjs-dist's "fake worker" fallback (used
+  // whenever a real Worker thread isn't available, which is always true in a
+  // Next.js server route) loads pdf.worker.mjs via a runtime-computed path,
+  // invisible to static tracing — so it's present in `pnpm install` but
+  // missing from .next/standalone, and text extraction throws
+  // "Setting up fake worker failed: Cannot find module ... pdf.worker.mjs" in
+  // prod without this. Anchored at the pnpm-store path pdf-parse resolves
+  // from (see the extractPdfJson comment for why a flattened top-level glob
+  // wouldn't land in a reachable spot); pulling in all of dist/ rather than
+  // guessing the one worker variant actually used keeps this from silently
+  // breaking again if pdf-parse changes which build it loads.
+  outputFileTracingIncludes: {
+    "/api/appeals/extract-document": ["./node_modules/.pnpm/pdf-parse@*/node_modules/pdf-parse/dist/**"],
+    "/api/pdf/extract": ["./node_modules/.pnpm/pdf-parse@*/node_modules/pdf-parse/dist/**"],
+    "/api/agents/vision": ["./node_modules/.pnpm/pdf-parse@*/node_modules/pdf-parse/dist/**"],
+    "/api/documents/parse-application": ["./node_modules/.pnpm/pdf-parse@*/node_modules/pdf-parse/dist/**"],
+    "/api/masshealth/income-verification/extract": [
+      "./node_modules/.pnpm/pdf-parse@*/node_modules/pdf-parse/dist/**",
+    ],
+  },
   // 127.0.0.1 is required for Playwright e2e tests (PORT=3001 pnpm dev)
   allowedDevOrigins: ["127.0.0.1", "192.168.86.25", "192.168.1.92", "192.168.1.47", "*.ngrok-free.app", "*.ngrok-free.dev", "*.ngrok.io"],
   turbopack: {

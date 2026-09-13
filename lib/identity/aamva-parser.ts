@@ -47,7 +47,18 @@ export interface AamvaLicenseData {
 
 export type AamvaParseResult =
   | { ok: true; data: AamvaLicenseData }
-  | { ok: false; error: string }
+  | { ok: false; error: string; diagnostics?: AamvaParseDiagnostics }
+
+/**
+ * Non-PHI parse diagnostics for logging on failure — element *codes* only
+ * (e.g. "DAG", "DAJ"), never the PHI values they hold, so this is safe to
+ * pass to logServerWarn/logServerError.
+ */
+export interface AamvaParseDiagnostics {
+  rawLength: number
+  aamvaVersion: number
+  foundCodes: string[]
+}
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -63,12 +74,16 @@ export function parseAamvaBarcode(raw: string): AamvaParseResult {
   }
 
   const elements = extractDataElements(raw)
-
-  if (Object.keys(elements).length === 0) {
-    return { ok: false, error: "No AAMVA data elements found in barcode" }
+  const aamvaVersion = detectAamvaVersion(raw)
+  const diagnostics: AamvaParseDiagnostics = {
+    rawLength: raw.length,
+    aamvaVersion,
+    foundCodes: Object.keys(elements).sort(),
   }
 
-  const aamvaVersion = detectAamvaVersion(raw)
+  if (Object.keys(elements).length === 0) {
+    return { ok: false, error: "No AAMVA data elements found in barcode", diagnostics }
+  }
 
   // ── Name ──────────────────────────────────────────────────────────────────
   // AAMVA v1  : DAA = "LAST,FIRST,MIDDLE"
@@ -89,7 +104,7 @@ export function parseAamvaBarcode(raw: string): AamvaParseResult {
   }
 
   if (!firstName && !lastName) {
-    return { ok: false, error: "Could not extract name from barcode" }
+    return { ok: false, error: "Could not extract name from barcode", diagnostics }
   }
 
   // ── Dates ─────────────────────────────────────────────────────────────────
@@ -137,22 +152,51 @@ export function parseAamvaBarcode(raw: string): AamvaParseResult {
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
 /**
- * Walk every line of the raw barcode text and collect 3-char data elements.
- * Lines that start with two uppercase letters + one alphanumeric char are
- * treated as element codes; the remainder of the line is the value.
+ * All AAMVA DL/ID data element codes we might see (mandatory + optional).
+ * Used to anchor element boundaries directly in the raw byte stream instead
+ * of relying on newlines — some issuers glue the subfile-type marker
+ * ("DL"/"ID") straight onto the first element with no separator, which
+ * silently swallows whichever field comes first under a naive per-line split.
+ */
+const AAMVA_CODES = [
+  "DAA", "DAB", "DAC", "DAD", "DAE", "DAF", "DAG", "DAH", "DAI", "DAJ", "DAK",
+  "DAL", "DAM", "DAN", "DAO", "DAP", "DAQ", "DAR", "DAS", "DAT", "DAU", "DAV",
+  "DAW", "DAX", "DAY", "DAZ",
+  "DBA", "DBB", "DBC", "DBD", "DBE", "DBF", "DBG", "DBH", "DBI", "DBJ", "DBK",
+  "DBL", "DBM", "DBN",
+  "DCA", "DCB", "DCD", "DCE", "DCF", "DCG", "DCH", "DCI", "DCJ", "DCK", "DCL",
+  "DCM", "DCN", "DCO", "DCP", "DCQ", "DCR", "DCS", "DCT", "DCU",
+  "DDA", "DDB", "DDC", "DDD", "DDE", "DDF", "DDG", "DDH", "DDI", "DDJ", "DDK", "DDL",
+]
+
+// Require the preceding characters to be either non-letter (a coincidental
+// 3-letter run inside a value, e.g. an address, can't be mistaken for a
+// field boundary) or exactly the "DL"/"ID" subfile-type marker — the one
+// case where a real code legitimately follows two letters, when an issuer
+// glues the marker directly onto the first element with no separator.
+const ELEMENT_CODE_RE = new RegExp(
+  `(?:(?<![A-Z])|(?<=DL)|(?<=ID))(${AAMVA_CODES.join("|")})`,
+  "g",
+)
+
+/**
+ * Scan the raw barcode text for AAMVA data element codes and collect their
+ * values. Codes are located anywhere in the stream (not just at line starts)
+ * since some issuers omit the separator between the subfile-type marker and
+ * the first element.
  */
 function extractDataElements(raw: string): Record<string, string> {
   const elements: Record<string, string> = {}
-  const lines = raw.split(/\r?\n|\r/)
+  const matches = [...raw.matchAll(ELEMENT_CODE_RE)]
 
-  for (const line of lines) {
-    const trimmed = line.trim()
-    if (trimmed.length >= 4 && /^[A-Z]{2}[A-Z0-9]/.test(trimmed)) {
-      const code = trimmed.substring(0, 3)
-      const value = trimmed.substring(3).trim()
-      if (value) {
-        elements[code] = value
-      }
+  for (let i = 0; i < matches.length; i++) {
+    const code = matches[i][0]
+    const valueStart = matches[i].index! + code.length
+    const valueEnd = i + 1 < matches.length ? matches[i + 1].index! : raw.length
+    // Trim trailing control chars (LF, CR, RS) as well as whitespace.
+    const value = raw.slice(valueStart, valueEnd).replace(/[\x00-\x1f]+$/g, "").trim()
+    if (value && !(code in elements)) {
+      elements[code] = value
     }
   }
 
