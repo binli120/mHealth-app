@@ -19,8 +19,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useParams } from "next/navigation"
-import { startPdf417Scan, type Pdf417ScanControls, type Pdf417ScanDebugInfo } from "@/lib/identity/pdf417-scanner"
-import { ShieldCheck, ScanLine, XCircle, CheckCircle2, Clock, Loader2, AlertTriangle, Flashlight, FlashlightOff } from "lucide-react"
+import { startPdf417Scan, readPdf417FromImage, type Pdf417ScanControls, type Pdf417ScanDebugInfo } from "@/lib/identity/pdf417-scanner"
+import { ShieldCheck, ScanLine, XCircle, CheckCircle2, Clock, Loader2, AlertTriangle, Flashlight, FlashlightOff, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { cn } from "@/lib/utils"
@@ -44,9 +44,16 @@ export default function MobileVerifyPage() {
   // On-device scan diagnostics (negotiated resolution + attempt count) — lets
   // a stuck scan be diagnosed by reading the screen, no devtools/logs needed.
   const [debugInfo, setDebugInfo] = useState<Pdf417ScanDebugInfo | null>(null)
+  // Still-image upload fallback — live-camera decode has proven unreliable on
+  // some devices/barcodes even with the widened tilt tolerance; a single
+  // photo the user can focus/zoom/frame with their own camera app decodes
+  // far more reliably than a continuous autofocus-dependent video stream.
+  const [uploadState, setUploadState] = useState<"idle" | "scanning">("idle")
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const controlsRef = useRef<Pdf417ScanControls | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   // Signals the useEffect below that it should actually start the camera once
   // the video element has been mounted (pageState flip happens first, then render,
   // then the effect runs — at that point videoRef.current is guaranteed non-null).
@@ -119,6 +126,28 @@ export default function MobileVerifyPage() {
       }
     },
     [token, stopCamera],
+  )
+
+  // ── Upload-photo fallback ────────────────────────────────────────────────
+  const handleFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+      setUploadState("scanning")
+      setUploadError(null)
+      try {
+        const raw = await readPdf417FromImage(file)
+        if (!raw) throw new Error("No barcode found in image")
+        setUploadState("idle")
+        void submitBarcode(raw)
+      } catch {
+        setUploadError("Could not find a barcode in that photo. Make sure the whole barcode is sharp, well-lit, and fills the frame, then try again.")
+        setUploadState("idle")
+      } finally {
+        if (fileInputRef.current) fileInputRef.current.value = ""
+      }
+    },
+    [submitBarcode],
   )
 
   // ── Torch toggle ──────────────────────────────────────────────────────────
@@ -276,9 +305,36 @@ export default function MobileVerifyPage() {
               </Alert>
             )}
 
+            {uploadError && (
+              <Alert variant="destructive" className="text-left">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="text-xs">{uploadError}</AlertDescription>
+              </Alert>
+            )}
+
             <Button className="w-full h-12 text-base" onClick={startCamera}>
               Start Camera
             </Button>
+
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              disabled={uploadState === "scanning"}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {uploadState === "scanning"
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <Upload className="h-4 w-4" />}
+              {uploadState === "scanning" ? "Reading photo…" : "Upload a Photo Instead"}
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleFileChange}
+            />
 
             <p className="text-xs text-muted-foreground">
               Your license data is only used to verify your identity and is never stored in plain text.
