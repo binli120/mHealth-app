@@ -184,15 +184,45 @@ function createInlineDecoder(): DecoderHandle {
  * Decode a PDF417 barcode from a still image (e.g. an uploaded photo of the
  * back of a license). Returns the raw barcode text, or null when no barcode
  * is found.
+ *
+ * Applies the same rotation sweep as the live-camera path: a handheld photo
+ * is essentially never perfectly axis-aligned, and the decoder's own ~±1-2°
+ * tolerance on a dense AAMVA barcode isn't enough to cover ordinary
+ * hand-tilt in a single still shot.
  */
 export async function readPdf417FromImage(image: Blob): Promise<string | null> {
   ensureModulePrepared()
-  const results = await readBarcodes(image, READER_OPTIONS)
-  // Some licenses (e.g. NH) carry a second, short PDF417 with a
-  // state-internal code alongside the real AAMVA barcode — reject it in
-  // favor of the genuine one. See aamva-plausibility.ts.
-  const hit = results.find((r) => r.isValid && isPlausibleAamvaPayload(r.text.trim()))
-  return hit ? hit.text : null
+
+  const bitmap = await createImageBitmap(image)
+  const canvas = document.createElement("canvas")
+  const ctx = canvas.getContext("2d")
+  if (!ctx) return null
+
+  const { width, height } = bitmap
+  canvas.width = width
+  canvas.height = height
+
+  for (const angleDeg of SWEEP_ANGLES_DEG) {
+    ctx.clearRect(0, 0, width, height)
+    if (angleDeg === 0) {
+      ctx.drawImage(bitmap, 0, 0, width, height)
+    } else {
+      ctx.save()
+      ctx.translate(width / 2, height / 2)
+      ctx.rotate((angleDeg * Math.PI) / 180)
+      ctx.drawImage(bitmap, -width / 2, -height / 2, width, height)
+      ctx.restore()
+    }
+
+    const results = await readBarcodes(ctx.getImageData(0, 0, width, height), READER_OPTIONS)
+    // Some licenses (e.g. NH) carry a second, short PDF417 with a
+    // state-internal code alongside the real AAMVA barcode — reject it in
+    // favor of the genuine one. See aamva-plausibility.ts.
+    const hit = results.find((r) => r.isValid && isPlausibleAamvaPayload(r.text.trim()))
+    if (hit) return hit.text
+  }
+
+  return null
 }
 
 /**
