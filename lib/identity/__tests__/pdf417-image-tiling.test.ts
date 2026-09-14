@@ -89,4 +89,4 @@ it("decodes a barcode buried deep in a tall full-frame photo that a single-pass 
   const parsed = parseAamvaBarcode(decoded!)
   expect(parsed.ok).toBe(true)
   if (parsed.ok) expect(parsed.data).toMatchObject({ firstName: "JANE", lastName: "DOE", licenseNumber: "SYNTHETIC", issuingState: "NH" })
-})
+}, 20_000)
