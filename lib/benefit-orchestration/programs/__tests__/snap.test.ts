@@ -197,8 +197,8 @@ describe("evaluateSnap — result structure", () => {
     expect(result?.bundleWith).toContain("eaedc")
   })
 
-  it("applicationUrl is dta.mass.gov", () => {
-    expect(evaluateSnap(profile(), 50)?.applicationUrl).toContain("dta.mass.gov")
+  it("applicationUrl is dtaconnect.eohhs.mass.gov", () => {
+    expect(evaluateSnap(profile(), 50)?.applicationUrl).toContain("dtaconnect.eohhs.mass.gov")
   })
 
   it("estimatedAnnualValue equals estimatedMonthlyValue * 12", () => {

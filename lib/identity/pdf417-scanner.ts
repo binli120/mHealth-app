@@ -93,6 +93,31 @@ const READER_OPTIONS: import("zxing-wasm/reader").ReaderOptions = {
 
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
+// ─── Still-image band tiling ──────────────────────────────────────────────────
+//
+// zxing's PDF417 detector scans a limited number of horizontal rows, spaced
+// out proportionally to image height for performance. On a tall full-frame
+// phone photo (e.g. 4032x3024) the barcode occupies only a thin vertical band
+// near the top of the card, so every sampled scanline can land above or below
+// it — a decode failure that persists regardless of resolution, downscaling,
+// or rotation sweep, since none of those change which rows get sampled.
+// Splitting a tall image into overlapping horizontal bands keeps each band
+// short enough that its scanlines can't skip over the barcode.
+const TILE_HEIGHT_THRESHOLD = 1200
+const TILE_HEIGHT = 900
+const TILE_OVERLAP_RATIO = 0.3
+
+function computeBandOffsets(totalHeight: number): number[] {
+  if (totalHeight <= TILE_HEIGHT_THRESHOLD) return [0]
+  const step = Math.round(TILE_HEIGHT * (1 - TILE_OVERLAP_RATIO))
+  const offsets: number[] = []
+  for (let top = 0; top + TILE_HEIGHT < totalHeight; top += step) {
+    offsets.push(top)
+  }
+  offsets.push(totalHeight - TILE_HEIGHT) // guarantee the bottom edge is covered
+  return offsets
+}
+
 // ─── Worker-backed decoding ───────────────────────────────────────────────────
 //
 // Decoding a 1080p frame takes 100–500ms on mobile CPUs. Done inline that
@@ -184,15 +209,53 @@ function createInlineDecoder(): DecoderHandle {
  * Decode a PDF417 barcode from a still image (e.g. an uploaded photo of the
  * back of a license). Returns the raw barcode text, or null when no barcode
  * is found.
+ *
+ * Applies the same rotation sweep as the live-camera path: a handheld photo
+ * is essentially never perfectly axis-aligned, and the decoder's own ~±1-2°
+ * tolerance on a dense AAMVA barcode isn't enough to cover ordinary
+ * hand-tilt in a single still shot.
+ *
+ * Also tiles a tall image into overlapping horizontal bands — see the
+ * TILE_* constants above for why a full-frame phone photo needs this on
+ * top of the rotation sweep.
  */
 export async function readPdf417FromImage(image: Blob): Promise<string | null> {
   ensureModulePrepared()
-  const results = await readBarcodes(image, READER_OPTIONS)
-  // Some licenses (e.g. NH) carry a second, short PDF417 with a
-  // state-internal code alongside the real AAMVA barcode — reject it in
-  // favor of the genuine one. See aamva-plausibility.ts.
-  const hit = results.find((r) => r.isValid && isPlausibleAamvaPayload(r.text.trim()))
-  return hit ? hit.text : null
+
+  const bitmap = await createImageBitmap(image)
+  const canvas = document.createElement("canvas")
+  const ctx = canvas.getContext("2d")
+  if (!ctx) return null
+
+  const { width, height } = bitmap
+  const bandOffsets = computeBandOffsets(height)
+  const bandHeight = bandOffsets.length > 1 ? TILE_HEIGHT : height
+  canvas.width = width
+  canvas.height = bandHeight
+
+  for (const bandTop of bandOffsets) {
+    for (const angleDeg of SWEEP_ANGLES_DEG) {
+      ctx.clearRect(0, 0, width, bandHeight)
+      if (angleDeg === 0) {
+        ctx.drawImage(bitmap, 0, bandTop, width, bandHeight, 0, 0, width, bandHeight)
+      } else {
+        ctx.save()
+        ctx.translate(width / 2, bandHeight / 2)
+        ctx.rotate((angleDeg * Math.PI) / 180)
+        ctx.drawImage(bitmap, 0, bandTop, width, bandHeight, -width / 2, -bandHeight / 2, width, bandHeight)
+        ctx.restore()
+      }
+
+      const results = await readBarcodes(ctx.getImageData(0, 0, width, bandHeight), READER_OPTIONS)
+      // Some licenses (e.g. NH) carry a second, short PDF417 with a
+      // state-internal code alongside the real AAMVA barcode — reject it in
+      // favor of the genuine one. See aamva-plausibility.ts.
+      const hit = results.find((r) => r.isValid && isPlausibleAamvaPayload(r.text.trim()))
+      if (hit) return hit.text
+    }
+  }
+
+  return null
 }
 
 /**

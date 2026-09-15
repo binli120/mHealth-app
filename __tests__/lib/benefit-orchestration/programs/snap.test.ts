@@ -106,7 +106,7 @@ describe('evaluateSnap — eligibility status thresholds', () => {
     const profile = baseProfile({ income: { ...emptyIncome(), wages: 600 } })
     const result = evaluateSnap(profile, 60)
     expect(result?.bundleWith).toContain('tafdc')
-    expect(result?.applicationUrl).toContain('dta.mass.gov')
+    expect(result?.applicationUrl).toContain('dtaconnect.eohhs.mass.gov')
   })
 
   it('result shape has all required fields', () => {

@@ -117,7 +117,7 @@ export function BenefitStackView({ stack, onUpdateProfile }: BenefitStackViewPro
                             {bundle.sharedApplicationName} <ExternalLink className="h-3.5 w-3.5" />
                           </a>
                         ) : (
-                          <a href={bundle.applicationUrl} className="inline-flex items-center gap-1.5">
+                          <a href={bundle.applicationUrl} target="_blank" rel="noopener" className="inline-flex items-center gap-1.5">
                             {bundle.sharedApplicationName}
                           </a>
                         )}

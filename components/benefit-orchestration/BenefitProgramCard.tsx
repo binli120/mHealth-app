@@ -204,7 +204,7 @@ export function BenefitProgramCard({ result, isQuickWin, compact }: BenefitProgr
                   {getMessage(language, "bsApplyNow")} <ExternalLink className="h-3.5 w-3.5" />
                 </a>
               ) : (
-                <a href={result.applicationUrl} className="inline-flex items-center gap-1.5">
+                <a href={result.applicationUrl} target="_blank" rel="noopener" className="inline-flex items-center gap-1.5">
                   {getMessage(language, "bsApplyNow")}
                 </a>
               )}

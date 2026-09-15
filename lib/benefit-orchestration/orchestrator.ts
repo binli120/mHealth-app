@@ -57,7 +57,7 @@ function buildApplicationBundles(
   const bundles: ApplicationBundle[] = []
   const programIds = new Set(results.map((r) => r.programId))
 
-  // DTA Bundle: SNAP + TAFDC + EAEDC — one application at dta.mass.gov
+  // DTA Bundle: SNAP + TAFDC + EAEDC — one application at dtaconnect.eohhs.mass.gov
   const dtaPrograms: BenefitProgramId[] = ['snap', 'tafdc', 'eaedc']
   const dtaPresent = dtaPrograms.filter((id) => programIds.has(id))
   if (dtaPresent.length >= 2) {
@@ -70,7 +70,7 @@ function buildApplicationBundles(
         'Apply once for SNAP, TAFDC, and/or EAEDC through the MA Department of Transitional Assistance.',
       programIds: dtaPresent,
       sharedApplicationName: 'DTA Online Portal',
-      applicationUrl: 'https://www.dta.mass.gov',
+      applicationUrl: 'https://dtaconnect.eohhs.mass.gov',
       applicationPhone: '1-877-382-2363',
       estimatedTime: '20–30 minutes online',
       totalEstimatedMonthlyValue: totalValue,
