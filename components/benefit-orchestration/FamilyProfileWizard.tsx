@@ -515,22 +515,13 @@ export function FamilyProfileWizard({ initialProfile, onComplete, loading }: Fam
               </div>
 
               {(profile.housingStatus === "renter") && (
-                <div>
-                  <Label htmlFor="monthly-rent" className="text-sm">{getMessage(language, "bsMonthlyRent")}</Label>
-                  <div className="relative mt-1">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true">$</span>
-                    <Input
-                      id="monthly-rent"
-                      type="number"
-                      min={0}
-                      value={profile.monthlyRent || ""}
-                      onChange={(e) => update("monthlyRent", Number(e.target.value) || 0)}
-                      className="pl-7"
-                      placeholder="e.g. 1500"
-                      aria-label={getMessage(language, "bsMonthlyRent")}
-                    />
-                  </div>
-                </div>
+                <CurrencyInput
+                  id="monthly-rent"
+                  label={getMessage(language, "bsMonthlyRent")}
+                  value={profile.monthlyRent ?? 0}
+                  onChange={(v) => update("monthlyRent", v)}
+                  placeholder="e.g. 1,500.00"
+                />
               )}
 
               <Separator />

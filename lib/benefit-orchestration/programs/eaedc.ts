@@ -78,7 +78,7 @@ export function evaluateEAEDC(profile: FamilyProfile, fplPercent: number): Benef
     score: 0,
     priority: 0,
     applicationMethods: ['online', 'phone', 'in_person'],
-    applicationUrl: 'https://www.dta.mass.gov',
+    applicationUrl: 'https://dtaconnect.eohhs.mass.gov',
     applicationPhone: '1-877-382-2363',
     processingTime: '30 days',
     keyRequirements: [
@@ -96,7 +96,7 @@ export function evaluateEAEDC(profile: FamilyProfile, fplPercent: number): Benef
       profile.over65 ? 'Birth certificate or other proof of age' : '',
     ].filter(Boolean),
     bundleWith: ['snap', 'tafdc'],
-    bundleNote: 'One DTA application covers EAEDC, SNAP, and TAFDC — apply once at dta.mass.gov',
+    bundleNote: 'One DTA application covers EAEDC, SNAP, and TAFDC — apply once at dtaconnect.eohhs.mass.gov',
     nextSteps: [
       'Apply online at dtaconnect.eohhs.state.ma.us or call 1-877-382-2363',
       'SNAP benefits may also be available and processed at the same time',

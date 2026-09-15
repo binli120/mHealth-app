@@ -4,7 +4,7 @@
  */
 
 // SNAP (Supplemental Nutrition Assistance Program) evaluator
-// Administered by MA DTA — dta.mass.gov
+// Administered by MA DTA — dtaconnect.eohhs.mass.gov
 import type { FamilyProfile, BenefitResult } from '../types'
 import { getAnnualFPL, sumIncome, computeTotalAssets } from '../fpl-utils'
 
@@ -112,14 +112,14 @@ export function evaluateSnap(profile: FamilyProfile, fplPercent: number): Benefi
       priority: 0,
       ineligibleReason: `Assets (~$${totalAssets.toLocaleString()}) may exceed SNAP limit ($${assetLimit.toLocaleString()}) for elderly/disabled households`,
       applicationMethods: ['online', 'phone', 'in_person'],
-      applicationUrl: 'https://www.dta.mass.gov',
+      applicationUrl: 'https://dtaconnect.eohhs.mass.gov',
       applicationPhone: '1-877-382-2363',
       processingTime: '30 days (7 days if expedited)',
       keyRequirements: ['MA resident', 'Asset verification required'],
       requiredDocuments: ['Bank statements', 'Asset documentation'],
       bundleWith: ['tafdc', 'eaedc'],
-      bundleNote: 'Apply for SNAP, TAFDC, and EAEDC together at dta.mass.gov',
-      nextSteps: ['Contact DTA to verify asset eligibility', 'Apply at dta.mass.gov'],
+      bundleNote: 'Apply for SNAP, TAFDC, and EAEDC together at dtaconnect.eohhs.mass.gov',
+      nextSteps: ['Contact DTA to verify asset eligibility', 'Apply at dtaconnect.eohhs.mass.gov'],
     }
   }
 
@@ -148,7 +148,7 @@ export function evaluateSnap(profile: FamilyProfile, fplPercent: number): Benefi
     score: 0,
     priority: 0,
     applicationMethods: ['online', 'phone', 'in_person'],
-    applicationUrl: 'https://www.dta.mass.gov',
+    applicationUrl: 'https://dtaconnect.eohhs.mass.gov',
     applicationPhone: '1-877-382-2363',
     processingTime: '30 days (7 days if expedited)',
     keyRequirements: [
@@ -164,9 +164,9 @@ export function evaluateSnap(profile: FamilyProfile, fplPercent: number): Benefi
       'Proof of expenses (rent receipt, utility bills)',
     ],
     bundleWith: ['tafdc', 'eaedc'],
-    bundleNote: 'One DTA application covers SNAP, TAFDC, and EAEDC — apply once at dta.mass.gov',
+    bundleNote: 'One DTA application covers SNAP, TAFDC, and EAEDC — apply once at dtaconnect.eohhs.mass.gov',
     nextSteps: [
-      'Apply online at dta.mass.gov — fast, takes about 20 minutes',
+      'Apply online at dtaconnect.eohhs.mass.gov — fast, takes about 20 minutes',
       'Ask about Expedited SNAP if income is very low or you have no food',
       'Benefits are loaded onto an EBT card, accepted at most grocery stores',
     ],

@@ -97,7 +97,7 @@ export function evaluateTAFDC(profile: FamilyProfile, fplPercent: number): Benef
     score: 0,
     priority: 0,
     applicationMethods: ['online', 'phone', 'in_person'],
-    applicationUrl: 'https://www.dta.mass.gov',
+    applicationUrl: 'https://dtaconnect.eohhs.mass.gov',
     applicationPhone: '1-877-382-2363',
     processingTime: '30 days',
     keyRequirements: [
@@ -119,7 +119,7 @@ export function evaluateTAFDC(profile: FamilyProfile, fplPercent: number): Benef
       'Proof of citizenship or immigration status',
     ],
     bundleWith: ['snap', 'eaedc'],
-    bundleNote: 'One DTA application covers TAFDC, SNAP, and EAEDC — apply once at dta.mass.gov',
+    bundleNote: 'One DTA application covers TAFDC, SNAP, and EAEDC — apply once at dtaconnect.eohhs.mass.gov',
     applicationNote:
       'TAFDC is time-limited to 24 months in any 60-month period. Work requirements apply unless exempt (caring for child under 2, disability, etc.).',
     nextSteps: [
