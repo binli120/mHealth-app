@@ -85,7 +85,7 @@ export function evaluateChildcare(profile: FamilyProfile, _fplPercent: number): 
     score: 0,
     priority: 0,
     applicationMethods: ['online', 'phone'],
-    applicationUrl: 'https://www.mass.gov/how-to/apply-for-child-care-financial-assistance',
+    applicationUrl: 'https://www.mass.gov/child-care-financial-assistance',
     applicationPhone: '1-800-382-5437',
     processingTime: '45 days',
     keyRequirements: [

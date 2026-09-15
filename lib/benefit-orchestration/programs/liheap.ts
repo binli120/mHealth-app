@@ -5,7 +5,7 @@
 
 // LIHEAP / Fuel Assistance evaluator
 // Low Income Home Energy Assistance Program — administered by DHCD in MA
-// https://www.mass.gov/fuel-assistance
+// https://www.mass.gov/how-to/apply-for-home-heating-and-energy-assistance
 import type { FamilyProfile, BenefitResult } from '../types'
 
 // 2025 MA State Median Income — income limit for LIHEAP: 60% SMI
@@ -87,9 +87,9 @@ export function evaluateLIHEAP(profile: FamilyProfile, _fplPercent: number): Ben
     score: 0,
     priority: 0,
     applicationMethods: ['online', 'phone', 'in_person'],
-    applicationUrl: 'https://www.mass.gov/fuel-assistance',
+    applicationUrl: 'https://www.mass.gov/how-to/apply-for-home-heating-and-energy-assistance',
     applicationNote:
-      'Apply through your local Community Action Agency (CAA) — find yours at mass.gov/fuel-assistance. Open enrollment typically November–April.',
+      'Apply through your local Community Action Agency (CAA) — find yours at mass.gov/how-to/apply-for-home-heating-and-energy-assistance. Open enrollment typically November–April.',
     processingTime: '30–60 days',
     keyRequirements: [
       'MA resident',
@@ -106,7 +106,7 @@ export function evaluateLIHEAP(profile: FamilyProfile, _fplPercent: number): Ben
       profile.over65 || profile.householdMembers.some((m) => m.over65) ? 'Medicare or Social Security card' : '',
     ].filter(Boolean),
     nextSteps: [
-      'Find your local Community Action Agency (CAA) at mass.gov/fuel-assistance',
+      'Find your local Community Action Agency (CAA) at mass.gov/how-to/apply-for-home-heating-and-energy-assistance',
       'Apply early in the heating season (October–November)',
       'Benefit is paid directly to your fuel dealer or utility company — nothing comes out of pocket',
       isPriority ? 'As a priority household, you may be processed faster and receive a larger benefit' : '',

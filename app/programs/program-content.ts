@@ -244,7 +244,7 @@ export const PROGRAM_PAGES: ProgramContent[] = [
       },
     ],
     officialLinks: [
-      { label: "MA Fuel Assistance (mass.gov)", url: "https://www.mass.gov/fuel-assistance" },
+      { label: "MA Fuel Assistance (mass.gov)", url: "https://www.mass.gov/how-to/apply-for-home-heating-and-energy-assistance" },
     ],
   },
   {
@@ -304,7 +304,7 @@ export const PROGRAM_PAGES: ProgramContent[] = [
       },
     ],
     officialLinks: [
-      { label: "Massachusetts WIC (mass.gov)", url: "https://www.mass.gov/wic-nutrition-program" },
+      { label: "Massachusetts WIC (mass.gov)", url: "https://www.mass.gov/wic" },
     ],
   },
   {
