@@ -20,8 +20,13 @@ vi.mock("@/lib/server/logger", () => ({
   logServerInfo: vi.fn(),
 }))
 
+vi.mock("@/lib/growth/email", () => ({
+  notifyMailingListSignup: vi.fn().mockResolvedValue(undefined),
+}))
+
 import { POST } from "@/app/api/growth/mailing-list/route"
 import { upsertMailingListSignup } from "@/lib/db/growth"
+import { notifyMailingListSignup } from "@/lib/growth/email"
 
 function makeRequest(body: unknown) {
   return new Request("http://localhost/api/growth/mailing-list", {
@@ -53,6 +58,11 @@ describe("POST /api/growth/mailing-list", () => {
       campaign: { utm_source: "partner" },
       userAgent: "test-agent",
       ipHash: "ip-hash",
+    })
+    expect(notifyMailingListSignup).toHaveBeenCalledWith({
+      email: "person@example.com",
+      source: "landing-footer",
+      referralCode: "cookie-ref",
     })
   })
 

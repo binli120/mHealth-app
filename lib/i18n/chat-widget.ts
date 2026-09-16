@@ -48,9 +48,9 @@ const EN_CHAT_WIDGET = {
 
   // Description shown under the title
   advisorDescription:
-    "Tell me about your situation and I'll check eligibility using official MassHealth rules.",
+    "Signed in? Tell Mia about your situation for a personalized eligibility check with plain-English explanations, backed by official MassHealth policy.",
   chatDescription:
-    "MassHealth-only support. Ask about eligibility, applications, renewals, and benefits.",
+    "General MassHealth questions — applications, renewals, documents, and more.",
 
   // Tab labels
   advisorTab:        "Benefit Advisor",

@@ -29,7 +29,7 @@ import {
   getMassHealthOutOfScopeResponse,
 } from "@/lib/masshealth/chat-knowledge"
 import { getSupabaseClient } from "@/lib/supabase/client"
-import { OPEN_SW_CHAT_EVENT, type OpenSwChatDetail } from "@/lib/events/chat-events"
+import { OPEN_LIVE_ASSISTANT_EVENT, OPEN_SW_CHAT_EVENT, type OpenSwChatDetail } from "@/lib/events/chat-events"
 import { createUuid } from "@/lib/utils/random-id"
 import type {
   WidgetView,
@@ -304,6 +304,16 @@ export function MassHealthChatWidget({ mobileMode, onSaveAndExit, initialHistory
     window.addEventListener(OPEN_SW_CHAT_EVENT, handler)
     return () => window.removeEventListener(OPEN_SW_CHAT_EVENT, handler)
   }, [])
+
+  // Listen for programmatic open-to-Live-Assistant requests (homepage "Get Connected" CTA, etc.)
+  useEffect(() => {
+    const handler = () => {
+      setView(swChatTarget ? "sw_chat" : "find_sw")
+      setOpen(true)
+    }
+    window.addEventListener(OPEN_LIVE_ASSISTANT_EVENT, handler)
+    return () => window.removeEventListener(OPEN_LIVE_ASSISTANT_EVENT, handler)
+  }, [swChatTarget])
 
   // Persist last-used tab (exclude sw_chat — it's a transient sub-view)
   useEffect(() => {

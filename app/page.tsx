@@ -9,7 +9,7 @@
 
 "use client"
 
-import { useState, useEffect, useMemo, type FormEvent } from "react"
+import { useState, useEffect, useMemo, type FormEvent, type MouseEvent } from "react"
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
@@ -24,6 +24,8 @@ import {
 } from "@/components/ui/navigation-menu"
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { useAppSelector } from "@/lib/redux/hooks"
+import { getSupabaseClient } from "@/lib/supabase/client"
+import { dispatchOpenLiveAssistant } from "@/lib/events/chat-events"
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher"
 import { CheckCircle2, ChevronRight, Loader2, Mail, Menu, Sparkles } from "lucide-react"
 import { ShieldHeartIcon } from "@/lib/icons"
@@ -264,6 +266,23 @@ export default function LandingPage() {
   const language = useAppSelector((state) => state.app.language)
   const copy = useMemo(() => getLandingCopy(language), [language])
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+
+  // Track auth state so "Get Connected" can open the live-assistant chat
+  // for signed-in users instead of sending them to the registration page.
+  useEffect(() => {
+    const { data: { subscription } } = getSupabaseClient().auth.onAuthStateChange(
+      (_event, session) => setIsAuthenticated(!!session?.user),
+    )
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const handleGetConnectedClick = (e: MouseEvent) => {
+    if (isAuthenticated) {
+      e.preventDefault()
+      dispatchOpenLiveAssistant()
+    }
+  }
 
   // Animated stat counters — hooks must be called unconditionally at top level
   const { ref: statsRef, inView: statsInView } = useInView(0.3)
@@ -295,7 +314,7 @@ export default function LandingPage() {
             <NavigationMenu className="hidden md:flex" viewport={false}>
               <NavigationMenuList>
                 <NavigationMenuItem>
-                  <NavigationMenuTrigger className="bg-transparent text-sm text-muted-foreground data-[state=open]:bg-transparent">
+                  <NavigationMenuTrigger className="bg-transparent text-sm text-muted-foreground data-[state=open]:bg-transparent data-[state=open]:text-foreground">
                     {copy.navPrograms}
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
@@ -334,19 +353,25 @@ export default function LandingPage() {
                   </NavigationMenuContent>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                  <NavigationMenuTrigger className="bg-transparent text-sm text-muted-foreground data-[state=open]:bg-transparent">
+                  <NavigationMenuTrigger className="bg-transparent text-sm text-muted-foreground data-[state=open]:bg-transparent data-[state=open]:text-foreground">
                     {copy.navTools}
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
                     <ul className="grid w-56 gap-1">
                       <li>
                         <NavigationMenuLink asChild>
-                          <Link href="/prescreener">{copy.navEligibilityChecker}</Link>
+                          <Link href="/prescreener" className="flex-col items-start gap-0">
+                            <span>{copy.navEligibilityChecker}</span>
+                            <span className="text-xs font-normal text-muted-foreground">{copy.navEligibilityCheckerHint}</span>
+                          </Link>
                         </NavigationMenuLink>
                       </li>
                       <li>
                         <NavigationMenuLink asChild>
-                          <Link href="/benefit-stack">{copy.navBenefitStackTool}</Link>
+                          <Link href="/benefit-stack" className="flex-col items-start gap-0">
+                            <span>{copy.navBenefitStackTool}</span>
+                            <span className="text-xs font-normal text-muted-foreground">{copy.navBenefitStackToolHint}</span>
+                          </Link>
                         </NavigationMenuLink>
                       </li>
                       <li>
@@ -361,7 +386,7 @@ export default function LandingPage() {
                   </NavigationMenuContent>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                  <NavigationMenuTrigger className="bg-transparent text-sm text-muted-foreground data-[state=open]:bg-transparent">
+                  <NavigationMenuTrigger className="bg-transparent text-sm text-muted-foreground data-[state=open]:bg-transparent data-[state=open]:text-foreground">
                     {copy.navAbout}
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
@@ -385,7 +410,7 @@ export default function LandingPage() {
                   </NavigationMenuContent>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                  <NavigationMenuTrigger className="bg-transparent text-sm text-muted-foreground data-[state=open]:bg-transparent">
+                  <NavigationMenuTrigger className="bg-transparent text-sm text-muted-foreground data-[state=open]:bg-transparent data-[state=open]:text-foreground">
                     {copy.navResources}
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
@@ -447,8 +472,18 @@ export default function LandingPage() {
                     <div className="space-y-2">
                       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{copy.navTools}</p>
                       <div className="flex flex-col gap-1">
-                        <SheetClose asChild><Link href="/prescreener" className="rounded-md px-2 py-2.5 text-sm text-foreground hover:bg-muted">{copy.navEligibilityChecker}</Link></SheetClose>
-                        <SheetClose asChild><Link href="/benefit-stack" className="rounded-md px-2 py-2.5 text-sm text-foreground hover:bg-muted">{copy.navBenefitStackTool}</Link></SheetClose>
+                        <SheetClose asChild>
+                          <Link href="/prescreener" className="flex flex-col rounded-md px-2 py-2.5 text-sm text-foreground hover:bg-muted">
+                            <span>{copy.navEligibilityChecker}</span>
+                            <span className="text-xs font-normal text-muted-foreground">{copy.navEligibilityCheckerHint}</span>
+                          </Link>
+                        </SheetClose>
+                        <SheetClose asChild>
+                          <Link href="/benefit-stack" className="flex flex-col rounded-md px-2 py-2.5 text-sm text-foreground hover:bg-muted">
+                            <span>{copy.navBenefitStackTool}</span>
+                            <span className="text-xs font-normal text-muted-foreground">{copy.navBenefitStackToolHint}</span>
+                          </Link>
+                        </SheetClose>
                         <SheetClose asChild>
                           <Link href="/masshealth-appeals" className="flex items-center justify-between rounded-md px-2 py-2.5 text-sm text-foreground hover:bg-muted">
                             {copy.navAiAppealLetters}
@@ -693,7 +728,7 @@ export default function LandingPage() {
                   ))}
                 </ul>
                 <div className="flex flex-wrap gap-3 pt-2">
-                  <Link href="/auth/register">
+                  <Link href="/auth/register" onClick={handleGetConnectedClick}>
                     <Button size="lg" className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
                       {copy.btnGetConnected} <ChevronRight className="h-4 w-4" />
                     </Button>
@@ -812,7 +847,7 @@ export default function LandingPage() {
                 </Button>
               </Link>
               <Link href="/auth/login">
-                <Button size="lg" variant="outline" className="w-full border-primary-foreground/40 text-primary-foreground hover:bg-white/10 sm:w-auto">
+                <Button size="lg" className="w-full bg-primary-foreground text-primary hover:bg-primary-foreground/90 sm:w-auto">
                   {copy.btnCTASignIn}
                 </Button>
               </Link>
