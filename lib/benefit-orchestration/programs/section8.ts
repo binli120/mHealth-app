@@ -105,9 +105,9 @@ export function evaluateSection8(profile: FamilyProfile, _fplPercent: number): B
     waitlistWarning:
       'Most MA housing authority waitlists are currently closed or have 5–10 year wait times. Check your local Housing Authority for open waitlists and apply to multiple.',
     applicationMethods: ['online', 'in_person'],
-    applicationUrl: 'https://www.mass.gov/how-to/apply-for-state-aided-public-housing',
+    applicationUrl: 'https://www.mass.gov/applyforpublichousing',
     applicationNote:
-      'Apply through your local Regional Housing Authority at mass.gov. Each HA runs its own waitlist.',
+      'Apply through CHAMP (Common Housing Application for Massachusetts Public Housing) at mass.gov. Each HA runs its own waitlist.',
     processingTime: 'Varies widely — typically 1–10+ years on waitlist',
     keyRequirements: [
       'MA resident',

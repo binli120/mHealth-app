@@ -75,7 +75,7 @@ const EN_MESSAGES = {
   // ── Benefit Stack — Page ────────────────────────────────────────────────
   bsPageTitle: "Find All Your Benefits",
   bsPageDesc:
-    "Answer a few questions once and we'll check your eligibility across all major MA safety-net programs — MassHealth, SNAP, EITC, childcare, housing, utilities, and more.",
+    "Build a full profile for your household once and we'll check eligibility across all major MA safety-net programs — MassHealth, SNAP, EITC, childcare, housing, utilities, and more. Saved to your account so you can update it anytime.",
   bsDashboardLink: "Dashboard",
   bsBenefitStackLink: "Benefit Stack",
 

@@ -21,7 +21,9 @@ export interface LandingCopy {
   navProgramWic: string
   navTools: string
   navEligibilityChecker: string
+  navEligibilityCheckerHint: string
   navBenefitStackTool: string
+  navBenefitStackToolHint: string
   navAiAppealLetters: string
   navAbout: string
   navProblem: string
@@ -125,7 +127,9 @@ const EN: LandingCopy = {
   navProgramWic: "WIC",
   navTools: "Tools",
   navEligibilityChecker: "Eligibility Checker",
+  navEligibilityCheckerHint: "No login needed · 2 min",
   navBenefitStackTool: "Benefit Stack Tool",
+  navBenefitStackToolHint: "Sign in · full household view",
   navAiAppealLetters: "AI Appeal Letters",
   navAbout: "About",
   navProblem: "The Problem",
@@ -259,7 +263,9 @@ const ES: LandingCopy = {
   navProgramWic: "WIC",
   navTools: "Herramientas",
   navEligibilityChecker: "Verificador de Elegibilidad",
+  navEligibilityCheckerHint: "Sin inicio de sesión · 2 min",
   navBenefitStackTool: "Herramienta de Beneficios Combinados",
+  navBenefitStackToolHint: "Inicie sesión · vista completa del hogar",
   navAiAppealLetters: "Cartas de Apelación con IA",
   navAbout: "Acerca de",
   navProblem: "El Problema",
@@ -393,7 +399,9 @@ const ZH_CN: LandingCopy = {
   navProgramWic: "WIC",
   navTools: "工具",
   navEligibilityChecker: "资格检查器",
+  navEligibilityCheckerHint: "无需登录 · 2分钟",
   navBenefitStackTool: "福利组合工具",
+  navBenefitStackToolHint: "需登录 · 完整家庭视图",
   navAiAppealLetters: "AI 申诉信",
   navAbout: "关于",
   navProblem: "问题所在",
@@ -527,7 +535,9 @@ const HT: LandingCopy = {
   navProgramWic: "WIC",
   navTools: "Zouti",
   navEligibilityChecker: "Verifikatè Elijibilite",
+  navEligibilityCheckerHint: "Pa bezwen konekte · 2 min",
   navBenefitStackTool: "Zouti Konbine Benefis",
+  navBenefitStackToolHint: "Konekte · vi konplè fwaye a",
   navAiAppealLetters: "Lèt Apèl ak AI",
   navAbout: "Konsènan",
   navProblem: "Pwoblèm nan",
@@ -661,7 +671,9 @@ const PT_BR: LandingCopy = {
   navProgramWic: "WIC",
   navTools: "Ferramentas",
   navEligibilityChecker: "Verificador de Elegibilidade",
+  navEligibilityCheckerHint: "Sem login · 2 min",
   navBenefitStackTool: "Ferramenta de Benefícios Combinados",
+  navBenefitStackToolHint: "Faça login · visão completa da família",
   navAiAppealLetters: "Cartas de Recurso com IA",
   navAbout: "Sobre",
   navProblem: "O Problema",
@@ -795,7 +807,9 @@ const VI: LandingCopy = {
   navProgramWic: "WIC",
   navTools: "Công Cụ",
   navEligibilityChecker: "Kiểm Tra Tư Cách",
+  navEligibilityCheckerHint: "Không cần đăng nhập · 2 phút",
   navBenefitStackTool: "Công Cụ Kết Hợp Phúc Lợi",
+  navBenefitStackToolHint: "Đăng nhập · xem toàn bộ hộ gia đình",
   navAiAppealLetters: "Thư Kháng Cáo AI",
   navAbout: "Giới Thiệu",
   navProblem: "Vấn Đề",

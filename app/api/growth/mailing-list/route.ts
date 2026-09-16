@@ -8,6 +8,7 @@ import { z } from "zod"
 
 import { upsertMailingListSignup } from "@/lib/db/growth"
 import { getClientIpHash, getUserAgent, readReferralCookie } from "@/lib/growth/request"
+import { notifyMailingListSignup } from "@/lib/growth/email"
 import { logServerError, logServerInfo } from "@/lib/server/logger"
 
 export const runtime = "nodejs"
@@ -44,6 +45,8 @@ export async function POST(request: Request) {
       source: parsed.data.source,
       hasReferral: Boolean(referralCode),
     })
+
+    void notifyMailingListSignup({ email, source: parsed.data.source, referralCode })
 
     return NextResponse.json({ ok: true })
   } catch (error) {
