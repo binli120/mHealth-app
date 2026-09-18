@@ -30,3 +30,15 @@ export const OPEN_LIVE_ASSISTANT_EVENT = "chat:open-live-assistant"
 export function dispatchOpenLiveAssistant(): void {
   window.dispatchEvent(new CustomEvent(OPEN_LIVE_ASSISTANT_EVENT))
 }
+
+/**
+ * Fired when a patient's SW engagement request changes (sent, accepted,
+ * rejected, cancelled) so other mounted views — e.g. the dashboard's
+ * "Social Worker Access" card — can refetch and stay in sync with the
+ * corner chat widget's Live Assistant panel.
+ */
+export const SW_REQUEST_CHANGED_EVENT = "chat:sw-request-changed"
+
+export function dispatchSwRequestChanged(): void {
+  window.dispatchEvent(new CustomEvent(SW_REQUEST_CHANGED_EVENT))
+}
