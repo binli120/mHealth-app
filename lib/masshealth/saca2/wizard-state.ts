@@ -3,6 +3,7 @@
  * @email: blee@comura.ai
  */
 
+import { splitWizardState } from "@/lib/phi-token/token"
 import { setAtPath } from "./answer-paths"
 import { IMPLEMENTED_STEP_IDS } from "./questions"
 import { SACA2_STEPS, type Saca2StepId } from "./schema"
@@ -121,6 +122,25 @@ export function buildSaca2Snapshot(state: Saca2WizardState): Record<string, unkn
   }
 }
 
+/** Stable key of the PHI-free snapshot that autosave would send (excludes `persistedAt`). */
+export function buildSaca2SaveKey(state: Saca2WizardState): string {
+  const { safeState } = splitWizardState(buildSaca2Snapshot(state))
+  const comparable = { ...safeState } as Record<string, unknown>
+  delete comparable.persistedAt
+  return JSON.stringify(comparable)
+}
+
+/** The last visible step at or before `current` in SACA2_STEPS order, else the first visible step. */
+export function nearestVisibleStep(stepIds: Saca2StepId[], current: Saca2StepId): Saca2StepId {
+  const order = (id: Saca2StepId) => SACA2_STEPS.findIndex((step) => step.id === id)
+  const currentOrder = order(current)
+  let result = stepIds[0]
+  for (const id of stepIds) {
+    if (order(id) <= currentOrder) result = id
+  }
+  return result
+}
+
 const FORBIDDEN_KEYS = new Set(["__proto__", "constructor", "prototype"])
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -209,4 +229,10 @@ export function normalizeSaca2State(raw: unknown): Saca2WizardState | null {
     dirty: false,
     phiDirty: false,
   }
+}
+
+/** Normalize a restored PHI blob / merged state; the blob only exists for the current schema. */
+export function normalizeRestoredSaca2State(merged: unknown): Saca2WizardState | null {
+  if (!isPlainObject(merged)) return null
+  return normalizeSaca2State({ ...merged, schemaVersion: SACA2_SCHEMA_VERSION })
 }

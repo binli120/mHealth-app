@@ -33,6 +33,12 @@ vi.mock("@/components/application/phi-save-exit-dialog", () => ({
       >
         restore-resume
       </button>
+      <button type="button" onClick={() => onRestored({ currentStepId: "person1", data: { persons: [{ firstName: "Bare" }] } })}>
+        restore-resume-bare
+      </button>
+      <button type="button" onClick={() => onRestored({ data: "x" })}>
+        restore-resume-bad
+      </button>
     </div>
   ),
 }))
@@ -223,5 +229,119 @@ describe("Saca2Wizard: hydration and PHI resume", () => {
     await screen.findByTestId("saca2-wizard")
     const get = mocks.authenticatedFetch.mock.calls.find(([, init]) => (init as { method?: string }).method === "GET")
     expect((get?.[1] as { headers?: Record<string, string> }).headers?.["X-Acting-For-Patient"]).toBe("patient-9")
+  })
+})
+
+describe("Saca2Wizard: fix round 1", () => {
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+  it("serializes autosaves and sends newer edits made while a PUT is in flight", async () => {
+    let inFlight = 0
+    let maxInFlight = 0
+    const releases: Array<() => void> = []
+    mocks.authenticatedFetch.mockImplementation(async (_url: string, init?: { method?: string }) => {
+      if (init?.method === "PUT") {
+        inFlight += 1
+        maxInFlight = Math.max(maxInFlight, inFlight)
+        await new Promise<void>((resolve) => releases.push(resolve))
+        inFlight -= 1
+        return ok({ ok: true })
+      }
+      return draftGet({ ok: false })
+    })
+    render(<Saca2Wizard applicationId={APP_ID} />)
+    await userEvent.click(await screen.findByLabelText(/Long-term care \(nursing home/i))
+    await waitFor(() => expect(putBodies().length).toBe(1), { timeout: 3_000 })
+    // Edit while the first PUT is in flight.
+    await userEvent.click(screen.getByLabelText(/MassHealth or the Health Safety Net/i))
+    await sleep(1_000)
+    expect(putBodies().length).toBe(1)
+    releases.shift()!()
+    await waitFor(() => expect(putBodies().length).toBe(2), { timeout: 3_000 })
+    releases.shift()!()
+    await sleep(300)
+    const last = putBodies().at(-1)!
+    const programs = (last.wizardState.data as { intake: { programs: Record<string, boolean> } }).intake.programs
+    expect(programs.longTermCare).toBe(true)
+    expect(Object.values(programs).filter(Boolean).length).toBe(2)
+    expect(maxInFlight).toBe(1)
+  })
+
+  it("moves a hidden saved step to the nearest visible one", async () => {
+    mocks.authenticatedFetch.mockImplementation(async (_url: string, init?: { method?: string }) => {
+      if (init?.method === "PUT") return ok({ ok: true })
+      return draftGet({
+        ok: true,
+        record: { phiDraftResumeId: null, phiDraftKeyEnc: null },
+        draftState: {
+          schemaVersion: "saca2-2026-08",
+          currentStepId: "person2",
+          data: { intake: { programs: { longTermCare: true } } },
+        },
+      })
+    })
+    render(<Saca2Wizard applicationId={APP_ID} />)
+    expect(await screen.findByRole("heading", { name: "About you" })).toBeInTheDocument()
+    expect(screen.queryByRole("heading", { name: /Person 2/i })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole("button", { name: "Back" }))
+    expect(await screen.findByRole("heading", { name: "What are you applying for?" })).toBeInTheDocument()
+  })
+
+  const emptyDraftWithKey = async (_url: string, init?: { method?: string }) => {
+    if (init?.method === "PUT") return ok({ ok: true })
+    return draftGet({
+      ok: true,
+      record: { phiDraftResumeId: "11111111-1111-4111-8111-111111111111", phiDraftKeyEnc: "enc" },
+      draftState: null,
+    })
+  }
+
+  it("auto-restores PHI into an empty server draft (no schemaVersion in the blob)", async () => {
+    mocks.authenticatedFetch.mockImplementation(emptyDraftWithKey)
+    mocks.restorePhiDraftState.mockResolvedValueOnce({ data: { persons: [{ firstName: "Auto" }] } })
+    render(<Saca2Wizard applicationId={APP_ID} />)
+    await waitFor(() => expect(screen.getByTestId("saca2-wizard")).toBeInTheDocument())
+    expect(screen.queryByTestId("resume-prompt")).not.toBeInTheDocument()
+    await userEvent.click(screen.getByLabelText(/MassHealth or the Health Safety Net/i))
+    await userEvent.click(screen.getByRole("button", { name: "Next" }))
+    expect(await screen.findByDisplayValue("Auto")).toBeInTheDocument()
+  })
+
+  it("restores via the prompt even when the payload lacks a schemaVersion", async () => {
+    mocks.authenticatedFetch.mockImplementation(async (_url: string, init?: { method?: string }) => {
+      if (init?.method === "PUT") return ok({ ok: true })
+      return draftGet({
+        ok: true,
+        record: { phiDraftResumeId: "11111111-1111-4111-8111-111111111111", phiDraftKeyEnc: null },
+        draftState: null,
+      })
+    })
+    render(<Saca2Wizard applicationId={APP_ID} />)
+    await screen.findByTestId("resume-prompt")
+    await userEvent.click(screen.getByRole("button", { name: "restore-resume-bare" }))
+    expect(await screen.findByDisplayValue("Bare")).toBeInTheDocument()
+  })
+
+  it("keeps the prompt with an alert when restored data cannot be normalized", async () => {
+    mocks.authenticatedFetch.mockImplementation(async (_url: string, init?: { method?: string }) => {
+      if (init?.method === "PUT") return ok({ ok: true })
+      return draftGet({
+        ok: true,
+        record: { phiDraftResumeId: "11111111-1111-4111-8111-111111111111", phiDraftKeyEnc: null },
+        draftState: null,
+      })
+    })
+    render(<Saca2Wizard applicationId={APP_ID} />)
+    await screen.findByTestId("resume-prompt")
+    await userEvent.click(screen.getByRole("button", { name: "restore-resume-bad" }))
+    expect(await screen.findByRole("alert")).toHaveTextContent(/couldn't restore your saved details/i)
+    expect(screen.getByTestId("resume-prompt")).toBeInTheDocument()
+  })
+
+  it("falls back to the prompt when auto-restored data cannot be normalized", async () => {
+    mocks.authenticatedFetch.mockImplementation(emptyDraftWithKey)
+    mocks.restorePhiDraftState.mockResolvedValueOnce({ data: "x" })
+    render(<Saca2Wizard applicationId={APP_ID} />)
+    expect(await screen.findByTestId("resume-prompt")).toBeInTheDocument()
   })
 })

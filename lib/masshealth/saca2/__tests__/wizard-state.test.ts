@@ -10,6 +10,9 @@ import { SACA2_SCHEMA_VERSION, emptySaca2Answers } from "@/lib/masshealth/saca2/
 import {
   SERVER_DRAFT_MAX_STEP,
   buildSaca2Snapshot,
+  buildSaca2SaveKey,
+  nearestVisibleStep,
+  normalizeRestoredSaca2State,
   createInitialWizardState,
   getWizardSteps,
   normalizeSaca2State,
@@ -248,5 +251,39 @@ describe("normalizeSaca2State", () => {
       expect(s.data.persons[0].income[0]).toEqual({ amount: 5 })
       expect(s.data.assets.gates).toEqual({ trusts: "no" })
     })
+  })
+})
+
+describe("buildSaca2SaveKey", () => {
+  it("is equal for PHI-only edits and independent of persistedAt", () => {
+    const a = createInitialWizardState()
+    const b = saca2WizardReducer(a, { type: "set_answer", path: "persons.0.firstName", value: "Ada" })
+    expect(buildSaca2SaveKey(b)).toBe(buildSaca2SaveKey(a))
+  })
+  it("changes after a step change or intake change", () => {
+    const a = createInitialWizardState()
+    const stepped = saca2WizardReducer(a, { type: "set_step", stepId: "person1" })
+    const intake = saca2WizardReducer(a, { type: "set_answer", path: "intake.programs.longTermCare", value: true })
+    expect(buildSaca2SaveKey(stepped)).not.toBe(buildSaca2SaveKey(a))
+    expect(buildSaca2SaveKey(intake)).not.toBe(buildSaca2SaveKey(a))
+  })
+})
+
+describe("nearestVisibleStep", () => {
+  it("returns current when visible, previous visible when hidden, first when before all", () => {
+    expect(nearestVisibleStep(["intake", "person1", "aian"], "person1")).toBe("person1")
+    expect(nearestVisibleStep(["intake", "person1", "aian"], "person2")).toBe("person1")
+    expect(nearestVisibleStep(["person1", "aian"], "intake")).toBe("person1")
+  })
+})
+
+describe("normalizeRestoredSaca2State", () => {
+  it("forces the current schema version so PHI merged into an empty draft still hydrates", () => {
+    const s = normalizeRestoredSaca2State({ data: { persons: [{ firstName: "Auto" }] } })
+    expect(s?.data.persons[0].firstName).toBe("Auto")
+  })
+  it("returns null for unusable payloads", () => {
+    expect(normalizeRestoredSaca2State({})).toBeNull()
+    expect(normalizeRestoredSaca2State({ data: "x" })).toBeNull()
   })
 })

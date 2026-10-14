@@ -7,19 +7,22 @@
 
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import { splitWizardState } from "@/lib/phi-token/token"
 import { PhiResumePrompt, PhiSaveExitDialog } from "@/components/application/phi-save-exit-dialog"
 import { WizardLayout } from "@/components/application/wizard-layout"
 import { Button } from "@/components/ui/button"
 import { getStepPersonIndex, STEP_TITLES, validateStep } from "@/lib/masshealth/saca2/questions"
 import {
   buildSaca2Snapshot,
+  buildSaca2SaveKey,
   createInitialWizardState,
   getWizardSteps,
+  nearestVisibleStep,
+  normalizeRestoredSaca2State,
   normalizeSaca2State,
   saca2WizardReducer,
 } from "@/lib/masshealth/saca2/wizard-state"
 import { restorePhiDraftState } from "@/lib/phi-token/restore"
-import { splitWizardState } from "@/lib/phi-token/token"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { Saca2StepForm } from "./saca2-step-form"
 
@@ -47,10 +50,12 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
   const [hydrated, setHydrated] = useState(false)
   const [pendingResume, setPendingResume] = useState<PendingResume | null>(null)
   const [saveExitOpen, setSaveExitOpen] = useState(false)
+  const [restoreError, setRestoreError] = useState(false)
 
   const stateRef = useRef(state)
   const backoffUntilRef = useRef(0)
   const lastSavedKeyRef = useRef<string | null>(null)
+  const chainRef = useRef<Promise<boolean>>(Promise.resolve(true))
 
   useEffect(() => {
     stateRef.current = state
@@ -111,7 +116,12 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
       }
 
       if (cancelled) return
-      const normalized = normalizeSaca2State(restored ?? draftState)
+      let normalized = restored ? normalizeRestoredSaca2State(restored) : normalizeSaca2State(draftState)
+      if (restored && !normalized) {
+        // Never drop a restored PHI blob silently: fall back to the resume prompt.
+        setPendingResume({ resumeId: resumeId as string, hasServerKey, serverState: toRecord(draftState) })
+        normalized = normalizeSaca2State(draftState)
+      }
       if (normalized) {
         dispatch({ type: "hydrate", payload: normalized })
         stateRef.current = normalized
@@ -126,19 +136,22 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
   }, [applicationId, actingForPatientId, headers])
 
   // ── Autosave the PHI-free snapshot ──
-  const saveDraftNow = useCallback(async (): Promise<boolean> => {
+  const doSave = useCallback(async (): Promise<boolean> => {
     if (Date.now() < backoffUntilRef.current) return false
 
-    const { safeState } = splitWizardState(buildSaca2Snapshot(stateRef.current))
-    const comparable = { ...safeState } as Record<string, unknown>
-    delete comparable.persistedAt
-    const key = JSON.stringify(comparable)
-    if (key === lastSavedKeyRef.current) {
-      dispatch({ type: "mark_saved" })
+    // Read the latest state when this save STARTS so queued saves send the newest edits.
+    const sentState = stateRef.current
+    const sentKey = buildSaca2SaveKey(sentState)
+    const markSavedIfCurrent = () => {
+      if (buildSaca2SaveKey(stateRef.current) === sentKey) dispatch({ type: "mark_saved" })
+    }
+    if (sentKey === lastSavedKeyRef.current) {
+      markSavedIfCurrent()
       return true
     }
 
     try {
+      const { safeState } = splitWizardState(buildSaca2Snapshot(sentState))
       const response = await authenticatedFetch(`/api/applications/${encodeURIComponent(applicationId)}/draft`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", ...headers },
@@ -151,14 +164,21 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
         return false
       }
       backoffUntilRef.current = 0
-      lastSavedKeyRef.current = key
-      dispatch({ type: "mark_saved" })
+      lastSavedKeyRef.current = sentKey
+      markSavedIfCurrent()
       return true
     } catch {
       backoffUntilRef.current = Date.now() + FAILURE_BACKOFF_MS
       return false
     }
   }, [applicationId, headers])
+
+  // Chain saves so two PUTs never overlap or complete out of order.
+  const saveDraftNow = useCallback((): Promise<boolean> => {
+    const run = chainRef.current.then(doSave, doSave)
+    chainRef.current = run.catch(() => false)
+    return run
+  }, [doSave])
 
   useEffect(() => {
     if (!hydrated || !state.dirty) return
@@ -181,31 +201,45 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
 
   // ── Navigation ──
   const stepIds = useMemo(() => getWizardSteps(state.data, new Date()), [state.data])
-  const currentIndex = Math.max(0, stepIds.indexOf(state.currentStepId))
+  const effectiveStepId = stepIds.includes(state.currentStepId)
+    ? state.currentStepId
+    : nearestVisibleStep(stepIds, state.currentStepId)
+  const currentIndex = Math.max(0, stepIds.indexOf(effectiveStepId))
   const isLastStep = currentIndex === stepIds.length - 1
-  const personIndex = getStepPersonIndex(state.currentStepId)
+  const personIndex = getStepPersonIndex(effectiveStepId)
+
+  useEffect(() => {
+    if (hydrated && effectiveStepId !== state.currentStepId) {
+      dispatch({ type: "set_step", stepId: effectiveStepId })
+    }
+  }, [hydrated, effectiveStepId, state.currentStepId])
 
   const handleNext = useCallback(() => {
-    const errors = validateStep(state.currentStepId, state.data, new Date())
+    const errors = validateStep(effectiveStepId, state.data, new Date())
     if (Object.keys(errors).length > 0) {
       dispatch({ type: "set_errors", errors })
       return
     }
-    dispatch({ type: "mark_complete", stepId: state.currentStepId })
+    dispatch({ type: "mark_complete", stepId: effectiveStepId })
     if (isLastStep) {
       setSaveExitOpen(true)
       return
     }
     dispatch({ type: "set_step", stepId: stepIds[currentIndex + 1] })
-  }, [state.currentStepId, state.data, isLastStep, stepIds, currentIndex])
+  }, [effectiveStepId, state.data, isLastStep, stepIds, currentIndex])
 
   const handleBack = useCallback(() => {
     if (currentIndex > 0) dispatch({ type: "set_step", stepId: stepIds[currentIndex - 1] })
   }, [currentIndex, stepIds])
 
   const onResumeRestored = useCallback((merged: Record<string, unknown>) => {
-    const normalized = normalizeSaca2State(merged)
-    if (normalized) dispatch({ type: "hydrate", payload: normalized })
+    const normalized = normalizeRestoredSaca2State(merged)
+    if (!normalized) {
+      setRestoreError(true)
+      return
+    }
+    dispatch({ type: "hydrate", payload: normalized })
+    setRestoreError(false)
     setPendingResume(null)
   }, [])
 
@@ -229,11 +263,16 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
       <WizardLayout
         steps={layoutSteps}
         currentStep={currentIndex + 1}
-        title={STEP_TITLES[state.currentStepId]}
+        title={STEP_TITLES[effectiveStepId]}
         contentClassName="max-w-3xl"
         onSaveAndExit={() => setSaveExitOpen(true)}
       >
         <div className="space-y-6">
+          {restoreError ? (
+            <p role="alert" className="text-sm text-destructive">
+              We couldn&apos;t restore your saved details. Try again or skip.
+            </p>
+          ) : null}
           {pendingResume ? (
             <PhiResumePrompt
               applicationId={applicationId}
@@ -247,7 +286,7 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
           ) : null}
 
           <Saca2StepForm
-            stepId={state.currentStepId}
+            stepId={effectiveStepId}
             answers={state.data}
             personIndex={personIndex}
             errors={state.errors}
