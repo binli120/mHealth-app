@@ -9,9 +9,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { Provider } from "react-redux"
 import { configureStore } from "@reduxjs/toolkit"
 import { appReducer } from "@/lib/redux/features/app-slice"
-import { applicationReducer } from "@/lib/redux/features/application-slice"
+import { applicationReducer, createApplication } from "@/lib/redux/features/application-slice"
 
 const mocks = vi.hoisted(() => ({
+  authenticatedFetch: vi.fn(),
   applicationAssistant: vi.fn(() => <div data-testid="application-assistant" />),
   formWizard: vi.fn(() => <div data-testid="form-wizard" />),
   intakeChat: vi.fn(() => <div data-testid="intake-chat" />),
@@ -41,15 +42,21 @@ vi.mock("@/lib/utils/random-id", () => ({
   createUuid: mocks.createUuid,
 }))
 
+vi.mock("@/lib/supabase/authenticated-fetch", () => ({
+  authenticatedFetch: mocks.authenticatedFetch,
+}))
+
 import NewApplicationPage from "@/app/application/new/page"
 
 function makeStore() {
   return configureStore({ reducer: { app: appReducer, application: applicationReducer } })
 }
 
-function renderPage() {
+function renderPage(seed?: (store: ReturnType<typeof makeStore>) => void) {
+  const store = makeStore()
+  seed?.(store)
   return render(
-    <Provider store={makeStore()}>
+    <Provider store={store}>
       <NewApplicationPage />
     </Provider>,
   )
@@ -60,6 +67,10 @@ describe("new application page", () => {
     vi.clearAllMocks()
     sessionStorage.clear()
     mocks.useSearchParams.mockReturnValue(new URLSearchParams())
+    mocks.authenticatedFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, record: { applicationType: "aca3" } }),
+    })
   })
 
   it("uses the schema-backed intake chat for a new Compass flow", async () => {
@@ -207,5 +218,54 @@ describe("new application page", () => {
     expect(mocks.formWizard.mock.calls.at(-1)?.[0]).toMatchObject({
       applicationId: "generated-app-id",
     })
+  })
+
+  it("shows the SACA-2 notice, not the ACA-3 wizard, when Redux says the draft is SACA-2", async () => {
+    mocks.useSearchParams.mockReturnValue(new URLSearchParams({ applicationId: "app-saca" }))
+
+    renderPage((store) =>
+      store.dispatch(createApplication({ applicationId: "app-saca", applicationType: "saca2" })),
+    )
+
+    expect(await screen.findByTestId("saca2-unavailable")).toBeInTheDocument()
+    expect(mocks.intakeChat).not.toHaveBeenCalled()
+    expect(mocks.formWizard).not.toHaveBeenCalled()
+    expect(mocks.applicationAssistant).not.toHaveBeenCalled()
+  })
+
+  it("shows the SACA-2 notice after a reload, when only the server draft knows the type", async () => {
+    mocks.useSearchParams.mockReturnValue(new URLSearchParams({ applicationId: "app-reload" }))
+    mocks.authenticatedFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, record: { applicationType: "saca2" } }),
+    })
+
+    renderPage()
+
+    expect(await screen.findByTestId("saca2-unavailable")).toBeInTheDocument()
+    expect(mocks.intakeChat).not.toHaveBeenCalled()
+    expect(mocks.formWizard).not.toHaveBeenCalled()
+  })
+
+  it("does not flash the ACA-3 flow while the server lookup is pending", async () => {
+    mocks.useSearchParams.mockReturnValue(new URLSearchParams({ applicationId: "app-pending" }))
+    mocks.authenticatedFetch.mockReturnValue(new Promise(() => {}))
+
+    renderPage()
+
+    expect(screen.queryByTestId("saca2-unavailable")).not.toBeInTheDocument()
+    expect(mocks.intakeChat).not.toHaveBeenCalled()
+    expect(mocks.formWizard).not.toHaveBeenCalled()
+  })
+
+  it("still opens the ACA-3 flow for non-SACA-2 drafts", async () => {
+    mocks.useSearchParams.mockReturnValue(new URLSearchParams({ applicationId: "app-aca3" }))
+
+    renderPage((store) =>
+      store.dispatch(createApplication({ applicationId: "app-aca3", applicationType: "aca3" })),
+    )
+
+    await waitFor(() => expect(mocks.intakeChat).toHaveBeenCalled())
+    expect(screen.queryByTestId("saca2-unavailable")).not.toBeInTheDocument()
   })
 })
