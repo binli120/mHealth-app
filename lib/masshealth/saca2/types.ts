@@ -10,9 +10,25 @@ export const SACA2_FORM_CODE = "SACA-2_2026-08"
 
 /**
  * Top-level answer keys that contain PHI. These must travel only through the
- * client-encrypted resume token (lib/phi-token), never the server draft_state.
+ * client-encrypted resume blob (lib/phi-token), never the server draft_state.
+ * Everything except SACA2_SERVER_SAFE_KEYS is PHI: even yes/no answers such as
+ * disability, PCA need, or tribal membership are health/identity data once tied
+ * to a user.
  */
-export const SACA2_PHI_KEYS = ["persons", "assets", "transfers", "supplements"] as const
+export const SACA2_PHI_KEYS = [
+  "screening",
+  "persons",
+  "aian",
+  "previousMedicalBills",
+  "assets",
+  "transfers",
+  "health",
+  "pca",
+  "supplements",
+] as const
+
+/** Top-level keys that may be stored in the server draft_state. */
+export const SACA2_SERVER_SAFE_KEYS = ["intake", "signature"] as const
 
 export type YesNo = "yes" | "no"
 
@@ -44,9 +60,13 @@ export interface Saca2IncomeItem {
     | "lottery"
   amount: number | null
   frequency: IncomeFrequency | null
+  /** Wages only: employer name and address. */
+  employerNameAndAddress?: string
+  /** Wages and self-employment: average hours worked each week. */
+  hoursPerWeek?: number | null
 }
 
-/** One person block (Step 1 = Person 1, Step 2 = Person 2). Plan 2 extends this. */
+/** One person block (Step 1 = Person 1, Step 2 = Person 2). */
 export interface Saca2Person {
   firstName: string
   middleName: string
@@ -54,21 +74,67 @@ export interface Saca2Person {
   suffix: string
   /** ISO YYYY-MM-DD. */
   dateOfBirth: string | null
+  sexAtBirth: "male" | "female" | null
   relationshipToPerson1: string
   applyingForCoverage: YesNo | null
+
+  noHomeAddress: boolean
+  streetAddress: string
+  apartment: string
+  city: string
+  state: string
+  zip: string
+  county: string
   /** Q9 / Person 2 Q6: hospital, nursing facility, or other institution. */
   inInstitution: YesNo | null
-  isLegallyMarried: YesNo | null
-  livesWithPerson1: YesNo | null
+  facilityName: string
+  mailingSameAsStreet: boolean
+  mailingAddress: string
+  mailingApartment: string
+  mailingCity: string
+  mailingState: string
+  mailingZip: string
+
+  mobilePhone: string
+  otherPhone: string
+  email: string
+  preferredLanguageSpoken: string
+  preferredLanguageWritten: string
+
+  hasSsn: YesNo | null
+  ssn: string
+  noSsnReason: "illness" | "justApplied" | "noncitizenException" | "religiousException" | null
+
+  usCitizenOrNational: YesNo | null
+  naturalizedCitizen: YesNo | null
+  alienNumber: string
+  citizenshipCertificateNumber: string
+  hasEligibleImmigrationStatus: YesNo | null
+  /** Slug from the page-32 eligible immigration status list. */
+  immigrationStatus: string | null
+  /** Slug from the page-32 immigration document type list. */
+  immigrationDocumentType: string | null
+  immigrationDocumentId: string
+  immigrationDocumentExpiry: string | null
+
   /** Residency question (Person 1 Q14 / Person 2 Q24). */
   residentOfMassachusetts: YesNo | null
   /** "Do you live with a child under 19 and are you the main caregiver?" */
   caregiverOfChildUnder19: YesNo | null
-  usCitizenOrNational: YesNo | null
-  /** Value from the page-32 eligible immigration status list, when a noncitizen. */
-  immigrationStatus: string | null
+  isLegallyMarried: YesNo | null
+  livesWithPerson1: YesNo | null
+  hasDisability: YesNo | null
+  everGotSsi: YesNo | null
+  /** mm/yyyy */
+  lastSsiMonth: string
+  livingArrangement: "alone" | "withSpouse" | "restHome" | "someoneElsesHome" | null
+  /** Screening aid (not a form question): used to decide which proofs are needed. */
   hasMedicareOrSsiOrSsdi: YesNo | null
+
+  hasIncome: YesNo | null
   income: Saca2IncomeItem[]
+  expectedIncomeThisYear: number | null
+  expectedIncomeNextYear: number | null
 }
 
 export type AssetCategory =
@@ -296,17 +362,60 @@ export function emptySaca2Person(): Saca2Person {
     lastName: "",
     suffix: "",
     dateOfBirth: null,
+    sexAtBirth: null,
     relationshipToPerson1: "",
     applyingForCoverage: null,
+
+    noHomeAddress: false,
+    streetAddress: "",
+    apartment: "",
+    city: "",
+    state: "MA",
+    zip: "",
+    county: "",
     inInstitution: null,
-    isLegallyMarried: null,
-    livesWithPerson1: null,
+    facilityName: "",
+    mailingSameAsStreet: true,
+    mailingAddress: "",
+    mailingApartment: "",
+    mailingCity: "",
+    mailingState: "MA",
+    mailingZip: "",
+
+    mobilePhone: "",
+    otherPhone: "",
+    email: "",
+    preferredLanguageSpoken: "",
+    preferredLanguageWritten: "",
+
+    hasSsn: null,
+    ssn: "",
+    noSsnReason: null,
+
+    usCitizenOrNational: null,
+    naturalizedCitizen: null,
+    alienNumber: "",
+    citizenshipCertificateNumber: "",
+    hasEligibleImmigrationStatus: null,
+    immigrationStatus: null,
+    immigrationDocumentType: null,
+    immigrationDocumentId: "",
+    immigrationDocumentExpiry: null,
+
     residentOfMassachusetts: null,
     caregiverOfChildUnder19: null,
-    usCitizenOrNational: null,
-    immigrationStatus: null,
+    isLegallyMarried: null,
+    livesWithPerson1: null,
+    hasDisability: null,
+    everGotSsi: null,
+    lastSsiMonth: "",
+    livingArrangement: null,
     hasMedicareOrSsiOrSsdi: null,
+
+    hasIncome: null,
     income: [],
+    expectedIncomeThisYear: null,
+    expectedIncomeNextYear: null,
   }
 }
 

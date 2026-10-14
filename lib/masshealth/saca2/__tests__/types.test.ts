@@ -8,6 +8,7 @@ import {
   SACA2_FORM_CODE,
   SACA2_PHI_KEYS,
   SACA2_SCHEMA_VERSION,
+  SACA2_SERVER_SAFE_KEYS,
   emptySaca2Answers,
   emptySaca2Person,
 } from "@/lib/masshealth/saca2/types"
@@ -46,11 +47,26 @@ describe("constants", () => {
     expect(SACA2_SCHEMA_VERSION).toBe("saca2-2026-08")
   })
 
-  it("lists the PHI-bearing top-level keys", () => {
-    expect([...SACA2_PHI_KEYS]).toEqual(["persons", "assets", "transfers", "supplements"])
-    const keys = Object.keys(emptySaca2Answers())
-    for (const phiKey of SACA2_PHI_KEYS) {
-      expect(keys).toContain(phiKey)
-    }
+  it("classifies every top-level answer key as PHI or server-safe, and only intake/signature are server-safe", () => {
+    const keys = Object.keys(emptySaca2Answers()).sort()
+    expect([...SACA2_PHI_KEYS, ...SACA2_SERVER_SAFE_KEYS].sort()).toEqual(keys)
+    expect([...SACA2_SERVER_SAFE_KEYS]).toEqual(["intake", "signature"])
+  })
+})
+
+describe("emptySaca2Person defaults", () => {
+  it("gives every new person field an empty default", () => {
+    const p = emptySaca2Person()
+    expect(p.streetAddress).toBe("")
+    expect(p.noHomeAddress).toBe(false)
+    expect(p.mailingSameAsStreet).toBe(true)
+    expect(p.state).toBe("MA")
+    expect(p.sexAtBirth).toBeNull()
+    expect(p.hasSsn).toBeNull()
+    expect(p.ssn).toBe("")
+    expect(p.hasIncome).toBeNull()
+    expect(p.expectedIncomeThisYear).toBeNull()
+    expect(p.expectedIncomeNextYear).toBeNull()
+    expect(p.livingArrangement).toBeNull()
   })
 })
