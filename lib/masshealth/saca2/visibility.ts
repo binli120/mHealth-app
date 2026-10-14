@@ -13,11 +13,14 @@ function ageOf(answers: Saca2Answers, index: number, on: Date): number | null {
   return calculateAge(answers.persons[index]?.dateOfBirth, on)
 }
 
+/** Step 8 asks about "you" and "your spouse", so any 65+ person on the application qualifies. */
 function showsPca(a: Saca2Answers, on: Date): boolean {
-  const age = ageOf(a, 0, on)
+  const someoneSenior = a.persons.some((_, i) => {
+    const age = ageOf(a, i, on)
+    return age !== null && age >= SENIOR_AGE
+  })
   return (
-    age !== null &&
-    age >= SENIOR_AGE &&
+    someoneSenior &&
     a.supplements.a.needsNursingFacility !== "yes" &&
     !a.intake.programs.longTermCare
   )

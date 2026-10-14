@@ -12,7 +12,8 @@ import {
   isMassHealthApplicationType,
 } from "@/lib/masshealth/application-types"
 
-export type Saca2Lookup = "saca2" | "other" | "unknown"
+/** "error" = the draft could not be checked; callers must NOT fall through to the ACA-3 flow. */
+export type Saca2Lookup = "saca2" | "other" | "unknown" | "error"
 
 function classify(type: string | null | undefined): Saca2Lookup {
   if (!type) return "other"
@@ -48,13 +49,20 @@ export function useIsSaca2Application(
           signal: AbortSignal.timeout(6_000),
         }),
       )
-      .then((res) => res.json() as Promise<{ ok: boolean; record?: { applicationType: string | null } }>)
-      .then((data) => {
-        if (cancelled) return
-        setFetched({ id: applicationId, result: classify(data.ok ? data.record?.applicationType : null) })
+      .then(async (res): Promise<Saca2Lookup> => {
+        // No draft yet (404) is a genuinely new application. Anything else that is not a
+        // confirmed answer (timeout, 5xx, 401, bad body) must not default to the ACA-3 flow.
+        if (res.status === 404) return "other"
+        if (!res.ok) return "error"
+        const data = (await res.json()) as { ok: boolean; record?: { applicationType: string | null } }
+        if (!data.ok) return "error"
+        return classify(data.record?.applicationType)
+      })
+      .then((result) => {
+        if (!cancelled) setFetched({ id: applicationId, result })
       })
       .catch(() => {
-        if (!cancelled) setFetched({ id: applicationId, result: "other" })
+        if (!cancelled) setFetched({ id: applicationId, result: "error" })
       })
 
     return () => {

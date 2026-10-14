@@ -61,15 +61,41 @@ describe("useIsSaca2Application", () => {
     expect(init.headers?.["X-Acting-For-Patient"]).toBe("patient-9")
   })
 
-  it("falls back to other when the lookup fails or the draft has no type", async () => {
-    mocks.authenticatedFetch.mockRejectedValueOnce(new Error("network"))
-    const failed = renderHook(() => useIsSaca2Application("app-5", ""))
-    await waitFor(() => expect(failed.result.current).toBe("other"))
-
+  it("treats a draft with no type, or no draft at all (404), as other", async () => {
     mocks.authenticatedFetch.mockResolvedValueOnce(
       jsonResponse({ ok: true, record: { applicationType: null } }),
     )
     const untyped = renderHook(() => useIsSaca2Application("app-6", ""))
     await waitFor(() => expect(untyped.result.current).toBe("other"))
+
+    mocks.authenticatedFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      json: async () => ({ ok: false, error: "not found" }),
+    } as unknown as Response)
+    const missing = renderHook(() => useIsSaca2Application("app-7", ""))
+    await waitFor(() => expect(missing.result.current).toBe("other"))
+  })
+
+  it("fails closed with error (never other) on a network failure, 5xx, or 401", async () => {
+    mocks.authenticatedFetch.mockRejectedValueOnce(new Error("network"))
+    const network = renderHook(() => useIsSaca2Application("app-8", ""))
+    await waitFor(() => expect(network.result.current).toBe("error"))
+
+    mocks.authenticatedFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => ({ ok: false, error: "boom" }),
+    } as unknown as Response)
+    const serverError = renderHook(() => useIsSaca2Application("app-9", ""))
+    await waitFor(() => expect(serverError.result.current).toBe("error"))
+
+    mocks.authenticatedFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      json: async () => ({ ok: false, error: "unauthorized" }),
+    } as unknown as Response)
+    const unauthorized = renderHook(() => useIsSaca2Application("app-10", ""))
+    await waitFor(() => expect(unauthorized.result.current).toBe("error"))
   })
 })

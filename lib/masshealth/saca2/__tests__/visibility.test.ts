@@ -51,6 +51,31 @@ describe("pca (Step 8)", () => {
     expect(isStepVisible("pca", a, ON)).toBe(true)
   })
 
+  it("shows when only Person 2 is 65+ (the form asks about 'you' and 'your spouse')", () => {
+    const a = answers((x) => {
+      x.persons[0].dateOfBirth = "1966-01-01"
+      const p2 = emptySaca2Person()
+      p2.dateOfBirth = "1956-01-01"
+      x.persons.push(p2)
+    })
+    expect(isStepVisible("pca", a, ON)).toBe(true)
+  })
+
+  it("hides when neither person is 65+ or the only 65+ DOB is unknown", () => {
+    const young = answers((x) => {
+      x.persons[0].dateOfBirth = "1966-01-01"
+      const p2 = emptySaca2Person()
+      p2.dateOfBirth = "1970-01-01"
+      x.persons.push(p2)
+    })
+    expect(isStepVisible("pca", young, ON)).toBe(false)
+    const unknown = answers((x) => {
+      x.persons[0].dateOfBirth = "1966-01-01"
+      x.persons.push(emptySaca2Person())
+    })
+    expect(isStepVisible("pca", unknown, ON)).toBe(false)
+  })
+
   it("hides for under 65, unknown/invalid DOB, facility applicants, and LTC applicants", () => {
     expect(isStepVisible("pca", answers((x) => (x.persons[0].dateOfBirth = "1961-10-14")), ON)).toBe(false)
     expect(isStepVisible("pca", answers(), ON)).toBe(false)

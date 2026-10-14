@@ -130,6 +130,30 @@ function NewApplicationPageContent() {
     return <div className="container mx-auto px-4 py-6" />
   }
 
+  if (saca2Lookup === "error") {
+    return (
+      <div className="container mx-auto space-y-4 px-4 py-6">
+        <section
+          data-testid="application-lookup-error"
+          role="alert"
+          className="space-y-3 rounded-lg border bg-card p-6 text-card-foreground"
+        >
+          <h2 className="text-lg font-semibold">We couldn&apos;t load your application</h2>
+          <p className="text-sm text-muted-foreground">
+            Check your connection and try again. Your saved answers have not been changed.
+          </p>
+          <button
+            type="button"
+            className="rounded-md border px-3 py-1.5 text-sm font-medium"
+            onClick={() => window.location.reload()}
+          >
+            Try again
+          </button>
+        </section>
+      </div>
+    )
+  }
+
   if (saca2Lookup === "saca2") {
     return (
       <div className="container mx-auto space-y-4 px-4 py-6">

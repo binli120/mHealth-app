@@ -258,6 +258,18 @@ describe("new application page", () => {
     expect(mocks.formWizard).not.toHaveBeenCalled()
   })
 
+  it("does not fall through to the ACA-3 flow when the draft lookup fails", async () => {
+    mocks.useSearchParams.mockReturnValue(new URLSearchParams({ applicationId: "app-flaky" }))
+    mocks.authenticatedFetch.mockRejectedValue(new Error("network"))
+
+    renderPage()
+
+    expect(await screen.findByTestId("application-lookup-error")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument()
+    expect(mocks.intakeChat).not.toHaveBeenCalled()
+    expect(mocks.formWizard).not.toHaveBeenCalled()
+  })
+
   it("still opens the ACA-3 flow for non-SACA-2 drafts", async () => {
     mocks.useSearchParams.mockReturnValue(new URLSearchParams({ applicationId: "app-aca3" }))
 
