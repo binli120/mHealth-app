@@ -10,7 +10,8 @@ vi.mock("@/lib/db/server", () => ({
   getDbPool: () => ({ query }),
 }))
 
-import { upsertApplicationDraft } from "@/lib/db/application-drafts"
+import { MAX_APPLICATION_DRAFT_STEP, upsertApplicationDraft } from "@/lib/db/application-drafts"
+import { SERVER_DRAFT_MAX_STEP } from "@/lib/masshealth/saca2/wizard-state"
 
 const USER_ID = "07d7e11d-6a3d-41a8-826d-66e38470c830"
 const APPLICANT_ID = "11111111-1111-4111-8111-111111111111"
@@ -38,6 +39,10 @@ beforeEach(() => {
 })
 
 describe("upsertApplicationDraft PHI stripping", () => {
+  it("keeps the client and server draft step caps in sync", () => {
+    expect(SERVER_DRAFT_MAX_STEP).toBe(MAX_APPLICATION_DRAFT_STEP)
+  })
+
   it("removes every SACA-2 PHI key from the persisted draft_state but keeps server-safe keys", async () => {
     await upsertApplicationDraft({
       userId: USER_ID,
