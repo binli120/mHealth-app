@@ -59,6 +59,14 @@ const INCOME_FREQUENCIES = opts([
   ["oneTime", "One time only"],
 ])
 
+function validateStateCode(v: unknown): string | null {
+  return /^[A-Za-z]{2}$/.test(String(v)) ? null : "Enter the 2-letter state code."
+}
+
+function validateZip(v: unknown): string | null {
+  return /^\d{5}(-\d{4})?$/.test(String(v)) ? null : "Enter a 5-digit ZIP code."
+}
+
 function validateDateOfBirth(value: unknown, ctx: Saca2QuestionContext): string | null {
   if (typeof value !== "string") return null
   if (value < "1900-01-01") return "Enter a date of birth in 1900 or later."
@@ -103,12 +111,12 @@ export const PERSON_STEP_CONTENT: Saca2StepContent = {
         text("state", "State", {
           required: true,
           visibleWhen: hasHomeAddress,
-          validate: (v) => (/^[A-Za-z]{2}$/.test(String(v)) ? null : "Enter the 2-letter state code."),
+          validate: validateStateCode,
         }),
         text("zip", "ZIP code", {
           required: true,
           visibleWhen: hasHomeAddress,
-          validate: (v) => (/^\d{5}(-\d{4})?$/.test(String(v)) ? null : "Enter a 5-digit ZIP code."),
+          validate: validateZip,
         }),
         text("county", "County", { visibleWhen: hasHomeAddress }),
         yesNo("inInstitution", who("Is where you live a hospital, nursing facility, or other institution?", "Is where this person lives a hospital, nursing facility, or other institution?"), {
@@ -125,12 +133,12 @@ export const PERSON_STEP_CONTENT: Saca2StepContent = {
         text("mailingState", "Mailing state", {
           required: true,
           visibleWhen: needsMailingAddress,
-          validate: (v) => (/^[A-Za-z]{2}$/.test(String(v)) ? null : "Enter the 2-letter state code."),
+          validate: validateStateCode,
         }),
         text("mailingZip", "Mailing ZIP code", {
           required: true,
           visibleWhen: needsMailingAddress,
-          validate: (v) => (/^\d{5}(-\d{4})?$/.test(String(v)) ? null : "Enter a 5-digit ZIP code."),
+          validate: validateZip,
         }),
       ],
     },

@@ -5,7 +5,12 @@
 
 import { calculateAge } from "../age"
 import { checkbox, opts, select, yesNo } from "./builders"
-import type { Saca2StepContent } from "./types"
+import type { Saca2QuestionContext, Saca2StepContent } from "./types"
+
+function isSixtyFiveOrAgeUnknown(ctx: Saca2QuestionContext): boolean {
+  const age = calculateAge(ctx.answers.persons[0]?.dateOfBirth, ctx.on)
+  return age === null || age >= 65
+}
 
 export const INTAKE_STEP_CONTENT: Saca2StepContent = {
   scope: "root",
@@ -28,16 +33,10 @@ export const INTAKE_STEP_CONTENT: Saca2StepContent = {
       description: "These two questions are not on the printed form. We use them only to check that SACA-2 is the right application.",
       questions: [
         yesNo("screening.disabledAndWorkingQualifies", "Are you disabled and either working 40 or more hours a month, or working now and worked at least 240 hours in the last six months?", {
-          visibleWhen: (ctx) => {
-            const age = calculateAge(ctx.answers.persons[0]?.dateOfBirth, ctx.on)
-            return age === null || age >= 65
-          },
+          visibleWhen: isSixtyFiveOrAgeUnknown,
         }),
         yesNo("screening.commonHealthTenYears", "Have you received MassHealth CommonHealth for 10 years?", {
-          visibleWhen: (ctx) => {
-            const age = calculateAge(ctx.answers.persons[0]?.dateOfBirth, ctx.on)
-            return age === null || age >= 65
-          },
+          visibleWhen: isSixtyFiveOrAgeUnknown,
         }),
       ],
     },
