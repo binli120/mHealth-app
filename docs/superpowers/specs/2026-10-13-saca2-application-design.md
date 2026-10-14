@@ -33,7 +33,7 @@ result and document checklist, and download a correctly filled, signable PDF.
 | Area | State |
 |---|---|
 | Type registry | Done. `saca2` in `MASSHEALTH_APPLICATION_TYPES` (`lib/masshealth/application-types.ts`), `MassHealthApplicationType`, quick-check recommendation, 6-language copy in `app/application/type/type-copy.ts`. Form code there says `SACA-2 (03/26)`; the PDF footer says **`SACA-2_2026-08`** — store the footer value. |
-| Dead end today | `application-type-page-client.tsx` creates a draft with `applicationType: "saca2"` then `router.push(buildApplicationStartHref(id))` → `/application/new`, which always renders the **ACA-3** `FormWizard`/`IntakeChat`. Users are silently put in the wrong form. |
+| Dead end today | `application-type-page-client.tsx` creates a draft with `applicationType: "saca2"` then `router.push(buildApplicationStartHref(id))` → `/application/new`, which always renders the **ACA-3** `FormWizard`/`IntakeChat`. Users are silently put in the wrong form. Fixed in Phase 0 by a notice (hook + component under `components/application/saca2/`). |
 | Question data | None. ACA-3 has `data/aca_3-0235.json`, `config/ACA-3-0325.json`; ACA-3-AP has `data/aca_3ap-0325.json` + `aca3ap-requirements.ts`. |
 | Engines | `aca3-eligibility-engine.ts`, `aca3ap-eligibility-engine.ts`. The AP engine already emits `status: "REDIRECT_SACA2"`; `application-checks.ts` warns 65+ applicants "may need SACA-2". |
 | Fill route | `/api/forms/aca-3-0325/fill` proxies to an external Python service (`/masshealth/fill/aca3`). No local fill logic. `pdf-lib` is already a dependency. |
@@ -265,7 +265,7 @@ accessibility checks.
 
 | Phase | Deliverable |
 |---|---|
-| 0 | `types`, `schema`, `visibility`, `figures-2026` + staleness guard, synthetic cases. **Plus the dead-end fix and `saca2_enabled` flag** so SACA-2 never lands in ACA-3. |
+| 0 | `types`, step registry (`schema.ts`), `visibility`, `figures-2026` + staleness guard, synthetic cases, and a guard so SACA-2 drafts show a notice instead of the ACA-3 wizard (plan `2026-10-13-saca2-foundation.md`). Question-level schema and the `saca2_enabled` flag move to Phase 1, where the renderer and the wizard they gate are built. |
 | 1 | `Saca2Wizard` + step renderer, `/application/new` dispatch, PHI-safe draft save/resume (English only) |
 | 2 | Field inventory, `pdf-field-map`, `pdf-fill`, `/api/forms/saca2/fill`, template hash, coverage test |
 | 3 | `eligibility-engine`, `document-checklist`, redirects, results panel; 130 CMR confirmation of rules 3–7 |
@@ -275,12 +275,8 @@ accessibility checks.
 | Stretch | Prefill from an uploaded filled SACA-2 |
 
 ## 7. Open items (resolve in the implementation plan, in code)
-1. **Ownership / social-worker authorization** for the fill route — identify the check
-   the existing PDF/application routes use (candidates: `lib/db/social-worker.ts`,
-   `app/api/pdf/generate/route.ts`); no dedicated `canAccessApplication` helper was
-   found.
-2. **Feature-flag reader** — locate how `feature_flags` is read at runtime (only
-   `lib/account/personal-data-contract.ts` references it outside migrations).
+1. ~~Ownership / social-worker authorization~~ — resolved: `getApplicationDraft(userId, applicationId, actingFor)` in `lib/db/application-drafts.ts` (the `X-Acting-For-Patient` path used by `GET /api/applications/[applicationId]/draft`). The fill route reuses it.
+2. **Feature-flag reader** — nothing in app code reads `public.feature_flags` today. Phase 1 decides between a runtime server-evaluated env flag (passed as a prop from a server component) and building a DB reader; an env flag avoids a Docker rebuild, unlike `NEXT_PUBLIC_*`.
 3. **Policy review** — named reviewer for engine rules 3–7 (130 CMR 519–520).
 4. **Form version** — confirm with MassHealth whether `2026-08` supersedes the
    March 2026 revision described in EOM 26-03; store the PDF footer value.
