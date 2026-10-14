@@ -190,4 +190,63 @@ describe("normalizeSaca2State", () => {
     normalizeSaca2State(hostile)
     expect(({} as Record<string, unknown>).polluted).toBeUndefined()
   })
+
+  describe("corrupt payloads", () => {
+    const norm = (data: unknown) => normalizeSaca2State({ schemaVersion: SACA2_SCHEMA_VERSION, data })!
+    const def = emptySaca2Answers()
+
+    it.each([
+      ["data.intake:'x'", { intake: "x" }, (a: ReturnType<typeof emptySaca2Answers>) => a.intake, def.intake],
+      ["data.intake:null", { intake: null }, (a: ReturnType<typeof emptySaca2Answers>) => a.intake, def.intake],
+      ["data.intake.programs:null", { intake: { programs: null } }, (a: ReturnType<typeof emptySaca2Answers>) => a.intake.programs, def.intake.programs],
+      ["data.assets.gates:'x'", { assets: { gates: "x" } }, (a: ReturnType<typeof emptySaca2Answers>) => a.assets.gates, def.assets.gates],
+      ["data.supplements:5", { supplements: 5 }, (a: ReturnType<typeof emptySaca2Answers>) => a.supplements, def.supplements],
+      ["persons[0].firstName:123", { persons: [{ firstName: 123 }] }, (a: ReturnType<typeof emptySaca2Answers>) => a.persons[0].firstName, def.persons[0].firstName],
+      ["persons[0].hasSsn:{}", { persons: [{ hasSsn: {} }] }, (a: ReturnType<typeof emptySaca2Answers>) => a.persons[0].hasSsn, def.persons[0].hasSsn],
+      ["persons[0].noHomeAddress:'yes'", { persons: [{ noHomeAddress: "yes" }] }, (a: ReturnType<typeof emptySaca2Answers>) => a.persons[0].noHomeAddress, def.persons[0].noHomeAddress],
+      ["persons[0].income:'x'", { persons: [{ income: "x" }] }, (a: ReturnType<typeof emptySaca2Answers>) => a.persons[0].income, def.persons[0].income],
+      ["data.transfers:{}", { transfers: {} }, (a: ReturnType<typeof emptySaca2Answers>) => a.transfers, def.transfers],
+    ])("falls back to the default for %s", (_name, data, pick, expected) => {
+      expect(() => norm(data)).not.toThrow()
+      expect(pick(norm(data).data)).toEqual(expected)
+    })
+
+    it("keeps only strings and plain objects in arrays", () => {
+      const s = norm({ persons: [{ income: [null, 1, { amount: 5 }] }] })
+      expect(s.data.persons[0].income).toEqual([{ amount: 5 }])
+    })
+
+    it("accepts well-typed values", () => {
+      const s = norm({
+        persons: [{ isLegallyMarried: "yes", dateOfBirth: "1950-01-01", noHomeAddress: true }],
+        assets: { gates: { bankAccounts: "yes" } },
+      })
+      expect(s.data.persons[0].isLegallyMarried).toBe("yes")
+      expect(s.data.persons[0].dateOfBirth).toBe("1950-01-01")
+      expect(s.data.persons[0].noHomeAddress).toBe(true)
+      expect(s.data.assets.gates).toEqual({ bankAccounts: "yes" })
+    })
+
+    it("ignores inherited names such as toString", () => {
+      const s = norm({ toString: "x", persons: [{ toString: "x" }] })
+      expect(Object.hasOwn(s.data, "toString")).toBe(false)
+      expect(Object.hasOwn(s.data.persons[0], "toString")).toBe(false)
+    })
+
+    it("drops forbidden keys at every level of the output", () => {
+      const payload = JSON.parse(
+        `{"persons":[{"constructor":{"x":1},"prototype":1,"income":[{"__proto__":{"p":1},"constructor":2,"amount":5}]}],"assets":{"gates":{"__proto__":{"p":1},"constructor":"yes","prototype":"no","trusts":"no"}}}`,
+      )
+      const s = norm(payload)
+      const forbidden = ["__proto__", "constructor", "prototype"]
+      const has = (o: object, k: string) => Object.hasOwn(o, k)
+      forbidden.forEach((k) => {
+        expect(has(s.data.persons[0], k)).toBe(false)
+        expect(has(s.data.assets.gates, k)).toBe(false)
+        expect(has(s.data.persons[0].income[0] as object, k)).toBe(false)
+      })
+      expect(s.data.persons[0].income[0]).toEqual({ amount: 5 })
+      expect(s.data.assets.gates).toEqual({ trusts: "no" })
+    })
+  })
 })

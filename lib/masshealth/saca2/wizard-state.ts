@@ -131,25 +131,42 @@ function safeEntries(value: Record<string, unknown>): Array<[string, unknown]> {
   return Object.entries(value).filter(([key]) => !FORBIDDEN_KEYS.has(key))
 }
 
-/** Recursively overlay `raw` onto `base`, keeping base's shape; arrays are replaced wholesale. */
+/** Deep copy of a plain object with forbidden keys dropped; non-plain values are kept as-is. */
+function sanitizeDeep(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sanitizeDeep)
+  if (!isPlainObject(value)) return value
+  return Object.fromEntries(safeEntries(value).map(([key, v]) => [key, sanitizeDeep(v)]))
+}
+
+/**
+ * Overlay `raw` onto `base`, keeping base's shape and value types. Anything of the wrong
+ * type is ignored (base kept), so a corrupt draft can never produce state that crashes render.
+ * Arrays are replaced wholesale but only keep strings and plain objects.
+ */
 function overlay<T>(base: T, raw: unknown): T {
-  if (!isPlainObject(base) || !isPlainObject(raw)) return base
-  const out: Record<string, unknown> = { ...base }
-  for (const [key, value] of safeEntries(raw)) {
-    if (!(key in base)) continue
-    const baseValue = (base as Record<string, unknown>)[key]
-    if (isPlainObject(baseValue) && isPlainObject(value)) {
-      // An empty base object is a free-form map (e.g. assets.gates, supplements.c.activities):
-      // keep the incoming keys instead of filtering them against an empty shape.
-      out[key] =
-        Object.keys(baseValue).length === 0
-          ? Object.fromEntries(safeEntries(value))
-          : overlay(baseValue, value)
-    } else if (Array.isArray(baseValue) === Array.isArray(value) || value === null) {
-      out[key] = value
-    }
+  if (Array.isArray(base)) {
+    if (!Array.isArray(raw)) return base
+    const kept = raw.filter((item) => typeof item === "string" || isPlainObject(item)).map(sanitizeDeep)
+    return kept as unknown as T
   }
-  return out as T
+  if (isPlainObject(base)) {
+    if (!isPlainObject(raw)) return base
+    // An empty base object is a free-form map (e.g. assets.gates, supplements.c.activities).
+    if (Object.keys(base).length === 0) return sanitizeDeep(raw) as T
+    const out: Record<string, unknown> = { ...base }
+    for (const [key, value] of safeEntries(raw)) {
+      if (!Object.hasOwn(base, key)) continue
+      out[key] = overlay((base as Record<string, unknown>)[key], value)
+    }
+    return out as T
+  }
+  if (base === null) {
+    return typeof raw === "string" || typeof raw === "boolean" || raw === null || (typeof raw === "number" && Number.isFinite(raw))
+      ? (raw as T)
+      : base
+  }
+  if (typeof base === "number") return typeof raw === "number" && Number.isFinite(raw) ? (raw as T) : base
+  return typeof raw === typeof base ? (raw as T) : base
 }
 
 function normalizeAnswers(raw: unknown): Saca2Answers {
