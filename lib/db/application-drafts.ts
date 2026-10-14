@@ -7,6 +7,7 @@ import "server-only"
 
 import { getDbPool } from "@/lib/db/server"
 import { APPLICATION_STATUS_SET } from "@/lib/application-status"
+import { PHI_DATA_KEY_SET } from "@/lib/phi-token/phi-fields"
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -14,11 +15,8 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3
  * Defense-in-depth: remove PHI keys from wizardState before any DB write.
  * The client is responsible for keeping PHI in the encrypted resume token,
  * but this guard ensures PHI is never persisted even if a client bug slips
- * through. Mirrors the keys in lib/phi-token/phi-fields.ts (server-side copy
- * avoids importing a browser-crypto module from server-only code).
+ * through. The key list is shared with the client (lib/phi-token/phi-fields.ts, a pure module) so the two cannot drift.
  */
-const SERVER_PHI_DATA_KEYS = new Set(["contact", "preApp", "persons"])
-
 function stripPhiFromWizardState(
   wizardState: Record<string, unknown>,
 ): Record<string, unknown> {
@@ -29,7 +27,7 @@ function stripPhiFromWizardState(
 
   const safeData: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
-    if (!SERVER_PHI_DATA_KEYS.has(key)) {
+    if (!PHI_DATA_KEY_SET.has(key)) {
       safeData[key] = value
     }
   }
