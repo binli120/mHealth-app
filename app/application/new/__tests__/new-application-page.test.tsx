@@ -19,6 +19,8 @@ const mocks = vi.hoisted(() => ({
   createUuid: vi.fn(() => "generated-app-id"),
   useSearchParams: vi.fn(),
   useRouter: vi.fn(() => ({ push: vi.fn(), back: vi.fn() })),
+  useSaca2Enabled: vi.fn(),
+  saca2Wizard: vi.fn(() => <div data-testid="saca2-wizard" />),
 }))
 
 vi.mock("next/navigation", () => ({
@@ -46,6 +48,14 @@ vi.mock("@/lib/supabase/authenticated-fetch", () => ({
   authenticatedFetch: mocks.authenticatedFetch,
 }))
 
+vi.mock("@/components/application/saca2/use-saca2-enabled", () => ({
+  useSaca2Enabled: mocks.useSaca2Enabled,
+}))
+
+vi.mock("@/components/application/saca2/saca2-wizard", () => ({
+  Saca2Wizard: mocks.saca2Wizard,
+}))
+
 import NewApplicationPage from "@/app/application/new/page"
 
 function makeStore() {
@@ -71,6 +81,7 @@ describe("new application page", () => {
       ok: true,
       json: async () => ({ ok: true, record: { applicationType: "aca3" } }),
     })
+    mocks.useSaca2Enabled.mockReturnValue(false)
   })
 
   it("uses the schema-backed intake chat for a new Compass flow", async () => {
@@ -279,5 +290,49 @@ describe("new application page", () => {
 
     await waitFor(() => expect(mocks.intakeChat).toHaveBeenCalled())
     expect(screen.queryByTestId("saca2-unavailable")).not.toBeInTheDocument()
+  })
+
+  it("shows the SACA-2 wizard instead of the notice when the flag is on", async () => {
+    mocks.useSaca2Enabled.mockReturnValue(true)
+    mocks.useSearchParams.mockReturnValue(
+      new URLSearchParams({ applicationId: "app-saca", patientId: "patient-7" }),
+    )
+
+    renderPage((store) =>
+      store.dispatch(createApplication({ applicationId: "app-saca", applicationType: "saca2" })),
+    )
+
+    expect(await screen.findByTestId("saca2-wizard")).toBeInTheDocument()
+    expect(mocks.saca2Wizard.mock.calls.at(-1)?.[0]).toMatchObject({
+      applicationId: "app-saca",
+      actingForPatientId: "patient-7",
+    })
+    expect(screen.queryByTestId("saca2-unavailable")).not.toBeInTheDocument()
+    expect(mocks.intakeChat).not.toHaveBeenCalled()
+    expect(mocks.formWizard).not.toHaveBeenCalled()
+  })
+
+  it("shows nothing for a SACA-2 draft while the flag is still loading", async () => {
+    mocks.useSaca2Enabled.mockReturnValue(null)
+    mocks.useSearchParams.mockReturnValue(new URLSearchParams({ applicationId: "app-saca" }))
+
+    renderPage((store) =>
+      store.dispatch(createApplication({ applicationId: "app-saca", applicationType: "saca2" })),
+    )
+
+    expect(screen.queryByTestId("saca2-wizard")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("saca2-unavailable")).not.toBeInTheDocument()
+    expect(mocks.intakeChat).not.toHaveBeenCalled()
+  })
+
+  it("only asks for the flag when the draft is a SACA-2", async () => {
+    mocks.useSearchParams.mockReturnValue(new URLSearchParams({ applicationId: "app-aca3" }))
+
+    renderPage((store) =>
+      store.dispatch(createApplication({ applicationId: "app-aca3", applicationType: "aca3" })),
+    )
+
+    await waitFor(() => expect(mocks.intakeChat).toHaveBeenCalled())
+    expect(mocks.useSaca2Enabled).toHaveBeenCalledWith(false)
   })
 })

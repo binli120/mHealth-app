@@ -148,6 +148,7 @@ ACA-3 `FormWizard` is untouched.
   flags, current step, program-box selections.
 - `applications.application_type = "saca2"`; no migration expected for the
   application row. A migration is needed only to seed the feature flag (§4.7).
+  Implemented in Phase 1: all answer keys except intake and signature are PHI (SACA2_PHI_KEYS); the server strip and the client split share one list (lib/phi-token/phi-fields.ts). PHI is held in memory only (no localStorage copy, unlike ACA-3) until Save & Exit writes the encrypted blob. The server draft `currentStep` is the furthest step reached, capped at 9, because the draft route accepts only 1–9 and never lowers stored progress.
 
 ### 4.4 Eligibility engine
 Contract: `{ status, findings[], rule_results[], estimates, required_documents[] }`,
@@ -215,8 +216,7 @@ applicable.
   response streamed, nothing stored, rate-limited like other PDF routes.
 
 ### 4.7 Rollout
-Feature flag `saca2_enabled` seeded by migration into `public.feature_flags`
-(+ env overrides). While off: the SACA-2 tile must **not** route into the ACA-3
+Rollout flag: runtime env var `SACA2_ENABLED` (off by default), exposed to the client by the public route `GET /api/config/saca2` and the `useSaca2Enabled` hook. The unused `public.feature_flags` table is not used. A failed flag lookup fails closed to the notice. While off: the SACA-2 tile must **not** route into the ACA-3
 wizard — show the official-PDF link / "coming soon" instead (this fixes the current
 dead end independently of the rest of the work).
 
@@ -266,7 +266,7 @@ accessibility checks.
 | Phase | Deliverable |
 |---|---|
 | 0 | `types`, step registry (`schema.ts`), `visibility`, `figures-2026` + staleness guard, synthetic cases, and a guard so SACA-2 drafts show a notice instead of the ACA-3 wizard (plan `2026-10-13-saca2-foundation.md`). Question-level schema and the `saca2_enabled` flag move to Phase 1, where the renderer and the wizard they gate are built. |
-| 1 | `Saca2Wizard` + step renderer, `/application/new` dispatch, PHI-safe draft save/resume (English only) |
+| 1 | `Saca2Wizard`, step renderer, question model/validation, flag, PHI-safe save/resume for: intake, Person 1/2, AI/AN, previous bills, who-signs (plan `2026-10-13-saca2-wizard-core.md`). **1b**: remaining question content (assets and other repeaters, transfers, health insurance, HRA, PCA, Step 9, Supplements A–D, ARD, IRS 4506, optional demographics, tax/Health Connector questions, deductions). The flag stays off until 1b ships. |
 | 2 | Field inventory, `pdf-field-map`, `pdf-fill`, `/api/forms/saca2/fill`, template hash, coverage test |
 | 3 | `eligibility-engine`, `document-checklist`, redirects, results panel; 130 CMR confirmation of rules 3–7 |
 | 4 | 6-language strings and reference translations |
@@ -276,7 +276,7 @@ accessibility checks.
 
 ## 7. Open items (resolve in the implementation plan, in code)
 1. ~~Ownership / social-worker authorization~~ — resolved: `getApplicationDraft(userId, applicationId, actingFor)` in `lib/db/application-drafts.ts` (the `X-Acting-For-Patient` path used by `GET /api/applications/[applicationId]/draft`). The fill route reuses it.
-2. **Feature-flag reader** — nothing in app code reads `public.feature_flags` today. Phase 1 decides between a runtime server-evaluated env flag (passed as a prop from a server component) and building a DB reader; an env flag avoids a Docker rebuild, unlike `NEXT_PUBLIC_*`.
+2. ~~Feature-flag reader~~ — resolved: env var `SACA2_ENABLED` + `GET /api/config/saca2` (plan 2, Task 8). Deploy workflows (`.github/workflows/deploy-staging.yml`, `deploy-prod.yml`) must pass `SACA2_ENABLED` to turn it on; leave it unset or `false` until Phase 1b ships.
 3. **Policy review** — named reviewer for engine rules 3–7 (130 CMR 519–520).
 4. **Form version** — confirm with MassHealth whether `2026-08` supersedes the
    March 2026 revision described in EOM 26-03; store the PDF footer value.
