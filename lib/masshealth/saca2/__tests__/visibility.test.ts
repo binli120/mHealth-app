@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest"
 import { emptySaca2Answers, emptySaca2Person, type Saca2Answers } from "@/lib/masshealth/saca2/types"
-import { getVisibleSteps, isStepVisible } from "@/lib/masshealth/saca2/visibility"
+import { getVisibleSteps, isPersonBlank, isStepVisible } from "@/lib/masshealth/saca2/visibility"
 
 const ON = new Date("2026-10-13T12:00:00Z")
 
@@ -31,10 +31,14 @@ describe("always-visible steps", () => {
 })
 
 describe("person2", () => {
-  it("is hidden for a single applicant and shown when a second person exists", () => {
+  it("is hidden for a single applicant and shown when a second person has data", () => {
     expect(isStepVisible("person2", answers(), ON)).toBe(false)
     expect(
-      isStepVisible("person2", answers((a) => a.persons.push(emptySaca2Person())), ON),
+      isStepVisible(
+        "person2",
+        answers((a) => a.persons.push({ ...emptySaca2Person(), firstName: "Dorothy" })),
+        ON,
+      ),
     ).toBe(true)
   })
 
@@ -42,6 +46,62 @@ describe("person2", () => {
     expect(
       isStepVisible("person2", answers((a) => (a.persons[0].isLegallyMarried = "yes")), ON),
     ).toBe(true)
+  })
+
+  it("is hidden for a blank second person when Person 1 is not married", () => {
+    for (const married of [null, "no"] as const) {
+      const a = answers((x) => {
+        x.persons[0].isLegallyMarried = married
+        x.persons.push(emptySaca2Person())
+      })
+      expect(isStepVisible("person2", a, ON)).toBe(false)
+      expect(getVisibleSteps(a, ON)).not.toContain("person2")
+    }
+  })
+
+  it("is shown for a blank second person when Person 1 is married", () => {
+    const a = answers((x) => {
+      x.persons[0].isLegallyMarried = "yes"
+      x.persons.push(emptySaca2Person())
+    })
+    expect(isStepVisible("person2", a, ON)).toBe(true)
+  })
+
+  it("stays shown for a second person with data even when Person 1 is not married", () => {
+    const a = answers((x) => {
+      x.persons[0].isLegallyMarried = "no"
+      x.persons.push({ ...emptySaca2Person(), lastName: "Testcase" })
+    })
+    expect(isStepVisible("person2", a, ON)).toBe(true)
+  })
+
+  it("is hidden when Person 1 is not married and there is no second person", () => {
+    expect(isStepVisible("person2", answers((a) => (a.persons[0].isLegallyMarried = "no")), ON)).toBe(false)
+  })
+})
+
+describe("isPersonBlank", () => {
+  it("is true for a fresh empty person", () => {
+    expect(isPersonBlank(emptySaca2Person())).toBe(true)
+  })
+
+  it("ignores object key order and rewrites to the same value", () => {
+    const p = emptySaca2Person()
+    const reordered = Object.fromEntries(Object.entries(p).reverse()) as typeof p
+    reordered.firstName = ""
+    expect(isPersonBlank(reordered)).toBe(true)
+  })
+
+  it("is false for any changed field, including nested income rows", () => {
+    expect(isPersonBlank({ ...emptySaca2Person(), firstName: "A" })).toBe(false)
+    expect(isPersonBlank({ ...emptySaca2Person(), dateOfBirth: "1950-01-01" })).toBe(false)
+    expect(isPersonBlank({ ...emptySaca2Person(), noHomeAddress: true })).toBe(false)
+    expect(
+      isPersonBlank({
+        ...emptySaca2Person(),
+        income: [{ kind: "socialSecurity", amount: 1, frequency: "monthly" }],
+      }),
+    ).toBe(false)
   })
 })
 

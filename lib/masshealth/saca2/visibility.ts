@@ -5,9 +5,28 @@
 
 import { calculateAge } from "./age"
 import { SACA2_STEPS, type Saca2StepId } from "./schema"
-import type { Saca2Answers } from "./types"
+import { emptySaca2Person, type Saca2Answers, type Saca2Person } from "./types"
 
 const SENIOR_AGE = 65
+
+function deepEqual(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true
+  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false
+  if (Array.isArray(a) !== Array.isArray(b)) return false
+  const keysA = Object.keys(a)
+  const keysB = Object.keys(b)
+  if (keysA.length !== keysB.length) return false
+  return keysA.every(
+    (k) =>
+      Object.prototype.hasOwnProperty.call(b, k) &&
+      deepEqual((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]),
+  )
+}
+
+/** True when a person still equals a freshly created blank person (nothing has been entered). */
+export function isPersonBlank(person: Saca2Person): boolean {
+  return deepEqual(person, emptySaca2Person())
+}
 
 function ageOf(answers: Saca2Answers, index: number, on: Date): number | null {
   return calculateAge(answers.persons[index]?.dateOfBirth, on)
@@ -72,7 +91,12 @@ export function isStepVisible(id: Saca2StepId, answers: Saca2Answers, on: Date =
     case "signature":
       return true
     case "person2":
-      return answers.persons.length > 1 || answers.persons[0]?.isLegallyMarried === "yes"
+      // A blank Person 2 (created when stepping forward) must not keep the step alive once
+      // Person 1 stops saying they are married; a Person 2 with real data stays.
+      return (
+        answers.persons[0]?.isLegallyMarried === "yes" ||
+        (answers.persons.length > 1 && !isPersonBlank(answers.persons[1]))
+      )
     case "pca":
       return showsPca(answers, on)
     case "additionalCoverage":

@@ -3,7 +3,7 @@
  * @email: blee@comura.ai
  */
 
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -44,6 +44,7 @@ vi.mock("@/components/application/phi-save-exit-dialog", () => ({
 }))
 
 import { Saca2Wizard } from "@/components/application/saca2/saca2-wizard"
+import { getSyntheticCase } from "@/lib/masshealth/saca2/synthetic-cases"
 
 const APP_ID = "88cbe518-ea42-476b-a8e9-12207573ff2c"
 
@@ -343,5 +344,57 @@ describe("Saca2Wizard: fix round 1", () => {
     mocks.restorePhiDraftState.mockResolvedValueOnce({ data: "x" })
     render(<Saca2Wizard applicationId={APP_ID} />)
     expect(await screen.findByTestId("resume-prompt")).toBeInTheDocument()
+  })
+})
+
+describe("Saca2Wizard: married to not married", () => {
+  it("drops the Person 2 step when the marital answer is changed back to No", async () => {
+    const person1 = {
+      ...getSyntheticCase("couple-spouse-in-nursing-facility").answers.persons[0],
+      isLegallyMarried: null,
+      sexAtBirth: "male" as const,
+      streetAddress: "1 Example Way",
+      city: "Boston",
+      zip: "02108",
+      inInstitution: "no" as const,
+      mobilePhone: "6175550100",
+      hasSsn: "no" as const,
+      noSsnReason: "justApplied" as const,
+      naturalizedCitizen: "no" as const,
+      hasDisability: "no" as const,
+      everGotSsi: "no" as const,
+      hasMedicareOrSsiOrSsdi: "no" as const,
+      hasIncome: "no" as const,
+      income: [],
+    }
+    mocks.authenticatedFetch.mockImplementation(async (_url: string, init?: { method?: string }) => {
+      if (init?.method === "PUT") return ok({ ok: true })
+      return draftGet({
+        ok: true,
+        record: { phiDraftResumeId: "11111111-1111-4111-8111-111111111111", phiDraftKeyEnc: "enc" },
+        draftState: null,
+      })
+    })
+    mocks.restorePhiDraftState.mockResolvedValueOnce({ data: { persons: [person1] } })
+    render(<Saca2Wizard applicationId={APP_ID} />)
+    await waitFor(() => expect(screen.getByTestId("saca2-wizard")).toBeInTheDocument())
+    await userEvent.click(screen.getByLabelText(/MassHealth or the Health Safety Net/i))
+    await userEvent.click(screen.getByRole("button", { name: "Next" }))
+    await screen.findByRole("heading", { name: "About you" })
+
+    const marriedGroup = () => screen.getByRole("group", { name: /Are you legally married/i })
+    await userEvent.click(within(marriedGroup()).getByLabelText("Yes"))
+    expect(screen.getAllByText("Person 2 information").length).toBeGreaterThan(0)
+    await userEvent.click(screen.getByRole("button", { name: "Next" }))
+    expect(await screen.findByRole("heading", { name: "About this person" })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole("button", { name: "Back" }))
+    await screen.findByRole("heading", { name: "About you" })
+    await userEvent.click(within(marriedGroup()).getByLabelText("No"))
+    await userEvent.click(screen.getByRole("button", { name: "Next" }))
+
+    expect(screen.queryByRole("heading", { name: "About this person" })).not.toBeInTheDocument()
+    expect(screen.queryByText("Person 2 information")).not.toBeInTheDocument()
+    expect(await screen.findByRole("heading", { name: /American Indian|Alaska Native/i })).toBeInTheDocument()
   })
 })
