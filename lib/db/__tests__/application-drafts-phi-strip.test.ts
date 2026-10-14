@@ -72,4 +72,29 @@ describe("upsertApplicationDraft PHI stripping", () => {
     expect(Object.keys(saved.data).sort()).toEqual(["intake", "signature"])
     expect(JSON.stringify(saved)).not.toMatch(/Ada|123456789|9999/)
   })
+
+  it("treats a differing schemaVersion as a different document in the ON CONFLICT guard", async () => {
+    await upsertApplicationDraft({
+      userId: USER_ID,
+      applicationId: APPLICATION_ID,
+      applicationType: "saca2",
+      wizardState: { schemaVersion: "saca2-2026-08", currentStep: 2, data: { intake: {} } },
+    })
+
+    const call = query.mock.calls.find((c) => /INSERT INTO public\.applications \(/.test(String(c[0])))
+    const sql = String(call?.[0]).replace(/\s+/g, " ")
+    const versionDiffers =
+      "(public.applications.draft_state->>'schemaVersion') IS DISTINCT FROM ($5::jsonb->>'schemaVersion')"
+    expect(sql).toContain(
+      `draft_state = CASE WHEN ${versionDiffers} OR COALESCE(public.applications.draft_step, 0) <= $6::int THEN $5::jsonb ELSE public.applications.draft_state END`,
+    )
+    expect(sql).toContain(
+      `draft_step = CASE WHEN ${versionDiffers} THEN $6::int ELSE GREATEST(COALESCE(public.applications.draft_step, 0), $6::int) END`,
+    )
+
+    const params = call?.[1] as unknown[]
+    expect(params).toHaveLength(7)
+    expect(JSON.parse(String(params[4])).schemaVersion).toBe("saca2-2026-08")
+    expect(params[5]).toBe(2)
+  })
 })

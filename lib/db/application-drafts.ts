@@ -522,11 +522,19 @@ export async function upsertApplicationDraft(params: {
         application_type = COALESCE(NULLIF($4::text, ''), public.applications.application_type),
         -- Only advance draft_state / draft_step; never let a low-step save
         -- (e.g. intake-chat initialising at step 1) overwrite higher wizard progress.
+        -- A differing schemaVersion is a different document (e.g. a leftover ACA-3-shaped
+        -- draft under a SACA-2 row), so the step guard must not block overwriting it.
+        -- ACA-3 states carry no schemaVersion: NULL IS DISTINCT FROM NULL is false, so its
+        -- guard is unchanged. All SET expressions read the OLD row.
         draft_state = CASE
-          WHEN COALESCE(public.applications.draft_step, 0) <= $6::int THEN $5::jsonb
+          WHEN (public.applications.draft_state->>'schemaVersion') IS DISTINCT FROM ($5::jsonb->>'schemaVersion')
+            OR COALESCE(public.applications.draft_step, 0) <= $6::int THEN $5::jsonb
           ELSE public.applications.draft_state
         END,
-        draft_step = GREATEST(COALESCE(public.applications.draft_step, 0), $6::int),
+        draft_step = CASE
+          WHEN (public.applications.draft_state->>'schemaVersion') IS DISTINCT FROM ($5::jsonb->>'schemaVersion') THEN $6::int
+          ELSE GREATEST(COALESCE(public.applications.draft_step, 0), $6::int)
+        END,
         last_saved_at = now(),
         needs_customer_review = CASE WHEN $7::uuid IS NOT NULL THEN true ELSE public.applications.needs_customer_review END,
         sw_last_modified_at   = CASE WHEN $7::uuid IS NOT NULL THEN now() ELSE public.applications.sw_last_modified_at END,
