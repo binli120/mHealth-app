@@ -25,7 +25,6 @@ import {
   deserializeToken,
 } from "@/lib/phi-token/token"
 import { restorePhiDraftState } from "@/lib/phi-token/restore"
-import type { WizardState } from "@/components/application/aca3/types"
 
 // ─── Save & Exit dialog ───────────────────────────────────────────────────────
 
@@ -34,7 +33,8 @@ type SavePhase = "confirm" | "saving" | "done" | "error"
 interface PhiSaveExitDialogProps {
   open: boolean
   applicationId: string
-  wizardState: WizardState
+  /** Any wizard state with a `data` object (ACA-3 WizardState or a SACA-2 snapshot). */
+  wizardState: object
   actingForPatientId?: string
   onBeforeSecureSave?: () => Promise<boolean>
   onExit: () => void
