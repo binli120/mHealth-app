@@ -25,6 +25,7 @@ export const SACA2_PHI_KEYS = [
   "health",
   "pca",
   "supplements",
+  "signing",
 ] as const
 
 /** Top-level keys that may be stored in the server draft_state. */
@@ -139,6 +140,8 @@ export interface Saca2Person {
 
 export type AssetCategory =
   | "bankAccounts"
+  | "retirementAccounts"
+  | "closedAccounts"
   | "primaryResidence"
   | "otherRealEstate"
   | "lifeInsurance"
@@ -226,7 +229,7 @@ export interface TrustRow {
 
 export interface Saca2Assets {
   /** Gate answers ("Do you or your spouse own any ...?"); null = unanswered. */
-  gates: Partial<Record<AssetCategory, YesNo | null>>
+  gates: Record<AssetCategory, YesNo | null>
   bankAccounts: BankAccountRow[]
   primaryResidence: RealEstateRow[]
   otherRealEstate: RealEstateRow[]
@@ -310,6 +313,69 @@ export interface Saca2Supplements {
   d: SupplementD
 }
 
+export interface MedicalBillRequest {
+  name: string
+  /** ISO YYYY-MM-DD. */
+  earliestDateRequested: string | null
+  circumstancesChanged: YesNo | null
+}
+
+export interface MedicareEntry {
+  personName: string
+  claimNumber: string
+  coverageStart: string | null
+  hasPartD: YesNo | null
+  partDStart: string | null
+  hasMedigap: YesNo | null
+  medigapPlan: string
+  medigapStart: string | null
+}
+
+export interface EmployerCoverageEntry {
+  employerName: string
+  planName: string
+  coveredNames: string
+  policyNumber: string
+  /** Free text: start and end dates (mm/dd/yyyy). */
+  startEndDates: string
+}
+
+export type HraType = "qsehra" | "ichra"
+
+export interface HraEntry {
+  individualName: string
+  dateOfBirth: string | null
+  employerName: string
+  federalTaxId: string
+  hraType: HraType | null
+  startDate: string | null
+  endDate: string | null
+  maxSelfOnlyAmount: number | null
+  qsehraFamilyIntent: YesNo | null
+  qsehraFamilyMax: number | null
+  ichraAcceptIntent: YesNo | null
+}
+
+export interface ResponsibleParty {
+  firstName: string
+  middleName: string
+  lastName: string
+  suffix: string
+  ssn: string
+  relationship: string
+  dateOfBirth: string | null
+  street: string
+  apartment: string
+  city: string
+  state: string
+  zip: string
+  county: string
+  phone: string
+  phoneType: "mobile" | "home" | "work" | null
+  secondPhone: string
+  email: string
+}
+
 export interface Saca2Answers {
   /** Server-safe (non-PHI): which program boxes were checked on page 1. */
   intake: {
@@ -332,12 +398,43 @@ export interface Saca2Answers {
   /** Index 0 = Person 1 (applicant), index 1 = Person 2 (spouse / other). */
   persons: Saca2Person[]
   aian: { anyMember: YesNo | null }
-  previousMedicalBills: { hasBills: YesNo | null }
+  previousMedicalBills: {
+    hasBills: YesNo | null
+    wantsCoverageForPeriod: YesNo | null
+    /** ISO YYYY-MM-DD: earliest date MassHealth is needed. */
+    earliestDate: string | null
+    requests: MedicalBillRequest[]
+  }
   assets: Saca2Assets
   transfers: Saca2Transfer[]
   health: {
+    /** Step 6 Q1: anyone offered coverage from a job. */
     employerOfferedCoverage: YesNo | null
+    /** Step 6 Q2 gate: anyone qualifies for or is enrolled in the listed coverage types. */
+    hasOtherCoverage: YesNo | null
+    hasMedicare: boolean
+    medicare: MedicareEntry[]
+    wantsPartBHelp: YesNo | null
+    partBHelpNames: string
+    otherPrograms: {
+      peaceCorps: boolean
+      tricare: boolean
+      vaHealth: boolean
+      masshealth: boolean
+      otherCoverage: boolean
+    }
+    otherCoverageDetails: { coveredNames: string; policyNumber: string; startEndDates: string }
     enrolledInEmployerCoverage: boolean
+    employerCoverage: EmployerCoverageEntry[]
+    /** Step 7. */
+    hra: { anyoneOffered: YesNo | null; entries: HraEntry[] }
+    /** Step 9 (optional, spouse under 65). */
+    additionalCoverage: {
+      breastOrCervicalCancer: YesNo | null
+      breastOrCervicalName: string
+      hivPositive: YesNo | null
+      hivName: string
+    }
   }
   /** Step 8 — personal-care attendant screen. */
   pca: {
@@ -352,6 +449,12 @@ export interface Saca2Answers {
   supplements: Saca2Supplements
   signature: {
     signedBy: "applicant" | "authorizedRepresentative" | "responsibleParty" | null
+  }
+  /** Step 10 signer details — PHI (a responsible party's identity), kept out of `signature`. */
+  signing: {
+    emancipatedMinor: YesNo | null
+    responsibleParty: ResponsibleParty
+    registerToVote: YesNo | null
   }
 }
 
@@ -428,9 +531,22 @@ export function emptySaca2Answers(): Saca2Answers {
     screening: { disabledAndWorkingQualifies: null, commonHealthTenYears: null },
     persons: [emptySaca2Person()],
     aian: { anyMember: null },
-    previousMedicalBills: { hasBills: null },
+    previousMedicalBills: { hasBills: null, wantsCoverageForPeriod: null, earliestDate: null, requests: [] },
     assets: {
-      gates: {},
+      gates: {
+        bankAccounts: null,
+        retirementAccounts: null,
+        closedAccounts: null,
+        primaryResidence: null,
+        otherRealEstate: null,
+        lifeInsurance: null,
+        securities: null,
+        annuities: null,
+        assistedLivingDeposit: null,
+        vehicles: null,
+        burial: null,
+        trusts: null,
+      },
       bankAccounts: [],
       primaryResidence: [],
       otherRealEstate: [],
@@ -443,8 +559,28 @@ export function emptySaca2Answers(): Saca2Answers {
       trusts: [],
     },
     transfers: [],
-    health: { employerOfferedCoverage: null, enrolledInEmployerCoverage: false },
-    pca: { needsPca: null, paidByMassHealthLastSixMonths: null, byPerson: [] },
+    health: {
+      employerOfferedCoverage: null,
+      hasOtherCoverage: null,
+      hasMedicare: false,
+      medicare: [],
+      wantsPartBHelp: null,
+      partBHelpNames: "",
+      otherPrograms: { peaceCorps: false, tricare: false, vaHealth: false, masshealth: false, otherCoverage: false },
+      otherCoverageDetails: { coveredNames: "", policyNumber: "", startEndDates: "" },
+      enrolledInEmployerCoverage: false,
+      employerCoverage: [],
+      hra: { anyoneOffered: null, entries: [] },
+      additionalCoverage: { breastOrCervicalCancer: null, breastOrCervicalName: "", hivPositive: null, hivName: "" },
+    },
+    pca: {
+      needsPca: null,
+      paidByMassHealthLastSixMonths: null,
+      byPerson: [
+        { permanentDisability: null, disabilityBlocksAdls: null, willContactPcmAgency: null },
+        { permanentDisability: null, disabilityBlocksAdls: null, willContactPcmAgency: null },
+      ],
+    },
     supplements: {
       a: {
         needsNursingFacility: null,
@@ -469,5 +605,28 @@ export function emptySaca2Answers(): Saca2Answers {
       d: { jobs: [] },
     },
     signature: { signedBy: null },
+    signing: {
+      emancipatedMinor: null,
+      responsibleParty: {
+        firstName: "",
+        middleName: "",
+        lastName: "",
+        suffix: "",
+        ssn: "",
+        relationship: "",
+        dateOfBirth: null,
+        street: "",
+        apartment: "",
+        city: "",
+        state: "MA",
+        zip: "",
+        county: "",
+        phone: "",
+        phoneType: null,
+        secondPhone: "",
+        email: "",
+      },
+      registerToVote: null,
+    },
   }
 }

@@ -174,15 +174,18 @@ describe("normalizeSaca2State", () => {
     expect(s.data.persons[1].mailingSameAsStreet).toBe(true)
   })
 
-  it("keeps free-form maps such as asset gates and daily-living activities", () => {
+  it("keeps typed asset gates and free-form daily-living activities", () => {
     const s = normalizeSaca2State({
       schemaVersion: SACA2_SCHEMA_VERSION,
       data: {
-        assets: { gates: { bankAccounts: "yes", trusts: "no" } },
+        assets: { gates: { bankAccounts: "yes", trusts: "no", notAGate: "yes" } },
         supplements: { c: { activities: { eating: { needsHandsOnHelp: "yes", timesPerDay: 3, daysPerWeek: 7 } } } },
       },
     })!
-    expect(s.data.assets.gates).toEqual({ bankAccounts: "yes", trusts: "no" })
+    expect(s.data.assets.gates.bankAccounts).toBe("yes")
+    expect(s.data.assets.gates.trusts).toBe("no")
+    expect(s.data.assets.gates.vehicles).toBeNull()
+    expect(s.data.assets.gates).not.toHaveProperty("notAGate")
     expect(s.data.supplements.c.activities.eating?.timesPerDay).toBe(3)
   })
 
@@ -227,7 +230,7 @@ describe("normalizeSaca2State", () => {
       expect(s.data.persons[0].isLegallyMarried).toBe("yes")
       expect(s.data.persons[0].dateOfBirth).toBe("1950-01-01")
       expect(s.data.persons[0].noHomeAddress).toBe(true)
-      expect(s.data.assets.gates).toEqual({ bankAccounts: "yes" })
+      expect(s.data.assets.gates).toEqual({ ...emptySaca2Answers().assets.gates, bankAccounts: "yes" })
     })
 
     it("ignores inherited names such as toString", () => {
@@ -249,7 +252,7 @@ describe("normalizeSaca2State", () => {
         expect(has(s.data.persons[0].income[0] as object, k)).toBe(false)
       })
       expect(s.data.persons[0].income[0]).toEqual({ amount: 5 })
-      expect(s.data.assets.gates).toEqual({ trusts: "no" })
+      expect(s.data.assets.gates).toEqual({ ...emptySaca2Answers().assets.gates, trusts: "no" })
     })
   })
 })

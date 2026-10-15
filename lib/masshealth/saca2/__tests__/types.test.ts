@@ -70,3 +70,71 @@ describe("emptySaca2Person defaults", () => {
     expect(p.livingArrangement).toBeNull()
   })
 })
+
+describe("remaining-step defaults", () => {
+  it("starts every asset gate unanswered, with all 12 keys present", () => {
+    const gates = emptySaca2Answers().assets.gates
+    expect(Object.keys(gates).sort()).toEqual([
+      "annuities",
+      "assistedLivingDeposit",
+      "bankAccounts",
+      "burial",
+      "closedAccounts",
+      "lifeInsurance",
+      "otherRealEstate",
+      "primaryResidence",
+      "retirementAccounts",
+      "securities",
+      "trusts",
+      "vehicles",
+    ])
+    for (const value of Object.values(gates)) expect(value).toBeNull()
+  })
+
+  it("starts with one blank PCA entry per possible person", () => {
+    const { byPerson } = emptySaca2Answers().pca
+    expect(byPerson).toHaveLength(2)
+    for (const entry of byPerson) {
+      expect(entry).toEqual({ permanentDisability: null, disabilityBlocksAdls: null, willContactPcmAgency: null })
+    }
+  })
+
+  it("starts the previous-bills, health, and signing blocks empty", () => {
+    const a = emptySaca2Answers()
+    expect(a.previousMedicalBills).toEqual({ hasBills: null, wantsCoverageForPeriod: null, earliestDate: null, requests: [] })
+    expect(a.health.hasOtherCoverage).toBeNull()
+    expect(a.health.hasMedicare).toBe(false)
+    expect(a.health.medicare).toEqual([])
+    expect(a.health.otherPrograms).toEqual({ peaceCorps: false, tricare: false, vaHealth: false, masshealth: false, otherCoverage: false })
+    expect(a.health.employerCoverage).toEqual([])
+    expect(a.health.hra).toEqual({ anyoneOffered: null, entries: [] })
+    expect(a.health.additionalCoverage).toEqual({
+      breastOrCervicalCancer: null,
+      breastOrCervicalName: "",
+      hivPositive: null,
+      hivName: "",
+    })
+    expect(a.signing.emancipatedMinor).toBeNull()
+    expect(a.signing.registerToVote).toBeNull()
+    expect(a.signing.responsibleParty.ssn).toBe("")
+    expect(a.signing.responsibleParty.dateOfBirth).toBeNull()
+  })
+
+  it("keeps defaults independent between calls", () => {
+    const a = emptySaca2Answers()
+    const b = emptySaca2Answers()
+    a.pca.byPerson[0].permanentDisability = "yes"
+    a.health.medicare.push({
+      personName: "A",
+      claimNumber: "",
+      coverageStart: null,
+      hasPartD: null,
+      partDStart: null,
+      hasMedigap: null,
+      medigapPlan: "",
+      medigapStart: null,
+    })
+    expect(b.pca.byPerson[0].permanentDisability).toBeNull()
+    expect(b.health.medicare).toHaveLength(0)
+  })
+})

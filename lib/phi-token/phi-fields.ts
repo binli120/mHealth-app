@@ -13,6 +13,7 @@
  * SACA-2 (see SACA2_PHI_KEYS in lib/masshealth/saca2/types.ts):
  *   screening, persons, aian, previousMedicalBills, assets, transfers, health, pca,
  *   supplements — everything except the `intake` and `signature` keys.
+ *   signing — a responsible party's identity (SACA-2 Step 10).
  *
  * These keys are stripped from wizard state before any server PUT and before
  * any DB write. PHI travels only in the encrypted client-side resume blob.
@@ -30,6 +31,7 @@ export const PHI_DATA_KEYS = [
   "health",
   "pca",
   "supplements",
+  "signing",
 ] as const
 
 export type PhiDataKey = (typeof PHI_DATA_KEYS)[number]
