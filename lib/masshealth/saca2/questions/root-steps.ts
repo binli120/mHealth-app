@@ -4,7 +4,7 @@
  */
 
 import { calculateAge } from "../age"
-import { checkbox, date, opts, repeater, select, text, yesNo } from "./builders"
+import { checkbox, date, email, opts, phone, repeater, select, ssn, text, yesNo } from "./builders"
 import type { Saca2QuestionContext, Saca2StepContent } from "./types"
 
 function isSixtyFiveOrAgeUnknown(ctx: Saca2QuestionContext): boolean {
@@ -109,6 +109,19 @@ export const PREVIOUS_BILLS_STEP_CONTENT: Saca2StepContent = {
   ],
 }
 
+const applicantAge = (ctx: Saca2QuestionContext) => calculateAge(ctx.answers.persons[0]?.dateOfBirth, ctx.on)
+const applicantIsMinor = (ctx: Saca2QuestionContext) => {
+  const age = applicantAge(ctx)
+  return age !== null && age < 18
+}
+/** A responsible party signs for a minor who is not emancipated, or whenever chosen as the signer. */
+const needsResponsibleParty = (ctx: Saca2QuestionContext) =>
+  ctx.answers.signature.signedBy === "responsibleParty" ||
+  (applicantIsMinor(ctx) && ctx.answers.signing.emancipatedMinor === "no")
+
+const stateCode = (v: unknown) => (/^[A-Za-z]{2}$/.test(String(v)) ? null : "Enter the 2-letter state code.")
+const zipCode = (v: unknown) => (/^\d{5}(-\d{4})?$/.test(String(v)) ? null : "Enter a 5-digit ZIP code.")
+
 export const SIGNATURE_STEP_CONTENT: Saca2StepContent = {
   scope: "root",
   sections: [
@@ -127,6 +140,51 @@ export const SIGNATURE_STEP_CONTENT: Saca2StepContent = {
           ]),
           { required: true },
         ),
+      ],
+    },
+    {
+      id: "beforeSigning",
+      title: "Before you sign",
+      questions: [
+        yesNo("signing.emancipatedMinor", "Are you an emancipated minor?", {
+          required: true,
+          visibleWhen: applicantIsMinor,
+          help: "If No, we need a responsible party who is at least 18 to sign on your behalf.",
+        }),
+        text("signing.responsibleParty.firstName", "Responsible party: first name", { required: true, visibleWhen: needsResponsibleParty }),
+        text("signing.responsibleParty.middleName", "Middle name", { visibleWhen: needsResponsibleParty }),
+        text("signing.responsibleParty.lastName", "Last name", { required: true, visibleWhen: needsResponsibleParty }),
+        text("signing.responsibleParty.suffix", "Suffix", { visibleWhen: needsResponsibleParty }),
+        ssn("signing.responsibleParty.ssn", "Social Security number", { visibleWhen: needsResponsibleParty }),
+        text("signing.responsibleParty.relationship", "Relationship to you", { required: true, visibleWhen: needsResponsibleParty }),
+        date("signing.responsibleParty.dateOfBirth", "Date of birth", { required: true, visibleWhen: needsResponsibleParty }),
+        text("signing.responsibleParty.street", "Street address", { required: true, visibleWhen: needsResponsibleParty }),
+        text("signing.responsibleParty.apartment", "Apartment or unit number", { visibleWhen: needsResponsibleParty }),
+        text("signing.responsibleParty.city", "City", { required: true, visibleWhen: needsResponsibleParty }),
+        text("signing.responsibleParty.state", "State", { visibleWhen: needsResponsibleParty, validate: stateCode }),
+        text("signing.responsibleParty.zip", "ZIP code", { required: true, visibleWhen: needsResponsibleParty, validate: zipCode }),
+        text("signing.responsibleParty.county", "County", { visibleWhen: needsResponsibleParty }),
+        phone("signing.responsibleParty.phone", "Phone", { required: true, visibleWhen: needsResponsibleParty }),
+        select(
+          "signing.responsibleParty.phoneType",
+          "Phone type",
+          opts([
+            ["mobile", "Mobile"],
+            ["home", "Home"],
+            ["work", "Work"],
+          ]),
+          { visibleWhen: needsResponsibleParty },
+        ),
+        phone("signing.responsibleParty.secondPhone", "Second phone", { visibleWhen: needsResponsibleParty }),
+        email("signing.responsibleParty.email", "Email address", { visibleWhen: needsResponsibleParty }),
+      ],
+    },
+    {
+      id: "voter",
+      title: "Voter registration (optional)",
+      description: "If you do not answer, we treat it as no choice to register at this time. Applying to register or declining does not affect your benefits.",
+      questions: [
+        yesNo("signing.registerToVote", "If you are not registered to vote where you live now, would you like to apply to register to vote today?"),
       ],
     },
   ],
