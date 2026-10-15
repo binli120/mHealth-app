@@ -35,7 +35,7 @@ export const HEALTH_INSURANCE_STEP_CONTENT: Saca2StepContent = {
       id: "coverage",
       title: "Current health coverage",
       questions: [
-        yesNo("health.hasOtherCoverage", "Does anyone qualify for or is anyone enrolled in the following types of health coverage?", {
+        yesNo("health.hasOtherCoverage", "Does anyone qualify for or is anyone enrolled in any of these types of health coverage: Medicare (including Medicare Part A with no premium), TRICARE, Peace Corps coverage, Veterans Affairs (VA) health programs, MassHealth, employer coverage, COBRA or retiree health plans, or any other health coverage?", {
           required: true,
           help: "Answer Yes even if this insurance is from another person, like a spouse, even if that person does not live in the household.",
         }),

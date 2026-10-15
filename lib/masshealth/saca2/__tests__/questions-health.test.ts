@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from "vitest"
-import { validateStep } from "@/lib/masshealth/saca2/questions"
+import { getStepContent, validateStep } from "@/lib/masshealth/saca2/questions"
 import { emptySaca2Answers, type HraEntry, type Saca2Answers } from "@/lib/masshealth/saca2/types"
 
 const ON = new Date("2026-10-13T12:00:00Z")
@@ -180,5 +180,19 @@ describe("hra step", () => {
     expect(validateStep("hra", a, ON)).toEqual({ "health.hra.entries.0.ichraAcceptIntent": "This question is required." })
     a.health.hra.entries = [entry({ hraType: "ichra", qsehraFamilyIntent: null, ichraAcceptIntent: "no" })]
     expect(validateStep("hra", a, ON)).toEqual({})
+  })
+})
+
+describe("health.hasOtherCoverage gate question", () => {
+  it("names the coverage types in the question itself", () => {
+    const question = getStepContent("healthInsurance")
+      ?.sections.flatMap((section) => section.questions)
+      .find((q) => q.path === "health.hasOtherCoverage")
+    expect(question?.label).toBe(
+      "Does anyone qualify for or is anyone enrolled in any of these types of health coverage: Medicare (including Medicare Part A with no premium), TRICARE, Peace Corps coverage, Veterans Affairs (VA) health programs, MassHealth, employer coverage, COBRA or retiree health plans, or any other health coverage?",
+    )
+    for (const term of ["Medicare", "TRICARE", "Peace Corps", "Veterans Affairs", "MassHealth", "employer coverage", "COBRA"]) {
+      expect(question?.label).toContain(term)
+    }
   })
 })
