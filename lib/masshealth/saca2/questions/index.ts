@@ -6,6 +6,7 @@
 import type { Saca2StepId } from "../schema"
 import type { Saca2Answers } from "../types"
 import { ASSETS_STEP_CONTENT } from "./assets"
+import { ADDITIONAL_COVERAGE_STEP_CONTENT, PCA_STEP_CONTENT } from "./coverage"
 import { HEALTH_INSURANCE_STEP_CONTENT, HRA_STEP_CONTENT } from "./health"
 import { PERSON_STEP_CONTENT } from "./person"
 import {
@@ -26,6 +27,8 @@ const CONTENT: Partial<Record<Saca2StepId, Saca2StepContent>> = {
   assets: ASSETS_STEP_CONTENT,
   healthInsurance: HEALTH_INSURANCE_STEP_CONTENT,
   hra: HRA_STEP_CONTENT,
+  pca: PCA_STEP_CONTENT,
+  additionalCoverage: ADDITIONAL_COVERAGE_STEP_CONTENT,
   signature: SIGNATURE_STEP_CONTENT,
 }
 
