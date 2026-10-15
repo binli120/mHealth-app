@@ -4,7 +4,7 @@
  */
 
 import { calculateAge } from "../age"
-import { checkbox, opts, select, yesNo } from "./builders"
+import { checkbox, date, opts, repeater, select, text, yesNo } from "./builders"
 import type { Saca2QuestionContext, Saca2StepContent } from "./types"
 
 function isSixtyFiveOrAgeUnknown(ctx: Saca2QuestionContext): boolean {
@@ -64,6 +64,10 @@ export const AIAN_STEP_CONTENT: Saca2StepContent = {
   ],
 }
 
+const hasPreviousBills = (ctx: Saca2QuestionContext) => ctx.answers.previousMedicalBills.hasBills === "yes"
+const wantsPreviousPeriod = (ctx: Saca2QuestionContext) =>
+  hasPreviousBills(ctx) && ctx.answers.previousMedicalBills.wantsCoverageForPeriod === "yes"
+
 export const PREVIOUS_BILLS_STEP_CONTENT: Saca2StepContent = {
   scope: "root",
   sections: [
@@ -75,6 +79,31 @@ export const PREVIOUS_BILLS_STEP_CONTENT: Saca2StepContent = {
           required: true,
           help: "If Yes, MassHealth may be able to pay for these bills.",
         }),
+        yesNo("previousMedicalBills.wantsCoverageForPeriod", "Do you or your spouse want to apply for MassHealth for that time period?", {
+          required: true,
+          visibleWhen: hasPreviousBills,
+          help: "If Yes, you must give proof of all income and assets owned during that time period.",
+        }),
+        date("previousMedicalBills.earliestDate", "What is the earliest date for which you need MassHealth?", {
+          required: true,
+          visibleWhen: wantsPreviousPeriod,
+        }),
+        repeater(
+          "previousMedicalBills.requests",
+          "People requesting payment of previous medical bills",
+          {
+            questions: [
+              text("name", "Name", { required: true }),
+              date("earliestDateRequested", "Earliest date requested", { required: true }),
+              yesNo("circumstancesChanged", "Any change in circumstances during this time?", { required: true }),
+            ],
+            emptyItem: () => ({ name: "", earliestDateRequested: null, circumstancesChanged: null }),
+            addLabel: "Add a person",
+            itemTitle: "Person",
+            maxItems: 5,
+          },
+          { required: true, visibleWhen: wantsPreviousPeriod },
+        ),
       ],
     },
   ],
