@@ -29,7 +29,7 @@ function allQuestions(stepId: Parameters<typeof getStepContent>[0]): Saca2Questi
 
 describe("step registry", () => {
   it("implements exactly the steps listed here (extend the list as steps gain content)", () => {
-    const withContent = ["aian", "assets", "intake", "person1", "person2", "previousBills", "signature"]
+    const withContent = ["aian", "assets", "healthInsurance", "hra", "intake", "person1", "person2", "previousBills", "signature"]
     expect([...IMPLEMENTED_STEP_IDS].sort()).toEqual([...withContent].sort())
     for (const id of IMPLEMENTED_STEP_IDS) expect(getStepContent(id)).not.toBeNull()
     expect(getStepContent("suppA")).toBeNull()

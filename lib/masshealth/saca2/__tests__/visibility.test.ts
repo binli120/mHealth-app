@@ -250,8 +250,31 @@ describe("supplements B, C, D and attachments", () => {
 
   it("suppD follows employer coverage", () => {
     expect(isStepVisible("suppD", answers((a) => (a.health.employerOfferedCoverage = "yes")), ON)).toBe(true)
-    expect(isStepVisible("suppD", answers((a) => (a.health.enrolledInEmployerCoverage = true)), ON)).toBe(true)
     expect(isStepVisible("suppD", answers(), ON)).toBe(false)
+    expect(
+      isStepVisible(
+        "suppD",
+        answers((a) => {
+          a.health.hasOtherCoverage = "yes"
+          a.health.enrolledInEmployerCoverage = true
+        }),
+        ON,
+      ),
+    ).toBe(true)
+  })
+
+  it("suppD ignores a stale employer-enrolment tick when other coverage is not selected", () => {
+    expect(isStepVisible("suppD", answers((a) => (a.health.enrolledInEmployerCoverage = true)), ON)).toBe(false)
+    expect(
+      isStepVisible(
+        "suppD",
+        answers((a) => {
+          a.health.hasOtherCoverage = "no"
+          a.health.enrolledInEmployerCoverage = true
+        }),
+        ON,
+      ),
+    ).toBe(false)
   })
 
   it("ARD appears only when an authorized representative signs", () => {

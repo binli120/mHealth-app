@@ -108,7 +108,10 @@ export function isStepVisible(id: Saca2StepId, answers: Saca2Answers, on: Date =
     case "suppC":
       return showsSuppC(answers)
     case "suppD":
-      return answers.health.employerOfferedCoverage === "yes" || answers.health.enrolledInEmployerCoverage
+      return (
+        answers.health.employerOfferedCoverage === "yes" ||
+        (answers.health.hasOtherCoverage === "yes" && answers.health.enrolledInEmployerCoverage)
+      )
     case "ard":
       return answers.signature.signedBy === "authorizedRepresentative"
     case "irs4506": {
