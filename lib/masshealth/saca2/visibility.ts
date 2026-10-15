@@ -69,10 +69,21 @@ function showsSuppA(a: Saca2Answers): boolean {
   )
 }
 
-function showsSuppC(a: Saca2Answers): boolean {
+/**
+ * Person 2 exists when Person 1 says they are married, or a second person already holds data.
+ * A blank Person 2 (created when stepping forward) must not keep the step alive once Person 1
+ * stops saying they are married.
+ */
+function isPerson2Present(a: Saca2Answers): boolean {
+  return a.persons[0]?.isLegallyMarried === "yes" || (a.persons.length > 1 && !isPersonBlank(a.persons[1]))
+}
+
+function showsSuppC(a: Saca2Answers, on: Date): boolean {
+  if (!showsPca(a, on)) return false
   if (a.pca.needsPca !== "yes" || a.pca.paidByMassHealthLastSixMonths === "yes") return false
   return a.pca.byPerson.some(
-    (p) =>
+    (p, i) =>
+      (i === 0 || (i === 1 && isPerson2Present(a))) &&
       p.permanentDisability === "yes" &&
       p.disabilityBlocksAdls === "yes" &&
       p.willContactPcmAgency === "yes",
@@ -91,12 +102,7 @@ export function isStepVisible(id: Saca2StepId, answers: Saca2Answers, on: Date =
     case "signature":
       return true
     case "person2":
-      // A blank Person 2 (created when stepping forward) must not keep the step alive once
-      // Person 1 stops saying they are married; a Person 2 with real data stays.
-      return (
-        answers.persons[0]?.isLegallyMarried === "yes" ||
-        (answers.persons.length > 1 && !isPersonBlank(answers.persons[1]))
-      )
+      return isPerson2Present(answers)
     case "pca":
       return showsPca(answers, on)
     case "additionalCoverage":
@@ -106,7 +112,7 @@ export function isStepVisible(id: Saca2StepId, answers: Saca2Answers, on: Date =
     case "suppB":
       return answers.aian.anyMember === "yes"
     case "suppC":
-      return showsSuppC(answers)
+      return showsSuppC(answers, on)
     case "suppD":
       return (
         answers.health.employerOfferedCoverage === "yes" ||

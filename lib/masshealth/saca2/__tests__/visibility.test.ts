@@ -234,6 +234,7 @@ describe("supplements B, C, D and attachments", () => {
   it("suppC needs PCA, no MassHealth-paid PCA in 6 months, and one person who answered yes to all three", () => {
     const base = (mutate: (a: Saca2Answers) => void) =>
       answers((a) => {
+        a.persons[0].dateOfBirth = "1950-01-01"
         a.pca.needsPca = "yes"
         a.pca.paidByMassHealthLastSixMonths = "no"
         a.pca.byPerson = [
@@ -246,6 +247,53 @@ describe("supplements B, C, D and attachments", () => {
     expect(isStepVisible("suppC", base((a) => (a.pca.byPerson[0].willContactPcmAgency = "no")), ON)).toBe(false)
     expect(isStepVisible("suppC", base((a) => (a.pca.byPerson[0].permanentDisability = null)), ON)).toBe(false)
     expect(isStepVisible("suppC", base((a) => (a.pca.needsPca = "no")), ON)).toBe(false)
+  })
+
+  describe("suppC depends on the PCA step and the people counted", () => {
+    const yes = { permanentDisability: "yes", disabilityBlocksAdls: "yes", willContactPcmAgency: "yes" } as const
+    const no = { permanentDisability: "no", disabilityBlocksAdls: "no", willContactPcmAgency: "no" } as const
+    const full = (mutate: (a: Saca2Answers) => void = () => {}) =>
+      answers((a) => {
+        a.persons[0].dateOfBirth = "1950-01-01"
+        a.pca.needsPca = "yes"
+        a.pca.paidByMassHealthLastSixMonths = "no"
+        a.pca.byPerson = [{ ...yes }]
+        mutate(a)
+      })
+
+    it("is hidden once the PCA step is hidden (long-term care or nursing facility)", () => {
+      expect(isStepVisible("suppC", full(), ON)).toBe(true)
+      expect(isStepVisible("suppC", full((a) => (a.intake.programs.longTermCare = true)), ON)).toBe(false)
+      expect(isStepVisible("suppC", full((a) => (a.supplements.a.needsNursingFacility = "yes")), ON)).toBe(false)
+    })
+
+    it("is hidden when nobody is 65+ even with a full all-yes chain", () => {
+      expect(isStepVisible("suppC", full((a) => (a.persons[0].dateOfBirth = "1990-01-01")), ON)).toBe(false)
+    })
+
+    it("ignores a stale Person 2 chain for a single applicant", () => {
+      const a = full((x) => {
+        x.pca.byPerson = [{ ...no }, { ...yes }]
+      })
+      expect(isStepVisible("suppC", a, ON)).toBe(false)
+    })
+
+    it("counts the Person 2 chain for a real spouse", () => {
+      const a = full((x) => {
+        x.persons[0].isLegallyMarried = "yes"
+        x.persons.push({ ...emptySaca2Person(), firstName: "Walter" })
+        x.pca.byPerson = [{ ...no }, { ...yes }]
+      })
+      expect(isStepVisible("suppC", a, ON)).toBe(true)
+    })
+
+    it("ignores the Person 2 chain behind a blank second person who is not married", () => {
+      const a = full((x) => {
+        x.persons.push(emptySaca2Person())
+        x.pca.byPerson = [{ ...no }, { ...yes }]
+      })
+      expect(isStepVisible("suppC", a, ON)).toBe(false)
+    })
   })
 
   it("suppD follows employer coverage", () => {
