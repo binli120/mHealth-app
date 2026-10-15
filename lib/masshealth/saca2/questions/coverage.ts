@@ -14,24 +14,48 @@ const asksDisabilityQuestions = (ctx: Saca2QuestionContext) =>
   needsPca(ctx) && pca(ctx).paidByMassHealthLastSixMonths === "no"
 const spouseIsPresent = (ctx: Saca2QuestionContext) => isStepVisible("person2", ctx.answers, ctx.on)
 
-function personQuestions(index: 0 | 1, who: string, whose: string, present: (ctx: Saca2QuestionContext) => boolean): Saca2Question[] {
+interface PcaWording {
+  /** "Do you have" / "Does your spouse have" */
+  haveQ: string
+  /** "Does your disability keep you" / "Does your spouse's disability keep your spouse" */
+  keepQ: string
+  /** "you" / "your spouse" (object of "physically helps") */
+  object: string
+  /** "Do you plan" / "Does your spouse plan" */
+  planQ: string
+}
+
+const YOU: PcaWording = {
+  haveQ: "Do you have",
+  keepQ: "Does your disability keep you",
+  object: "you",
+  planQ: "Do you plan",
+}
+const SPOUSE: PcaWording = {
+  haveQ: "Does your spouse have",
+  keepQ: "Does your spouse's disability keep your spouse",
+  object: "your spouse",
+  planQ: "Does your spouse plan",
+}
+
+function personQuestions(index: 0 | 1, w: PcaWording, present: (ctx: Saca2QuestionContext) => boolean): Saca2Question[] {
   const row = (ctx: Saca2QuestionContext) => pca(ctx).byPerson[index]
   const base = (ctx: Saca2QuestionContext) => asksDisabilityQuestions(ctx) && present(ctx)
   const blocks = (ctx: Saca2QuestionContext) => base(ctx) && row(ctx)?.permanentDisability === "yes"
   const contact = (ctx: Saca2QuestionContext) => blocks(ctx) && row(ctx)?.disabilityBlocksAdls === "yes"
   return [
-    yesNo(`pca.byPerson.${index}.permanentDisability`, `Do ${who} have a permanent or long-lasting disability?`, {
+    yesNo(`pca.byPerson.${index}.permanentDisability`, `${w.haveQ} a permanent or long-lasting disability?`, {
       required: true,
       visibleWhen: base,
     }),
     yesNo(
       `pca.byPerson.${index}.disabilityBlocksAdls`,
-      `Does ${whose} disability keep ${who === "you" ? "you" : "your spouse"} from being able to do daily living activities, like bathing, eating, toileting, and dressing, unless someone physically helps?`,
+      `${w.keepQ} from being able to do daily living activities, like bathing, eating, toileting, and dressing, unless someone physically helps ${w.object}?`,
       { required: true, visibleWhen: blocks },
     ),
     yesNo(
       `pca.byPerson.${index}.willContactPcmAgency`,
-      `Do ${who} plan to contact a MassHealth personal-care-management (PCM) agency to ask for personal-care-attendant services?`,
+      `${w.planQ} to contact a MassHealth personal-care-management (PCM) agency to ask for personal-care-attendant services?`,
       {
         required: true,
         visibleWhen: contact,
@@ -60,12 +84,12 @@ export const PCA_STEP_CONTENT: Saca2StepContent = {
     {
       id: "pcaYou",
       title: "About you",
-      questions: personQuestions(0, "you", "your", () => true),
+      questions: personQuestions(0, YOU, () => true),
     },
     {
       id: "pcaSpouse",
       title: "About your spouse",
-      questions: personQuestions(1, "your spouse", "your spouse's", spouseIsPresent),
+      questions: personQuestions(1, SPOUSE, spouseIsPresent),
     },
   ],
 }

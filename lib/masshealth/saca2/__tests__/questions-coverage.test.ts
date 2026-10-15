@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from "vitest"
-import { validateStep } from "@/lib/masshealth/saca2/questions"
+import { getStepContent, validateStep } from "@/lib/masshealth/saca2/questions"
 import { emptySaca2Answers, emptySaca2Person, type Saca2Answers } from "@/lib/masshealth/saca2/types"
 
 const ON = new Date("2026-10-13T12:00:00Z")
@@ -130,5 +130,31 @@ describe("additionalCoverage step", () => {
       x.health.additionalCoverage.hivPositive = "no"
     })
     expect(validateStep("additionalCoverage", a, ON)).toEqual({})
+  })
+})
+
+describe("pca question wording", () => {
+  const labels = () => {
+    const content = getStepContent("pca")
+    const out: Record<string, string> = {}
+    for (const section of content?.sections ?? [])
+      for (const q of section.questions) if (q.path.startsWith("pca.byPerson.")) out[q.path] = q.label as string
+    return out
+  }
+
+  it("pins the exact, grammatical labels for both people", () => {
+    expect(labels()).toEqual({
+      "pca.byPerson.0.permanentDisability": "Do you have a permanent or long-lasting disability?",
+      "pca.byPerson.0.disabilityBlocksAdls":
+        "Does your disability keep you from being able to do daily living activities, like bathing, eating, toileting, and dressing, unless someone physically helps you?",
+      "pca.byPerson.0.willContactPcmAgency":
+        "Do you plan to contact a MassHealth personal-care-management (PCM) agency to ask for personal-care-attendant services?",
+      "pca.byPerson.1.permanentDisability": "Does your spouse have a permanent or long-lasting disability?",
+      "pca.byPerson.1.disabilityBlocksAdls":
+        "Does your spouse's disability keep your spouse from being able to do daily living activities, like bathing, eating, toileting, and dressing, unless someone physically helps your spouse?",
+      "pca.byPerson.1.willContactPcmAgency":
+        "Does your spouse plan to contact a MassHealth personal-care-management (PCM) agency to ask for personal-care-attendant services?",
+    })
+    for (const label of Object.values(labels())) expect(label).not.toMatch(/\bDo your spouse\b/)
   })
 })
