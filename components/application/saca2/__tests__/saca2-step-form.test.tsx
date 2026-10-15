@@ -158,7 +158,7 @@ describe("Saca2StepForm: root steps", () => {
 
   it("renders nothing for a step without content", () => {
     const { container } = render(
-      <Saca2StepForm stepId="assets" answers={emptySaca2Answers()} personIndex={0} errors={{}} onChange={vi.fn()} on={ON} />,
+      <Saca2StepForm stepId="suppA" answers={emptySaca2Answers()} personIndex={0} errors={{}} onChange={vi.fn()} on={ON} />,
     )
     expect(container).toBeEmptyDOMElement()
   })

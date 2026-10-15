@@ -87,7 +87,7 @@ describe("saca2WizardReducer", () => {
 describe("getWizardSteps", () => {
   it("returns only visible steps that have content", () => {
     const answers = emptySaca2Answers()
-    expect(getWizardSteps(answers, ON)).toEqual(["intake", "person1", "aian", "previousBills", "signature"])
+    expect(getWizardSteps(answers, ON)).toEqual(["intake", "person1", "aian", "previousBills", "assets", "signature"])
     answers.persons[0].isLegallyMarried = "yes"
     expect(getWizardSteps(answers, ON)).toContain("person2")
   })

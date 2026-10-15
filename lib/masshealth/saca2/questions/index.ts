@@ -5,6 +5,7 @@
 
 import type { Saca2StepId } from "../schema"
 import type { Saca2Answers } from "../types"
+import { ASSETS_STEP_CONTENT } from "./assets"
 import { PERSON_STEP_CONTENT } from "./person"
 import {
   AIAN_STEP_CONTENT,
@@ -21,6 +22,7 @@ const CONTENT: Partial<Record<Saca2StepId, Saca2StepContent>> = {
   person2: PERSON_STEP_CONTENT,
   aian: AIAN_STEP_CONTENT,
   previousBills: PREVIOUS_BILLS_STEP_CONTENT,
+  assets: ASSETS_STEP_CONTENT,
   signature: SIGNATURE_STEP_CONTENT,
 }
 
