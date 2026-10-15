@@ -4,6 +4,7 @@
  */
 
 import { calculateAge } from "../age"
+import { validateStateCode, validateZip } from "./validators"
 import {
   checkbox,
   date,
@@ -58,14 +59,6 @@ const INCOME_FREQUENCIES = opts([
   ["yearly", "Yearly"],
   ["oneTime", "One time only"],
 ])
-
-function validateStateCode(v: unknown): string | null {
-  return /^[A-Za-z]{2}$/.test(String(v)) ? null : "Enter the 2-letter state code."
-}
-
-function validateZip(v: unknown): string | null {
-  return /^\d{5}(-\d{4})?$/.test(String(v)) ? null : "Enter a 5-digit ZIP code."
-}
 
 function validateDateOfBirth(value: unknown, ctx: Saca2QuestionContext): string | null {
   if (typeof value !== "string") return null

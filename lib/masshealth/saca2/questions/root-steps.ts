@@ -5,6 +5,7 @@
 
 import { calculateAge } from "../age"
 import { checkbox, date, email, opts, phone, repeater, select, ssn, text, yesNo } from "./builders"
+import { validateStateCode, validateZip } from "./validators"
 import type { Saca2QuestionContext, Saca2StepContent } from "./types"
 
 function isSixtyFiveOrAgeUnknown(ctx: Saca2QuestionContext): boolean {
@@ -119,9 +120,6 @@ const needsResponsibleParty = (ctx: Saca2QuestionContext) =>
   ctx.answers.signature.signedBy === "responsibleParty" ||
   (applicantIsMinor(ctx) && ctx.answers.signing.emancipatedMinor === "no")
 
-const stateCode = (v: unknown) => (/^[A-Za-z]{2}$/.test(String(v)) ? null : "Enter the 2-letter state code.")
-const zipCode = (v: unknown) => (/^\d{5}(-\d{4})?$/.test(String(v)) ? null : "Enter a 5-digit ZIP code.")
-
 export const SIGNATURE_STEP_CONTENT: Saca2StepContent = {
   scope: "root",
   sections: [
@@ -161,8 +159,8 @@ export const SIGNATURE_STEP_CONTENT: Saca2StepContent = {
         text("signing.responsibleParty.street", "Street address", { required: true, visibleWhen: needsResponsibleParty }),
         text("signing.responsibleParty.apartment", "Apartment or unit number", { visibleWhen: needsResponsibleParty }),
         text("signing.responsibleParty.city", "City", { required: true, visibleWhen: needsResponsibleParty }),
-        text("signing.responsibleParty.state", "State", { visibleWhen: needsResponsibleParty, validate: stateCode }),
-        text("signing.responsibleParty.zip", "ZIP code", { required: true, visibleWhen: needsResponsibleParty, validate: zipCode }),
+        text("signing.responsibleParty.state", "State", { visibleWhen: needsResponsibleParty, validate: validateStateCode }),
+        text("signing.responsibleParty.zip", "ZIP code", { required: true, visibleWhen: needsResponsibleParty, validate: validateZip }),
         text("signing.responsibleParty.county", "County", { visibleWhen: needsResponsibleParty }),
         phone("signing.responsibleParty.phone", "Phone", { required: true, visibleWhen: needsResponsibleParty }),
         select(
