@@ -20,6 +20,7 @@ import {
   yesNo,
 } from "./builders"
 import { IMMIGRATION_DOCUMENT_OPTIONS, IMMIGRATION_STATUS_OPTIONS } from "./immigration-options"
+import { INCOME_FREQUENCIES } from "./options"
 import type { Saca2QuestionContext, Saca2StepContent } from "./types"
 
 const person = (ctx: Saca2QuestionContext) => ctx.answers.persons[ctx.personIndex]
@@ -48,16 +49,6 @@ const INCOME_KINDS = opts([
   ["otherTaxable", "Other taxable income"],
   ["rental", "Rental income"],
   ["lottery", "Lottery and gambling winnings"],
-])
-
-const INCOME_FREQUENCIES = opts([
-  ["weekly", "Weekly"],
-  ["every2weeks", "Every 2 weeks"],
-  ["twiceMonthly", "Twice a month"],
-  ["monthly", "Monthly"],
-  ["quarterly", "Quarterly"],
-  ["yearly", "Yearly"],
-  ["oneTime", "One time only"],
 ])
 
 function validateDateOfBirth(value: unknown, ctx: Saca2QuestionContext): string | null {

@@ -16,6 +16,8 @@ import {
   SIGNATURE_STEP_CONTENT,
 } from "./root-steps"
 import { SUPPLEMENT_A_STEP_CONTENT } from "./supplement-a"
+import { SUPPLEMENT_B_STEP_CONTENT } from "./supplement-b"
+import { SUPPLEMENT_D_STEP_CONTENT } from "./supplement-d"
 import type { Saca2StepContent } from "./types"
 import { validateQuestions } from "./validate"
 
@@ -32,6 +34,8 @@ const CONTENT: Partial<Record<Saca2StepId, Saca2StepContent>> = {
   additionalCoverage: ADDITIONAL_COVERAGE_STEP_CONTENT,
   signature: SIGNATURE_STEP_CONTENT,
   suppA: SUPPLEMENT_A_STEP_CONTENT,
+  suppB: SUPPLEMENT_B_STEP_CONTENT,
+  suppD: SUPPLEMENT_D_STEP_CONTENT,
 }
 
 export const IMPLEMENTED_STEP_IDS: ReadonlySet<Saca2StepId> = new Set(Object.keys(CONTENT) as Saca2StepId[])
