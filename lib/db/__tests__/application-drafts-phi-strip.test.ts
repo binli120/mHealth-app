@@ -64,6 +64,7 @@ describe("upsertApplicationDraft PHI stripping", () => {
           pca: { needsPca: "yes" },
           supplements: { a: {} },
           signing: { responsibleParty: { ssn: "987654321", firstName: "Pat" } },
+          attachments: { ard: { repName: "Quinn Rep" }, irs4506: { taxpayerId: "900701234" } },
         },
       },
     })
@@ -71,7 +72,7 @@ describe("upsertApplicationDraft PHI stripping", () => {
     const call = query.mock.calls.find((c) => /INSERT INTO public\.applications \(/.test(String(c[0])))
     const saved = JSON.parse(String((call?.[1] as unknown[])[4])) as { data: Record<string, unknown> }
     expect(Object.keys(saved.data).sort()).toEqual(["intake", "signature"])
-    expect(JSON.stringify(saved)).not.toMatch(/Ada|123456789|9999|987654321|Pat/)
+    expect(JSON.stringify(saved)).not.toMatch(/Ada|123456789|9999|987654321|Pat|Quinn|900701234/)
   })
 
   it("treats a differing schemaVersion as a different document in the ON CONFLICT guard", async () => {

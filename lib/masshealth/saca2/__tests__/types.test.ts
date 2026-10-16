@@ -138,3 +138,67 @@ describe("remaining-step defaults", () => {
     expect(b.health.medicare).toHaveLength(0)
   })
 })
+
+describe("supplement and attachment defaults", () => {
+  it("starts Supplement A with the new blocks empty", () => {
+    const a = emptySaca2Answers().supplements.a
+    expect(a.facility).toEqual({ name: "", address: "", admissionDate: null, placedByOtherState: null, placedFromState: "", paysGuardianshipExpenses: null })
+    expect(a.familyAtHome).toEqual({ hasFamily: null, members: [] })
+    expect(Object.values(a.transferAnswers).every((v) => v === null)).toBe(true)
+    expect(Object.keys(a.transferAnswers).sort()).toEqual([
+      "addedToDeed",
+      "annuity",
+      "assets",
+      "deed",
+      "income",
+      "lifeEstateLivedOneYear",
+      "loanOrNote",
+      "trust",
+    ])
+    expect(a.facilityDeposit.gaveDeposit).toBeNull()
+    expect(a.home.ownsHome).toBeNull()
+    expect(a.home.properties).toEqual([])
+    for (const key of ["spouse", "disabledChild", "childUnder21", "sibling", "caregiverChild", "dependentRelative"] as const) {
+      expect(a.home[key]).toMatchObject({ has: null, name: "", livesInHome: null })
+    }
+    expect(a.home.childUnder21.dateOfBirth).toBeNull()
+    expect(a.home.dependentRelative.relationshipDescription).toBe("")
+    expect(a.home.ownsOtherRealEstate).toBeNull()
+    expect(a.longTermCareInsurance).toEqual({ hasPolicy: null, policies: [] })
+  })
+
+  it("starts two blank Supplement C entries with all seven activities answerable", () => {
+    const c = emptySaca2Answers().supplements.c
+    expect(c).toHaveLength(2)
+    for (const entry of c) {
+      expect(entry.healthProblems).toEqual(["", "", ""])
+      expect(Object.keys(entry.activities).sort()).toEqual([
+        "bathing",
+        "dressing",
+        "eating",
+        "medications",
+        "mobility",
+        "rangeOfMotion",
+        "toileting",
+      ])
+      for (const need of Object.values(entry.activities)) {
+        expect(need).toEqual({ needsHandsOnHelp: null, timesPerDay: null, daysPerWeek: null })
+      }
+      expect(entry.caregivers).toEqual([])
+    }
+    expect(c[0]).not.toBe(c[1])
+    expect(c[0].activities.eating).not.toBe(c[1].activities.eating)
+  })
+
+  it("starts Supplements B and D empty", () => {
+    const s = emptySaca2Answers().supplements
+    expect(s.b.members).toEqual([])
+    expect(s.d.jobs).toEqual([])
+  })
+
+  it("starts the attachments block empty with IRS form 1040 and a Massachusetts representative", () => {
+    const { attachments } = emptySaca2Answers()
+    expect(attachments.ard).toMatchObject({ section: null, repKind: null, repName: "", repState: "MA", legalDocument: "" })
+    expect(attachments.irs4506).toEqual({ jointReturn: null, taxpayerId: "", previousAddress: "", formNumber: "1040", yearsRequested: [] })
+  })
+})

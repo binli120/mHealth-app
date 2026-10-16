@@ -171,7 +171,7 @@ function overlay<T>(base: T, raw: unknown): T {
   }
   if (isPlainObject(base)) {
     if (!isPlainObject(raw)) return base
-    // An empty base object is a free-form map (e.g. assets.gates, supplements.c.activities).
+    // An empty base object is a free-form map (e.g. assets.gates, supplements.c[].activities).
     if (Object.keys(base).length === 0) return sanitizeDeep(raw) as T
     const out: Record<string, unknown> = { ...base }
     for (const [key, value] of safeEntries(raw)) {
@@ -189,6 +189,11 @@ function overlay<T>(base: T, raw: unknown): T {
   return typeof raw === typeof base ? (raw as T) : base
 }
 
+/** Merge each entry of a fixed-length list over its default so a short or older array still has every field. */
+function padFixedList<T>(items: T[], defaults: T[]): T[] {
+  return defaults.map((fallback, index) => overlay(fallback, items[index]))
+}
+
 function normalizeAnswers(raw: unknown): Saca2Answers {
   const base = emptySaca2Answers()
   if (!isPlainObject(raw)) return base
@@ -199,7 +204,12 @@ function normalizeAnswers(raw: unknown): Saca2Answers {
     .filter(isPlainObject)
     .slice(0, 2)
     .map((rawPerson) => overlay(emptySaca2Person(), rawPerson))
-  return { ...merged, persons: persons.length > 0 ? persons : base.persons }
+  return {
+    ...merged,
+    persons: persons.length > 0 ? persons : base.persons,
+    pca: { ...merged.pca, byPerson: padFixedList(merged.pca.byPerson, base.pca.byPerson) },
+    supplements: { ...merged.supplements, c: padFixedList(merged.supplements.c, base.supplements.c) },
+  }
 }
 
 export function normalizeSaca2State(raw: unknown): Saca2WizardState | null {

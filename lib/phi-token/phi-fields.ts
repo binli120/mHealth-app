@@ -14,6 +14,7 @@
  *   screening, persons, aian, previousMedicalBills, assets, transfers, health, pca,
  *   supplements — everything except the `intake` and `signature` keys.
  *   signing — a responsible party's identity (SACA-2 Step 10).
+ *   attachments — ARD-1122 representative and IRS 4506 data (SACA-2).
  *
  * These keys are stripped from wizard state before any server PUT and before
  * any DB write. PHI travels only in the encrypted client-side resume blob.
@@ -32,6 +33,7 @@ export const PHI_DATA_KEYS = [
   "pca",
   "supplements",
   "signing",
+  "attachments",
 ] as const
 
 export type PhiDataKey = (typeof PHI_DATA_KEYS)[number]

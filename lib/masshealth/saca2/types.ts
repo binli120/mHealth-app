@@ -26,6 +26,7 @@ export const SACA2_PHI_KEYS = [
   "pca",
   "supplements",
   "signing",
+  "attachments",
 ] as const
 
 /** Top-level keys that may be stored in the server draft_state. */
@@ -252,11 +253,60 @@ export interface Saca2Transfer {
   amount: number | null
 }
 
+export type DailyLivingActivity =
+  | "mobility"
+  | "medications"
+  | "bathing"
+  | "dressing"
+  | "rangeOfMotion"
+  | "eating"
+  | "toileting"
+
+export interface RelativeInHome {
+  has: YesNo | null
+  name: string
+  livesInHome: YesNo | null
+}
+
+export interface HomeProperty {
+  ownerNames: string
+  propertyAddress: string
+  ownershipType: "individual" | "tenancyInCommon" | "jointTenancy" | "lifeEstate" | null
+  fairMarketValue: number | null
+}
+
+export interface FamilyMemberAtHome {
+  name: string
+  ssn: string
+  relationship: string
+  /** ISO YYYY-MM-DD. */
+  dateOfBirth: string | null
+  monthlyIncome: number | null
+}
+
+export interface LongTermCarePolicy {
+  companyAndPolicyNumber: string
+  policyholder: string
+  /** ISO YYYY-MM-DD. */
+  effectiveDate: string | null
+  premium: number | null
+}
+
 export interface SupplementA {
   needsNursingFacility: YesNo | null
   applyingHcbsWaiver: YesNo | null
   applyingPace: YesNo | null
+  /** Question 15; not asked of HCBS Waiver applicants. */
   intendsToReturnHome: YesNo | null
+  facility: {
+    name: string
+    address: string
+    /** ISO YYYY-MM-DD. */
+    admissionDate: string | null
+    placedByOtherState: YesNo | null
+    placedFromState: string
+    paysGuardianshipExpenses: YesNo | null
+  }
   spouseMonthlyExpenses: {
     rent: number | null
     mortgage: number | null
@@ -267,50 +317,147 @@ export interface SupplementA {
     paysHeat: YesNo | null
     paysUtilities: YesNo | null
   }
+  familyAtHome: { hasFamily: YesNo | null; members: FamilyMemberAtHome[] }
+  /** Question 6 a–h (past 60 months). `lifeEstateLivedOneYear` is 6e and is NOT a transfer. */
+  transferAnswers: {
+    trust: YesNo | null
+    income: YesNo | null
+    assets: YesNo | null
+    deed: YesNo | null
+    lifeEstateLivedOneYear: YesNo | null
+    addedToDeed: YesNo | null
+    loanOrNote: YesNo | null
+    annuity: YesNo | null
+  }
+  /** Question 7: deposit to a health-care or residential facility. */
+  facilityDeposit: {
+    gaveDeposit: YesNo | null
+    facilityName: string
+    facilityAddress: string
+    amount: number | null
+    stillHeld: YesNo | null
+    returned: YesNo | null
+    returnedToName: string
+    returnedToAddress: string
+  }
+  /** Questions 8–16. */
+  home: {
+    ownsHome: YesNo | null
+    properties: HomeProperty[]
+    spouse: RelativeInHome
+    disabledChild: RelativeInHome
+    childUnder21: RelativeInHome & { dateOfBirth: string | null }
+    sibling: RelativeInHome
+    caregiverChild: RelativeInHome
+    dependentRelative: RelativeInHome & { relationshipDescription: string }
+    ownsOtherRealEstate: YesNo | null
+    otherRealEstateDescription: string
+  }
+  longTermCareInsurance: { hasPolicy: YesNo | null; policies: LongTermCarePolicy[] }
   /** Tax returns filed in the last two years. */
   taxReturnsFiled: "bothYears" | "oneYear" | "neither" | null
   hasCopiesOfTaxReturns: YesNo | null
 }
 
-export interface SupplementB {
-  members: Array<{ name: string; federallyRecognizedTribe: YesNo | null; tribeName: string }>
+export interface AianMember {
+  name: string
+  federallyRecognizedTribe: YesNo | null
+  tribeName: string
+  massRecognizedTribe: YesNo | null
+  massTribeName: string
+  receivedIhsService: YesNo | null
+  eligibleForIhs: YesNo | null
+  excludedIncomeAmount: number | null
+  excludedIncomeFrequency: IncomeFrequency | null
 }
 
-export type DailyLivingActivity =
-  | "mobility"
-  | "medications"
-  | "bathing"
-  | "dressing"
-  | "rangeOfMotion"
-  | "eating"
-  | "toileting"
+export interface SupplementB {
+  members: AianMember[]
+}
+
+export interface ActivityNeed {
+  needsHandsOnHelp: YesNo | null
+  timesPerDay: number | null
+  daysPerWeek: number | null
+}
 
 export interface SupplementC {
+  /** Three free-text lines. */
   healthProblems: string[]
-  activities: Partial<
-    Record<
-      DailyLivingActivity,
-      { needsHandsOnHelp: YesNo | null; timesPerDay: number | null; daysPerWeek: number | null }
-    >
-  >
+  activities: Record<DailyLivingActivity, ActivityNeed>
   caregivers: Array<{ name: string; relationship: string }>
 }
 
+export interface EmployerJob {
+  employeeName: string
+  employeeSsn: string
+  eligibleWithinThreeMonths: YesNo | null
+  /** ISO YYYY-MM-DD: when a person in a waiting period can enroll. */
+  waitingPeriodEnds: string | null
+  employerName: string
+  employerFederalTaxId: string
+  employerAddress: string
+  employerCity: string
+  employerState: string
+  employerZip: string
+  employerPhone: string
+  contactName: string
+  contactPhone: string
+  contactEmail: string
+  individualPlanName: string
+  individualMeetsMinimumValue: YesNo | null
+  individualPremium: number | null
+  individualPremiumFrequency: IncomeFrequency | null
+  familyPlanName: string
+  familyMeetsMinimumValue: YesNo | null
+  familyPremium: number | null
+  familyPremiumFrequency: IncomeFrequency | null
+  upcomingChange: "none" | "employerWillNotOffer" | "personWillDrop" | "employerWillChange" | null
+  changeEndDate: string | null
+  changePremium: number | null
+  changePremiumFrequency: IncomeFrequency | null
+  changeDate: string | null
+}
+
 export interface SupplementD {
-  jobs: Array<{
-    employeeName: string
-    employerName: string
-    eligibleWithinThreeMonths: YesNo | null
-    meetsMinimumValue: YesNo | null
-    employeeMonthlyPremium: number | null
-  }>
+  jobs: EmployerJob[]
 }
 
 export interface Saca2Supplements {
   a: SupplementA
   b: SupplementB
-  c: SupplementC
+  /** One entry per person (index 0 = Person 1, 1 = Person 2). */
+  c: SupplementC[]
   d: SupplementD
+}
+
+export interface ArdData {
+  /** Which ARD section applies: 1 applicant designates in writing, 2 cannot designate, 3 appointed by law. */
+  section: "applicantDesignates" | "cannotDesignate" | "appointedByLaw" | null
+  repKind: "person" | "organization" | null
+  repName: string
+  repPhone: string
+  repStreet: string
+  repCity: string
+  repState: string
+  repZip: string
+  repEmail: string
+  orgName: string
+  staffName: string
+  staffEmail: string
+  officerName: string
+  officerTitle: string
+  /** Section 3: description of the legal document (guardianship, power of attorney, ...). */
+  legalDocument: string
+}
+
+export interface Irs4506Data {
+  jointReturn: YesNo | null
+  /** Taxpayer ID (ITIN) when Person 1 has no SSN. */
+  taxpayerId: string
+  previousAddress: string
+  formNumber: string
+  yearsRequested: Array<{ periodEnd: string | null }>
 }
 
 export interface MedicalBillRequest {
@@ -456,6 +603,8 @@ export interface Saca2Answers {
     responsibleParty: ResponsibleParty
     registerToVote: YesNo | null
   }
+  /** ARD-1122 and IRS 4506 attachment data — PHI. */
+  attachments: { ard: ArdData; irs4506: Irs4506Data }
 }
 
 export function emptySaca2Person(): Saca2Person {
@@ -519,6 +668,26 @@ export function emptySaca2Person(): Saca2Person {
     income: [],
     expectedIncomeThisYear: null,
     expectedIncomeNextYear: null,
+  }
+}
+
+function emptyActivityNeed(): ActivityNeed {
+  return { needsHandsOnHelp: null, timesPerDay: null, daysPerWeek: null }
+}
+
+export function emptySupplementC(): SupplementC {
+  return {
+    healthProblems: ["", "", ""],
+    activities: {
+      mobility: emptyActivityNeed(),
+      medications: emptyActivityNeed(),
+      bathing: emptyActivityNeed(),
+      dressing: emptyActivityNeed(),
+      rangeOfMotion: emptyActivityNeed(),
+      eating: emptyActivityNeed(),
+      toileting: emptyActivityNeed(),
+    },
+    caregivers: [],
   }
 }
 
@@ -587,6 +756,7 @@ export function emptySaca2Answers(): Saca2Answers {
         applyingHcbsWaiver: null,
         applyingPace: null,
         intendsToReturnHome: null,
+        facility: { name: "", address: "", admissionDate: null, placedByOtherState: null, placedFromState: "", paysGuardianshipExpenses: null },
         spouseMonthlyExpenses: {
           rent: null,
           mortgage: null,
@@ -597,11 +767,45 @@ export function emptySaca2Answers(): Saca2Answers {
           paysHeat: null,
           paysUtilities: null,
         },
+        familyAtHome: { hasFamily: null, members: [] },
+        transferAnswers: {
+          trust: null,
+          income: null,
+          assets: null,
+          deed: null,
+          lifeEstateLivedOneYear: null,
+          addedToDeed: null,
+          loanOrNote: null,
+          annuity: null,
+        },
+        facilityDeposit: {
+          gaveDeposit: null,
+          facilityName: "",
+          facilityAddress: "",
+          amount: null,
+          stillHeld: null,
+          returned: null,
+          returnedToName: "",
+          returnedToAddress: "",
+        },
+        home: {
+          ownsHome: null,
+          properties: [],
+          spouse: { has: null, name: "", livesInHome: null },
+          disabledChild: { has: null, name: "", livesInHome: null },
+          childUnder21: { has: null, name: "", livesInHome: null, dateOfBirth: null },
+          sibling: { has: null, name: "", livesInHome: null },
+          caregiverChild: { has: null, name: "", livesInHome: null },
+          dependentRelative: { has: null, name: "", livesInHome: null, relationshipDescription: "" },
+          ownsOtherRealEstate: null,
+          otherRealEstateDescription: "",
+        },
+        longTermCareInsurance: { hasPolicy: null, policies: [] },
         taxReturnsFiled: null,
         hasCopiesOfTaxReturns: null,
       },
       b: { members: [] },
-      c: { healthProblems: [], activities: {}, caregivers: [] },
+      c: [emptySupplementC(), emptySupplementC()],
       d: { jobs: [] },
     },
     signature: { signedBy: null },
@@ -627,6 +831,26 @@ export function emptySaca2Answers(): Saca2Answers {
         email: "",
       },
       registerToVote: null,
+    },
+    attachments: {
+      ard: {
+        section: null,
+        repKind: null,
+        repName: "",
+        repPhone: "",
+        repStreet: "",
+        repCity: "",
+        repState: "MA",
+        repZip: "",
+        repEmail: "",
+        orgName: "",
+        staffName: "",
+        staffEmail: "",
+        officerName: "",
+        officerTitle: "",
+        legalDocument: "",
+      },
+      irs4506: { jointReturn: null, taxpayerId: "", previousAddress: "", formNumber: "1040", yearsRequested: [] },
     },
   }
 }

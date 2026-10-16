@@ -174,19 +174,60 @@ describe("normalizeSaca2State", () => {
     expect(s.data.persons[1].mailingSameAsStreet).toBe(true)
   })
 
-  it("keeps typed asset gates and free-form daily-living activities", () => {
+  it("keeps typed asset gates and typed daily-living activities", () => {
     const s = normalizeSaca2State({
       schemaVersion: SACA2_SCHEMA_VERSION,
       data: {
         assets: { gates: { bankAccounts: "yes", trusts: "no", notAGate: "yes" } },
-        supplements: { c: { activities: { eating: { needsHandsOnHelp: "yes", timesPerDay: 3, daysPerWeek: 7 } } } },
+        supplements: {
+          c: [{ activities: { eating: { needsHandsOnHelp: "yes", timesPerDay: 3, daysPerWeek: 7 }, notAnActivity: { needsHandsOnHelp: "yes" } } }],
+        },
       },
     })!
     expect(s.data.assets.gates.bankAccounts).toBe("yes")
     expect(s.data.assets.gates.trusts).toBe("no")
     expect(s.data.assets.gates.vehicles).toBeNull()
     expect(s.data.assets.gates).not.toHaveProperty("notAGate")
-    expect(s.data.supplements.c.activities.eating?.timesPerDay).toBe(3)
+    expect(s.data.supplements.c[0].activities.eating).toEqual({ needsHandsOnHelp: "yes", timesPerDay: 3, daysPerWeek: 7 })
+    expect(s.data.supplements.c[0].activities.bathing).toEqual({ needsHandsOnHelp: null, timesPerDay: null, daysPerWeek: null })
+    expect(s.data.supplements.c[0].activities).not.toHaveProperty("notAnActivity")
+  })
+
+  it("pads the fixed two-entry arrays and merges each entry over its defaults", () => {
+    const old = normalizeSaca2State({
+      schemaVersion: SACA2_SCHEMA_VERSION,
+      data: {
+        pca: { needsPca: "yes", byPerson: [] },
+        supplements: { c: { healthProblems: ["old single-object shape"] } },
+      },
+    })!
+    expect(old.data.pca.byPerson).toHaveLength(2)
+    expect(old.data.pca.byPerson[1]).toEqual({ permanentDisability: null, disabilityBlocksAdls: null, willContactPcmAgency: null })
+    expect(old.data.supplements.c).toHaveLength(2)
+    expect(old.data.supplements.c[0].healthProblems).toEqual(["", "", ""])
+
+    const partial = normalizeSaca2State({
+      schemaVersion: SACA2_SCHEMA_VERSION,
+      data: {
+        pca: { byPerson: [{ permanentDisability: "yes" }] },
+        supplements: { c: [{ caregivers: [{ name: "A", relationship: "son" }] }] },
+      },
+    })!
+    expect(partial.data.pca.byPerson[0]).toEqual({ permanentDisability: "yes", disabilityBlocksAdls: null, willContactPcmAgency: null })
+    expect(partial.data.pca.byPerson).toHaveLength(2)
+    expect(partial.data.supplements.c[0].caregivers).toEqual([{ name: "A", relationship: "son" }])
+    expect(partial.data.supplements.c[0].activities.eating.needsHandsOnHelp).toBeNull()
+    expect(partial.data.supplements.c).toHaveLength(2)
+  })
+
+  it("ignores an older single-object Supplement B/D shape without crashing", () => {
+    const s = normalizeSaca2State({
+      schemaVersion: SACA2_SCHEMA_VERSION,
+      data: { supplements: { b: [], d: "x" }, attachments: 5 },
+    })!
+    expect(s.data.supplements.b.members).toEqual([])
+    expect(s.data.supplements.d.jobs).toEqual([])
+    expect(s.data.attachments.irs4506.formNumber).toBe("1040")
   })
 
   it("never lets a hostile payload add prototype keys", () => {
