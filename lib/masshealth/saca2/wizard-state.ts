@@ -194,6 +194,12 @@ function padFixedList<T>(items: T[], defaults: T[]): T[] {
   return defaults.map((fallback, index) => overlay(fallback, items[index]))
 }
 
+/** Supplement C always has exactly three health-problem slots so `healthProblems.1/.2` paths resolve. */
+function padHealthProblems(items: unknown): string[] {
+  const list = Array.isArray(items) ? items : []
+  return [0, 1, 2].map((i) => (typeof list[i] === "string" ? (list[i] as string) : ""))
+}
+
 function normalizeAnswers(raw: unknown): Saca2Answers {
   const base = emptySaca2Answers()
   if (!isPlainObject(raw)) return base
@@ -208,7 +214,13 @@ function normalizeAnswers(raw: unknown): Saca2Answers {
     ...merged,
     persons: persons.length > 0 ? persons : base.persons,
     pca: { ...merged.pca, byPerson: padFixedList(merged.pca.byPerson, base.pca.byPerson) },
-    supplements: { ...merged.supplements, c: padFixedList(merged.supplements.c, base.supplements.c) },
+    supplements: {
+      ...merged.supplements,
+      c: padFixedList(merged.supplements.c, base.supplements.c).map((entry) => ({
+        ...entry,
+        healthProblems: padHealthProblems(entry.healthProblems),
+      })),
+    },
   }
 }
 

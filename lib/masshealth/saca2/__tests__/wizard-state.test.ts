@@ -220,6 +220,19 @@ describe("normalizeSaca2State", () => {
     expect(partial.data.supplements.c).toHaveLength(2)
   })
 
+  it("always hydrates Supplement C health problems with exactly three strings", () => {
+    const hydrate = (healthProblems: unknown) =>
+      normalizeSaca2State({
+        schemaVersion: SACA2_SCHEMA_VERSION,
+        data: { supplements: { c: [{ healthProblems }, { healthProblems: [] }] } },
+      })!.data.supplements.c
+    expect(hydrate(["a"])[0].healthProblems).toEqual(["a", "", ""])
+    expect(hydrate([])[0].healthProblems).toEqual(["", "", ""])
+    expect(hydrate(["a", 5, null])[0].healthProblems).toEqual(["a", "", ""])
+    expect(hydrate(["a", "b", "c", "d"])[0].healthProblems).toEqual(["a", "b", "c"])
+    expect(hydrate(["a"])[1].healthProblems).toEqual(["", "", ""])
+  })
+
   it("ignores an older single-object Supplement B/D shape without crashing", () => {
     const s = normalizeSaca2State({
       schemaVersion: SACA2_SCHEMA_VERSION,
