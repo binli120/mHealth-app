@@ -127,6 +127,22 @@ export function completeFacilityCouple(): Saca2Answers {
   }
   a.transfers = [{ description: "Cash gift", dateOfTransfer: "2024-03-15", transferredTo: "Test Child", relationship: "child", amount: 30000 }]
   a.supplements.a.facilityDeposit.gaveDeposit = "no"
+  a.supplements.a.home.ownsHome = "yes"
+  a.supplements.a.home.properties = [
+    { ownerNames: "Walter Testcase", propertyAddress: "1 Example St, Testville MA", ownershipType: "individual", fairMarketValue: 450000 },
+  ]
+  a.supplements.a.home.spouse.has = "no"
+  a.supplements.a.home.disabledChild.has = "no"
+  a.supplements.a.home.childUnder21.has = "no"
+  a.supplements.a.home.sibling.has = "no"
+  a.supplements.a.home.caregiverChild.has = "no"
+  a.supplements.a.home.dependentRelative.has = "no"
+  a.supplements.a.intendsToReturnHome = "no"
+  a.supplements.a.home.ownsOtherRealEstate = "yes"
+  a.supplements.a.home.otherRealEstateDescription = "Cottage at 9 Cape Rd, Testville MA"
+  a.supplements.a.longTermCareInsurance.hasPolicy = "no"
+  a.supplements.a.taxReturnsFiled = "bothYears"
+  a.supplements.a.hasCopiesOfTaxReturns = "yes"
 
   setAllGates(a, "yes")
   a.assets.bankAccounts = [

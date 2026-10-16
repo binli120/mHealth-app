@@ -3,10 +3,10 @@
  * @email: blee@comura.ai
  */
 
-import type { FamilyMemberAtHome, Saca2Transfer } from "../types"
+import type { FamilyMemberAtHome, HomeProperty, LongTermCarePolicy, Saca2Transfer } from "../types"
 import { isStepVisible } from "../visibility"
-import { date, money, repeater, ssn, text, yesNo } from "./builders"
-import type { Saca2QuestionContext, Saca2Section, Saca2StepContent } from "./types"
+import { date, money, opts, repeater, select, ssn, text, yesNo } from "./builders"
+import type { Saca2Question, Saca2QuestionContext, Saca2Section, Saca2StepContent } from "./types"
 
 const supplementA = (ctx: Saca2QuestionContext) => ctx.answers.supplements.a
 const needsNursingFacility = (ctx: Saca2QuestionContext) => supplementA(ctx).needsNursingFacility === "yes"
@@ -157,7 +157,140 @@ const DEPOSIT_SECTION: Saca2Section = {
   ],
 }
 
+const home = (ctx: Saca2QuestionContext) => supplementA(ctx).home
+const ownsHome = (ctx: Saca2QuestionContext) => home(ctx).ownsHome === "yes"
+const isHcbsApplicant = (ctx: Saca2QuestionContext) => supplementA(ctx).applyingHcbsWaiver === "yes"
+
+type RelativeKey = "spouse" | "disabledChild" | "childUnder21" | "sibling" | "caregiverChild" | "dependentRelative"
+
+/** One gate, a name, and "lives in your home?" per relative; some relatives add one more answer. */
+function relativeQuestions(
+  key: RelativeKey,
+  gateLabel: string,
+  extras: (has: (ctx: Saca2QuestionContext) => boolean) => Saca2Question[] = () => [],
+): Saca2Question[] {
+  const base = `supplements.a.home.${key}`
+  const has = (ctx: Saca2QuestionContext) => ownsHome(ctx) && home(ctx)[key].has === "yes"
+  return [
+    yesNo(`${base}.has`, gateLabel, { required: true, visibleWhen: ownsHome }),
+    text(`${base}.name`, "Name", { required: true, visibleWhen: has }),
+    ...extras(has),
+    yesNo(`${base}.livesInHome`, "Is this person living in your home?", { required: true, visibleWhen: has }),
+  ]
+}
+
+const HOME_SECTION: Saca2Section = {
+  id: "home",
+  title: "Your home and real estate",
+  description:
+    "These answers decide whether your real estate counts as an asset or a lien may be placed on it. If the equity in your principal home is over a certain limit, you may not be eligible for payment of long-term-care services unless certain conditions are met.",
+  questions: [
+    yesNo("supplements.a.home.ownsHome", "Do you or your spouse own or have a legal interest in your home, including a life estate?", { required: true, help: "If No, answer the questions about intending to return home and other real estate only." }),
+    repeater(
+      "supplements.a.home.properties",
+      "Your home",
+      {
+        questions: [
+          text("ownerNames", "Name(s) and address(es) of the person(s) on the ownership papers", { required: true }),
+          text("propertyAddress", "Description and address of the property", { required: true }),
+          select(
+            "ownershipType",
+            "Type of ownership",
+            opts([
+              ["individual", "Individual"],
+              ["tenancyInCommon", "Tenancy in common"],
+              ["jointTenancy", "Joint tenancy"],
+              ["lifeEstate", "Life estate"],
+            ]),
+            { required: true },
+          ),
+          money("fairMarketValue", "Fair-market value ($)", { required: true }),
+        ],
+        emptyItem: () =>
+          ({ ownerNames: "", propertyAddress: "", ownershipType: null, fairMarketValue: null }) satisfies HomeProperty,
+        addLabel: "Add a property",
+        itemTitle: "Property",
+        maxItems: 2,
+      },
+      { required: true, visibleWhen: ownsHome },
+    ),
+    ...relativeQuestions("spouse", "Do you have a spouse?"),
+    ...relativeQuestions("disabledChild", "Do you have a permanently and totally disabled or blind child?"),
+    ...relativeQuestions("childUnder21", "Do you have a child under 21 years old?", (has) => [
+      date("supplements.a.home.childUnder21.dateOfBirth", "Date of birth", { required: true, visibleWhen: has }),
+    ]),
+    ...relativeQuestions("sibling", "Do you have a sibling with a legal interest in the home who was living in the home for at least one year immediately before your admission to the medical institution?"),
+    ...relativeQuestions("caregiverChild", "Do you have a child who has lived in the home for at least the last two years before your admission to the medical institution and has provided care to you that allowed you to live in the home?"),
+    ...relativeQuestions("dependentRelative", "Do you have a dependent relative?", (has) => [
+      text("supplements.a.home.dependentRelative.relationshipDescription", "Describe the relationship and the nature of the dependency", { required: true, visibleWhen: has }),
+    ]),
+    yesNo("supplements.a.intendsToReturnHome", "Do you intend to return to your home?", {
+      required: true,
+      visibleWhen: (ctx) => !isHcbsApplicant(ctx),
+      help: "Do not answer this question if you are applying for a Home- and Community-Based Services Waiver.",
+    }),
+    yesNo("supplements.a.home.ownsOtherRealEstate", "Do you or your spouse own or have a legal interest in other real estate not listed above?", { required: true }),
+    text("supplements.a.home.otherRealEstateDescription", "Describe the property and list its address", {
+      required: true,
+      visibleWhen: (ctx) => home(ctx).ownsOtherRealEstate === "yes",
+    }),
+  ],
+}
+
+const LTCI_SECTION: Saca2Section = {
+  id: "ltci",
+  title: "Long-term-care insurance",
+  questions: [
+    yesNo("supplements.a.longTermCareInsurance.hasPolicy", "Do you or your spouse have long-term-care insurance?", { required: true, help: "If Yes, send a copy of the policy." }),
+    repeater(
+      "supplements.a.longTermCareInsurance.policies",
+      "Policies",
+      {
+        questions: [
+          text("companyAndPolicyNumber", "Company name and policy number", { required: true }),
+          text("policyholder", "Policyholder name", { required: true }),
+          date("effectiveDate", "Effective date", { required: true }),
+          money("premium", "Premium amount ($)", { required: true }),
+        ],
+        emptyItem: () =>
+          ({ companyAndPolicyNumber: "", policyholder: "", effectiveDate: null, premium: null }) satisfies LongTermCarePolicy,
+        addLabel: "Add a policy",
+        itemTitle: "Policy",
+        maxItems: 2,
+      },
+      { required: true, visibleWhen: (ctx) => supplementA(ctx).longTermCareInsurance.hasPolicy === "yes" },
+    ),
+  ],
+}
+
+const filedAny = (ctx: Saca2QuestionContext) => {
+  const filed = supplementA(ctx).taxReturnsFiled
+  return filed === "bothYears" || filed === "oneYear"
+}
+
+const TAX_SECTION: Saca2Section = {
+  id: "tax",
+  title: "Tax returns",
+  questions: [
+    select(
+      "supplements.a.taxReturnsFiled",
+      "Did you or your spouse file US income tax returns in the last two years?",
+      opts([
+        ["bothYears", "Yes, both years"],
+        ["oneYear", "Yes, one of these years"],
+        ["neither", "No, neither year"],
+      ]),
+      { required: true },
+    ),
+    yesNo("supplements.a.hasCopiesOfTaxReturns", "Do you have copies of these returns to send?", {
+      required: true,
+      visibleWhen: filedAny,
+      help: "If Yes, you must send copies. If you did not keep copies of one or more of the returns, you must send a filled-out and signed IRS Form 4506 (the form is included with this application).",
+    }),
+  ],
+}
+
 export const SUPPLEMENT_A_STEP_CONTENT: Saca2StepContent = {
   scope: "root",
-  sections: [INTRO_SECTION, FACILITY_SECTION, EXPENSES_SECTION, TRANSFERS_SECTION, DEPOSIT_SECTION],
+  sections: [INTRO_SECTION, FACILITY_SECTION, EXPENSES_SECTION, TRANSFERS_SECTION, DEPOSIT_SECTION, HOME_SECTION, LTCI_SECTION, TAX_SECTION],
 }
