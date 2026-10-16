@@ -167,5 +167,16 @@ export function completeFacilityCouple(): Saca2Answers {
   a.health.wantsPartBHelp = "no"
   a.health.hra.anyoneOffered = "no"
   a.signature.signedBy = "authorizedRepresentative"
+  a.attachments.ard = {
+    ...a.attachments.ard,
+    section: "applicantDesignates",
+    repKind: "person",
+    repName: "Quinn Rep",
+    repPhone: "6175550101",
+    repStreet: "3 Example St",
+    repCity: "Testville",
+    repState: "MA",
+    repZip: "02101",
+  }
   return a
 }

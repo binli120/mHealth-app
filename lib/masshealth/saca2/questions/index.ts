@@ -6,6 +6,7 @@
 import type { Saca2StepId } from "../schema"
 import type { Saca2Answers } from "../types"
 import { ASSETS_STEP_CONTENT } from "./assets"
+import { ARD_STEP_CONTENT, IRS4506_STEP_CONTENT } from "./attachments"
 import { ADDITIONAL_COVERAGE_STEP_CONTENT, PCA_STEP_CONTENT } from "./coverage"
 import { HEALTH_INSURANCE_STEP_CONTENT, HRA_STEP_CONTENT } from "./health"
 import { PERSON_STEP_CONTENT } from "./person"
@@ -38,6 +39,8 @@ const CONTENT: Partial<Record<Saca2StepId, Saca2StepContent>> = {
   suppB: SUPPLEMENT_B_STEP_CONTENT,
   suppC: SUPPLEMENT_C_STEP_CONTENT,
   suppD: SUPPLEMENT_D_STEP_CONTENT,
+  ard: ARD_STEP_CONTENT,
+  irs4506: IRS4506_STEP_CONTENT,
 }
 
 export const IMPLEMENTED_STEP_IDS: ReadonlySet<Saca2StepId> = new Set(Object.keys(CONTENT) as Saca2StepId[])
