@@ -44,6 +44,7 @@ describe("complete fixtures", () => {
       "healthInsurance",
       "hra",
       "signature",
+      "suppA",
     ])
     for (const step of steps) {
       expect(validateStep(step, a, ON), step).toEqual({})

@@ -100,6 +100,22 @@ export function completeFacilityCouple(): Saca2Answers {
   a.aian.anyMember = "no"
   a.previousMedicalBills.hasBills = "no"
 
+  a.supplements.a.needsNursingFacility = "yes"
+  a.supplements.a.applyingHcbsWaiver = "no"
+  a.supplements.a.applyingPace = "no"
+  a.supplements.a.facility = {
+    name: "Example Nursing Home",
+    address: "5 Elm St, Testville MA",
+    admissionDate: "2026-09-01",
+    placedByOtherState: "no",
+    placedFromState: "",
+    paysGuardianshipExpenses: "no",
+  }
+  a.supplements.a.spouseMonthlyExpenses.rent = 1200
+  a.supplements.a.spouseMonthlyExpenses.paysHeat = "yes"
+  a.supplements.a.spouseMonthlyExpenses.paysUtilities = "yes"
+  a.supplements.a.familyAtHome.hasFamily = "no"
+
   setAllGates(a, "yes")
   a.assets.bankAccounts = [
     { ownerName: "Walter Testcase", accountType: "savings", institution: "Example Bank", accountNumber: "0001", currentBalance: 54000, balanceOnAdmissionDate: 55000, open: true, closedOn: null, balanceWhenClosed: null },
