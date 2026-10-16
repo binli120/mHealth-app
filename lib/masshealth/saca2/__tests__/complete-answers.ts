@@ -115,6 +115,18 @@ export function completeFacilityCouple(): Saca2Answers {
   a.supplements.a.spouseMonthlyExpenses.paysHeat = "yes"
   a.supplements.a.spouseMonthlyExpenses.paysUtilities = "yes"
   a.supplements.a.familyAtHome.hasFamily = "no"
+  a.supplements.a.transferAnswers = {
+    ...a.supplements.a.transferAnswers,
+    trust: "no",
+    income: "no",
+    assets: "yes",
+    deed: "no",
+    addedToDeed: "no",
+    loanOrNote: "no",
+    annuity: "no",
+  }
+  a.transfers = [{ description: "Cash gift", dateOfTransfer: "2024-03-15", transferredTo: "Test Child", relationship: "child", amount: 30000 }]
+  a.supplements.a.facilityDeposit.gaveDeposit = "no"
 
   setAllGates(a, "yes")
   a.assets.bankAccounts = [
