@@ -140,15 +140,20 @@ ACA-3 `FormWizard` is untouched.
 - **PHI never goes in server `draft_state`.** SSNs, names, DOBs, account numbers,
   asset values, trust/annuity details, and transfer data are PHI and travel through
   the existing client-encrypted resume token + storage blob (`lib/phi-token/`).
-- Add the SACA-2 PHI top-level keys (`assets`, `transfers`, `supplements`, plus
-  existing `persons`) to **both** `lib/phi-token/phi-fields.ts` and the mirrored
-  `SERVER_PHI_DATA_KEYS` in `lib/db/application-drafts.ts`; a test asserts the two
-  sets are equal.
+- There is **one** shared PHI key list, `PHI_DATA_KEYS` in `lib/phi-token/phi-fields.ts`,
+  imported by both the client split and the server strip (no mirrored copy). It holds
+  `contact`, `preApp` (ACA-3) and the SACA-2 keys `screening`, `persons`, `aian`,
+  `previousMedicalBills`, `assets`, `transfers`, `health`, `pca`, `supplements`,
+  `signing`, `attachments`. Only `intake` and `signature` reach the server draft.
 - Server `draft_state` holds non-PHI only: `schemaVersion: "saca2-2026-08"`, route
   flags, current step, program-box selections.
 - `applications.application_type = "saca2"`; no migration expected for the
   application row. A migration is needed only to seed the feature flag (§4.7).
   Implemented in Phase 1: all answer keys except intake and signature are PHI (SACA2_PHI_KEYS); the server strip and the client split share one list (lib/phi-token/phi-fields.ts). PHI is held in memory only (no localStorage copy, unlike ACA-3) until Save & Exit writes the encrypted blob. The server draft `currentStep` is the furthest step reached, capped at 9, because the draft route accepts only 1–9 and never lowers stored progress.
+
+  Draft-type guard: `upsertApplicationDraft` refuses an ACA-3 write to a draft whose application is `saca2` (`ApplicationDraftTypeConflictError`, surfaced by the draft route as HTTP 409 `DRAFT_TYPE_CONFLICT`). SACA-2 writes are never refused. The check is NULL-safe (`application_type IS NOT TRUE`-style), so a missing or NULL type cannot slip past it.
+
+  Save & Exit: the encrypted blob holds the PHI keys only. If the PHI-free server draft save fails with a non-retryable error, the dialog warns that the program selections and step progress may not be saved.
 
 ### 4.4 Eligibility engine
 Contract: `{ status, findings[], rule_results[], estimates, required_documents[] }`,
@@ -247,7 +252,7 @@ Every pure module: `visibility`, each engine rule, `document-checklist`,
   type; every inventory field is mapped or on an explicit never-fill allowlist
   (signatures, office-use, buttons).
 - **Template hash** equals the pinned sha256.
-- **PHI key parity:** `phi-fields.ts` set equals `SERVER_PHI_DATA_KEYS`; test that a
+- **PHI keys:** the server strip and client split share `PHI_DATA_KEYS`; test that a
   SACA-2 save never leaves PHI in `draft_state`.
 
 ### 5.3 Fixtures
@@ -266,7 +271,7 @@ accessibility checks.
 | Phase | Deliverable |
 |---|---|
 | 0 | `types`, step registry (`schema.ts`), `visibility`, `figures-2026` + staleness guard, synthetic cases, and a guard so SACA-2 drafts show a notice instead of the ACA-3 wizard (plan `2026-10-13-saca2-foundation.md`). Question-level schema and the `saca2_enabled` flag move to Phase 1, where the renderer and the wizard they gate are built. |
-| 1 | `Saca2Wizard`, step renderer, question model/validation, flag, PHI-safe save/resume for: intake, Person 1/2, AI/AN, previous bills, who-signs (plan `2026-10-13-saca2-wizard-core.md`). **1b** is split into three plans: **1b-1** (plan `2026-10-14-saca2-remaining-steps.md`: previous-bills detail, Step 5 assets, Steps 6–7 health insurance and HRAs, Steps 8–9 PCA and additional coverage, Step 10 signer details), **1b-2** (plan `2026-10-14-saca2-supplements.md`: Supplements A–D and the ARD-1122 / IRS 4506 attachment data — done once merged), and **1b-3** (plan `2026-10-16-saca2-person-details.md`: remaining Person-block questions: optional demographics, tax/Health Connector, accommodations, pregnancy/foster care, deductions, rental/one-time/seasonal/self-employment income — done once merged). The flag stays off until 1b-3 ships and the pre-flag gate items from the Phase 1 final review are done. |
+| 1 | `Saca2Wizard`, step renderer, question model/validation, flag, PHI-safe save/resume for: intake, Person 1/2, AI/AN, previous bills, who-signs (plan `2026-10-13-saca2-wizard-core.md`). **1b** is split into three plans: **1b-1** (plan `2026-10-14-saca2-remaining-steps.md`: previous-bills detail, Step 5 assets, Steps 6–7 health insurance and HRAs, Steps 8–9 PCA and additional coverage, Step 10 signer details), **1b-2** (plan `2026-10-14-saca2-supplements.md`: Supplements A–D and the ARD-1122 / IRS 4506 attachment data — done once merged), and **1b-3** (plan `2026-10-16-saca2-person-details.md`: remaining Person-block questions: optional demographics, tax/Health Connector, accommodations, pregnancy/foster care, deductions, rental/one-time/seasonal/self-employment income — done once merged), and the **pre-flag gate** (plan `2026-10-17-saca2-flag-gate.md`: the gate before the flag — done once merged). The flag stays off until 1b-3 ships and the pre-flag gate items from the Phase 1 final review are done. |
 | 2 | Field inventory, `pdf-field-map`, `pdf-fill`, `/api/forms/saca2/fill`, template hash, coverage test |
 | 3 | `eligibility-engine`, `document-checklist`, redirects, results panel; 130 CMR confirmation of rules 3–7 |
 | 4 | 6-language strings and reference translations |
