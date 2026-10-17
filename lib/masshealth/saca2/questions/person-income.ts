@@ -5,6 +5,7 @@
 
 import { MONTH_KEYS, MONTH_LABELS } from "../demographic-options"
 import { checkbox, date, money, number, opts, repeater, select, text, yesNo } from "./builders"
+import type { Saca2IncomeItem } from "../types"
 import { INCOME_FREQUENCIES } from "./options"
 import { person, who } from "./person-context"
 import type { Saca2Question, Saca2QuestionContext, Saca2Section } from "./types"
@@ -68,7 +69,7 @@ export const INCOME_SECTION: Saca2Section = {
               required: true,
               help: (ctx) =>
                 isMonthlyNet(ctx)
-                  ? "Net income is your profit after business expenses are paid. Enter the amount without a minus sign and check the box below if it is a loss."
+                  ? `Net income is ${ctx.personIndex === 0 ? "your" : "this person's"} profit after business expenses are paid. Enter the amount without a minus sign and check the box below if it is a loss.`
                   : "",
             },
           ),
@@ -85,9 +86,13 @@ export const INCOME_SECTION: Saca2Section = {
             required: isWages,
             visibleWhen: isWages,
             validate: validateSeasonalMonths,
+            help: who(
+              "If Yes, check each month you work in a calendar year.",
+              "If Yes, check each month this person works in a calendar year.",
+            ),
           }),
           ...MONTH_KEYS.map((month) => checkbox(seasonKey(month), MONTH_LABELS[month], { visibleWhen: isSeasonal })),
-          text("description", "What type of work do you do?", { required: true, visibleWhen: kindIs("selfEmployment") }),
+          text("description", who("What type of work do you do?", "What type of work does this person do?"), { required: true, visibleWhen: kindIs("selfEmployment") }),
           variant("description.pension", text("description", "Source", { visibleWhen: kindIs("pension") })),
           variant("description.otherTaxable", text("description", "Type", { required: true, visibleWhen: kindIs("otherTaxable") })),
           money(
@@ -97,7 +102,7 @@ export const INCOME_SECTION: Saca2Section = {
           ),
           variant("effectiveDate.lottery", date("effectiveDate", "Effective date", { required: true, visibleWhen: kindIs("lottery") })),
         ],
-        emptyItem: () => ({ kind: null, amount: null, frequency: null }),
+        emptyItem: () => ({ kind: null, amount: null, frequency: null }) satisfies { [K in keyof Saca2IncomeItem]?: Saca2IncomeItem[K] | null },
         addLabel: "Add an income source",
         itemTitle: "Income source",
         maxItems: 15,

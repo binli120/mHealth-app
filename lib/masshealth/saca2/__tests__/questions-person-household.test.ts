@@ -230,8 +230,9 @@ describe("household questions (Q15-18, Q20)", () => {
     })
 
     it("generates one checkbox per condition and accommodation", () => {
-      const section = getStepContent("person1")!.sections.find((s) => s.id === "household")!
-      const paths = section.questions.map((q) => q.path)
+      // The checkbox groups moved out of "household" into their own titled sections.
+      const sections = getStepContent("person1")!.sections.filter((s) => ["accommodationConditions", "accommodationTypes"].includes(s.id))
+      const paths = sections.flatMap((s) => s.questions.map((q) => q.path))
       for (const k of ACCOMMODATION_CONDITION_KEYS) expect(paths).toContain(`accommodationConditions.${k}`)
       for (const k of ACCOMMODATION_KEYS) expect(paths).toContain(`accommodations.${k}`)
     })

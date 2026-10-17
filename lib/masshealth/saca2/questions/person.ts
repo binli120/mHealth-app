@@ -17,13 +17,13 @@ import {
   yesNo,
 } from "./builders"
 import { IMMIGRATION_DOCUMENT_OPTIONS, IMMIGRATION_STATUS_OPTIONS } from "./immigration-options"
-import { DEMOGRAPHICS_SECTION, validateDemographics } from "./person-demographics"
+import { DEMOGRAPHICS_SECTIONS, validateDemographics } from "./person-demographics"
 import { IMMIGRATION_DETAIL_QUESTIONS, SSN_CARD_QUESTIONS } from "./person-identity"
-import { HOUSEHOLD_SECTION, validateAccommodations } from "./person-household"
+import { ACCOMMODATION_CONDITIONS_SECTION, ACCOMMODATION_TYPES_SECTION, HOUSEHOLD_SECTION, validateAccommodations } from "./person-household"
 import { INCOME_SECTION } from "./person-income"
 import { DEDUCTIONS_SECTION, ONE_TIME_SECTION, RENTAL_SECTION, validateDeductions } from "./person-income-extras"
 import { TAX_SECTION } from "./person-tax"
-import { applying, isSecondPerson, person, who } from "./person-context"
+import { applying, isSecondPerson, noncitizen, person, who } from "./person-context"
 import type { Saca2QuestionContext, Saca2StepContent } from "./types"
 
 const hasHomeAddress = (ctx: Saca2QuestionContext) => !person(ctx)?.noHomeAddress
@@ -125,7 +125,7 @@ export const PERSON_STEP_CONTENT: Saca2StepContent = {
         }),
       ],
     },
-    DEMOGRAPHICS_SECTION,
+    ...DEMOGRAPHICS_SECTIONS,
     {
       id: "status",
       title: "Identity, citizenship, and residency",
@@ -171,17 +171,17 @@ export const PERSON_STEP_CONTENT: Saca2StepContent = {
         }),
         select("immigrationStatus", "Immigration status", IMMIGRATION_STATUS_OPTIONS, {
           required: true,
-          visibleWhen: (ctx) => applying(ctx) && person(ctx)?.hasEligibleImmigrationStatus === "yes",
+          visibleWhen: (ctx) => noncitizen(ctx) && person(ctx)?.hasEligibleImmigrationStatus === "yes",
         }),
         select("immigrationDocumentType", "Immigration document type", IMMIGRATION_DOCUMENT_OPTIONS, {
           required: true,
-          visibleWhen: (ctx) => applying(ctx) && person(ctx)?.hasEligibleImmigrationStatus === "yes",
+          visibleWhen: (ctx) => noncitizen(ctx) && person(ctx)?.hasEligibleImmigrationStatus === "yes",
         }),
         text("immigrationDocumentId", "Document ID number", {
-          visibleWhen: (ctx) => applying(ctx) && person(ctx)?.hasEligibleImmigrationStatus === "yes",
+          visibleWhen: (ctx) => noncitizen(ctx) && person(ctx)?.hasEligibleImmigrationStatus === "yes",
         }),
         date("immigrationDocumentExpiry", "Document expiration date", {
-          visibleWhen: (ctx) => applying(ctx) && person(ctx)?.hasEligibleImmigrationStatus === "yes",
+          visibleWhen: (ctx) => noncitizen(ctx) && person(ctx)?.hasEligibleImmigrationStatus === "yes",
         }),
         ...IMMIGRATION_DETAIL_QUESTIONS,
         yesNo("residentOfMassachusetts", who("Do you live in Massachusetts and intend to stay here (even without a fixed address), or did you come for a job or to look for work?", "Does this person live in Massachusetts and intend to stay here (even without a fixed address), or did they come for a job or to look for work?"), {
@@ -235,6 +235,8 @@ export const PERSON_STEP_CONTENT: Saca2StepContent = {
     },
     TAX_SECTION,
     HOUSEHOLD_SECTION,
+    ACCOMMODATION_CONDITIONS_SECTION,
+    ACCOMMODATION_TYPES_SECTION,
     INCOME_SECTION,
     RENTAL_SECTION,
     ONE_TIME_SECTION,

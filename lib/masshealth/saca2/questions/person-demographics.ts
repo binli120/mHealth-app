@@ -36,14 +36,33 @@ function checkGroup<K extends string>(
   ]
 }
 
+const CAP_NOTE = "Select up to five options."
+
+/**
+ * Each checkbox group is its own section so the step form can show the form's question text above it.
+ * The first section keeps the `demographics` id and carries the optional-demographics intro.
+ */
 export const DEMOGRAPHICS_SECTION: Saca2Section = {
   id: "demographics",
-  title: "Optional: language and cultural needs",
+  title: who(`Which best describes your current gender identity? ${CAP_NOTE}`, `Which best describes this person's current gender identity? ${CAP_NOTE}`),
   description:
-    "MassHealth is committed to providing equitable care for all members regardless of race, ethnicity, gender, sexual orientation, or language spoken. Your answers are voluntary and will not affect eligibility or be used for any discriminatory purpose.",
+    "Optional. MassHealth is committed to providing equitable care for all members regardless of race, ethnicity, gender, sexual orientation, or language spoken. Your answers are voluntary and will not affect eligibility or be used for any discriminatory purpose. Gender identity is how a person defines and understands their gender as a man, a woman, nonbinary, gender nonconforming, transgender, or something else.",
+  questions: checkGroup("genderIdentity", GENDER_IDENTITY_KEYS, GENDER_IDENTITY_LABELS, "demographics.genderIdentityOther"),
+}
+
+export const DEMOGRAPHICS_ORIENTATION_SECTION: Saca2Section = {
+  id: "demographicsOrientation",
+  title: who(`Which of these describes your current sexual orientation? ${CAP_NOTE}`, `Which of these describes this person's current sexual orientation? ${CAP_NOTE}`),
+  description: "Sexual orientation describes how a person defines their physical and/or emotional attraction to others.",
+  questions: checkGroup("sexualOrientation", SEXUAL_ORIENTATION_KEYS, SEXUAL_ORIENTATION_LABELS, "demographics.sexualOrientationOther"),
+}
+
+export const DEMOGRAPHICS_ORIGIN_SECTION: Saca2Section = {
+  id: "demographicsOrigin",
+  title: "Hispanic or Latino origin",
+  description:
+    "Hispanic or Latino refers to someone of Cuban, Mexican, Puerto Rican, South or Central American, or other Spanish culture or origin regardless of race.",
   questions: [
-    ...checkGroup("genderIdentity", GENDER_IDENTITY_KEYS, GENDER_IDENTITY_LABELS, "demographics.genderIdentityOther"),
-    ...checkGroup("sexualOrientation", SEXUAL_ORIENTATION_KEYS, SEXUAL_ORIENTATION_LABELS, "demographics.sexualOrientationOther"),
     select(
       "demographics.hispanicOrLatino",
       who("Are you of Hispanic or Latino origin or descent?", "Is this person of Hispanic or Latino origin or descent?"),
@@ -55,10 +74,33 @@ export const DEMOGRAPHICS_SECTION: Saca2Section = {
       ]),
       { visibleWhen: applying },
     ),
-    ...checkGroup("race", RACE_KEYS, RACE_LABELS, "demographics.raceOther"),
-    ...checkGroup("ethnicity", ETHNICITY_KEYS, ETHNICITY_LABELS, "demographics.ethnicityOther"),
   ],
 }
+
+export const DEMOGRAPHICS_RACE_SECTION: Saca2Section = {
+  id: "demographicsRace",
+  title: "Race",
+  description: "Race refers to a person's self-identification with one or more social groups. You may report multiple races.",
+  questions: checkGroup("race", RACE_KEYS, RACE_LABELS, "demographics.raceOther"),
+}
+
+export const DEMOGRAPHICS_ETHNICITY_SECTION: Saca2Section = {
+  id: "demographicsEthnicity",
+  title: "Ethnicity",
+  description: who(
+    "Ethnicity refers to your background, heritage, culture, ancestry, or the country where you or your family were born.",
+    "Ethnicity refers to this person's background, heritage, culture, ancestry, or the country where they or their family were born.",
+  ),
+  questions: checkGroup("ethnicity", ETHNICITY_KEYS, ETHNICITY_LABELS, "demographics.ethnicityOther"),
+}
+
+export const DEMOGRAPHICS_SECTIONS: Saca2Section[] = [
+  DEMOGRAPHICS_SECTION,
+  DEMOGRAPHICS_ORIENTATION_SECTION,
+  DEMOGRAPHICS_ORIGIN_SECTION,
+  DEMOGRAPHICS_RACE_SECTION,
+  DEMOGRAPHICS_ETHNICITY_SECTION,
+]
 
 const CAPPED: Array<{ group: "genderIdentity" | "sexualOrientation"; first: string }> = [
   { group: "genderIdentity", first: GENDER_IDENTITY_KEYS[0] },

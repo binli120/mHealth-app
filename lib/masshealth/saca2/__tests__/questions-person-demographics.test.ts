@@ -28,9 +28,10 @@ describe("person demographics (optional)", () => {
 
   it("is not shown to someone who is not applying", () => {
     const content = getStepContent("person1")!
-    const section = content.sections.find((s) => s.id === "demographics")!
+    const sections = content.sections.filter((s) => s.id.startsWith("demographics"))
+    expect(sections).toHaveLength(5)
     const ctx = { answers: answers((a) => (a.persons[0].applyingForCoverage = "no")), personIndex: 0, on: ON }
-    expect(section.questions.every((q) => q.visibleWhen?.(ctx) === false)).toBe(true)
+    for (const section of sections) expect(section.questions.every((q) => q.visibleWhen?.(ctx) === false)).toBe(true)
   })
 
   it("lets a person tick up to five gender identities and rejects six", () => {
@@ -70,7 +71,8 @@ describe("person demographics (optional)", () => {
 
   it("words Person 2's questions in the third person", () => {
     const content = getStepContent("person2")!
-    const section = content.sections.find((s) => s.id === "demographics")!
+    // The group split moved the Hispanic/Latino select into its own section.
+    const section = content.sections.find((s) => s.id === "demographicsOrigin")!
     const ctx = { answers: answers(), personIndex: 1, on: ON }
     const label = (path: string) => {
       const q = section.questions.find((x) => x.path === path)!

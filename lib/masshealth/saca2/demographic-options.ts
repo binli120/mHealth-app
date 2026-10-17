@@ -104,7 +104,7 @@ export const ACCOMMODATION_LABELS: Record<AccommodationKey, string> = {
   largePrint: "Large-print publications",
   asl: "American Sign Language interpreter",
   videoRelay: "Video Relay Service",
-  cart: "Communication Access Real-time Translation (CART)",
+  cart: "Communication Access Real-time Translations (CART)",
   braille: "Publications in braille",
   assistiveListening: "Assistive listening device",
   electronicFormat: "Publications in electronic format",

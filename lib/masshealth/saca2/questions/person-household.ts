@@ -95,8 +95,23 @@ export const HOUSEHOLD_SECTION: Saca2Section = {
       ),
       { required: true },
     ),
+  ],
+}
+
+/** Q20a and Q20b (Person 2: Q30a and Q30b) get their own sections so the checkboxes sit under their prompts. */
+export const ACCOMMODATION_CONDITIONS_SECTION: Saca2Section = {
+  id: "accommodationConditions",
+  title: "Condition",
+  questions: [
     ...conditionBoxes,
     text("accommodationConditionOther", "Condition: please explain", { required: true, visibleWhen: conditionOther }),
+  ],
+}
+
+export const ACCOMMODATION_TYPES_SECTION: Saca2Section = {
+  id: "accommodationTypes",
+  title: "Accommodation",
+  questions: [
     ...accommodationBoxes,
     text("accommodationOther", "Accommodation: please explain", { required: true, visibleWhen: accommodationOther }),
   ],
