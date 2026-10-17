@@ -9,21 +9,18 @@ import {
   checkbox,
   date,
   email,
-  money,
-  number,
   opts,
   phone,
-  repeater,
   select,
   ssn,
   text,
   yesNo,
 } from "./builders"
 import { IMMIGRATION_DOCUMENT_OPTIONS, IMMIGRATION_STATUS_OPTIONS } from "./immigration-options"
-import { INCOME_FREQUENCIES } from "./options"
 import { DEMOGRAPHICS_SECTION, validateDemographics } from "./person-demographics"
 import { IMMIGRATION_DETAIL_QUESTIONS, SSN_CARD_QUESTIONS } from "./person-identity"
 import { HOUSEHOLD_SECTION, validateAccommodations } from "./person-household"
+import { INCOME_SECTION } from "./person-income"
 import { TAX_SECTION } from "./person-tax"
 import { applying, isSecondPerson, person, who } from "./person-context"
 import type { Saca2QuestionContext, Saca2StepContent } from "./types"
@@ -33,24 +30,6 @@ const needsMailingAddress = (ctx: Saca2QuestionContext) => {
   const p = person(ctx)
   return Boolean(p?.noHomeAddress) || !p?.mailingSameAsStreet
 }
-
-const INCOME_KINDS = opts([
-  ["wages", "Wages or salary"],
-  ["selfEmployment", "Self-employment"],
-  ["socialSecurity", "Social Security benefits"],
-  ["pension", "Retirement or pension"],
-  ["annuity", "Annuities"],
-  ["trust", "Trusts"],
-  ["unemployment", "Unemployment"],
-  ["investment", "Interest, dividends, and other investment income"],
-  ["royalty", "Royalty income"],
-  ["alimony", "Alimony received"],
-  ["veterans", "Federal veteran's benefits"],
-  ["militaryRetirement", "Military retirement pay"],
-  ["otherTaxable", "Other taxable income"],
-  ["rental", "Rental income"],
-  ["lottery", "Lottery and gambling winnings"],
-])
 
 function validateDateOfBirth(value: unknown, ctx: Saca2QuestionContext): string | null {
   if (typeof value !== "string") return null
@@ -254,41 +233,6 @@ export const PERSON_STEP_CONTENT: Saca2StepContent = {
     },
     TAX_SECTION,
     HOUSEHOLD_SECTION,
-    {
-      id: "income",
-      title: "Income",
-      questions: [
-        yesNo("hasIncome", who("Do you have any income?", "Does this person have any income?"), { required: true }),
-        repeater(
-          "income",
-          "Income sources",
-          {
-            questions: [
-              select("kind", "Type of income", INCOME_KINDS, { required: true }),
-              money("amount", "Amount before taxes ($)", { required: true }),
-              select("frequency", "How often", INCOME_FREQUENCIES, { required: true }),
-              text("employerNameAndAddress", "Employer name and address", {
-                visibleWhen: (ctx) => ctx.item?.kind === "wages",
-              }),
-              number("hoursPerWeek", "Average hours worked each week", {
-                visibleWhen: (ctx) => ctx.item?.kind === "wages" || ctx.item?.kind === "selfEmployment",
-              }),
-            ],
-            emptyItem: () => ({ kind: null, amount: null, frequency: null }),
-            addLabel: "Add an income source",
-            itemTitle: "Income source",
-            maxItems: 15,
-          },
-          { required: true, visibleWhen: (ctx) => person(ctx)?.hasIncome === "yes" },
-        ),
-        money("expectedIncomeThisYear", "Total expected income this calendar year ($)", {
-          required: true,
-          visibleWhen: (ctx) => person(ctx)?.hasIncome === "yes",
-        }),
-        money("expectedIncomeNextYear", "Total expected income next calendar year, if different ($)", {
-          visibleWhen: (ctx) => person(ctx)?.hasIncome === "yes",
-        }),
-      ],
-    },
+    INCOME_SECTION,
   ],
 }
