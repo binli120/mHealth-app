@@ -5512,6 +5512,24 @@
   ]
  },
  {
+  "name": "Health Savings Account deduction: Yearly amount $",
+  "type": "text",
+  "pages": [
+   7
+  ],
+  "widgets": [
+   {
+    "page": 7,
+    "rect": [
+     284.64,
+     105.88,
+     333.27,
+     120.76
+    ]
+   }
+  ]
+ },
+ {
   "name": "Health Savings Account deduction Yearly amount",
   "type": "checkbox",
   "pages": [
@@ -5527,6 +5545,24 @@
      117.84
     ],
     "onState": "On"
+   }
+  ]
+ },
+ {
+  "name": "Moving expenses for members of the Armed Forces: Yearly amount $",
+  "type": "text",
+  "pages": [
+   7
+  ],
+  "widgets": [
+   {
+    "page": 7,
+    "rect": [
+     356.16,
+     89.32,
+     403.23,
+     104.2
+    ]
    }
   ]
  },
@@ -5550,6 +5586,24 @@
   ]
  },
  {
+  "name": "Deductible part of self-employment tax: Yearly amount $",
+  "type": "text",
+  "pages": [
+   7
+  ],
+  "widgets": [
+   {
+    "page": 7,
+    "rect": [
+     306,
+     72.76,
+     354.11,
+     87.64
+    ]
+   }
+  ]
+ },
+ {
   "name": "Deductible part of selfemployment tax Yearly amount",
   "type": "checkbox",
   "pages": [
@@ -5569,6 +5623,24 @@
   ]
  },
  {
+  "name": "Contribution to self-employed SEP, SIMPLE, and qualified plans: Yearly amount $",
+  "type": "text",
+  "pages": [
+   7
+  ],
+  "widgets": [
+   {
+    "page": 7,
+    "rect": [
+     400.56,
+     56.2,
+     450.75,
+     71.08
+    ]
+   }
+  ]
+ },
+ {
   "name": "Contribution to selfemployed SEP SIMPLE and qualified plans Yearly amount",
   "type": "checkbox",
   "pages": [
@@ -5584,6 +5656,24 @@
      68.16
     ],
     "onState": "On"
+   }
+  ]
+ },
+ {
+  "name": "Self-employed health insurance deduction: Yearly amount $",
+  "type": "text",
+  "pages": [
+   8
+  ],
+  "widgets": [
+   {
+    "page": 8,
+    "rect": [
+     316.88,
+     744.04,
+     364.43,
+     757.24
+    ]
    }
   ]
  },
@@ -5610,8 +5700,7 @@
   "name": "Penalty on early withdrawal of savings: Yearly amount $",
   "type": "text",
   "pages": [
-   8,
-   12
+   8
   ],
   "widgets": [
    {
@@ -5621,15 +5710,6 @@
      726.48,
      356.54,
      739.68
-    ]
-   },
-   {
-    "page": 12,
-    "rect": [
-     301.28,
-     170.51,
-     356.9,
-     181.67
     ]
    }
   ]
@@ -5694,8 +5774,7 @@
   "name": "Individual Retirement Account (IRA) deduction: Yearly amount $",
   "type": "text",
   "pages": [
-   8,
-   12
+   8
   ],
   "widgets": [
    {
@@ -5705,15 +5784,6 @@
      682.48,
      370.73,
      695.68
-    ]
-   },
-   {
-    "page": 12,
-    "rect": [
-     325.14,
-     125.88,
-     382.07,
-     137.04
     ]
    }
   ]
@@ -5741,8 +5811,7 @@
   "name": "Student loan deduction (interest only, not total payment): Yearly amount $",
   "type": "text",
   "pages": [
-   8,
-   12
+   8
   ],
   "widgets": [
    {
@@ -5752,15 +5821,6 @@
      665.92,
      456.11,
      679.12
-    ]
-   },
-   {
-    "page": 12,
-    "rect": [
-     410.6,
-     109.05,
-     465.35,
-     120.21
     ]
    }
   ]
@@ -10720,11 +10780,10 @@
   ]
  },
  {
-  "name": "Health Savings Account deduction: Yearly amount $",
+  "name": "Health Savings Account deduction: Yearly amount $__p2",
   "type": "text",
   "pages": [
-   12,
-   7
+   12
   ],
   "widgets": [
    {
@@ -10735,24 +10794,14 @@
      348.38,
      265.19
     ]
-   },
-   {
-    "page": 7,
-    "rect": [
-     284.64,
-     105.88,
-     333.27,
-     120.76
-    ]
    }
   ]
  },
  {
-  "name": "Moving expenses for members of the Armed Forces: Yearly amount $",
+  "name": "Moving expenses for members of the Armed Forces: Yearly amount $__p2",
   "type": "text",
   "pages": [
-   12,
-   7
+   12
   ],
   "widgets": [
    {
@@ -10762,15 +10811,6 @@
      237.42,
      400.73,
      248.94
-    ]
-   },
-   {
-    "page": 7,
-    "rect": [
-     356.16,
-     89.32,
-     403.23,
-     104.2
     ]
    }
   ]
@@ -10814,11 +10854,10 @@
   ]
  },
  {
-  "name": "Deductible part of self-employment tax: Yearly amount $",
+  "name": "Deductible part of self-employment tax: Yearly amount $__p2",
   "type": "text",
   "pages": [
-   12,
-   7
+   12
   ],
   "widgets": [
    {
@@ -10828,15 +10867,6 @@
      220.71,
      348.43,
      230.92
-    ]
-   },
-   {
-    "page": 7,
-    "rect": [
-     306,
-     72.76,
-     354.11,
-     87.64
     ]
    }
   ]
@@ -10861,11 +10891,10 @@
   ]
  },
  {
-  "name": "Contribution to self-employed SEP, SIMPLE, and qualified plans: Yearly amount $",
+  "name": "Contribution to self-employed SEP, SIMPLE, and qualified plans: Yearly amount $__p2",
   "type": "text",
   "pages": [
-   12,
-   7
+   12
   ],
   "widgets": [
    {
@@ -10875,15 +10904,6 @@
      203.99,
      440.48,
      215.51
-    ]
-   },
-   {
-    "page": 7,
-    "rect": [
-     400.56,
-     56.2,
-     450.75,
-     71.08
     ]
    }
   ]
@@ -10908,11 +10928,10 @@
   ]
  },
  {
-  "name": "Self-employed health insurance deduction: Yearly amount $",
+  "name": "Self-employed health insurance deduction: Yearly amount $__p2",
   "type": "text",
   "pages": [
-   12,
-   8
+   12
   ],
   "widgets": [
    {
@@ -10922,15 +10941,6 @@
      187.26,
      371.87,
      198.78
-    ]
-   },
-   {
-    "page": 8,
-    "rect": [
-     316.88,
-     744.04,
-     364.43,
-     757.24
     ]
    }
   ]
@@ -10951,6 +10961,24 @@
      182.7
     ],
     "onState": "On"
+   }
+  ]
+ },
+ {
+  "name": "Penalty on early withdrawal of savings: Yearly amount $__p2",
+  "type": "text",
+  "pages": [
+   12
+  ],
+  "widgets": [
+   {
+    "page": 12,
+    "rect": [
+     301.28,
+     170.51,
+     356.9,
+     181.67
+    ]
    }
   ]
  },
@@ -11011,6 +11039,24 @@
   ]
  },
  {
+  "name": "Individual Retirement Account (IRA) deduction: Yearly amount $__p2",
+  "type": "text",
+  "pages": [
+   12
+  ],
+  "widgets": [
+   {
+    "page": 12,
+    "rect": [
+     325.14,
+     125.88,
+     382.07,
+     137.04
+    ]
+   }
+  ]
+ },
+ {
   "name": "Student loan deduction interest only not total payment Yearly amount_2",
   "type": "checkbox",
   "pages": [
@@ -11026,6 +11072,24 @@
      120.5
     ],
     "onState": "On"
+   }
+  ]
+ },
+ {
+  "name": "Student loan deduction (interest only, not total payment): Yearly amount $__p2",
+  "type": "text",
+  "pages": [
+   12
+  ],
+  "widgets": [
+   {
+    "page": 12,
+    "rect": [
+     410.6,
+     109.05,
+     465.35,
+     120.21
+    ]
    }
   ]
  },

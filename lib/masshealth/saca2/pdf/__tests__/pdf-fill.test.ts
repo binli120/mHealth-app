@@ -130,10 +130,10 @@ describe("fillSaca2Pdf", () => {
     expect(checks["4 Are you applying for health or dental coverage for YOURSELF?"]).toBe("2")
   })
 
-  it("keeps the form editable: same 1,149 fields, original names, not flattened", async () => {
+  it("keeps the form editable: the 1,157 fields (1,149 plus the eight Person 2 copies), original names, not flattened", async () => {
     const bytes = await fillSaca2Pdf(completeRichHousehold(), template, ON, MAP)
     const names = (await PDFDocument.load(bytes)).getForm().getFields().map((f) => f.getName())
-    expect(names).toHaveLength(1149)
+    expect(names).toHaveLength(1157)
     expect([...names].sort()).toEqual(getInventory().map((f) => f.name).sort())
   })
 

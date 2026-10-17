@@ -228,7 +228,9 @@ export const PERSON1_B_ROWS: PersonRow[] = [
   item("oneTimeIncome.nextYearItems", 0, "year", "Year received_2", "number"),
 
   // Q32 deductions: a box ticked per amount given, then "None"; the end of the list is on form page 7 (index 8).
-  // Eight of the amount fields are ONE field shared with Person 2's deductions page (see the Task 5 report).
+  // Eight of these amount fields are shared with Person 2's deductions page in the raw template. The
+  // fill splits them (split-shared-fields.ts): these names keep Person 1's widgets only, and Task 6
+  // maps Person 2's amounts to the `<name>__p2` fields.
   ...deduction("educator", "Educator expense Yearly amount", "ducator expense: Yearly amount $"),
   ...deduction(
     "reservistExpenses",

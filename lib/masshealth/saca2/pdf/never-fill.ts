@@ -37,6 +37,6 @@ export const NEVER_FILL: Record<string, { reason: NeverFillReason; note?: string
   // Form page 4 (PDF index 5)
   "Alien number_2": {
     reason: "other",
-    note: "Q13b alien number on the immigration document line; the wizard asks the alien number only for naturalized citizens (Q12)",
+    note: "WIZARD GAP, not a deliberate skip: 13b asks a noncitizen for the alien number on the immigration document, but the wizard asks the alien number only for naturalized citizens (Q12); add a wizard question or decide at Task 13",
   },
 }

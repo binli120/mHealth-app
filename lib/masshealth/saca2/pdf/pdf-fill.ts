@@ -10,6 +10,7 @@ import { applyCheckboxState } from "./checkbox-writer"
 import { DERIVED } from "./derived"
 import { encodeCheckbox, encodeToParts, isCheckboxEncoder } from "./encoders"
 import { FIELD_MAP } from "./field-map"
+import { splitSharedFields } from "./split-shared-fields"
 import { loadSaca2Template } from "./template"
 import type { FieldEntry, FillItem } from "./types"
 import { createVisibleReader, type VisibleReader } from "./visible-reader"
@@ -102,6 +103,7 @@ export async function fillSaca2Pdf(
 ): Promise<Uint8Array> {
   const items = collectFillValues(answers, on, map, derived)
   const doc = await PDFDocument.load(templateBytes ?? (await loadSaca2Template()))
+  splitSharedFields(doc)
   const form = doc.getForm()
   const fields = indexFields(doc)
 
