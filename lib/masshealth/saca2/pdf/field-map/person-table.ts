@@ -3,7 +3,8 @@
  * @email: blee@comura.ai
  */
 
-import type { Encoder, FieldEntry } from "../types"
+import type { Encoder, FieldEntry, Source } from "../types"
+import { PERSON1_B_ROWS } from "./person1-b"
 
 /** The field names and encoding of one person's copy of a question. */
 export interface PersonColumn {
@@ -24,12 +25,21 @@ interface PersonRowBase {
 interface PersonAnswerRow extends PersonRowBase {
   path: string
   derived?: undefined
+  item?: undefined
 }
 
 /** A value computed in derived.ts from several answers; `derived` is its registry id. */
 interface PersonDerivedRow extends PersonRowBase {
   derived: string
   path?: undefined
+  item?: undefined
+}
+
+/** One field of one row of a repeater (e.g. the first rental unit's address); `path` is the repeater's. */
+interface PersonItemRow extends PersonRowBase {
+  item: { path: string; index: number; key: string }
+  path?: undefined
+  derived?: undefined
 }
 
 /**
@@ -37,17 +47,16 @@ interface PersonDerivedRow extends PersonRowBase {
  * answer the same question, so the row's `path` (or `derived` id) is shared and only the field names
  * and encoders differ (checkbox on-states often do).
  */
-export type PersonRow = PersonAnswerRow | PersonDerivedRow
+export type PersonRow = PersonAnswerRow | PersonDerivedRow | PersonItemRow
+
+function sourceFor(row: PersonRow, person: 0 | 1): Source {
+  if (row.derived !== undefined) return { kind: "derived", id: row.derived, person }
+  if (row.item !== undefined) return { kind: "row", stepId: row.stepId, ...row.item, person }
+  return { kind: "answer", stepId: row.stepId, path: row.path, person }
+}
 
 function entryFor(row: PersonRow, column: PersonColumn, person: 0 | 1): FieldEntry {
-  return {
-    fields: column.fields,
-    source:
-      row.derived !== undefined
-        ? { kind: "derived", id: row.derived, person }
-        : { kind: "answer", stepId: row.stepId, path: row.path, person },
-    encode: column.encode,
-  }
+  return { fields: column.fields, source: sourceFor(row, person), encode: column.encode }
 }
 
 /** Expands the table into plain map entries: the `p1` column reads Person 1, the `p2` column Person 2. */
@@ -66,8 +75,9 @@ const CHECK = { kind: "check" } as const
 const one = (field: string, encode: Encoder): PersonColumn => ({ fields: [field], encode })
 
 /**
- * Person 1 and Person 2 questions. Form pages 1-3 (Person 1: intake page through Q11d) are mapped;
- * later regions add rows and the `p2` columns.
+ * Person 1 and Person 2 questions. Form pages 1-3 (Person 1: intake page through Q11d) are mapped here
+ * and pages 4-6 (Q11 filer details through yearly income) in person1-b.ts; later regions add rows and
+ * the `p2` columns.
  */
 export const PERSON_TABLE: PersonRow[] = [
   // Step 1 (form page 1) and Step 2 (form page 2) each repeat the name on their own line
@@ -173,7 +183,8 @@ export const PERSON_TABLE: PersonRow[] = [
     stepId: "person1",
     p1: one("11. do you agree to file a federal tax return for the tax year that the credits are received?", YES_NO_1_2),
   },
-  { path: "isLegallyMarried", stepId: "person1", p1: one("Are you legally married?", YES_NO_1_2) },
+  // "If No (to Q11), skip to question d": the married question is only written when Q11 is Yes
+  { derived: "tax.isLegallyMarried", stepId: "person1", p1: one("Are you legally married?", YES_NO_1_2) },
   { derived: "tax.spouseNameAndDob", stepId: "person1", p1: one("If Yes, list name of spouse and date of birth", "text") },
   {
     path: "tax.plansJointReturn",
@@ -194,4 +205,7 @@ export const PERSON_TABLE: PersonRow[] = [
   // The template names this field "How are you related to the tax filer"; its printed label (and
   // position, after "If Yes, please list the name of the tax filer.") is the tax filer's NAME.
   { path: "tax.taxFiler.name", stepId: "person1", p1: one("How are you related to the tax filer", "text") },
+
+  // Form pages 4-6 (Q11e filer details through the yearly income)
+  ...PERSON1_B_ROWS,
 ]

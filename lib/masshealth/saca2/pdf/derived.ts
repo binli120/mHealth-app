@@ -4,6 +4,7 @@
  */
 
 import {
+  DEDUCTION_KEYS,
   ETHNICITY_KEYS,
   ETHNICITY_LABELS,
   RACE_KEYS,
@@ -11,9 +12,12 @@ import {
   type EthnicityKey,
   type RaceKey,
 } from "../demographic-options"
+import { IMMIGRATION_DOCUMENT_OPTIONS, IMMIGRATION_STATUS_OPTIONS } from "../questions/immigration-options"
+import type { Saca2Option } from "../questions/types"
 import { isStepVisible } from "../visibility"
+import { INCOME_DERIVED } from "./derived-income"
 import { encodeText } from "./encoders"
-import type { DerivedRegistry } from "./pdf-fill"
+import type { DerivedRegistry, DerivedResolver } from "./pdf-fill"
 import type { VisibleReader } from "./visible-reader"
 
 type PersonIndex = 0 | 1
@@ -93,7 +97,27 @@ function dateText(value: unknown): string {
   return encodeText("date", value) ?? ""
 }
 
+function optionLabel(options: readonly Saca2Option[], raw: unknown): string | undefined {
+  return options.find((option) => option.value === raw)?.label
+}
+
+/** Rows of a name + date-of-birth repeater as one line: "Name MM/DD/YYYY", rows joined with "; ". */
+function nameDobLine(reader: VisibleReader, person: PersonIndex, path: string): string | undefined {
+  const stepId = person === 1 ? "person2" : "person1"
+  const count = reader.rows(stepId, path, person)
+  const rows: string[] = []
+  for (let index = 0; index < count; index += 1) {
+    const name = reader.get({ kind: "row", stepId, path, index, key: "name", person })
+    const dob = reader.get({ kind: "row", stepId, path, index, key: "dateOfBirth", person })
+    const line = [typeof name === "string" ? name.trim() : "", dateText(dob)].filter((part) => part !== "").join(" ")
+    if (line !== "") rows.push(line)
+  }
+  return rows.length === 0 ? undefined : rows.join("; ")
+}
+
 export const DERIVED: DerivedRegistry = {
+  ...INCOME_DERIVED,
+
   "person.fullName": (reader, _answers, _on, person) => fullName(reader, requirePerson(person, "person.fullName")),
 
   /** "# of people listed on the application": everyone with a Person block on this application. */
@@ -128,17 +152,49 @@ export const DERIVED: DerivedRegistry = {
   },
 
   /** Q11c: the form has one line for all dependents; rows read "Name MM/DD/YYYY", separated by "; ". */
-  "tax.dependentsList": (reader, _answers, _on, person) => {
-    const p = requirePerson(person, "tax.dependentsList")
-    const stepId = p === 1 ? "person2" : "person1"
-    const count = reader.rows(stepId, "tax.dependents", p)
-    const rows: string[] = []
-    for (let index = 0; index < count; index += 1) {
-      const name = reader.get({ kind: "row", stepId, path: "tax.dependents", index, key: "name", person: p })
-      const dob = reader.get({ kind: "row", stepId, path: "tax.dependents", index, key: "dateOfBirth", person: p })
-      const line = [typeof name === "string" ? name.trim() : "", dateText(dob)].filter((part) => part !== "").join(" ")
-      if (line !== "") rows.push(line)
-    }
-    return rows.length === 0 ? undefined : rows.join("; ")
+  "tax.dependentsList": (reader, _answers, _on, person) =>
+    nameDobLine(reader, requirePerson(person, "tax.dependentsList"), "tax.dependents"),
+
+  /** Q11a "Are you legally married?": the form says "If No, skip to question d" when Q11 is No. */
+  "tax.isLegallyMarried": (reader, _answers, _on, person) => {
+    const p = requirePerson(person, "tax.isLegallyMarried")
+    return readPerson(reader, p, "tax.agreesToFileIfAptc") === "yes" ? readPerson(reader, p, "isLegallyMarried") : undefined
   },
+
+  /** Q11e tax filer: the form has one line for "the spouse's name and date of birth". */
+  "tax.filerSpouseNameAndDob": (reader, _answers, _on, person) => {
+    const p = requirePerson(person, "tax.filerSpouseNameAndDob")
+    const name = readString(reader, p, "tax.taxFiler.spouseName")
+    const dob = dateText(readPerson(reader, p, "tax.taxFiler.spouseDateOfBirth"))
+    return [name, dob].filter((part) => part !== "").join(", ") || undefined
+  },
+
+  /** Q13b: the form's immigration status and document type are written as the names on its page-32 list. */
+  "immigration.statusLabel": (reader, _answers, _on, person) =>
+    optionLabel(IMMIGRATION_STATUS_OPTIONS, readPerson(reader, requirePerson(person, "immigration.statusLabel"), "immigrationStatus")),
+  "immigration.documentTypeLabel": (reader, _answers, _on, person) =>
+    optionLabel(
+      IMMIGRATION_DOCUMENT_OPTIONS,
+      readPerson(reader, requirePerson(person, "immigration.documentTypeLabel"), "immigrationDocumentType"),
+    ),
+  /** Q13b "Do you have an immigration document?": Yes once a document type is on file (the wizard requires one). */
+  "immigration.hasDocument": (reader, _answers, _on, person) => {
+    const type = readString(reader, requirePerson(person, "immigration.hasDocument"), "immigrationDocumentType")
+    return type === "" ? undefined : "yes"
+  },
+
+  /** Q15: the form has one line for the children's names and dates of birth. */
+  "household.caregiverChildren": (reader, _answers, _on, person) =>
+    nameDobLine(reader, requirePerson(person, "household.caregiverChildren"), "caregiverChildren"),
+
+  /** Q32: a deduction box is ticked when its yearly amount is filled (amounts are hidden under "None"). */
+  ...Object.fromEntries(
+    DEDUCTION_KEYS.map((key) => [
+      `deductions.${key}.checked`,
+      ((reader, _answers, _on, person) =>
+        typeof readPerson(reader, requirePerson(person, `deductions.${key}.checked`), `deductions.amounts.${key}`) === "number"
+          ? true
+          : undefined) as DerivedResolver,
+    ]),
+  ),
 }

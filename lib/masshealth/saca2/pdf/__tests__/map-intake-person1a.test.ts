@@ -9,12 +9,14 @@ import { completeFacilityCouple, completeRichHousehold } from "../../__tests__/c
 import type { Saca2Answers } from "../../types"
 import { FIELD_MAP } from "../field-map"
 import { PERSON_TABLE, expandPersonTable } from "../field-map/person-table"
+import { getFieldInfo } from "../inventory"
 import { fillSaca2Pdf } from "../pdf-fill"
 import { readFilled, type FilledValues } from "./helpers/read-filled"
 
 const ON = new Date("2026-10-13T12:00:00Z")
 const SENTINEL = "STALE-SENTINEL"
-const MAPPED = new Set(FIELD_MAP.flatMap((e) => e.fields))
+/** This region only: fields on form pages 1-3 (PDF indexes 2-4); later regions are tested in their own files. */
+const MAPPED = new Set(FIELD_MAP.flatMap((e) => e.fields).filter((name) => getFieldInfo(name)!.pages.every((page) => page <= 4)))
 
 const NAME_1 = "1 First name middle name last name and suffix"
 const NAME_2 = "1 First name middle name last name and suffix_2"
@@ -352,6 +354,20 @@ describe("stale answers never reach the intake and Person 1 pages", () => {
     expect(values.checks).not.toHaveProperty([JOINT])
     expect(values.checks[MARRIED]).toBe("2")
     expectNoSentinel(values)
+  })
+
+  it("Q11 'no' skips Q11a: the married answer stays off the form, even though it is still answered", async () => {
+    const a = completeRichHousehold()
+    expect(a.persons[0].isLegallyMarried).toBe("yes")
+    a.persons[0].tax = { ...a.persons[0].tax, agreesToFileIfAptc: "no", spouseName: SENTINEL }
+    const values = await fillRegion(a)
+    expect(values.checks[AGREES]).toBe("2")
+    expect(values.checks).not.toHaveProperty([MARRIED])
+    expect(values.checks).not.toHaveProperty([JOINT])
+    expectNoSentinel(values)
+
+    a.persons[0].tax = { ...a.persons[0].tax, agreesToFileIfAptc: "yes" }
+    expect((await fillRegion(a)).checks[MARRIED]).toBe("1")
   })
 
   it("hasSsn 'no' leaves the SSN boxes and the card-name answers empty", async () => {

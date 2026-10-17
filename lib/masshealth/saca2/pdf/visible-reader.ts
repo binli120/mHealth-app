@@ -112,13 +112,16 @@ export function createVisibleReader(answers: Saca2Answers, on: Date): VisibleRea
       }
 
       const located = locateRepeater(source.stepId, source.path, source.person)
-      const itemQuestion = findQuestion(located.repeater.questions, source.key)
+      // `key` names an item question by id first (income rows reuse one row field, e.g. `description`,
+      // under several ids with different visibility), then by path; the value is stored under the path.
+      const itemQuestion =
+        located.repeater.questions.find((q) => q.id === source.key) ?? findQuestion(located.repeater.questions, source.key)
       if (!itemQuestion) throw new Error(`No item question "${source.key}" in repeater "${source.path}"`)
       const read = readRows(located, source.path)
       const row = read?.rows[source.index]
       if (!read || row === null || typeof row !== "object") return undefined
       if (!isQuestionVisible(itemQuestion, { ...read.ctx, item: row })) return undefined
-      return row[source.key]
+      return row[itemQuestion.path]
     },
 
     rows(stepId, path, person) {

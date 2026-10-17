@@ -33,4 +33,10 @@ export const NEVER_FILL: Record<string, { reason: NeverFillReason; note?: string
   "Organization name": { reason: "other", note: "Enrollment assisters only: organization name" },
   "Organization identification number": { reason: "other", note: "Enrollment assisters only: organization id" },
   "Organization phone number": { reason: "other", note: "Enrollment assisters only: organization phone" },
+
+  // Form page 4 (PDF index 5)
+  "Alien number_2": {
+    reason: "other",
+    note: "Q13b alien number on the immigration document line; the wizard asks the alien number only for naturalized citizens (Q12)",
+  },
 }

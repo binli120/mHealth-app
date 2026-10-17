@@ -139,6 +139,23 @@ describe("createVisibleReader: repeater rows", () => {
     expect(r.get(bank(0, "currentBalance"))).toBeUndefined() // closed account: current balance hidden
   })
 
+  it("selects an item question by id when several share one row field (income `description`)", () => {
+    const a = completeRichHousehold()
+    const row = (index: number, key: string) =>
+      ({ kind: "row", stepId: "person1", path: "income", index, key, person: 0 }) as const
+    // row 1 is self-employment, row 2 a pension: each reads the same stored `description` under its own variant
+    let r = createVisibleReader(a, ON)
+    expect(r.get(row(1, "description"))).toBe("House cleaning")
+    expect(r.get(row(2, "description.pension"))).toBe("Brazilian pension fund")
+    expect(r.get(row(2, "description"))).toBeUndefined() // the self-employment wording is hidden on a pension row
+    expect(r.get(row(1, "description.pension"))).toBeUndefined()
+
+    a.persons[0].income[2].kind = "otherTaxable"
+    r = createVisibleReader(a, ON)
+    expect(r.get(row(2, "description.pension"))).toBeUndefined()
+    expect(r.get(row(2, "description.otherTaxable"))).toBe("Brazilian pension fund")
+  })
+
   it("returns undefined for a row index that does not exist", () => {
     const a = completeFacilityCouple()
     expect(createVisibleReader(a, ON).get(bank(5, "institution"))).toBeUndefined()
