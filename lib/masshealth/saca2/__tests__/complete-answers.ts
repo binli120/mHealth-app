@@ -188,6 +188,139 @@ export function completeFacilityCouple(): Saca2Answers {
   return a
 }
 
+/**
+ * A married couple under 65, both applying. Person 1 is a noncitizen with an eligible status and exercises every
+ * newer Person-block area: demographics, tax chain, household extras, income row details, rental, one-time income,
+ * and deductions. Person 2 is a citizen with no income. Fresh objects on every call.
+ */
+export function completeRichHousehold(): Saca2Answers {
+  const a = emptySaca2Answers()
+  a.intake.programs.masshealthHsn = true
+
+  const p1 = completePerson(a.persons[0], {
+    firstName: "Maria",
+    middleName: "Q",
+    dateOfBirth: "1985-06-15",
+    sexAtBirth: "female",
+    isLegallyMarried: "yes",
+    hasSsn: "yes",
+    ssn: "123-45-6789",
+    nameMatchesSsnCard: "no",
+    ssnCardName: "Maria Quinn Testcase",
+    usCitizenOrNational: "no",
+    naturalizedCitizen: null,
+    hasEligibleImmigrationStatus: "yes",
+    immigrationStatus: "lawful-permanent-resident",
+    immigrationDocumentType: "permanent-resident-card-green-card-i-551",
+    immigrationDocumentId: "A000000001",
+    immigrationDocumentExpiry: "2030-01-31",
+    isLprCheCofa: "yes",
+    immigrationStatusDate: "2015-03-01",
+    immigrationCountry: "Brazil",
+    immigrationSameName: "yes",
+    arrivedAfterAug1996: "yes",
+    isVeteranOrMilitaryFamily: "no",
+    isTraffickingOrBatteredVictim: "no",
+    caregiverOfChildUnder19: "yes",
+    caregiverChildren: [{ name: "Lucas Testcase", dateOfBirth: "2015-09-09" }],
+    pregnant: "yes",
+    babiesExpected: 1,
+    dueDate: "2027-01-20",
+    everInFosterCare: "yes",
+    fosterCareState: "MA",
+    fosterCareMedicaid: "yes",
+    rentOrOwn: "rent",
+    needsAccommodation: "yes",
+    accommodationOther: "",
+    hasMedicareOrSsiOrSsdi: "no",
+    hasIncome: "yes",
+    expectedIncomeThisYear: 60000,
+    expectedIncomeNextYear: null,
+  })
+  p1.demographics.genderIdentity.female = true
+  p1.demographics.sexualOrientation.straight = true
+  p1.demographics.hispanicOrLatino = "yes"
+  p1.demographics.race.white = true
+  p1.demographics.ethnicity.brazilian = true
+  p1.tax = {
+    ...p1.tax,
+    agreesToFileIfAptc: "yes",
+    spouseName: "Pedro Testcase",
+    spouseDateOfBirth: "1983-02-02",
+    plansJointReturn: "yes",
+    claimsDependents: "yes",
+    dependents: [{ name: "Lucas Testcase", dateOfBirth: "2015-09-09" }],
+    claimedAsDependent: "no",
+    filingSeparatelyAbuse: "no",
+  }
+  p1.accommodationConditions.lowVision = true
+  p1.accommodations.largePrint = true
+  p1.income = [
+    {
+      kind: "wages",
+      amount: 2000,
+      frequency: "monthly",
+      employerNameAndAddress: "Acme, 9 Work Rd, Testville MA",
+      hoursPerWeek: 30,
+      effectiveDate: "2026-01-05",
+      seasonal: "yes",
+      seasonJun: true,
+      seasonJul: true,
+      seasonAug: true,
+    },
+    { kind: "selfEmployment", amount: 800, frequency: null, hoursPerWeek: 10, description: "House cleaning" },
+    { kind: "pension", amount: 300, frequency: "monthly", description: "Brazilian pension fund" },
+    { kind: "capitalGains", amount: 100, frequency: null },
+  ] as Saca2Person["income"]
+  p1.rental = {
+    ...p1.rental,
+    hasRentalIncome: "yes",
+    realEstateType: "twoFamily",
+    units: [
+      { address: "12 Rental Ave, Testville MA", unit: "1", amount: 1100, isLoss: false, ownerOccupied: "no" },
+      { address: "12 Rental Ave, Testville MA", unit: "2", amount: 900, isLoss: false, ownerOccupied: "yes" },
+    ],
+    paysHeatOrUtilities: "no",
+  }
+  p1.oneTimeIncome = {
+    thisYear: "yes",
+    thisYearItems: [{ type: "Insurance settlement", amount: 2500, month: 3, year: 2026 }],
+    nextYear: "yes",
+    nextYearItems: [{ type: "Lump-sum pension payment", amount: 4000, month: 2, year: 2027 }],
+  }
+  p1.deductions = {
+    none: false,
+    amounts: { ...p1.deductions.amounts, hsa: 1500, studentLoanInterest: 600 },
+  }
+  a.persons[0] = p1
+
+  a.persons.push(
+    completePerson(emptySaca2Person(), {
+      firstName: "Pedro",
+      lastName: "Testcase",
+      dateOfBirth: "1983-02-02",
+      sexAtBirth: "male",
+      relationshipToPerson1: "spouse",
+      livesWithPerson1: "yes",
+      isLegallyMarried: "yes",
+      hasSsn: "yes",
+      ssn: "123-45-6780",
+      nameMatchesSsnCard: "yes",
+      hasMedicareOrSsiOrSsdi: "no",
+    }),
+  )
+
+  a.aian.anyMember = "no"
+  a.previousMedicalBills.hasBills = "no"
+  setAllGates(a, "no")
+  a.health.employerOfferedCoverage = "no"
+  a.health.hasOtherCoverage = "no"
+  a.health.hra.anyoneOffered = "no"
+  a.pca.needsPca = "no"
+  a.signature.signedBy = "applicant"
+  return a
+}
+
 /** A 76-year-old at home with an HCBS Waiver who triggers Supplements A–D, the ARD, and the IRS 4506. */
 export function completeHomeWithAllSupplements(): Saca2Answers {
   const a = completeSingleSenior()
