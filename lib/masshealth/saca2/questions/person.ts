@@ -21,6 +21,7 @@ import {
 } from "./builders"
 import { IMMIGRATION_DOCUMENT_OPTIONS, IMMIGRATION_STATUS_OPTIONS } from "./immigration-options"
 import { INCOME_FREQUENCIES } from "./options"
+import { DEMOGRAPHICS_SECTION, validateDemographics } from "./person-demographics"
 import { applying, isSecondPerson, person, who } from "./person-context"
 import type { Saca2QuestionContext, Saca2StepContent } from "./types"
 
@@ -57,6 +58,9 @@ function validateDateOfBirth(value: unknown, ctx: Saca2QuestionContext): string 
 
 export const PERSON_STEP_CONTENT: Saca2StepContent = {
   scope: "person",
+  validateStep: (answers, personIndex) => ({
+    ...validateDemographics(answers, personIndex),
+  }),
   sections: [
     {
       id: "who",
@@ -136,6 +140,7 @@ export const PERSON_STEP_CONTENT: Saca2StepContent = {
         }),
       ],
     },
+    DEMOGRAPHICS_SECTION,
     {
       id: "status",
       title: "Identity, citizenship, and residency",

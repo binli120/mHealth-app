@@ -3,7 +3,6 @@
  * @email: blee@comura.ai
  */
 
-/** Draft schema version stored with every SACA-2 draft. */
 import {
   ACCOMMODATION_CONDITION_KEYS,
   ACCOMMODATION_KEYS,
@@ -22,6 +21,7 @@ import {
   type SexualOrientationKey,
 } from "./demographic-options"
 
+/** Draft schema version stored with every SACA-2 draft. */
 export const SACA2_SCHEMA_VERSION = "saca2-2026-08"
 /** Form code exactly as printed in the PDF footer. */
 export const SACA2_FORM_CODE = "SACA-2_2026-08"
