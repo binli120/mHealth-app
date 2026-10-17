@@ -39,4 +39,11 @@ export const NEVER_FILL: Record<string, { reason: NeverFillReason; note?: string
     reason: "other",
     note: "WIZARD GAP, not a deliberate skip: 13b asks a noncitizen for the alien number on the immigration document, but the wizard asks the alien number only for naturalized citizens (Q12); add a wizard question or decide at Task 13",
   },
+
+  // Person 2's pages (form pages 7-11, PDF indexes 8-12)
+  "12 County_P2": { reason: "other", note: "Q12 under Person 2's mailing address; the wizard has no mailing county question (same as Person 1's `15 County`)" },
+  "Alien number_P2": {
+    reason: "other",
+    note: "WIZARD GAP, not a deliberate skip: Person 2's 23b asks a noncitizen for the alien number on the immigration document, but the wizard asks the alien number only for naturalized citizens (same as Person 1's `Alien number_2`); add a wizard question or decide at Task 13",
+  },
 }

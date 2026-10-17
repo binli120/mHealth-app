@@ -32,6 +32,10 @@ const needsMailingAddress = (ctx: Saca2QuestionContext) => {
   return Boolean(p?.noHomeAddress) || !p?.mailingSameAsStreet
 }
 
+/** Alien and certificate numbers belong to a citizen who is naturalized; a stale "yes" after a flip to noncitizen must not show them. */
+const naturalized = (ctx: Saca2QuestionContext) =>
+  applying(ctx) && person(ctx)?.usCitizenOrNational === "yes" && person(ctx)?.naturalizedCitizen === "yes"
+
 function validateDateOfBirth(value: unknown, ctx: Saca2QuestionContext): string | null {
   if (typeof value !== "string") return null
   if (value < "1900-01-01") return "Enter a date of birth in 1900 or later."
@@ -160,10 +164,10 @@ export const PERSON_STEP_CONTENT: Saca2StepContent = {
           visibleWhen: (ctx) => applying(ctx) && person(ctx)?.usCitizenOrNational === "yes",
         }),
         text("alienNumber", "Alien number", {
-          visibleWhen: (ctx) => applying(ctx) && person(ctx)?.naturalizedCitizen === "yes",
+          visibleWhen: naturalized,
         }),
         text("citizenshipCertificateNumber", "Naturalization or citizenship certificate number", {
-          visibleWhen: (ctx) => applying(ctx) && person(ctx)?.naturalizedCitizen === "yes",
+          visibleWhen: naturalized,
         }),
         yesNo("hasEligibleImmigrationStatus", "Do they have an eligible immigration status?", {
           required: true,

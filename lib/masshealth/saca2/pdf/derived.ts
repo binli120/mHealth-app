@@ -124,6 +124,18 @@ export const DERIVED: DerivedRegistry = {
   "application.peopleListed": (_reader, answers, on) =>
     1 + (isStepVisible("person2", answers, on) && answers.persons[1] !== undefined ? 1 : 0),
 
+  /**
+   * Person 2's Q5 "If No, provide street address": one line, only when "Does this person live with
+   * Person 1?" is No. The wizard asks the address in parts, so the line joins them.
+   */
+  "person.homeAddressLine": (reader, _answers, _on, person) => {
+    const p = requirePerson(person, "person.homeAddressLine")
+    if (readPerson(reader, p, "livesWithPerson1") !== "no") return undefined
+    const stateZip = [readString(reader, p, "state"), readString(reader, p, "zip")].filter((part) => part !== "").join(" ")
+    const parts = [readString(reader, p, "streetAddress"), readString(reader, p, "apartment"), readString(reader, p, "city"), stateZip]
+    return parts.filter((part) => part !== "").join(", ") || undefined
+  },
+
   "intake.names.masshealth.you": programLine(["masshealthHsn"], "you"),
   "intake.names.masshealth.spouse": programLine(["masshealthHsn"], "spouse"),
   "intake.names.healthConnector.you": programLine(["healthConnector"], "you"),

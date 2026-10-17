@@ -260,7 +260,7 @@ const row = (item: Partial<Saca2IncomeItem> & Pick<Saca2IncomeItem, "kind">): Sa
 })
 
 describe("PERSON1_B_ROWS", () => {
-  it("expands a repeater-item row into a row source and keeps the Person 1 column only", () => {
+  it("expands a repeater-item row into a row source for each person", () => {
     const entries = expandPersonTable(PERSON1_B_ROWS)
     const address = entries.find((e) => e.fields[0] === UNIT_2.address)
     expect(address?.source).toEqual({
@@ -271,8 +271,15 @@ describe("PERSON1_B_ROWS", () => {
       key: "address",
       person: 0,
     })
+    expect(entries.find((e) => e.fields[0] === "39b. Address_4")?.source).toEqual({
+      kind: "row",
+      stepId: "person1",
+      path: "rental.units",
+      index: 1,
+      key: "address",
+      person: 1,
+    })
     expect(entries.find((e) => e.fields[0] === "10 City_P2")).toBeUndefined()
-    expect(entries.every((e) => e.source.person === 0)).toBe(true)
   })
 
   it("maps each Q31 box to its own state and every frequency box to a single value", () => {
