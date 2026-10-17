@@ -24,6 +24,7 @@ import {
 } from "@/lib/masshealth/saca2/wizard-state"
 import { restorePhiDraftState } from "@/lib/phi-token/restore"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { Saca2SaveStatus, type Saca2SaveStatusValue } from "./saca2-save-status"
 import { Saca2StepForm } from "./saca2-step-form"
 
 interface Saca2WizardProps {
@@ -39,6 +40,10 @@ interface PendingResume {
 
 const AUTOSAVE_DELAY_MS = 700
 const FAILURE_BACKOFF_MS = 15_000
+// Retrying the same request cannot succeed (or isn't the client's to fix): no backoff, and never blocks Save & Exit.
+const FATAL_SAVE_STATUSES = new Set([400, 403, 409, 413, 422])
+
+type SaveResult = "saved" | "retryable" | "fatal"
 
 function toRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
@@ -51,11 +56,13 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
   const [pendingResume, setPendingResume] = useState<PendingResume | null>(null)
   const [saveExitOpen, setSaveExitOpen] = useState(false)
   const [restoreError, setRestoreError] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<Saca2SaveStatusValue>("idle")
 
   const stateRef = useRef(state)
   const backoffUntilRef = useRef(0)
   const lastSavedKeyRef = useRef<string | null>(null)
-  const chainRef = useRef<Promise<boolean>>(Promise.resolve(true))
+  const chainRef = useRef<Promise<SaveResult>>(Promise.resolve("saved"))
+  const saveSeqRef = useRef(0)
 
   useEffect(() => {
     stateRef.current = state
@@ -136,49 +143,78 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
   }, [applicationId, actingForPatientId, headers])
 
   // ── Autosave the PHI-free snapshot ──
-  const doSave = useCallback(async (): Promise<boolean> => {
-    if (Date.now() < backoffUntilRef.current) return false
+  // Only the most recently STARTED save may set the final status, so a slow older save can't overwrite it.
+  const doSave = useCallback(
+    async (options?: { force?: boolean }): Promise<SaveResult> => {
+      const force = options?.force === true
+      // Autosave pauses during the backoff; a forced save (Retry, Save & Exit) never waits for it.
+      if (!force && Date.now() < backoffUntilRef.current) return "retryable"
 
-    // Read the latest state when this save STARTS so queued saves send the newest edits.
-    const sentState = stateRef.current
-    const sentKey = buildSaca2SaveKey(sentState)
-    const markSavedIfCurrent = () => {
-      if (buildSaca2SaveKey(stateRef.current) === sentKey) dispatch({ type: "mark_saved" })
-    }
-    if (sentKey === lastSavedKeyRef.current) {
-      markSavedIfCurrent()
-      return true
-    }
-
-    try {
-      const { safeState } = splitWizardState(buildSaca2Snapshot(sentState))
-      const response = await authenticatedFetch(`/api/applications/${encodeURIComponent(applicationId)}/draft`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", ...headers },
-        body: JSON.stringify({ applicationType: "saca2", wizardState: safeState }),
-      })
-      if (!response.ok) {
-        if (response.status >= 500 || response.status === 429) {
-          backoffUntilRef.current = Date.now() + FAILURE_BACKOFF_MS
-        }
-        return false
+      // Read the latest state when this save STARTS so queued saves send the newest edits.
+      const sentState = stateRef.current
+      const sentKey = buildSaca2SaveKey(sentState)
+      const seq = ++saveSeqRef.current
+      const finish = (status: Saca2SaveStatusValue) => {
+        if (saveSeqRef.current === seq) setSaveStatus(status)
       }
-      backoffUntilRef.current = 0
-      lastSavedKeyRef.current = sentKey
-      markSavedIfCurrent()
-      return true
-    } catch {
-      backoffUntilRef.current = Date.now() + FAILURE_BACKOFF_MS
-      return false
-    }
-  }, [applicationId, headers])
+      // "Saved" only if no newer edit has changed the snapshot since this save started.
+      const markSavedIfCurrent = () => {
+        if (buildSaca2SaveKey(stateRef.current) === sentKey) {
+          dispatch({ type: "mark_saved" })
+          finish("saved")
+        } else {
+          finish("idle")
+        }
+      }
+      if (sentKey === lastSavedKeyRef.current) {
+        markSavedIfCurrent()
+        return "saved"
+      }
 
-  // Chain saves so two PUTs never overlap or complete out of order.
-  const saveDraftNow = useCallback((): Promise<boolean> => {
-    const run = chainRef.current.then(doSave, doSave)
-    chainRef.current = run.catch(() => false)
-    return run
-  }, [doSave])
+      setSaveStatus("saving")
+      try {
+        const { safeState } = splitWizardState(buildSaca2Snapshot(sentState))
+        const response = await authenticatedFetch(`/api/applications/${encodeURIComponent(applicationId)}/draft`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", ...headers },
+          body: JSON.stringify({ applicationType: "saca2", wizardState: safeState }),
+        })
+        if (!response.ok) {
+          finish("error")
+          if (FATAL_SAVE_STATUSES.has(response.status)) return "fatal"
+          // 429, 5xx and anything else unexpected: pause autosave (a forced save ignores this).
+          backoffUntilRef.current = Date.now() + FAILURE_BACKOFF_MS
+          return "retryable"
+        }
+        backoffUntilRef.current = 0
+        lastSavedKeyRef.current = sentKey
+        markSavedIfCurrent()
+        return "saved"
+      } catch {
+        backoffUntilRef.current = Date.now() + FAILURE_BACKOFF_MS
+        finish("error")
+        return "retryable"
+      }
+    },
+    [applicationId, headers],
+  )
+
+  // Chain saves so two PUTs never overlap or complete out of order (forced saves included).
+  const saveDraftNow = useCallback(
+    (options?: { force?: boolean }): Promise<SaveResult> => {
+      const run = chainRef.current.then(() => doSave(options), () => doSave(options))
+      chainRef.current = run.catch((): SaveResult => "retryable")
+      return run
+    },
+    [doSave],
+  )
+
+  const handleRetrySave = useCallback(() => {
+    void saveDraftNow({ force: true })
+  }, [saveDraftNow])
+
+  // Save & Exit: a non-retryable 4xx must not trap the user (the encrypted blob holds the full state).
+  const handleBeforeSecureSave = useCallback(async () => (await saveDraftNow({ force: true })) !== "retryable", [saveDraftNow])
 
   useEffect(() => {
     if (!hydrated || !state.dirty) return
@@ -293,6 +329,8 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
             onChange={(path, value) => dispatch({ type: "set_answer", path, value })}
           />
 
+          <Saca2SaveStatus status={saveStatus} onRetry={handleRetrySave} />
+
           <div className="flex items-center justify-between gap-3">
             {currentIndex > 0 ? (
               <Button type="button" variant="outline" onClick={handleBack}>
@@ -318,7 +356,7 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
         applicationId={applicationId}
         wizardState={buildSaca2Snapshot(state)}
         actingForPatientId={actingForPatientId}
-        onBeforeSecureSave={() => saveDraftNow()}
+        onBeforeSecureSave={handleBeforeSecureSave}
         onExit={() => {
           setSaveExitOpen(false)
           dispatch({ type: "mark_phi_secured" })
