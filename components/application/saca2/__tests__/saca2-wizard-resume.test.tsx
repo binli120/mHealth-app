@@ -33,6 +33,7 @@ vi.mock("@/components/application/phi-save-exit-dialog", () => ({
       >
         restore-resume
       </button>
+      {/* Relies on normalizeRestoredSaca2State rejecting { data: "x" }. */}
       <button type="button" onClick={() => onRestored({ data: "x" })}>
         restore-resume-bad
       </button>
@@ -87,8 +88,6 @@ describe("Saca2Wizard: blocking resume prompt", () => {
     expect(screen.queryByRole("button", { name: "Next" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Back" })).not.toBeInTheDocument()
     expect(screen.queryByText(/changes saved|saving/i)).not.toBeInTheDocument()
-    // The only Save & Exit left is none: the layout one is hidden so it cannot open over an unresolved resume.
-    expect(screen.queryByRole("button", { name: /save (&|and) exit/i })).not.toBeInTheDocument()
     // The step list sidebar stays.
     expect(screen.getAllByText(STEP_TITLES.intake).length).toBeGreaterThan(0)
   })
@@ -133,6 +132,31 @@ describe("Saca2Wizard: blocking resume prompt", () => {
     expect(screen.getByTestId("resume-prompt")).toBeInTheDocument()
     expect(screen.queryByRole("heading", { name: "About you" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Next" })).not.toBeInTheDocument()
+  })
+
+  it("clears the restore alert when the user skips after an invalid restore", async () => {
+    pendingDraft({ ...SERVER_STATE, currentStepId: "aian" })
+    render(<Saca2Wizard applicationId={APP_ID} />)
+    await screen.findByTestId("resume-prompt")
+    await userEvent.click(screen.getByRole("button", { name: "restore-resume-bad" }))
+    await screen.findByRole("alert")
+    await userEvent.click(screen.getByRole("button", { name: "skip-resume" }))
+    expect(
+      await screen.findByRole("heading", { name: "American Indian or Alaska Native household members" }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+  })
+
+  it.each([
+    [undefined, "/customer/dashboard"],
+    ["patient-9", "/social-worker/patients/patient-9/applications"],
+  ])("header Save & Exit only exits (acting for %s) while a resume is pending", async (patient, href) => {
+    pendingDraft(SERVER_STATE)
+    render(<Saca2Wizard applicationId={APP_ID} actingForPatientId={patient} />)
+    await screen.findByTestId("resume-prompt")
+    await userEvent.click(screen.getByRole("button", { name: /save (&|and) exit/i }))
+    expect(mocks.push).toHaveBeenCalledWith(href)
+    expect(screen.queryByTestId("save-exit-dialog")).not.toBeInTheDocument()
   })
 
   it("sends no autosave PUT while the prompt is pending", async () => {

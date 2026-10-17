@@ -310,8 +310,9 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
         currentStep={currentIndex + 1}
         title={STEP_TITLES[effectiveStepId]}
         contentClassName="max-w-3xl"
-        // While a resume is unresolved, Save & Exit must not open the dialog (it would snapshot the PHI-free state).
-        onSaveAndExit={pendingResume ? undefined : () => setSaveExitOpen(true)}
+        // While a resume is unresolved, the header Save & Exit just leaves (nothing is unsaved and the encrypted
+        // blob persists); it must not open the dialog over the prompt, and it must not fall back to the layout's link.
+        onSaveAndExit={pendingResume ? () => router.push(exitHref) : () => setSaveExitOpen(true)}
       >
         <div className="space-y-6">
           {restoreError ? (
@@ -327,7 +328,10 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
               actingForPatientId={actingForPatientId}
               serverState={pendingResume.serverState}
               onRestored={onResumeRestored}
-              onSkip={() => setPendingResume(null)}
+              onSkip={() => {
+                setRestoreError(false)
+                setPendingResume(null)
+              }}
             />
           ) : (
             <>
