@@ -180,3 +180,117 @@ export function completeFacilityCouple(): Saca2Answers {
   }
   return a
 }
+
+/** A 76-year-old at home with an HCBS Waiver who triggers Supplements A–D, the ARD, and the IRS 4506. */
+export function completeHomeWithAllSupplements(): Saca2Answers {
+  const a = completeSingleSenior()
+  a.intake.programs.hcbsWaiver = true
+  a.aian.anyMember = "yes"
+
+  // Step 6: a job offers coverage (Supplement D).
+  a.health.employerOfferedCoverage = "yes"
+
+  // Step 8: the PCA chain qualifies Person 1 (Supplement C).
+  a.pca.needsPca = "yes"
+  a.pca.paidByMassHealthLastSixMonths = "no"
+  a.pca.byPerson[0] = { permanentDisability: "yes", disabilityBlocksAdls: "yes", willContactPcmAgency: "yes" }
+
+  a.signature.signedBy = "authorizedRepresentative"
+
+  // Supplement A: HCBS Waiver (no nursing facility, so no facility or spouse sections).
+  const sa = a.supplements.a
+  sa.needsNursingFacility = "no"
+  sa.applyingHcbsWaiver = "yes"
+  sa.applyingPace = "no"
+  sa.transferAnswers = {
+    trust: "no",
+    income: "no",
+    assets: "no",
+    deed: "no",
+    lifeEstateLivedOneYear: null,
+    addedToDeed: "no",
+    loanOrNote: "no",
+    annuity: "no",
+  }
+  sa.facilityDeposit.gaveDeposit = "no"
+  sa.home.ownsHome = "no"
+  sa.home.ownsOtherRealEstate = "no"
+  sa.longTermCareInsurance.hasPolicy = "no"
+  sa.taxReturnsFiled = "oneYear"
+  sa.hasCopiesOfTaxReturns = "no"
+
+  // Supplement B.
+  a.supplements.b.members = [
+    {
+      name: "Edna Testcase",
+      federallyRecognizedTribe: "yes",
+      tribeName: "Example Tribe",
+      massRecognizedTribe: "no",
+      massTribeName: "",
+      receivedIhsService: "yes",
+      eligibleForIhs: null,
+      excludedIncomeAmount: null,
+      excludedIncomeFrequency: null,
+    },
+  ]
+
+  // Supplement C for Person 1.
+  const c = a.supplements.c[0]
+  c.healthProblems = ["Arthritis", "", ""]
+  for (const key of ["mobility", "medications", "bathing", "dressing", "rangeOfMotion", "eating", "toileting"] as const) {
+    c.activities[key] = { needsHandsOnHelp: "no", timesPerDay: null, daysPerWeek: null }
+  }
+  c.activities.bathing = { needsHandsOnHelp: "yes", timesPerDay: 1, daysPerWeek: 7 }
+  c.caregivers = [{ name: "Test Child", relationship: "daughter" }]
+
+  // Supplement D.
+  a.supplements.d.jobs = [
+    {
+      employeeName: "Edna Testcase",
+      employeeSsn: "",
+      eligibleWithinThreeMonths: "yes",
+      waitingPeriodEnds: null,
+      employerName: "Acme",
+      employerFederalTaxId: "",
+      employerAddress: "9 Work Rd",
+      employerCity: "Testville",
+      employerState: "MA",
+      employerZip: "02101",
+      employerPhone: "6175550100",
+      contactName: "HR",
+      contactPhone: "",
+      contactEmail: "",
+      individualPlanName: "Gold Individual",
+      individualMeetsMinimumValue: "yes",
+      individualPremium: 120,
+      individualPremiumFrequency: "monthly",
+      familyPlanName: "",
+      familyMeetsMinimumValue: null,
+      familyPremium: null,
+      familyPremiumFrequency: null,
+      upcomingChange: "none",
+      changeEndDate: null,
+      changePremium: null,
+      changePremiumFrequency: null,
+      changeDate: null,
+    },
+  ]
+
+  // ARD and IRS 4506.
+  a.attachments.ard = {
+    ...a.attachments.ard,
+    section: "applicantDesignates",
+    repKind: "person",
+    repName: "Quinn Rep",
+    repPhone: "6175550101",
+    repStreet: "3 Example St",
+    repCity: "Testville",
+    repState: "MA",
+    repZip: "02101",
+  }
+  a.persons[0].hasSsn = "yes"
+  a.persons[0].ssn = "123-45-6789"
+  a.attachments.irs4506.jointReturn = "no"
+  a.attachments.irs4506.yearsRequested = [{ periodEnd: "2025-12-31" }]
+  return a
+}
