@@ -370,6 +370,9 @@ describe("Saca2Wizard: married to not married", () => {
       needsAccommodation: "no" as const,
       hasIncome: "no" as const,
       income: [],
+      // The next-year one-time income and deductions questions are asked of every person.
+      oneTimeIncome: { thisYear: null, thisYearItems: [], nextYear: "no" as const, nextYearItems: [] },
+      deductions: { ...getSyntheticCase("couple-spouse-in-nursing-facility").answers.persons[0].deductions, none: true },
       // Person 1 is applying, so the Next click now validates the tax questions too.
       tax: {
         ...getSyntheticCase("couple-spouse-in-nursing-facility").answers.persons[0].tax,

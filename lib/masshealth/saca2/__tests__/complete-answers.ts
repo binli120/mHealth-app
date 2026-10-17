@@ -56,6 +56,8 @@ function completePerson(person: Saca2Person, overrides: Partial<Saca2Person>): S
     rentOrOwn: "rent",
     needsAccommodation: "no",
     hasIncome: "no",
+    oneTimeIncome: { ...person.oneTimeIncome, nextYear: "no" },
+    deductions: { ...person.deductions, none: true },
     tax: { ...person.tax, agreesToFileIfAptc: "no", claimedAsDependent: "no", filingSeparatelyAbuse: "no" },
     ...overrides,
   }

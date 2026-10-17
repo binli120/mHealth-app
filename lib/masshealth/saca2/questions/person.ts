@@ -21,6 +21,7 @@ import { DEMOGRAPHICS_SECTION, validateDemographics } from "./person-demographic
 import { IMMIGRATION_DETAIL_QUESTIONS, SSN_CARD_QUESTIONS } from "./person-identity"
 import { HOUSEHOLD_SECTION, validateAccommodations } from "./person-household"
 import { INCOME_SECTION } from "./person-income"
+import { DEDUCTIONS_SECTION, ONE_TIME_SECTION, RENTAL_SECTION, validateDeductions } from "./person-income-extras"
 import { TAX_SECTION } from "./person-tax"
 import { applying, isSecondPerson, person, who } from "./person-context"
 import type { Saca2QuestionContext, Saca2StepContent } from "./types"
@@ -43,6 +44,7 @@ export const PERSON_STEP_CONTENT: Saca2StepContent = {
   validateStep: (answers, personIndex) => ({
     ...validateDemographics(answers, personIndex),
     ...validateAccommodations(answers, personIndex),
+    ...validateDeductions(answers, personIndex),
   }),
   sections: [
     {
@@ -234,5 +236,8 @@ export const PERSON_STEP_CONTENT: Saca2StepContent = {
     TAX_SECTION,
     HOUSEHOLD_SECTION,
     INCOME_SECTION,
+    RENTAL_SECTION,
+    ONE_TIME_SECTION,
+    DEDUCTIONS_SECTION,
   ],
 }
