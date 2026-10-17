@@ -100,6 +100,14 @@ export class ApplicationDraftAccessError extends Error {
   }
 }
 
+/** An ACA-3-shaped write was refused because the stored application is a SACA-2 draft. */
+export class ApplicationDraftTypeConflictError extends Error {
+  constructor(message = "This application is a SACA-2 application and cannot be changed by this form.") {
+    super(message)
+    this.name = "ApplicationDraftTypeConflictError"
+  }
+}
+
 function isApplicationStatus(value: string): boolean {
   return APPLICATION_STATUS_SET.has(value)
 }
@@ -544,6 +552,15 @@ export async function upsertApplicationDraft(params: {
           ELSE public.applications.submitted_at
         END
       WHERE public.applications.applicant_id = $2::uuid
+        -- Never let a schemaVersion-less (ACA-3) write overwrite a SACA-2 row.
+        -- SACA-2 writes are never blocked, so they can still replace a leftover ACA-3 draft.
+        AND NOT (
+          (
+            public.applications.application_type = 'saca2'
+            OR jsonb_exists(public.applications.draft_state, 'schemaVersion')
+          )
+          AND NOT jsonb_exists($5::jsonb, 'schemaVersion')
+        )
       RETURNING
         id,
         status,
@@ -568,6 +585,21 @@ export async function upsertApplicationDraft(params: {
   )
 
   if (rows.length === 0) {
+    // Either the row is not owned by this applicant (access error) or the SACA-2
+    // guard blocked the update. Distinguish the two with one extra read.
+    const { rows: owned } = await pool.query(
+      `
+        SELECT id
+        FROM public.applications
+        WHERE id = $1::uuid
+          AND applicant_id = $2::uuid
+        LIMIT 1
+      `,
+      [params.applicationId, applicantId],
+    )
+    if (owned.length > 0) {
+      throw new ApplicationDraftTypeConflictError()
+    }
     throw new ApplicationDraftAccessError()
   }
 

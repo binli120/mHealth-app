@@ -40,6 +40,7 @@ import {
   deleteApplicationDraft,
 } from "@/lib/db/application-drafts"
 import { notifyStatusChange } from "@/lib/notifications/service"
+import { ERROR_DRAFT_TYPE_CONFLICT } from "@/app/api/applications/[applicationId]/draft/constants"
 
 const USER_ID = "11111111-1111-4111-8111-111111111111"
 const APPLICATION_ID = "22222222-2222-4222-8222-222222222222"
@@ -179,6 +180,18 @@ describe("PUT /api/applications/[applicationId]/draft — validation", () => {
       makeContext(APPLICATION_ID),
     )
     expect(res.status).toBe(403)
+  })
+
+  it("returns 409 when the draft store refuses an ACA-3 write to a SACA-2 application", async () => {
+    const conflict = new Error("This application is a SACA-2 application and cannot be changed by this form.")
+    conflict.name = "ApplicationDraftTypeConflictError"
+    vi.mocked(upsertApplicationDraft).mockRejectedValue(conflict)
+    const res = await PUT(
+      makePutRequest(JSON.stringify({ wizardState: {} })),
+      makeContext(APPLICATION_ID),
+    )
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({ ok: false, error: ERROR_DRAFT_TYPE_CONFLICT })
   })
 })
 
