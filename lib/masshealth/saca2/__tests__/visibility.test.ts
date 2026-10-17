@@ -334,6 +334,7 @@ describe("supplements B, C, D and attachments", () => {
   it("IRS 4506 appears only when returns were filed but copies were not kept", () => {
     const f = (filed: "bothYears" | "oneYear" | "neither" | null, copies: "yes" | "no" | null) =>
       answers((a) => {
+        a.intake.programs.longTermCare = true
         a.supplements.a.taxReturnsFiled = filed
         a.supplements.a.hasCopiesOfTaxReturns = copies
       })
@@ -342,5 +343,16 @@ describe("supplements B, C, D and attachments", () => {
     expect(isStepVisible("irs4506", f("bothYears", "yes"), ON)).toBe(false)
     expect(isStepVisible("irs4506", f("neither", "no"), ON)).toBe(false)
     expect(isStepVisible("irs4506", f(null, null), ON)).toBe(false)
+  })
+
+  it("IRS 4506 stays hidden when Supplement A is not shown, even with stale tax answers", () => {
+    const stale = answers((a) => {
+      a.intake.programs.longTermCare = false
+      a.intake.programs.hcbsWaiver = false
+      a.supplements.a.taxReturnsFiled = "oneYear"
+      a.supplements.a.hasCopiesOfTaxReturns = "no"
+    })
+    expect(isStepVisible("suppA", stale, ON)).toBe(false)
+    expect(isStepVisible("irs4506", stale, ON)).toBe(false)
   })
 })

@@ -122,7 +122,11 @@ export function isStepVisible(id: Saca2StepId, answers: Saca2Answers, on: Date =
       return answers.signature.signedBy === "authorizedRepresentative"
     case "irs4506": {
       const s = answers.supplements.a
-      return (s.taxReturnsFiled === "bothYears" || s.taxReturnsFiled === "oneYear") && s.hasCopiesOfTaxReturns === "no"
+      return (
+        showsSuppA(answers) &&
+        (s.taxReturnsFiled === "bothYears" || s.taxReturnsFiled === "oneYear") &&
+        s.hasCopiesOfTaxReturns === "no"
+      )
     }
   }
 }
