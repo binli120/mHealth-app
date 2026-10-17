@@ -22,6 +22,7 @@ import {
 import { IMMIGRATION_DOCUMENT_OPTIONS, IMMIGRATION_STATUS_OPTIONS } from "./immigration-options"
 import { INCOME_FREQUENCIES } from "./options"
 import { DEMOGRAPHICS_SECTION, validateDemographics } from "./person-demographics"
+import { IMMIGRATION_DETAIL_QUESTIONS, SSN_CARD_QUESTIONS } from "./person-identity"
 import { applying, isSecondPerson, person, who } from "./person-context"
 import type { Saca2QuestionContext, Saca2StepContent } from "./types"
 
@@ -165,6 +166,7 @@ export const PERSON_STEP_CONTENT: Saca2StepContent = {
           ]),
           { visibleWhen: (ctx) => applying(ctx) && person(ctx)?.hasSsn === "no" },
         ),
+        ...SSN_CARD_QUESTIONS,
         yesNo("usCitizenOrNational", who("Are you a US citizen or US national?", "Is this person a US citizen or US national?"), {
           required: applying,
           visibleWhen: applying,
@@ -197,6 +199,7 @@ export const PERSON_STEP_CONTENT: Saca2StepContent = {
         date("immigrationDocumentExpiry", "Document expiration date", {
           visibleWhen: (ctx) => applying(ctx) && person(ctx)?.hasEligibleImmigrationStatus === "yes",
         }),
+        ...IMMIGRATION_DETAIL_QUESTIONS,
         yesNo("residentOfMassachusetts", who("Do you live in Massachusetts and intend to stay here (even without a fixed address), or did you come for a job or to look for work?", "Does this person live in Massachusetts and intend to stay here (even without a fixed address), or did they come for a job or to look for work?"), {
           required: applying,
           visibleWhen: applying,

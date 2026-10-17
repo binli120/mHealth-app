@@ -289,6 +289,7 @@ export function completeHomeWithAllSupplements(): Saca2Answers {
     repZip: "02101",
   }
   a.persons[0].hasSsn = "yes"
+  a.persons[0].nameMatchesSsnCard = "yes"
   a.persons[0].ssn = "123-45-6789"
   a.attachments.irs4506.jointReturn = "no"
   a.attachments.irs4506.yearsRequested = [{ periodEnd: "2025-12-31" }]
