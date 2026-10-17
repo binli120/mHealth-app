@@ -63,8 +63,8 @@ describe("collectFillValues", () => {
     expect(SSN_BOXES.some((f) => f in byField)).toBe(false) // hasSsn "no": nothing written
   })
 
-  it("is empty for the default (empty) field map", () => {
-    expect(collectFillValues(completeRichHousehold(), ON)).toEqual([])
+  it("is empty for an empty field map", () => {
+    expect(collectFillValues(completeRichHousehold(), ON, [])).toEqual([])
   })
 
   it("resolves derived sources through the registry and rejects unknown ids", () => {

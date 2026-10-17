@@ -33,8 +33,11 @@ export type Source =
   | { kind: "answer"; stepId: Saca2StepId; path: string; person?: 0 | 1 }
   /** `index`-th row of the repeater at `path`, field `key`. */
   | { kind: "row"; stepId: Saca2StepId; path: string; index: number; key: string; person?: 0 | 1 }
-  /** Computed by pdf-fill from a registered function (e.g. Person 1 full name for headers). */
-  | { kind: "derived"; id: string }
+  /**
+   * Computed by pdf-fill from a registered function (see derived.ts), e.g. a person's full name or
+   * the joined race labels. `person` is passed to the function for person-scoped derived values.
+   */
+  | { kind: "derived"; id: string; person?: 0 | 1 }
 
 export interface FieldEntry {
   /**

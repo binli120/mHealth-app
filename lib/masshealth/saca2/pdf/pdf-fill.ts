@@ -7,14 +7,18 @@ import { PDFCheckBox, PDFDocument, PDFName, PDFTextField, type PDFField } from "
 
 import type { Saca2Answers } from "../types"
 import { applyCheckboxState } from "./checkbox-writer"
+import { DERIVED } from "./derived"
 import { encodeCheckbox, encodeToParts, isCheckboxEncoder } from "./encoders"
 import { FIELD_MAP } from "./field-map"
 import { loadSaca2Template } from "./template"
 import type { FieldEntry, FillItem } from "./types"
 import { createVisibleReader, type VisibleReader } from "./visible-reader"
 
-/** Computes the value of a `derived` source (e.g. Person 1's full name for page headers). */
-export type DerivedResolver = (reader: VisibleReader, answers: Saca2Answers, on: Date) => unknown
+/**
+ * Computes the value of a `derived` source (e.g. a person's full name). `person` is the entry's
+ * `person` (0 = Person 1, 1 = Person 2) or `undefined` for non-person values.
+ */
+export type DerivedResolver = (reader: VisibleReader, answers: Saca2Answers, on: Date, person: 0 | 1 | undefined) => unknown
 export type DerivedRegistry = Record<string, DerivedResolver>
 
 function assertNoDuplicateFields(map: FieldEntry[]): void {
@@ -36,7 +40,7 @@ export function collectFillValues(
   answers: Saca2Answers,
   on: Date,
   map: FieldEntry[] = FIELD_MAP,
-  derived: DerivedRegistry = {},
+  derived: DerivedRegistry = DERIVED,
 ): FillItem[] {
   assertNoDuplicateFields(map)
   const reader = createVisibleReader(answers, on)
@@ -48,7 +52,7 @@ export function collectFillValues(
     if (source.kind === "derived") {
       const resolve = derived[source.id]
       if (!resolve) throw new Error(`Unknown derived source "${source.id}"`)
-      raw = resolve(reader, answers, on)
+      raw = resolve(reader, answers, on, source.person)
     } else {
       raw = reader.get(source)
     }
@@ -94,7 +98,7 @@ export async function fillSaca2Pdf(
   templateBytes: Uint8Array | null,
   on: Date,
   map: FieldEntry[] = FIELD_MAP,
-  derived: DerivedRegistry = {},
+  derived: DerivedRegistry = DERIVED,
 ): Promise<Uint8Array> {
   const items = collectFillValues(answers, on, map, derived)
   const doc = await PDFDocument.load(templateBytes ?? (await loadSaca2Template()))
