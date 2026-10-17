@@ -100,8 +100,30 @@ describe("tax filing questions", () => {
     expect(keys(a)).toEqual([])
   })
 
-  it("does not treat filedForAptcYears as required", () => {
-    expect(keys(answers())).not.toContain("persons.0.tax.filedForAptcYears")
+  describe("filedForAptcYears attestation", () => {
+    const q = (step: "person1" | "person2") =>
+      getStepContent(step)!.sections.find((s) => s.id === "tax")!.questions.find((x) => x.path === "tax.filedForAptcYears")!
+    const ctx = (personIndex: number, applyingValue: "yes" | "no" = "yes") => {
+      const a = answers((x) => (x.persons[0].applyingForCoverage = applyingValue))
+      return { answers: a, personIndex, on: ON }
+    }
+
+    it("is shown to an applying Person 1 and never required", () => {
+      expect(q("person1").visibleWhen!(ctx(0))).toBe(true)
+      expect(q("person1").visibleWhen!(ctx(0, "no"))).toBe(false)
+      expect(q("person1").required).toBeFalsy()
+      expect(keys(answers())).not.toContain("persons.0.tax.filedForAptcYears")
+    })
+
+    it("is never shown for Person 2", () => {
+      expect(q("person2").visibleWhen!(ctx(1))).toBe(false)
+    })
+
+    it("uses the form's wording", () => {
+      expect(q("person1").label).toBe(
+        "I filed a federal income tax return with the IRS for each year in the past two years that I received an Advance Premium Tax Credit (APTC) to lower my monthly premium payment, including if I was enrolled in ConnectorCare. I included the tax forms showing the tax credits I received when I filed my tax return so the IRS could calculate how much APTC I was eligible to receive based on my final income for the year.",
+      )
+    })
   })
 
   describe("stale answers", () => {
@@ -127,6 +149,17 @@ describe("tax filing questions", () => {
         t.claimedAsDependent = "no"
         t.filingSeparatelyAbuse = "no"
         t.dependents = [{ name: "", dateOfBirth: null }]
+      })
+      expect(keys(a)).toEqual([])
+    })
+
+    it("are ignored after the tax filer's marriedFilingJointly flips to no", () => {
+      const a = answers((x) => {
+        const t = x.persons[0].tax
+        t.agreesToFileIfAptc = "no"
+        t.claimedAsDependent = "yes"
+        t.filingSeparatelyAbuse = "no"
+        t.taxFiler = { ...t.taxFiler, name: "Pat Filer", dateOfBirth: "1975-01-01", relationship: "parent", marriedFilingJointly: "no", spouseName: "", spouseDateOfBirth: null }
       })
       expect(keys(a)).toEqual([])
     })

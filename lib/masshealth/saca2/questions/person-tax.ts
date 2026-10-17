@@ -104,13 +104,14 @@ export const TAX_SECTION: Saca2Section = {
       ),
       { required: applying, visibleWhen: applying },
     ),
+    // Printed once in Person 1's block of the form; it covers the whole household.
     yesNo(
       "tax.filedForAptcYears",
-      who(
-        "Optional: Did you file a federal tax return for any prior year in which you received an APTC?",
-        "Optional: Did this person file a federal tax return for any prior year in which they received an APTC?",
-      ),
-      { visibleWhen: applying },
+      "I filed a federal income tax return with the IRS for each year in the past two years that I received an Advance Premium Tax Credit (APTC) to lower my monthly premium payment, including if I was enrolled in ConnectorCare. I included the tax forms showing the tax credits I received when I filed my tax return so the IRS could calculate how much APTC I was eligible to receive based on my final income for the year.",
+      {
+        visibleWhen: (ctx) => applying(ctx) && ctx.personIndex === 0,
+        help: "Optional. Answer Yes if: 1. You have received an APTC or ConnectorCare in the past, and 2. The statement is true for all people listed in the household.",
+      },
     ),
   ],
 }
