@@ -7,7 +7,38 @@ import { MASSHEALTH_PHONE } from "@/lib/masshealth/constants"
 
 const OFFICIAL_APPLICATIONS_URL = "https://www.mass.gov/lists/applications-to-become-a-masshealth-member"
 
-export function Saca2UnavailableNotice() {
+export function Saca2UnavailableNotice({
+  variant = "applicant",
+}: {
+  variant?: "applicant" | "social-worker"
+}) {
+  if (variant === "social-worker") {
+    return (
+      <section
+        data-testid="saca2-unavailable"
+        className="space-y-3 rounded-lg border bg-card p-6 text-card-foreground"
+        aria-labelledby="saca2-unavailable-title"
+      >
+        <h2 id="saca2-unavailable-title" className="text-lg font-semibold">
+          This is a SACA-2 application
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Social-worker editing of SACA-2 applications is not available yet. Open it from the
+          customer&apos;s own account, or use the{" "}
+          <a
+            className="underline"
+            href={OFFICIAL_APPLICATIONS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            official SACA-2 form
+          </a>
+          .
+        </p>
+      </section>
+    )
+  }
+
   return (
     <section
       data-testid="saca2-unavailable"
