@@ -3,6 +3,7 @@
  * @email: blee@comura.ai
  */
 
+import { isRealIsoDate } from "../questions/validate"
 import type { Encoder } from "./types"
 
 export type CheckboxEncoder = Extract<Encoder, { kind: "yesNo" } | { kind: "pick" } | { kind: "check" }>
@@ -29,17 +30,19 @@ function isWinAnsi(codePoint: number): boolean {
 }
 
 /**
- * Makes a string safe to hand to a standard-font text field: control characters are removed and
- * every character Helvetica cannot draw becomes one "?". Never throws.
+ * Makes a string safe to hand to a standard-font text field: line breaks and tabs become a single
+ * space (runs of whitespace collapse), other control characters are removed, and every character
+ * Helvetica cannot draw becomes one "?". Never throws.
  */
 export function sanitizeText(value: string): string {
   let out = ""
   for (const ch of value.normalize("NFC")) {
     const cp = ch.codePointAt(0)!
-    if (cp < 0x20 || (cp >= 0x7f && cp <= 0x9f)) continue
-    out += isWinAnsi(cp) ? ch : "?"
+    if (cp === 0x0a || cp === 0x0d || cp === 0x09) out += " "
+    else if (cp < 0x20 || (cp >= 0x7f && cp <= 0x9f)) continue
+    else out += isWinAnsi(cp) ? ch : "?"
   }
-  return out
+  return out.replace(/ {2,}/g, " ")
 }
 
 function nonBlankText(raw: unknown): string | undefined {
@@ -61,16 +64,18 @@ export function encodeText(
     case "upper":
       return nonBlankText(raw)?.toUpperCase()
     case "date": {
-      if (typeof raw !== "string") return undefined
-      const m = ISO_DATE.exec(raw)
-      return m ? `${m[2]}/${m[3]}/${m[1]}` : undefined
+      if (typeof raw !== "string" || !isRealIsoDate(raw)) return undefined
+      const m = ISO_DATE.exec(raw)!
+      return `${m[2]}/${m[3]}/${m[1]}`
     }
-    case "money":
-      if (typeof raw !== "number" || !Number.isFinite(raw)) return undefined
-      return Number.isInteger(raw) ? String(raw) : raw.toFixed(2)
+    case "money": {
+      if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 0 || raw >= 1e15) return undefined
+      const rounded = Math.round(raw * 100) / 100
+      return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2)
+    }
     case "number":
       if (typeof raw !== "number" || !Number.isFinite(raw)) return undefined
-      return String(raw)
+      return String(Number(raw.toPrecision(12)))
     case "phone": {
       if (typeof raw !== "string") return undefined
       const d = raw.replace(/\D/g, "")

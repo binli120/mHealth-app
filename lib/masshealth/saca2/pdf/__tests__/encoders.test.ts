@@ -19,6 +19,13 @@ describe("encodeText: date", () => {
     expect(encodeText("date", "10/13/2026")).toBeUndefined()
     expect(encodeText("date", 20261013)).toBeUndefined()
   })
+  it("returns undefined for impossible calendar dates", () => {
+    expect(encodeText("date", "2026-02-30")).toBeUndefined()
+    expect(encodeText("date", "2026-13-01")).toBeUndefined()
+    expect(encodeText("date", "2026-00-10")).toBeUndefined()
+    expect(encodeText("date", "2025-02-29")).toBeUndefined()
+    expect(encodeText("date", "2024-02-29")).toBe("02/29/2024")
+  })
 })
 
 describe("encodeText: money and number", () => {
@@ -34,10 +41,30 @@ describe("encodeText: money and number", () => {
     expect(encodeText("money", "12")).toBeUndefined()
     expect(encodeText("money", Number.NaN)).toBeUndefined()
   })
+  it("rounds to cents before choosing integer or two-decimal form", () => {
+    expect(encodeText("money", 19.999)).toBe("20")
+    expect(encodeText("money", 1234.504)).toBe("1234.50")
+    expect(encodeText("money", 0.004)).toBe("0")
+    expect(encodeText("money", 10.005)).toBe("10.01")
+  })
+  it("rejects negative, non-finite and absurdly large amounts", () => {
+    expect(encodeText("money", -1)).toBeUndefined()
+    expect(encodeText("money", -0.01)).toBeUndefined()
+    expect(encodeText("money", Number.POSITIVE_INFINITY)).toBeUndefined()
+    expect(encodeText("money", 1e15)).toBeUndefined()
+    expect(encodeText("money", 999999999999999)).toBe("999999999999999")
+  })
   it("writes a number as an integer string", () => {
     expect(encodeText("number", 3)).toBe("3")
     expect(encodeText("number", 0)).toBe("0")
     expect(encodeText("number", null)).toBeUndefined()
+  })
+  it("avoids floating-point noise and rejects non-finite numbers", () => {
+    expect(encodeText("number", 0.1 + 0.2)).toBe("0.3")
+    expect(encodeText("number", 2.5)).toBe("2.5")
+    expect(encodeText("number", 1.0)).toBe("1")
+    expect(encodeText("number", Number.NaN)).toBeUndefined()
+    expect(encodeText("number", Number.POSITIVE_INFINITY)).toBeUndefined()
   })
 })
 
@@ -105,8 +132,13 @@ describe("encodeToParts", () => {
 
 describe("sanitizeText", () => {
   it("removes control characters and keeps everything else", () => {
-    expect(sanitizeText("A\u0000B\u0007C\nD\tE\u007fF")).toBe("ABCDEF")
+    expect(sanitizeText("A\u0000B\u0007C\u007fD")).toBe("ABCD")
     expect(sanitizeText("O'Brien-Núñez")).toBe("O'Brien-Núñez")
+  })
+  it("turns line breaks and tabs into one space and collapses runs of whitespace", () => {
+    expect(sanitizeText("12 Main St\nApt 4")).toBe("12 Main St Apt 4")
+    expect(sanitizeText("A\r\nB\tC")).toBe("A B C")
+    expect(sanitizeText("A   B \n\n C")).toBe("A B C")
   })
   it("replaces unencodable characters with one question mark each, even emoji", () => {
     expect(sanitizeText("Zoë 李")).toBe("Zoë ?")

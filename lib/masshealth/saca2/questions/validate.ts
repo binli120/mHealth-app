@@ -23,7 +23,8 @@ export function isEmptyValue(kind: Saca2QuestionKind, value: unknown): boolean {
   return false
 }
 
-function isRealIsoDate(value: string): boolean {
+/** True for a real calendar date written YYYY-MM-DD (rejects 2026-02-30 and 2026-13-01). */
+export function isRealIsoDate(value: string): boolean {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
   if (!match) return false
   const year = Number(match[1])
