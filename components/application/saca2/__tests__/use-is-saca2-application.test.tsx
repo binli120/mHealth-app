@@ -51,6 +51,22 @@ describe("useIsSaca2Application", () => {
     )
   })
 
+  it("re-runs the lookup when retryKey changes: back to unknown, then the new answer", async () => {
+    mocks.authenticatedFetch
+      .mockResolvedValueOnce({ ok: false, status: 503 } as unknown as Response)
+      .mockResolvedValueOnce(jsonResponse({ ok: true, record: { applicationType: "saca2" } }))
+    const { result, rerender } = renderHook(
+      ({ retryKey }: { retryKey: number }) => useIsSaca2Application("app-7", "", undefined, retryKey),
+      { initialProps: { retryKey: 0 } },
+    )
+    await waitFor(() => expect(result.current).toBe("error"))
+    expect(mocks.authenticatedFetch).toHaveBeenCalledTimes(1)
+    rerender({ retryKey: 1 })
+    expect(result.current).toBe("unknown")
+    await waitFor(() => expect(result.current).toBe("saca2"))
+    expect(mocks.authenticatedFetch).toHaveBeenCalledTimes(2)
+  })
+
   it("forwards the acting-for-patient header for social workers", async () => {
     mocks.authenticatedFetch.mockResolvedValue(
       jsonResponse({ ok: true, record: { applicationType: "aca3" } }),

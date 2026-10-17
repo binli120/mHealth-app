@@ -123,6 +123,9 @@ describe("PhiSaveExitDialog", () => {
     expect(warning).toHaveAttribute("role", "alert")
     const exit = screen.getByRole("button", { name: /done — exit/i })
     expect(warning.compareDocumentPosition(exit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // The green alert must not claim everything is restored while the warning says progress may revert.
+    expect(screen.getByText("Your answers are secured.")).toBeInTheDocument()
+    expect(screen.queryByText(/restored automatically/)).not.toBeInTheDocument()
     await userEvent.click(exit)
     expect(onExit).toHaveBeenCalled()
   })
@@ -132,6 +135,10 @@ describe("PhiSaveExitDialog", () => {
     await userEvent.click(screen.getByRole("button", { name: /^save & exit$/i }))
     await screen.findByRole("button", { name: /done — exit/i })
     expect(screen.queryByText(/may revert/)).not.toBeInTheDocument()
+    expect(
+      screen.getByText(/Saved! Your progress will be restored automatically when you sign in and open this application\./),
+    ).toBeInTheDocument()
+    expect(screen.queryByText("Your answers are secured.")).not.toBeInTheDocument()
   })
 
   it("treats { ok: false } like false: error shown, nothing uploaded", async () => {

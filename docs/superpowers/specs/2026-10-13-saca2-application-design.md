@@ -148,10 +148,10 @@ ACA-3 `FormWizard` is untouched.
 - Server `draft_state` holds non-PHI only: `schemaVersion: "saca2-2026-08"`, route
   flags, current step, program-box selections.
 - `applications.application_type = "saca2"`; no migration expected for the
-  application row. A migration is needed only to seed the feature flag (§4.7).
+  application row. No migration is needed: the feature flag is an environment variable, not a table (§4.7).
   Implemented in Phase 1: all answer keys except intake and signature are PHI (SACA2_PHI_KEYS); the server strip and the client split share one list (lib/phi-token/phi-fields.ts). PHI is held in memory only (no localStorage copy, unlike ACA-3) until Save & Exit writes the encrypted blob. The server draft `currentStep` is the furthest step reached, capped at 9, because the draft route accepts only 1–9 and never lowers stored progress.
 
-  Draft-type guard: `upsertApplicationDraft` refuses an ACA-3 write to a draft whose application is `saca2` (`ApplicationDraftTypeConflictError`, surfaced by the draft route as HTTP 409 `DRAFT_TYPE_CONFLICT`). SACA-2 writes are never refused. The check is NULL-safe (`application_type IS NOT TRUE`-style), so a missing or NULL type cannot slip past it.
+  Draft-type guard: `upsertApplicationDraft` refuses an ACA-3 write to a draft whose application is `saca2` (`ApplicationDraftTypeConflictError`, surfaced by the draft route as HTTP 409 with body `{ ok: false, error: <message> }`). SACA-2 writes are never refused. A stored row counts as SACA-2 when its `application_type` is `'saca2'` OR its stored `draft_state` carries a `schemaVersion`; the predicate is wrapped in `IS NOT TRUE`, so NULL stored columns evaluate to not-SACA-2 and keep ACA-3 rows writable.
 
   Save & Exit: the encrypted blob holds the PHI keys only. If the PHI-free server draft save fails with a non-retryable error, the dialog warns that the program selections and step progress may not be saved.
 

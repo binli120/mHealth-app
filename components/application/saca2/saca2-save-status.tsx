@@ -12,10 +12,12 @@ export type Saca2SaveStatusValue = "idle" | "saving" | "saved" | "error"
 
 interface Saca2SaveStatusProps {
   status: Saca2SaveStatusValue
+  /** Answers changed since the last Save & Exit; autosave never stores them. */
+  phiDirty: boolean
   onRetry: () => void
 }
 
-export function Saca2SaveStatus({ status, onRetry }: Saca2SaveStatusProps) {
+export function Saca2SaveStatus({ status, phiDirty, onRetry }: Saca2SaveStatusProps) {
   // Keep the clicked button mounted (disabled) while the retry is in flight so focus is not lost.
   const [retrying, setRetrying] = useState(false)
   const [prevStatus, setPrevStatus] = useState(status)
@@ -31,7 +33,13 @@ export function Saca2SaveStatus({ status, onRetry }: Saca2SaveStatusProps) {
     <div role="status" aria-live="polite" className="min-h-5 text-sm text-muted-foreground">
       <span className={`flex items-center gap-2 ${status === "error" ? "text-destructive" : ""}`}>
         {status === "saving" ? <span>Saving…</span> : null}
-        {status === "saved" ? <span>All changes saved</span> : null}
+        {status === "saved" ? (
+          <span>
+            {phiDirty
+              ? "Progress saved. Your answers are not secured yet — use Save & Exit."
+              : "All changes saved"}
+          </span>
+        ) : null}
         {status === "error" ? <span>Couldn&apos;t save your changes</span> : null}
         {showButton ? (
           <Button

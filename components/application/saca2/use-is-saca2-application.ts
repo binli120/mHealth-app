@@ -30,8 +30,10 @@ export function useIsSaca2Application(
   applicationId: string | undefined,
   reduxApplicationType: string,
   actingForPatientId?: string,
+  /** Change to re-run a failed lookup; the hook reports "unknown" until the new one settles. */
+  retryKey = 0,
 ): Saca2Lookup {
-  const [fetched, setFetched] = useState<{ id: string; result: Saca2Lookup } | null>(null)
+  const [fetched, setFetched] = useState<{ id: string; retryKey: number; result: Saca2Lookup } | null>(null)
   const needsLookup = Boolean(applicationId) && !reduxApplicationType
 
   useEffect(() => {
@@ -62,10 +64,10 @@ export function useIsSaca2Application(
         return classify(data.record?.applicationType)
       })
       .then((result) => {
-        if (!cancelled) setFetched({ id: applicationId, result })
+        if (!cancelled) setFetched({ id: applicationId, retryKey, result })
       })
       .catch(() => {
-        if (!cancelled) setFetched({ id: applicationId, result: "error" })
+        if (!cancelled) setFetched({ id: applicationId, retryKey, result: "error" })
       })
       .finally(cancel)
 
@@ -73,9 +75,9 @@ export function useIsSaca2Application(
       cancelled = true
       cancel()
     }
-  }, [needsLookup, applicationId, actingForPatientId])
+  }, [needsLookup, applicationId, actingForPatientId, retryKey])
 
   if (!applicationId) return "other"
   if (reduxApplicationType) return classify(reduxApplicationType)
-  return fetched?.id === applicationId ? fetched.result : "unknown"
+  return fetched?.id === applicationId && fetched.retryKey === retryKey ? fetched.result : "unknown"
 }

@@ -188,8 +188,9 @@ export function PhiSaveExitDialog({
             <Alert className="bg-green-50 border-green-200">
               <CheckCircle2 className="h-4 w-4 text-green-700" />
               <AlertDescription className="text-green-800 text-sm ml-2">
-                Saved! Your progress will be restored automatically when you sign in and open this
-                application.
+                {warning
+                  ? "Your answers are secured."
+                  : "Saved! Your progress will be restored automatically when you sign in and open this application."}
               </AlertDescription>
             </Alert>
 

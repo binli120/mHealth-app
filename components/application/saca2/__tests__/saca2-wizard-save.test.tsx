@@ -75,7 +75,9 @@ describe("Saca2Wizard: autosave status line", () => {
     await userEvent.click(await ltc())
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Saving…"), { timeout: 3_000 })
     release()
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("All changes saved"))
+    // Every answer edit (the intake click included) leaves phiDirty set until Save & Exit, so this is the
+    // "not secured yet" copy; the plain "All changes saved" line is pinned in saca2-save-status.test.tsx.
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Progress saved. Your answers are not secured yet"))
   })
 
   it("shows the error with Retry on a 500 and Retry sends at once inside the backoff window", async () => {
@@ -87,7 +89,7 @@ describe("Saca2Wizard: autosave status line", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Retry" }))
     await waitFor(() => expect(putCount()).toBe(2))
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("All changes saved"))
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Progress saved. Your answers are not secured yet"))
   })
 
   it("does not claim All changes saved when a newer edit landed while the PUT was in flight", async () => {
@@ -104,6 +106,27 @@ describe("Saca2Wizard: autosave status line", () => {
     await userEvent.click(medicaid())
     release()
     await sleep(100)
+    expect(screen.getByRole("status")).not.toHaveTextContent("All changes saved")
+  })
+})
+
+describe("Saca2Wizard: PHI-only edits are not reported as fully saved", () => {
+  it("shows the not-secured line after a PHI-only edit saves, never All changes saved", async () => {
+    mocks.authenticatedFetch.mockImplementation(async (_url: string, init?: { method?: string }) => {
+      if (init?.method === "PUT") return res(200)
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          ok: true,
+          record: {},
+          draftState: { schemaVersion: "saca2-2026-08", currentStepId: "person1", data: {} },
+        }),
+      } as unknown as Response
+    })
+    render(<Saca2Wizard applicationId={APP_ID} />)
+    await userEvent.type(await screen.findByLabelText("First name"), "Ada")
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("not secured yet"), { timeout: 3_000 })
     expect(screen.getByRole("status")).not.toHaveTextContent("All changes saved")
   })
 })

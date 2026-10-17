@@ -3,7 +3,7 @@
  * @email: blee@comura.ai
  */
 
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -165,5 +165,31 @@ describe("Saca2Wizard: blocking resume prompt", () => {
     await screen.findByTestId("resume-prompt")
     await sleep(1_200)
     expect(putCalls()).toHaveLength(0)
+  })
+})
+
+describe("Saca2Wizard: no autosave or step normalising under the resume prompt", () => {
+  // person2 is only visible when PHI (Person 1 married) is known, so the PHI-free server state hides it.
+  const PHI_GATED = { ...SERVER_STATE, currentStepId: "person2", furthestStepNumber: 3, currentStep: 3 }
+
+  it("sends no PUT while the prompt is open even though the saved step is hidden without PHI", async () => {
+    pendingDraft(PHI_GATED)
+    render(<Saca2Wizard applicationId={APP_ID} />)
+    await screen.findByTestId("resume-prompt")
+    await sleep(1_500)
+    expect(putCalls()).toHaveLength(0)
+  })
+
+  it("normalises the step after Skip as before (and only then autosaves)", async () => {
+    pendingDraft(PHI_GATED)
+    render(<Saca2Wizard applicationId={APP_ID} />)
+    await screen.findByTestId("resume-prompt")
+    await sleep(900)
+    expect(putCalls()).toHaveLength(0)
+    await userEvent.click(screen.getByRole("button", { name: "skip-resume" }))
+    expect(await screen.findByRole("heading", { name: "About you" })).toBeInTheDocument()
+    await waitFor(() => expect(putCalls()).toHaveLength(1), { timeout: 3_000 })
+    const body = JSON.parse((putCalls()[0][1] as { body: string }).body)
+    expect(body.wizardState.currentStepId).toBe("person1")
   })
 })

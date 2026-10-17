@@ -13,10 +13,15 @@ The wizard is hidden behind `SACA2_ENABLED` (read per request by `GET /api/confi
 ## Verify after the flag is on
 
 - [ ] `GET /api/config/saca2` returns `{ "enabled": true }`.
-- [ ] Smoke test on staging with a real draft: create a SACA-2 application, fill a few steps, watch the status read "All changes saved", use Save & Exit and note the restore code, reopen and resume with the code, then Finish.
+- [ ] Smoke test on staging with a real draft: create a SACA-2 application, fill a few steps, watch the status read "All changes saved", use Save & Exit, reopen the application and confirm it resumes automatically (Save & Exit stores the key on the server), then Finish.
+- [ ] Optional, code path: the restore code is only asked for when the server key is missing; to test it, resume a draft whose server key is absent and enter the code from the Save & Exit dialog.
 - [ ] Social-worker edit page (`/social-worker/patients/<patientId>/applications/<applicationId>`) for a SACA-2 application shows the SACA-2 notice and no ACA-3 form.
 - [ ] A phone hand-off (`POST /api/handoff`) for a SACA-2 application is refused ("SACA-2 applications cannot be continued on a phone yet.").
-- [ ] An ACA-3 write to a SACA-2 draft returns 409 `DRAFT_TYPE_CONFLICT`.
+- [ ] An ACA-3 write to a SACA-2 draft returns HTTP 409 with body `{ ok: false, error: <message> }` (there is no `code` field).
+
+## Roll back
+
+- [ ] Set `SACA2_ENABLED=false` (or remove it) in the same places and redeploy. Existing SACA-2 drafts then show the unavailable notice instead of the wizard; no data is deleted, and turning the flag back on restores access.
 
 ## Known limits at flag-on
 

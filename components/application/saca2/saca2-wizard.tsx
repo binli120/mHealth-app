@@ -226,12 +226,14 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
   }, [saveDraftNow])
 
   useEffect(() => {
-    if (!hydrated || !state.dirty) return
+    // Under the blocking resume prompt the state is the PHI-free server draft: saving it would
+    // overwrite the saved progress marker with a lower one.
+    if (!hydrated || !state.dirty || pendingResume) return
     const timer = window.setTimeout(() => {
       void saveDraftNow()
     }, AUTOSAVE_DELAY_MS)
     return () => window.clearTimeout(timer)
-  }, [hydrated, state, saveDraftNow])
+  }, [hydrated, state, pendingResume, saveDraftNow])
 
   // ── Warn before leaving with PHI that has not been secured ──
   useEffect(() => {
@@ -254,10 +256,11 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
   const personIndex = getStepPersonIndex(effectiveStepId)
 
   useEffect(() => {
-    if (hydrated && effectiveStepId !== state.currentStepId) {
+    // Wait out the resume prompt: steps that depend on PHI look hidden until it is restored or skipped.
+    if (hydrated && !pendingResume && effectiveStepId !== state.currentStepId) {
       dispatch({ type: "set_step", stepId: effectiveStepId })
     }
-  }, [hydrated, effectiveStepId, state.currentStepId])
+  }, [hydrated, pendingResume, effectiveStepId, state.currentStepId])
 
   const handleNext = useCallback(() => {
     const errors = validateStep(effectiveStepId, state.data, new Date())
@@ -343,7 +346,7 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
                 onChange={(path, value) => dispatch({ type: "set_answer", path, value })}
               />
 
-              <Saca2SaveStatus status={saveStatus} onRetry={handleRetrySave} />
+              <Saca2SaveStatus status={saveStatus} phiDirty={state.phiDirty} onRetry={handleRetrySave} />
 
               <div className="flex items-center justify-between gap-3">
                 {currentIndex > 0 ? (

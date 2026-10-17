@@ -29,9 +29,34 @@ export default function SWEditApplicationPage() {
   const [entryMode, setEntryMode] = useState<ApplicationEntryMode>("chat")
   const [hasOpenedChat, setHasOpenedChat] = useState(true)
   // Must run before any early return. "" = Redux type unknown, so the server draft is checked.
-  const saca2Lookup = useIsSaca2Application(applicationId, "", patientId)
+  // Bumped by "Try again" to re-run a failed lookup without reloading the page (and the SW session with it).
+  const [lookupRetryKey, setLookupRetryKey] = useState(0)
+  const saca2Lookup = useIsSaca2Application(applicationId, "", patientId, lookupRetryKey)
 
-  if (saca2Lookup === "saca2" || saca2Lookup === "error") {
+  if (saca2Lookup === "error") {
+    return (
+      <div className="container mx-auto px-4 py-6">
+        <section
+          data-testid="application-lookup-error"
+          role="alert"
+          className="space-y-3 rounded-lg border bg-card p-6 text-card-foreground"
+        >
+          <h2 className="text-lg font-semibold">We couldn&apos;t load this application</h2>
+          <p className="text-sm text-muted-foreground">
+            Check the connection and try again. The saved answers have not been changed.
+          </p>
+          <button
+            type="button"
+            className="rounded-md border px-3 py-1.5 text-sm font-medium"
+            onClick={() => setLookupRetryKey((key) => key + 1)}
+          >
+            Try again
+          </button>
+        </section>
+      </div>
+    )
+  }
+  if (saca2Lookup === "saca2") {
     return (
       <div className="container mx-auto px-4 py-6">
         <Saca2UnavailableNotice variant="social-worker" />
