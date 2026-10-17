@@ -4,6 +4,24 @@
  */
 
 /** Draft schema version stored with every SACA-2 draft. */
+import {
+  ACCOMMODATION_CONDITION_KEYS,
+  ACCOMMODATION_KEYS,
+  DEDUCTION_KEYS,
+  ETHNICITY_KEYS,
+  GENDER_IDENTITY_KEYS,
+  RACE_KEYS,
+  SEXUAL_ORIENTATION_KEYS,
+  emptyChecks,
+  type AccommodationConditionKey,
+  type AccommodationKey,
+  type DeductionKey,
+  type EthnicityKey,
+  type GenderIdentityKey,
+  type RaceKey,
+  type SexualOrientationKey,
+} from "./demographic-options"
+
 export const SACA2_SCHEMA_VERSION = "saca2-2026-08"
 /** Form code exactly as printed in the PDF footer. */
 export const SACA2_FORM_CODE = "SACA-2_2026-08"
@@ -60,12 +78,120 @@ export interface Saca2IncomeItem {
     | "otherTaxable"
     | "rental"
     | "lottery"
+    | "capitalGains"
+    | "farmingFishing"
   amount: number | null
   frequency: IncomeFrequency | null
   /** Wages only: employer name and address. */
   employerNameAndAddress?: string
   /** Wages and self-employment: average hours worked each week. */
   hoursPerWeek?: number | null
+  employerFederalTaxId?: string
+  /** ISO YYYY-MM-DD: when the wages took effect. */
+  effectiveDate?: string | null
+  seasonal?: YesNo | null
+  /** Work type (self-employment), source (pension), or type (other taxable income). */
+  description?: string
+  /** Monthly net amount is a loss (self-employment, capital gains, farming/fishing). */
+  isLoss?: boolean
+  /** Alimony received under an agreement finalized before January 1, 2019. */
+  preTcjaAmount?: number | null
+  seasonJan?: boolean
+  seasonFeb?: boolean
+  seasonMar?: boolean
+  seasonApr?: boolean
+  seasonMay?: boolean
+  seasonJun?: boolean
+  seasonJul?: boolean
+  seasonAug?: boolean
+  seasonSep?: boolean
+  seasonOct?: boolean
+  seasonNov?: boolean
+  seasonDec?: boolean
+}
+
+export interface PersonDemographics {
+  genderIdentity: Record<GenderIdentityKey, boolean>
+  genderIdentityOther: string
+  sexualOrientation: Record<SexualOrientationKey, boolean>
+  sexualOrientationOther: string
+  hispanicOrLatino: "yes" | "no" | "dontKnow" | "declined" | null
+  race: Record<RaceKey, boolean>
+  raceOther: string
+  ethnicity: Record<EthnicityKey, boolean>
+  ethnicityOther: string
+}
+
+export interface TaxDependent {
+  name: string
+  /** ISO YYYY-MM-DD. */
+  dateOfBirth: string | null
+}
+
+export interface PersonTax {
+  /** Q11 (Person 2: Q21): agrees to file a federal return for any year APTC is received. */
+  agreesToFileIfAptc: YesNo | null
+  spouseName: string
+  spouseDateOfBirth: string | null
+  plansJointReturn: YesNo | null
+  claimsDependents: YesNo | null
+  dependents: TaxDependent[]
+  claimedAsDependent: YesNo | null
+  taxFiler: {
+    name: string
+    dateOfBirth: string | null
+    relationship: string
+    marriedFilingJointly: YesNo | null
+    spouseName: string
+    spouseDateOfBirth: string | null
+    otherDependents: string
+  }
+  filingSeparatelyAbuse: YesNo | null
+  /** Optional attestation about prior-year returns when APTC was received. */
+  filedForAptcYears: YesNo | null
+}
+
+export interface RentalUnit {
+  address: string
+  unit: string
+  amount: number | null
+  isLoss: boolean
+  ownerOccupied: YesNo | null
+}
+
+export interface PersonRental {
+  hasRentalIncome: YesNo | null
+  realEstateType: "oneFamily" | "twoFamily" | "threeFamily" | "other" | null
+  realEstateTypeOther: string
+  units: RentalUnit[]
+  paysHeatOrUtilities: YesNo | null
+}
+
+export interface OneTimeIncomeItem {
+  type: string
+  amount: number | null
+  /** 1-12. */
+  month: number | null
+  year: number | null
+}
+
+export interface PersonOneTimeIncome {
+  thisYear: YesNo | null
+  thisYearItems: OneTimeIncomeItem[]
+  nextYear: YesNo | null
+  nextYearItems: OneTimeIncomeItem[]
+}
+
+export interface PersonDeductions {
+  none: boolean
+  /** Yearly amount per deduction; null = not claimed. */
+  amounts: Record<DeductionKey, number | null>
+}
+
+export interface CaregiverChild {
+  name: string
+  /** ISO YYYY-MM-DD. */
+  dateOfBirth: string | null
 }
 
 /** One person block (Step 1 = Person 1, Step 2 = Person 2). */
@@ -106,6 +232,12 @@ export interface Saca2Person {
   hasSsn: YesNo | null
   ssn: string
   noSsnReason: "illness" | "justApplied" | "noncitizenException" | "religiousException" | null
+  /** Q10: is the name on this application the name on the Social Security card? */
+  nameMatchesSsnCard: YesNo | null
+  ssnCardName: string
+
+  demographics: PersonDemographics
+  tax: PersonTax
 
   usCitizenOrNational: YesNo | null
   naturalizedCitizen: YesNo | null
@@ -118,6 +250,17 @@ export interface Saca2Person {
   immigrationDocumentType: string | null
   immigrationDocumentId: string
   immigrationDocumentExpiry: string | null
+  /** Q13a: LPR / Cuban-Haitian entrant / COFA migrant. */
+  isLprCheCofa: YesNo | null
+  /** Q13b status award date, ISO YYYY-MM-DD. */
+  immigrationStatusDate: string | null
+  immigrationCountry: string
+  immigrationSameName: YesNo | null
+  immigrationOtherName: string
+  arrivedAfterAug1996: YesNo | null
+  isVeteranOrMilitaryFamily: YesNo | null
+  /** Q13f, optional. */
+  isTraffickingOrBatteredVictim: YesNo | null
 
   /** Residency question (Person 1 Q14 / Person 2 Q24). */
   residentOfMassachusetts: YesNo | null
@@ -133,10 +276,29 @@ export interface Saca2Person {
   /** Screening aid (not a form question): used to decide which proofs are needed. */
   hasMedicareOrSsiOrSsdi: YesNo | null
 
+  caregiverChildren: CaregiverChild[]
+  pregnant: YesNo | null
+  babiesExpected: number | null
+  /** ISO YYYY-MM-DD. */
+  dueDate: string | null
+  everInFosterCare: YesNo | null
+  fosterCareState: string
+  fosterCareMedicaid: YesNo | null
+  rentOrOwn: "rent" | "own" | null
+  needsAccommodation: YesNo | null
+  accommodationConditions: Record<AccommodationConditionKey, boolean>
+  accommodationConditionOther: string
+  accommodations: Record<AccommodationKey, boolean>
+  accommodationOther: string
+
   hasIncome: YesNo | null
   income: Saca2IncomeItem[]
   expectedIncomeThisYear: number | null
   expectedIncomeNextYear: number | null
+
+  rental: PersonRental
+  oneTimeIncome: PersonOneTimeIncome
+  deductions: PersonDeductions
 }
 
 export type AssetCategory =
@@ -643,6 +805,32 @@ export function emptySaca2Person(): Saca2Person {
     hasSsn: null,
     ssn: "",
     noSsnReason: null,
+    nameMatchesSsnCard: null,
+    ssnCardName: "",
+
+    demographics: {
+      genderIdentity: emptyChecks(GENDER_IDENTITY_KEYS),
+      genderIdentityOther: "",
+      sexualOrientation: emptyChecks(SEXUAL_ORIENTATION_KEYS),
+      sexualOrientationOther: "",
+      hispanicOrLatino: null,
+      race: emptyChecks(RACE_KEYS),
+      raceOther: "",
+      ethnicity: emptyChecks(ETHNICITY_KEYS),
+      ethnicityOther: "",
+    },
+    tax: {
+      agreesToFileIfAptc: null,
+      spouseName: "",
+      spouseDateOfBirth: null,
+      plansJointReturn: null,
+      claimsDependents: null,
+      dependents: [],
+      claimedAsDependent: null,
+      taxFiler: { name: "", dateOfBirth: null, relationship: "", marriedFilingJointly: null, spouseName: "", spouseDateOfBirth: null, otherDependents: "" },
+      filingSeparatelyAbuse: null,
+      filedForAptcYears: null,
+    },
 
     usCitizenOrNational: null,
     naturalizedCitizen: null,
@@ -653,6 +841,14 @@ export function emptySaca2Person(): Saca2Person {
     immigrationDocumentType: null,
     immigrationDocumentId: "",
     immigrationDocumentExpiry: null,
+    isLprCheCofa: null,
+    immigrationStatusDate: null,
+    immigrationCountry: "",
+    immigrationSameName: null,
+    immigrationOtherName: "",
+    arrivedAfterAug1996: null,
+    isVeteranOrMilitaryFamily: null,
+    isTraffickingOrBatteredVictim: null,
 
     residentOfMassachusetts: null,
     caregiverOfChildUnder19: null,
@@ -664,10 +860,31 @@ export function emptySaca2Person(): Saca2Person {
     livingArrangement: null,
     hasMedicareOrSsiOrSsdi: null,
 
+    caregiverChildren: [],
+    pregnant: null,
+    babiesExpected: null,
+    dueDate: null,
+    everInFosterCare: null,
+    fosterCareState: "",
+    fosterCareMedicaid: null,
+    rentOrOwn: null,
+    needsAccommodation: null,
+    accommodationConditions: emptyChecks(ACCOMMODATION_CONDITION_KEYS),
+    accommodationConditionOther: "",
+    accommodations: emptyChecks(ACCOMMODATION_KEYS),
+    accommodationOther: "",
+
     hasIncome: null,
     income: [],
     expectedIncomeThisYear: null,
     expectedIncomeNextYear: null,
+
+    rental: { hasRentalIncome: null, realEstateType: null, realEstateTypeOther: "", units: [], paysHeatOrUtilities: null },
+    oneTimeIncome: { thisYear: null, thisYearItems: [], nextYear: null, nextYearItems: [] },
+    deductions: {
+      none: false,
+      amounts: Object.fromEntries(DEDUCTION_KEYS.map((k) => [k, null])) as Record<DeductionKey, number | null>,
+    },
   }
 }
 

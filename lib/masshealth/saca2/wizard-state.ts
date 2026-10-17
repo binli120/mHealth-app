@@ -12,6 +12,7 @@ import {
   emptySaca2Answers,
   emptySaca2Person,
   type Saca2Answers,
+  type Saca2Person,
 } from "./types"
 import { getVisibleSteps } from "./visibility"
 
@@ -200,6 +201,14 @@ function padHealthProblems(items: unknown): string[] {
   return [0, 1, 2].map((i) => (typeof list[i] === "string" ? (list[i] as string) : ""))
 }
 
+/** Deduction amounts default to null, so the generic overlay cannot tell they must be numbers. */
+function normalizePerson(person: Saca2Person): Saca2Person {
+  const amounts = Object.fromEntries(
+    Object.entries(person.deductions.amounts).map(([key, value]) => [key, typeof value === "number" && Number.isFinite(value) ? value : null]),
+  ) as Saca2Person["deductions"]["amounts"]
+  return { ...person, deductions: { ...person.deductions, amounts } }
+}
+
 function normalizeAnswers(raw: unknown): Saca2Answers {
   const base = emptySaca2Answers()
   if (!isPlainObject(raw)) return base
@@ -209,7 +218,7 @@ function normalizeAnswers(raw: unknown): Saca2Answers {
   const persons = rawPersons
     .filter(isPlainObject)
     .slice(0, 2)
-    .map((rawPerson) => overlay(emptySaca2Person(), rawPerson))
+    .map((rawPerson) => normalizePerson(overlay(emptySaca2Person(), rawPerson)))
   return {
     ...merged,
     persons: persons.length > 0 ? persons : base.persons,

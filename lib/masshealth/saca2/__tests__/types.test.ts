@@ -12,6 +12,7 @@ import {
   emptySaca2Answers,
   emptySaca2Person,
 } from "@/lib/masshealth/saca2/types"
+import { ACCOMMODATION_CONDITION_KEYS, ACCOMMODATION_KEYS, DEDUCTION_KEYS, ETHNICITY_KEYS, GENDER_IDENTITY_KEYS, RACE_KEYS, countChecked, emptyChecks } from "@/lib/masshealth/saca2/demographic-options"
 
 describe("emptySaca2Answers", () => {
   it("starts with exactly one blank person and every yes/no unanswered", () => {
@@ -200,5 +201,60 @@ describe("supplement and attachment defaults", () => {
     const { attachments } = emptySaca2Answers()
     expect(attachments.ard).toMatchObject({ section: null, repKind: null, repName: "", repState: "MA", legalDocument: "" })
     expect(attachments.irs4506).toEqual({ jointReturn: null, taxpayerId: "", previousAddress: "", formNumber: "1040", yearsRequested: [] })
+  })
+})
+
+describe("person detail defaults", () => {
+  it("starts demographics unanswered with every checkbox unticked", () => {
+    const p = emptySaca2Person()
+    expect(p.demographics.hispanicOrLatino).toBeNull()
+    expect(Object.keys(p.demographics.genderIdentity).sort()).toEqual([...GENDER_IDENTITY_KEYS].sort())
+    expect(Object.keys(p.demographics.race).sort()).toEqual([...RACE_KEYS].sort())
+    expect(Object.keys(p.demographics.ethnicity).sort()).toEqual([...ETHNICITY_KEYS].sort())
+    expect(ETHNICITY_KEYS).toHaveLength(38)
+    expect(countChecked(p.demographics.genderIdentity)).toBe(0)
+    expect(p.demographics.genderIdentityOther).toBe("")
+  })
+
+  it("starts the tax block, household extras, accommodations, rental, one-time income and deductions empty", () => {
+    const p = emptySaca2Person()
+    expect(p.tax).toMatchObject({ agreesToFileIfAptc: null, spouseName: "", plansJointReturn: null, claimsDependents: null, dependents: [], claimedAsDependent: null, filingSeparatelyAbuse: null, filedForAptcYears: null })
+    expect(p.tax.taxFiler).toMatchObject({ name: "", dateOfBirth: null, relationship: "", marriedFilingJointly: null, spouseName: "", otherDependents: "" })
+    expect(p.pregnant).toBeNull()
+    expect(p.everInFosterCare).toBeNull()
+    expect(p.rentOrOwn).toBeNull()
+    expect(p.caregiverChildren).toEqual([])
+    expect(p.needsAccommodation).toBeNull()
+    expect(Object.keys(p.accommodationConditions).sort()).toEqual([...ACCOMMODATION_CONDITION_KEYS].sort())
+    expect(Object.keys(p.accommodations).sort()).toEqual([...ACCOMMODATION_KEYS].sort())
+    expect(p.rental).toEqual({ hasRentalIncome: null, realEstateType: null, realEstateTypeOther: "", units: [], paysHeatOrUtilities: null })
+    expect(p.oneTimeIncome).toEqual({ thisYear: null, thisYearItems: [], nextYear: null, nextYearItems: [] })
+    expect(p.deductions.none).toBe(false)
+    expect(Object.keys(p.deductions.amounts).sort()).toEqual([...DEDUCTION_KEYS].sort())
+    expect(Object.values(p.deductions.amounts).every((v) => v === null)).toBe(true)
+  })
+
+  it("starts the SSN-card and immigration extras empty", () => {
+    const p = emptySaca2Person()
+    expect(p).toMatchObject({
+      nameMatchesSsnCard: null,
+      ssnCardName: "",
+      isLprCheCofa: null,
+      immigrationStatusDate: null,
+      immigrationCountry: "",
+      immigrationSameName: null,
+      immigrationOtherName: "",
+      arrivedAfterAug1996: null,
+      isVeteranOrMilitaryFamily: null,
+      isTraffickingOrBatteredVictim: null,
+    })
+  })
+
+  it("gives each person independent objects", () => {
+    const a = emptySaca2Person()
+    const b = emptySaca2Person()
+    expect(a.demographics.race).not.toBe(b.demographics.race)
+    expect(a.deductions.amounts).not.toBe(b.deductions.amounts)
+    expect(emptyChecks(["x", "y"])).toEqual({ x: false, y: false })
   })
 })

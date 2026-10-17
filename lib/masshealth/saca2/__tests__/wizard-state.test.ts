@@ -344,3 +344,33 @@ describe("normalizeRestoredSaca2State", () => {
     expect(normalizeRestoredSaca2State({ data: "x" })).toBeNull()
   })
 })
+
+describe("normalizeSaca2State person detail fields", () => {
+  it("fills the new person fields on a person saved before they existed", () => {
+    const s = normalizeSaca2State({
+      schemaVersion: SACA2_SCHEMA_VERSION,
+      data: {
+        persons: [{ firstName: "Old", income: [{ kind: "rental", amount: 100, frequency: "monthly" }, { kind: "capitalGains", amount: 5 }] }],
+      },
+    })!
+    const p = s.data.persons[0]
+    expect(p.firstName).toBe("Old")
+    expect(p.demographics.race.white).toBe(false)
+    expect(p.tax.dependents).toEqual([])
+    expect(p.deductions.amounts.ira).toBeNull()
+    expect(p.rental.units).toEqual([])
+    expect(p.income).toHaveLength(2)
+  })
+
+  it("ignores wrong types inside the new person objects", () => {
+    const s = normalizeSaca2State({
+      schemaVersion: SACA2_SCHEMA_VERSION,
+      data: { persons: [{ demographics: { race: { white: "yes", bogus: true } }, deductions: { none: "x", amounts: { ira: "5" } } }] },
+    })!
+    const p = s.data.persons[0]
+    expect(p.demographics.race.white).toBe(false)
+    expect(p.demographics.race).not.toHaveProperty("bogus")
+    expect(p.deductions.none).toBe(false)
+    expect(p.deductions.amounts.ira).toBeNull()
+  })
+})

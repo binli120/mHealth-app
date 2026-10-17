@@ -21,12 +21,9 @@ import {
 } from "./builders"
 import { IMMIGRATION_DOCUMENT_OPTIONS, IMMIGRATION_STATUS_OPTIONS } from "./immigration-options"
 import { INCOME_FREQUENCIES } from "./options"
+import { applying, isSecondPerson, person, who } from "./person-context"
 import type { Saca2QuestionContext, Saca2StepContent } from "./types"
 
-const person = (ctx: Saca2QuestionContext) => ctx.answers.persons[ctx.personIndex]
-const who = (you: string, they: string) => (ctx: Saca2QuestionContext) => (ctx.personIndex === 0 ? you : they)
-const isSecondPerson = (ctx: Saca2QuestionContext) => ctx.personIndex > 0
-const applying = (ctx: Saca2QuestionContext) => person(ctx)?.applyingForCoverage === "yes"
 const hasHomeAddress = (ctx: Saca2QuestionContext) => !person(ctx)?.noHomeAddress
 const needsMailingAddress = (ctx: Saca2QuestionContext) => {
   const p = person(ctx)
