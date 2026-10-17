@@ -126,12 +126,13 @@ export const DERIVED: DerivedRegistry = {
 
   /**
    * Person 2's Q5 "If No, provide street address": one line, only when "Does this person live with
-   * Person 1?" is No. The wizard asks the address in parts, so the line joins them.
+   * Person 1?" is No. The wizard asks the address in parts, so the line joins them; the state is
+   * upper-cased like Person 1's State field.
    */
   "person.homeAddressLine": (reader, _answers, _on, person) => {
     const p = requirePerson(person, "person.homeAddressLine")
     if (readPerson(reader, p, "livesWithPerson1") !== "no") return undefined
-    const stateZip = [readString(reader, p, "state"), readString(reader, p, "zip")].filter((part) => part !== "").join(" ")
+    const stateZip = [readString(reader, p, "state").toUpperCase(), readString(reader, p, "zip")].filter((part) => part !== "").join(" ")
     const parts = [readString(reader, p, "streetAddress"), readString(reader, p, "apartment"), readString(reader, p, "city"), stateZip]
     return parts.filter((part) => part !== "").join(", ") || undefined
   },

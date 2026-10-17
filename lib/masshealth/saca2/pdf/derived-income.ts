@@ -135,7 +135,7 @@ for (const month of MONTH_KEYS) {
 }
 
 /** Rental units: the form has two lines; amount and loss share one wizard amount, split by `isLoss`. */
-const RENTAL_LINES = 2
+export const RENTAL_LINES = 2
 for (let line = 0; line < RENTAL_LINES; line += 1) {
   for (const loss of [false, true]) {
     registry[`rental.unit.${line}.${loss ? "loss" : "income"}`] = (reader, _answers, _on, person) => {

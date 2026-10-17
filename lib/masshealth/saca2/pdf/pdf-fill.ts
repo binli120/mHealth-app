@@ -10,6 +10,9 @@ import { applyCheckboxState } from "./checkbox-writer"
 import { DERIVED } from "./derived"
 import { encodeCheckbox, encodeToParts, isCheckboxEncoder } from "./encoders"
 import { FIELD_MAP } from "./field-map"
+import { overflowSheet } from "./overflow"
+import { buildOverflowSheets, overflowHeader } from "./overflow-plan"
+import { pagesToKeep, selectPages } from "./page-selection"
 import { splitSharedFields } from "./split-shared-fields"
 import { loadSaca2Template } from "./template"
 import type { FieldEntry, FillItem } from "./types"
@@ -90,7 +93,9 @@ function clearInvalidCheckboxValues(fields: Map<string, PDFField>): void {
 
 /**
  * Fills the SACA-2 template from the wizard answers. `templateBytes` of `null` loads the pinned
- * template. Only visible answers are written; unmapped fields are untouched; the result stays an
+ * template. Only visible answers are written; unmapped fields are untouched; pages of supplements and
+ * attachments whose step is hidden are removed with their fields; rows that do not fit the form go on
+ * appended continuation sheets headed with Person 1's name and SSN; the result stays an
  * editable form (not flattened). A mapped field that is missing from the template, of the wrong
  * type, or too short for its value is a mapping bug and throws with the field name only.
  */
@@ -136,5 +141,12 @@ export async function fillSaca2Pdf(
   }
 
   form.updateFieldAppearances()
+
+  // Hidden supplements and attachments leave with their fields; then the continuation sheets (rows
+  // the form's blocks cannot hold) are appended after the kept form pages.
+  selectPages(doc, pagesToKeep(answers, on))
+  const header = overflowHeader(answers, on)
+  for (const spec of buildOverflowSheets(answers, on)) await overflowSheet(doc, { ...header, ...spec })
+
   return doc.save({ updateFieldAppearances: true })
 }

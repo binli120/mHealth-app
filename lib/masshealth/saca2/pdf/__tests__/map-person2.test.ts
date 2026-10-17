@@ -958,6 +958,15 @@ describe("Person 2 income pages with Person 1's income in the same application",
   })
 })
 
+describe("Person 2 street address line", () => {
+  it("upper-cases the state like Person 1's State field", async () => {
+    const a = completeFacilityCouple()
+    a.persons[1].state = "ma"
+    const { text } = await fillRegion(a)
+    expect(text[STREET_LINE]).toBe("1 Example St, Testville, MA 02101")
+  })
+})
+
 describe("Person 2 not applying (facility couple: Dorothy)", () => {
   it("fills only the questions the form asks of a person who is not applying", async () => {
     const { text, checks } = await fillRegion(completeFacilityCouple())
