@@ -554,13 +554,15 @@ export async function upsertApplicationDraft(params: {
       WHERE public.applications.applicant_id = $2::uuid
         -- Never let a schemaVersion-less (ACA-3) write overwrite a SACA-2 row.
         -- SACA-2 writes are never blocked, so they can still replace a leftover ACA-3 draft.
-        AND NOT (
+        -- NULL-safe: stored application_type / draft_state are NULL on freshly created rows,
+        -- which makes the inner predicate NULL; "IS NOT TRUE" keeps those writable.
+        AND (
           (
             public.applications.application_type = 'saca2'
             OR jsonb_exists(public.applications.draft_state, 'schemaVersion')
           )
           AND NOT jsonb_exists($5::jsonb, 'schemaVersion')
-        )
+        ) IS NOT TRUE
       RETURNING
         id,
         status,

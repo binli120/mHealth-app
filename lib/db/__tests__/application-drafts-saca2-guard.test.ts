@@ -45,6 +45,26 @@ beforeEach(() => {
   vi.resetAllMocks()
 })
 
+// Three-valued mirror of the guard predicate (null = SQL NULL) for the truth table.
+type Tri = boolean | null
+const or3 = (a: Tri, b: Tri): Tri => (a === true || b === true ? true : a === null || b === null ? null : false)
+const and3 = (a: Tri, b: Tri): Tri => (a === false || b === false ? false : a === null || b === null ? null : true)
+const guardAllowsWrite = (storedIsSaca2Type: Tri, storedHasVersion: Tri, incomingHasVersion: boolean) =>
+  and3(or3(storedIsSaca2Type, storedHasVersion), !incomingHasVersion) !== true
+
+describe("SACA-2 guard truth table (NULL-safe)", () => {
+  it("allows ACA-3 writes onto rows with NULL application_type / draft_state", () => {
+    expect(guardAllowsWrite(null, null, false)).toBe(true)
+    expect(guardAllowsWrite(false, null, false)).toBe(true)
+  })
+  it("blocks ACA-3 writes onto SACA-2 rows and never blocks SACA-2 writes", () => {
+    expect(guardAllowsWrite(true, null, false)).toBe(false)
+    expect(guardAllowsWrite(null, true, false)).toBe(false)
+    expect(guardAllowsWrite(true, true, true)).toBe(true)
+    expect(guardAllowsWrite(null, null, true)).toBe(true)
+  })
+})
+
 describe("upsertApplicationDraft SACA-2 guard", () => {
   it("pins a guard that blocks schemaVersion-less writes onto a stored SACA-2 row", async () => {
     primeApplicantLookups()
@@ -60,7 +80,15 @@ describe("upsertApplicationDraft SACA-2 guard", () => {
     expect(sql).toContain("public.applications.application_type = 'saca2'")
     expect(sql).toContain("jsonb_exists(public.applications.draft_state, 'schemaVersion')")
     expect(sql).toContain("NOT jsonb_exists($5::jsonb, 'schemaVersion')")
-    expect(sql).toMatch(/AND NOT \(\s*\(\s*public\.applications\.application_type = 'saca2'/)
+    // NULL truth table (do not simplify to NOT(...)): a freshly created row has
+    // application_type and/or draft_state NULL, so A (type = 'saca2') is NULL/FALSE and
+    // B (jsonb_exists(draft_state, ...)) is NULL. (A OR B) AND NOT incoming is then NULL,
+    // and NOT(NULL) is NULL -> the ON CONFLICT WHERE would not be TRUE and block a
+    // legitimate ACA-3 save. "IS NOT TRUE" maps NULL to allow.
+    expect(sql).toMatch(
+      /AND \(\s*\(\s*public\.applications\.application_type = 'saca2'[\s\S]*?\)\s*IS NOT TRUE/,
+    )
+    expect(sql).not.toMatch(/AND NOT \(\s*\(\s*public\.applications\.application_type/)
   })
 
   it("throws ApplicationDraftTypeConflictError when the guard blocks an owned row", async () => {
