@@ -310,7 +310,8 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
         currentStep={currentIndex + 1}
         title={STEP_TITLES[effectiveStepId]}
         contentClassName="max-w-3xl"
-        onSaveAndExit={() => setSaveExitOpen(true)}
+        // While a resume is unresolved, Save & Exit must not open the dialog (it would snapshot the PHI-free state).
+        onSaveAndExit={pendingResume ? undefined : () => setSaveExitOpen(true)}
       >
         <div className="space-y-6">
           {restoreError ? (
@@ -328,35 +329,37 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
               onRestored={onResumeRestored}
               onSkip={() => setPendingResume(null)}
             />
-          ) : null}
+          ) : (
+            <>
+              <Saca2StepForm
+                stepId={effectiveStepId}
+                answers={state.data}
+                personIndex={personIndex}
+                errors={state.errors}
+                onChange={(path, value) => dispatch({ type: "set_answer", path, value })}
+              />
 
-          <Saca2StepForm
-            stepId={effectiveStepId}
-            answers={state.data}
-            personIndex={personIndex}
-            errors={state.errors}
-            onChange={(path, value) => dispatch({ type: "set_answer", path, value })}
-          />
+              <Saca2SaveStatus status={saveStatus} onRetry={handleRetrySave} />
 
-          <Saca2SaveStatus status={saveStatus} onRetry={handleRetrySave} />
-
-          <div className="flex items-center justify-between gap-3">
-            {currentIndex > 0 ? (
-              <Button type="button" variant="outline" onClick={handleBack}>
-                Back
-              </Button>
-            ) : (
-              <span />
-            )}
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" onClick={() => setSaveExitOpen(true)}>
-                Save &amp; Exit
-              </Button>
-              <Button type="button" onClick={handleNext}>
-                {isLastStep ? "Finish" : "Next"}
-              </Button>
-            </div>
-          </div>
+              <div className="flex items-center justify-between gap-3">
+                {currentIndex > 0 ? (
+                  <Button type="button" variant="outline" onClick={handleBack}>
+                    Back
+                  </Button>
+                ) : (
+                  <span />
+                )}
+                <div className="flex items-center gap-2">
+                  <Button type="button" variant="outline" onClick={() => setSaveExitOpen(true)}>
+                    Save &amp; Exit
+                  </Button>
+                  <Button type="button" onClick={handleNext}>
+                    {isLastStep ? "Finish" : "Next"}
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </WizardLayout>
 
