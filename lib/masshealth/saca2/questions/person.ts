@@ -23,6 +23,7 @@ import { IMMIGRATION_DOCUMENT_OPTIONS, IMMIGRATION_STATUS_OPTIONS } from "./immi
 import { INCOME_FREQUENCIES } from "./options"
 import { DEMOGRAPHICS_SECTION, validateDemographics } from "./person-demographics"
 import { IMMIGRATION_DETAIL_QUESTIONS, SSN_CARD_QUESTIONS } from "./person-identity"
+import { HOUSEHOLD_SECTION, validateAccommodations } from "./person-household"
 import { TAX_SECTION } from "./person-tax"
 import { applying, isSecondPerson, person, who } from "./person-context"
 import type { Saca2QuestionContext, Saca2StepContent } from "./types"
@@ -62,6 +63,7 @@ export const PERSON_STEP_CONTENT: Saca2StepContent = {
   scope: "person",
   validateStep: (answers, personIndex) => ({
     ...validateDemographics(answers, personIndex),
+    ...validateAccommodations(answers, personIndex),
   }),
   sections: [
     {
@@ -251,6 +253,7 @@ export const PERSON_STEP_CONTENT: Saca2StepContent = {
       ],
     },
     TAX_SECTION,
+    HOUSEHOLD_SECTION,
     {
       id: "income",
       title: "Income",

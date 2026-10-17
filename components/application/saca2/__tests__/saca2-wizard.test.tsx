@@ -364,6 +364,10 @@ describe("Saca2Wizard: married to not married", () => {
       hasDisability: "no" as const,
       everGotSsi: "no" as const,
       hasMedicareOrSsiOrSsdi: "no" as const,
+      pregnant: "no" as const,
+      everInFosterCare: "no" as const,
+      rentOrOwn: "rent" as const,
+      needsAccommodation: "no" as const,
       hasIncome: "no" as const,
       income: [],
       // Person 1 is applying, so the Next click now validates the tax questions too.
