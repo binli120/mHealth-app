@@ -107,6 +107,9 @@ describe("validateStep: person1", () => {
     p.everGotSsi = "no"
     p.hasMedicareOrSsiOrSsdi = "yes"
     p.hasIncome = "no"
+    p.tax.agreesToFileIfAptc = "no"
+    p.tax.claimedAsDependent = "no"
+    p.tax.filingSeparatelyAbuse = "no"
     mutate(a)
     return a
   }

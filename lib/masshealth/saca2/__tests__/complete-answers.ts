@@ -52,6 +52,7 @@ function completePerson(person: Saca2Person, overrides: Partial<Saca2Person>): S
     everGotSsi: "no",
     hasMedicareOrSsiOrSsdi: "yes",
     hasIncome: "no",
+    tax: { ...person.tax, agreesToFileIfAptc: "no", claimedAsDependent: "no", filingSeparatelyAbuse: "no" },
     ...overrides,
   }
 }

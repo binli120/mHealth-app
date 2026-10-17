@@ -366,6 +366,13 @@ describe("Saca2Wizard: married to not married", () => {
       hasMedicareOrSsiOrSsdi: "no" as const,
       hasIncome: "no" as const,
       income: [],
+      // Person 1 is applying, so the Next click now validates the tax questions too.
+      tax: {
+        ...getSyntheticCase("couple-spouse-in-nursing-facility").answers.persons[0].tax,
+        agreesToFileIfAptc: "no" as const,
+        claimedAsDependent: "no" as const,
+        filingSeparatelyAbuse: "no" as const,
+      },
     }
     mocks.authenticatedFetch.mockImplementation(async (_url: string, init?: { method?: string }) => {
       if (init?.method === "PUT") return ok({ ok: true })
