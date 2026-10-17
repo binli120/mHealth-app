@@ -10,7 +10,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mocks = vi.hoisted(() => ({
   authenticatedFetch: vi.fn(),
   push: vi.fn(),
-  beforeSecureSave: null as null | (() => Promise<boolean>),
+  beforeSecureSave: null as null | (() => Promise<boolean | { ok: boolean; warning?: string }>),
 }))
 
 vi.mock("@/lib/supabase/authenticated-fetch", () => ({ authenticatedFetch: mocks.authenticatedFetch }))
@@ -18,7 +18,7 @@ vi.mock("@/lib/phi-token/restore", () => ({ restorePhiDraftState: vi.fn() }))
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, back: vi.fn() }) }))
 vi.mock("@/components/application/phi-save-exit-dialog", () => ({
   // Capture the prop the wizard hands the dialog so the tests can call it exactly as the dialog does.
-  PhiSaveExitDialog: ({ onBeforeSecureSave }: { onBeforeSecureSave?: () => Promise<boolean> }) => {
+  PhiSaveExitDialog: ({ onBeforeSecureSave }: { onBeforeSecureSave?: () => Promise<boolean | { ok: boolean; warning?: string }> }) => {
     mocks.beforeSecureSave = onBeforeSecureSave ?? null
     return null
   },
@@ -54,12 +54,12 @@ async function firstEdit() {
   await waitFor(() => expect(putCount()).toBe(1), { timeout: 3_000 })
 }
 
-async function secureSave(): Promise<boolean> {
-  let result: boolean | undefined
+async function secureSave() {
+  let result: Awaited<ReturnType<NonNullable<typeof mocks.beforeSecureSave>>> | undefined
   await act(async () => {
     result = await mocks.beforeSecureSave!()
   })
-  return result as boolean
+  return result!
 }
 
 beforeEach(() => {
@@ -162,13 +162,16 @@ describe("Saca2Wizard: Save & Exit is not trapped by the autosave", () => {
     expect(putCount()).toBe(before + 1)
   })
 
-  it.each([409, 413])("a %i on the forced PUT does not block the secure save and shows the error", async (status) => {
+  it.each([400, 403, 409, 413, 422])("a %i on the forced PUT does not block the secure save, warns, and shows the error", async (status) => {
     onPut(() => res(500))
     render(<Saca2Wizard applicationId={APP_ID} />)
     await firstEdit()
     onPut(() => res(status))
     await userEvent.click(medicaid())
-    expect(await secureSave()).toBe(true)
+    expect(await secureSave()).toEqual({
+      ok: true,
+      warning: expect.stringMatching(/programs you selected and which steps you have completed.*may revert when you resume/),
+    })
     expect(screen.getByRole("status")).toHaveTextContent("Couldn't save your changes")
   })
 
@@ -182,7 +185,8 @@ describe("Saca2Wizard: Save & Exit is not trapped by the autosave", () => {
     await firstEdit()
     onPut(handler as () => Response)
     await userEvent.click(medicaid())
-    expect(await secureSave()).toBe(false)
+    const result = await secureSave()
+    expect(typeof result === "boolean" ? result : result.ok).toBe(false)
   })
 })
 

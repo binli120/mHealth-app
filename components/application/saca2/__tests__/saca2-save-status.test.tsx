@@ -34,4 +34,20 @@ describe("Saca2SaveStatus", () => {
     await userEvent.click(retry)
     expect(onRetry).toHaveBeenCalledTimes(1)
   })
+
+  it("keeps focus on a mounted, disabled button after Retry is clicked (not document.body)", async () => {
+    const onRetry = vi.fn()
+    const { rerender } = render(<Saca2SaveStatus status="error" onRetry={onRetry} />)
+    await userEvent.click(screen.getByRole("button", { name: "Retry" }))
+    rerender(<Saca2SaveStatus status="saving" onRetry={onRetry} />)
+    expect(document.activeElement).not.toBe(document.body)
+    const button = screen.getByRole("button")
+    expect(button).toBeDisabled()
+    expect(button).toHaveTextContent("Retrying…")
+  })
+
+  it("shows no button during a normal autosave", () => {
+    render(<Saca2SaveStatus status="saving" onRetry={vi.fn()} />)
+    expect(screen.queryByRole("button")).not.toBeInTheDocument()
+  })
 })

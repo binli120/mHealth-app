@@ -45,11 +45,11 @@ const wizardState = {
 
 function renderDialog(
   overrides: Partial<ComponentProps<typeof PhiSaveExitDialog>> & {
-    onBeforeSecureSave?: () => Promise<boolean>
+    onBeforeSecureSave?: () => Promise<boolean | { ok: boolean; warning?: string }>
   } = {},
 ) {
   const props: ComponentProps<typeof PhiSaveExitDialog> & {
-    onBeforeSecureSave?: () => Promise<boolean>
+    onBeforeSecureSave?: () => Promise<boolean | { ok: boolean; warning?: string }>
   } = {
     open: true,
     applicationId: "9b786f61-c945-4098-b813-e62c069114d2",
@@ -110,5 +110,34 @@ describe("PhiSaveExitDialog", () => {
         "X-Acting-For-Patient": "22222222-2222-4222-8222-222222222222",
       },
     })
+  })
+
+  it("shows the warning from { ok: true, warning } in the done phase, above Exit, and still exits", async () => {
+    const onExit = vi.fn()
+    renderDialog({
+      onExit,
+      onBeforeSecureSave: vi.fn().mockResolvedValue({ ok: true, warning: "Some progress may revert." }),
+    })
+    await userEvent.click(screen.getByRole("button", { name: /^save & exit$/i }))
+    const warning = await screen.findByText("Some progress may revert.")
+    expect(warning).toHaveAttribute("role", "alert")
+    const exit = screen.getByRole("button", { name: /done — exit/i })
+    expect(warning.compareDocumentPosition(exit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    await userEvent.click(exit)
+    expect(onExit).toHaveBeenCalled()
+  })
+
+  it("shows no warning alert after a plain boolean true", async () => {
+    renderDialog({ onBeforeSecureSave: vi.fn().mockResolvedValue(true) })
+    await userEvent.click(screen.getByRole("button", { name: /^save & exit$/i }))
+    await screen.findByRole("button", { name: /done — exit/i })
+    expect(screen.queryByText(/may revert/)).not.toBeInTheDocument()
+  })
+
+  it("treats { ok: false } like false: error shown, nothing uploaded", async () => {
+    renderDialog({ onBeforeSecureSave: vi.fn().mockResolvedValue({ ok: false }) })
+    await userEvent.click(screen.getByRole("button", { name: /^save & exit$/i }))
+    expect(await screen.findByText("Unable to save application progress. Please try again.")).toBeInTheDocument()
+    expect(authenticatedFetch).not.toHaveBeenCalled()
   })
 })

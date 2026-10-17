@@ -43,6 +43,9 @@ const FAILURE_BACKOFF_MS = 15_000
 // Retrying the same request cannot succeed (or isn't the client's to fix): no backoff, and never blocks Save & Exit.
 const FATAL_SAVE_STATUSES = new Set([400, 403, 409, 413, 422])
 
+const PROGRESS_NOT_SAVED_WARNING =
+  "Your answers are secured, but some progress (the programs you selected and which steps you have completed) could not be saved to your account and may revert when you resume. Try again later if you can."
+
 type SaveResult = "saved" | "retryable" | "fatal"
 
 function toRecord(value: unknown): Record<string, unknown> {
@@ -213,8 +216,14 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
     void saveDraftNow({ force: true })
   }, [saveDraftNow])
 
-  // Save & Exit: a non-retryable 4xx must not trap the user (the encrypted blob holds the full state).
-  const handleBeforeSecureSave = useCallback(async () => (await saveDraftNow({ force: true })) !== "retryable", [saveDraftNow])
+  // Save & Exit: a non-retryable 4xx must not trap the user, but the encrypted blob holds only the PHI
+  // fields. Programs, signer, current step and completed steps live in the server draft, so warn.
+  const handleBeforeSecureSave = useCallback(async () => {
+    const result = await saveDraftNow({ force: true })
+    if (result === "retryable") return { ok: false }
+    if (result === "fatal") return { ok: true, warning: PROGRESS_NOT_SAVED_WARNING }
+    return true
+  }, [saveDraftNow])
 
   useEffect(() => {
     if (!hydrated || !state.dirty) return

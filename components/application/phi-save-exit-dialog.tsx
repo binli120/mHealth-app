@@ -36,7 +36,11 @@ interface PhiSaveExitDialogProps {
   /** Any wizard state with a `data` object (ACA-3 WizardState or a SACA-2 snapshot). */
   wizardState: object
   actingForPatientId?: string
-  onBeforeSecureSave?: () => Promise<boolean>
+  /**
+   * Runs before the encrypted PHI upload. `false` / `{ ok: false }` stops the save with an error.
+   * `{ ok: true, warning }` proceeds and shows the warning on the final screen.
+   */
+  onBeforeSecureSave?: () => Promise<boolean | { ok: boolean; warning?: string }>
   onExit: () => void
   onCancel: () => void
 }
@@ -54,14 +58,18 @@ export function PhiSaveExitDialog({
   const [errorMessage, setErrorMessage] = useState("")
   const [backupToken, setBackupToken] = useState("")
   const [copied, setCopied] = useState(false)
+  const [warning, setWarning] = useState("")
 
   const handleSave = useCallback(async () => {
     setPhase("saving")
     setErrorMessage("")
+    setWarning("")
 
     try {
       if (onBeforeSecureSave) {
-        const saved = await onBeforeSecureSave()
+        const outcome = await onBeforeSecureSave()
+        const saved = typeof outcome === "boolean" ? outcome : outcome.ok
+        if (typeof outcome === "object" && outcome.ok && outcome.warning) setWarning(outcome.warning)
         if (!saved) {
           throw new Error("Unable to save application progress. Please try again.")
         }
@@ -184,6 +192,12 @@ export function PhiSaveExitDialog({
                 application.
               </AlertDescription>
             </Alert>
+
+            {warning ? (
+              <p role="alert" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                {warning}
+              </p>
+            ) : null}
 
             <details className="text-xs text-muted-foreground">
               <summary className="cursor-pointer select-none hover:text-foreground">
