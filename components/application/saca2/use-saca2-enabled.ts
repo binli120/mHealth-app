@@ -6,6 +6,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { abortAfter } from "@/lib/utils/abort-after"
 
 /**
  * Whether the SACA-2 wizard is enabled. `null` while inactive or loading;
@@ -17,7 +18,8 @@ export function useSaca2Enabled(active: boolean): boolean | null {
   useEffect(() => {
     if (!active) return
     let cancelled = false
-    fetch("/api/config/saca2", { cache: "no-store", signal: AbortSignal.timeout(6_000) })
+    const { signal, cancel } = abortAfter(6_000)
+    fetch("/api/config/saca2", { cache: "no-store", signal })
       .then(async (res) => {
         if (!res.ok) return false
         const body = (await res.json()) as { enabled?: unknown }
@@ -27,8 +29,10 @@ export function useSaca2Enabled(active: boolean): boolean | null {
       .then((value) => {
         if (!cancelled) setEnabled(value)
       })
+      .finally(cancel)
     return () => {
       cancelled = true
+      cancel()
     }
   }, [active])
 

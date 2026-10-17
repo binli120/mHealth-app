@@ -3,8 +3,8 @@
  * @email: blee@comura.ai
  */
 
-import { renderHook, waitFor } from "@testing-library/react"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { act, renderHook, waitFor } from "@testing-library/react"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({ authenticatedFetch: vi.fn() }))
 
@@ -97,5 +97,63 @@ describe("useIsSaca2Application", () => {
     } as unknown as Response)
     const unauthorized = renderHook(() => useIsSaca2Application("app-10", ""))
     await waitFor(() => expect(unauthorized.result.current).toBe("error"))
+  })
+})
+
+function hangUntilAborted(_url: unknown, init?: { signal?: AbortSignal }) {
+  return new Promise<never>((_resolve, reject) => {
+    init?.signal?.addEventListener("abort", () => reject(init.signal?.reason ?? new Error("aborted")))
+  })
+}
+
+describe("without AbortSignal.timeout (Safari 15 and older)", () => {
+  const nativeTimeout = AbortSignal.timeout
+
+  beforeEach(() => {
+    Object.defineProperty(AbortSignal, "timeout", { value: undefined, configurable: true, writable: true })
+  })
+
+  afterEach(() => {
+    Object.defineProperty(AbortSignal, "timeout", { value: nativeTimeout, configurable: true, writable: true })
+    vi.useRealTimers()
+  })
+
+  it("still resolves normally and leaves no timer pending", async () => {
+    vi.useFakeTimers()
+    mocks.authenticatedFetch.mockResolvedValue(
+      jsonResponse({ ok: true, record: { applicationType: "saca2" } }),
+    )
+    const { result } = renderHook(() => useIsSaca2Application("app-20", ""))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(result.current).toBe("saca2")
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it("fails closed with error when the request never resolves", async () => {
+    vi.useFakeTimers()
+    mocks.authenticatedFetch.mockImplementation(hangUntilAborted)
+    const { result } = renderHook(() => useIsSaca2Application("app-21", ""))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_999)
+    })
+    expect(result.current).toBe("unknown")
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1)
+    })
+    expect(result.current).toBe("error")
+  })
+
+  it("clears the timer on unmount", async () => {
+    vi.useFakeTimers()
+    mocks.authenticatedFetch.mockImplementation(hangUntilAborted)
+    const { unmount } = renderHook(() => useIsSaca2Application("app-22", ""))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(vi.getTimerCount()).toBe(1)
+    unmount()
+    expect(vi.getTimerCount()).toBe(0)
   })
 })

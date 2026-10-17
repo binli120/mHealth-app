@@ -11,6 +11,7 @@ import {
   getApplicationTypeBaseForm,
   isMassHealthApplicationType,
 } from "@/lib/masshealth/application-types"
+import { abortAfter } from "@/lib/utils/abort-after"
 
 /** "error" = the draft could not be checked; callers must NOT fall through to the ACA-3 flow. */
 export type Saca2Lookup = "saca2" | "other" | "unknown" | "error"
@@ -39,6 +40,8 @@ export function useIsSaca2Application(
     const headers: Record<string, string> = {}
     if (actingForPatientId) headers["X-Acting-For-Patient"] = actingForPatientId
 
+    const { signal, cancel } = abortAfter(6_000)
+
     // Promise.resolve().then(...) also turns a synchronous throw from the fetch helper
     // into a rejection, so the page falls back to "other" instead of crashing.
     Promise.resolve()
@@ -46,7 +49,7 @@ export function useIsSaca2Application(
         authenticatedFetch(`/api/applications/${applicationId}/draft`, {
           method: "GET",
           headers,
-          signal: AbortSignal.timeout(6_000),
+          signal,
         }),
       )
       .then(async (res): Promise<Saca2Lookup> => {
@@ -64,9 +67,11 @@ export function useIsSaca2Application(
       .catch(() => {
         if (!cancelled) setFetched({ id: applicationId, result: "error" })
       })
+      .finally(cancel)
 
     return () => {
       cancelled = true
+      cancel()
     }
   }, [needsLookup, applicationId, actingForPatientId])
 
