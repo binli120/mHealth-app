@@ -16,6 +16,8 @@ import {
   type HandoffContextType,
 } from "@/lib/db/mobile-handoff-session"
 import { getApplicationDraft } from "@/lib/db/application-drafts"
+import { uuidSchema } from "@/lib/api/validation"
+import { getApplicationTypeBaseForm, isMassHealthApplicationType } from "@/lib/masshealth/application-types"
 import { logServerError } from "@/lib/server/logger"
 
 const VALID_CONTEXT_TYPES = new Set<HandoffContextType>([
@@ -54,11 +56,13 @@ export async function POST(request: Request) {
   }
 
   // The phone flow is the ACA-3 chat; never hand a SACA-2 application to it.
-  const handoffApplicationId = contextPayload.applicationId
-  if (contextType === "intake_chat" && typeof handoffApplicationId === "string" && handoffApplicationId) {
+  // Non-UUID ids (e.g. the "app-default" placeholder before a draft exists) can't be a row: skip the lookup.
+  const parsedApplicationId = uuidSchema.safeParse(contextPayload.applicationId)
+  if (contextType === "intake_chat" && parsedApplicationId.success) {
     try {
-      const record = await getApplicationDraft(auth.userId, handoffApplicationId)
-      if (record?.applicationType === "saca2") {
+      const record = await getApplicationDraft(auth.userId, parsedApplicationId.data)
+      const type = record?.applicationType
+      if (type && isMassHealthApplicationType(type) && getApplicationTypeBaseForm(type) === "saca2") {
         return NextResponse.json(
           { ok: false, error: "SACA-2 applications cannot be continued on a phone yet." },
           { status: 400 },

@@ -21,6 +21,7 @@ import {
 } from "@/lib/db/mobile-handoff-session"
 
 const USER_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+const APP_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
 const TOKEN = "tok-abc123"
 
 function mockAuth() {
@@ -52,7 +53,7 @@ describe("POST /api/handoff", () => {
     } as any)
     const req = new Request("http://localhost/api/handoff", {
       method: "POST",
-      body: JSON.stringify({ contextType: "intake_chat", contextPayload: { applicationId: "app-1" }, refreshToken: "rt" }),
+      body: JSON.stringify({ contextType: "intake_chat", contextPayload: { applicationId: APP_ID }, refreshToken: "rt" }),
       headers: { "Content-Type": "application/json" },
     })
     const res = await POST(req)
@@ -72,11 +73,20 @@ describe("POST /api/handoff", () => {
   it("refuses an intake_chat hand-off for a SACA-2 application", async () => {
      
     vi.mocked(getApplicationDraft).mockResolvedValue({ applicationType: "saca2" } as any)
-    const res = await postHandoff("intake_chat", { applicationId: "app-1" })
+    const res = await postHandoff("intake_chat", { applicationId: APP_ID })
     expect(res.status).toBe(400)
     expect(await res.json()).toEqual({ ok: false, error: "SACA-2 applications cannot be continued on a phone yet." })
-    expect(getApplicationDraft).toHaveBeenCalledWith(USER_ID, "app-1")
+    expect(getApplicationDraft).toHaveBeenCalledWith(USER_ID, APP_ID)
     expect(createHandoffSession).not.toHaveBeenCalled()
+  })
+
+  it("skips the lookup for the non-UUID placeholder id and proceeds", async () => {
+     
+    vi.mocked(createHandoffSession).mockResolvedValue({ token: TOKEN, expiresAt: "x" } as any)
+    const res = await postHandoff("intake_chat", { applicationId: "app-default" })
+    expect(res.status).toBe(200)
+    expect(getApplicationDraft).not.toHaveBeenCalled()
+    expect(createHandoffSession).toHaveBeenCalled()
   })
 
   it("lets an ACA-3 application through", async () => {
@@ -84,7 +94,7 @@ describe("POST /api/handoff", () => {
     vi.mocked(getApplicationDraft).mockResolvedValue({ applicationType: "aca3" } as any)
      
     vi.mocked(createHandoffSession).mockResolvedValue({ token: TOKEN, expiresAt: "x" } as any)
-    const res = await postHandoff("intake_chat", { applicationId: "app-1" })
+    const res = await postHandoff("intake_chat", { applicationId: APP_ID })
     expect(res.status).toBe(200)
     expect(createHandoffSession).toHaveBeenCalled()
   })
@@ -93,21 +103,21 @@ describe("POST /api/handoff", () => {
     vi.mocked(getApplicationDraft).mockResolvedValue(null)
      
     vi.mocked(createHandoffSession).mockResolvedValue({ token: TOKEN, expiresAt: "x" } as any)
-    const res = await postHandoff("intake_chat", { applicationId: "app-1" })
+    const res = await postHandoff("intake_chat", { applicationId: APP_ID })
     expect(res.status).toBe(200)
   })
 
   it.each(["mh_chat", "voice_message"])("never looks up the application for %s", async (type) => {
      
     vi.mocked(createHandoffSession).mockResolvedValue({ token: TOKEN, expiresAt: "x" } as any)
-    const res = await postHandoff(type, { applicationId: "app-1" })
+    const res = await postHandoff(type, { applicationId: APP_ID })
     expect(res.status).toBe(200)
     expect(getApplicationDraft).not.toHaveBeenCalled()
   })
 
   it("fails closed with 400 when the lookup throws", async () => {
     vi.mocked(getApplicationDraft).mockRejectedValue(new Error("db down"))
-    const res = await postHandoff("intake_chat", { applicationId: "app-1" })
+    const res = await postHandoff("intake_chat", { applicationId: APP_ID })
     expect(res.status).toBe(400)
     expect(await res.json()).toEqual({ ok: false, error: "Could not verify the application. Try again." })
     expect(logServerError).toHaveBeenCalled()
