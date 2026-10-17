@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@comura.ai
+ */
+
 import inventoryJson from "./field-inventory.json"
 
 export type Saca2FieldInfo = {

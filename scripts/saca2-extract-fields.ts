@@ -1,4 +1,9 @@
 /**
+ * @author: Bin Lee
+ * @email: blee@comura.ai
+ */
+
+/**
  * Regenerates lib/masshealth/saca2/pdf/field-inventory.json from the pinned
  * SACA-2 template. Run after a form reissue: `npm run saca2:inventory`.
  */

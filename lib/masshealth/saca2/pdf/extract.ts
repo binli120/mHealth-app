@@ -1,3 +1,8 @@
+/**
+ * @author: Bin Lee
+ * @email: blee@comura.ai
+ */
+
 import {
   PDFArray,
   PDFButton,
