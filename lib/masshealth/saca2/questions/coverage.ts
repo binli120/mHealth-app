@@ -23,6 +23,8 @@ interface PcaWording {
   object: string
   /** "Do you plan" / "Does your spouse plan" */
   planQ: string
+  /** Help under the PCM-agency question. */
+  contactHelp: string
 }
 
 const YOU: PcaWording = {
@@ -30,12 +32,16 @@ const YOU: PcaWording = {
   keepQ: "Does your disability keep you",
   object: "you",
   planQ: "Do you plan",
+  contactHelp:
+    "You must contact the PCM agency within 90 days of the date MassHealth decides you are eligible, or you will not be able to benefit from the special PCA rules. If both of you answered Yes to all parts of Question 3, each of you completes your own Supplement C.",
 }
 const SPOUSE: PcaWording = {
   haveQ: "Does your spouse have",
   keepQ: "Does your spouse's disability keep your spouse",
   object: "your spouse",
   planQ: "Does your spouse plan",
+  contactHelp:
+    "Your spouse must contact the PCM agency within 90 days of the date MassHealth decides they are eligible, or they will not be able to benefit from the special PCA rules. If both of you answered Yes to all parts of Question 3, each of you completes your own Supplement C.",
 }
 
 function personQuestions(index: 0 | 1, w: PcaWording, present: (ctx: Saca2QuestionContext) => boolean): Saca2Question[] {
@@ -59,7 +65,7 @@ function personQuestions(index: 0 | 1, w: PcaWording, present: (ctx: Saca2Questi
       {
         required: true,
         visibleWhen: contact,
-        help: "You must contact the PCM agency within 90 days of the date MassHealth decides you are eligible, or you will not be able to benefit from the special PCA rules. If both of you answered Yes to all parts of Question 3, each of you completes your own Supplement C.",
+        help: w.contactHelp,
       },
     ),
   ]

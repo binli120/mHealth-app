@@ -53,6 +53,9 @@ const ACCOUNT_TYPES = opts([
   ["now", "NOW account"],
   ["moneyMarket", "Money market"],
   ["pna", "Personal needs allowance (PNA) account"],
+  ["ira", "Individual retirement account (IRA)"],
+  ["keogh", "Keogh plan"],
+  ["pension", "Pension fund"],
   ["other", "Other"],
 ])
 
@@ -92,7 +95,7 @@ const BANK_SECTION: Saca2Section = {
           select("accountType", "Account type", ACCOUNT_TYPES, { required: true }),
           text("institution", "Name of bank or institution", { required: true }),
           text("accountNumber", "Account number"),
-          money("currentBalance", "Current balance ($)", { required: true }),
+          money("currentBalance", "Current balance ($)", { required: true, visibleWhen: (ctx) => ctx.item?.open !== false }),
           money("balanceOnAdmissionDate", "Balance on the date of admission to the facility ($)", { visibleWhen: isFacilityApplicant }),
           checkbox("open", "This account is open"),
           date("closedOn", "Date account closed", { required: true, visibleWhen: (ctx) => ctx.item?.open === false }),

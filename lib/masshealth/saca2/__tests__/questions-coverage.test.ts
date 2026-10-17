@@ -158,3 +158,18 @@ describe("pca question wording", () => {
     for (const label of Object.values(labels())) expect(label).not.toMatch(/\bDo your spouse\b/)
   })
 })
+
+describe("pca contact help", () => {
+  const help = (path: string) => {
+    const q = getStepContent("pca")?.sections.flatMap((s) => s.questions).find((x) => x.path === path)
+    return q?.help
+  }
+  it("words the help for each person", () => {
+    expect(help("pca.byPerson.0.willContactPcmAgency")).toBe(
+      "You must contact the PCM agency within 90 days of the date MassHealth decides you are eligible, or you will not be able to benefit from the special PCA rules. If both of you answered Yes to all parts of Question 3, each of you completes your own Supplement C.",
+    )
+    expect(help("pca.byPerson.1.willContactPcmAgency")).toBe(
+      "Your spouse must contact the PCM agency within 90 days of the date MassHealth decides they are eligible, or they will not be able to benefit from the special PCA rules. If both of you answered Yes to all parts of Question 3, each of you completes your own Supplement C.",
+    )
+  })
+})

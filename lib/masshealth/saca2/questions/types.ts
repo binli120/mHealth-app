@@ -77,7 +77,7 @@ export interface Saca2StepContent {
   scope: "root" | "person"
   sections: Saca2Section[]
   /** Cross-field checks that no single question can express. Keys are absolute answer paths. */
-  validateStep?: (answers: Saca2Answers, personIndex: number) => Record<string, string>
+  validateStep?: (answers: Saca2Answers, personIndex: number, on: Date) => Record<string, string>
 }
 
 export function resolveQuestionPath(scope: "root" | "person", personIndex: number, path: string): string {

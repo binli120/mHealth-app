@@ -99,6 +99,39 @@ describe("assets step", () => {
       expect(validateStep("assets", a, ON)).toEqual({})
     })
 
+    it("offers the retirement account types before other", () => {
+      const q = getStepContent("assets")?.sections.flatMap((s) => s.questions).find((x) => x.path === "assets.bankAccounts")
+      const type = (q as unknown as { repeater: { questions: { path: string; options?: { value: string }[] }[] } }).repeater.questions.find((x) => x.path === "accountType")
+      const values = type?.options?.map((o) => o.value)
+      expect(values?.slice(-4)).toEqual(["ira", "keogh", "pension", "other"])
+    })
+
+    it("accepts an IRA row", () => {
+      const row = { ownerName: "A", accountType: "ira", institution: "B", accountNumber: "1", currentBalance: 5, balanceOnAdmissionDate: null, open: true, closedOn: null, balanceWhenClosed: null }
+      const a = answers((x) => {
+        allNo(x)
+        x.assets.gates.retirementAccounts = "yes"
+        x.assets.bankAccounts = [row]
+      })
+      expect(validateStep("assets", a, ON)).toEqual({})
+    })
+
+    it("does not need a current balance for a closed account, but still for an open one", () => {
+      const row = { ownerName: "A", accountType: "checking", institution: "B", accountNumber: "1", currentBalance: null, balanceOnAdmissionDate: null, open: false, closedOn: "2026-01-01", balanceWhenClosed: 10 }
+      const a = answers((x) => {
+        allNo(x)
+        x.assets.gates.closedAccounts = "yes"
+        x.assets.bankAccounts = [row]
+      })
+      expect(validateStep("assets", a, ON)).toEqual({})
+      a.assets.bankAccounts = [{ ...row, currentBalance: 99 }]
+      expect(validateStep("assets", a, ON)).toEqual({})
+      a.assets.bankAccounts = [{ ...row, open: true }]
+      expect(Object.keys(validateStep("assets", a, ON))).toEqual(["assets.bankAccounts.0.currentBalance"])
+      a.assets.bankAccounts = [{ ...row, balanceWhenClosed: null }]
+      expect(Object.keys(validateStep("assets", a, ON))).toEqual(["assets.bankAccounts.0.balanceWhenClosed"])
+    })
+
     it("checks the admission-date balance only for facility applicants", () => {
       const row = { ownerName: "A", accountType: "savings", institution: "B", accountNumber: "1", currentBalance: 5, balanceOnAdmissionDate: -5, open: true, closedOn: null, balanceWhenClosed: null }
       const home = answers((x) => {

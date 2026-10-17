@@ -83,5 +83,5 @@ export function validateStep(stepId: Saca2StepId, answers: Saca2Answers, on: Dat
   for (const section of content.sections) {
     validateQuestions(section.questions, ctx, content.scope, personIndex, undefined, errors)
   }
-  return { ...errors, ...(content.validateStep?.(answers, personIndex) ?? {}) }
+  return { ...errors, ...(content.validateStep?.(answers, personIndex, on) ?? {}) }
 }

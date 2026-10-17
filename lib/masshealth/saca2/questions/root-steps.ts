@@ -186,4 +186,11 @@ export const SIGNATURE_STEP_CONTENT: Saca2StepContent = {
       ],
     },
   ],
+  validateStep: (answers, _personIndex, on): Record<string, string> => {
+    const age = calculateAge(answers.persons[0]?.dateOfBirth, on)
+    const nonEmancipatedMinor = age !== null && age < 18 && answers.signing.emancipatedMinor === "no"
+    return nonEmancipatedMinor && answers.signature.signedBy === "applicant"
+      ? { "signature.signedBy": "A responsible party must sign for an applicant who is younger than 18 and not an emancipated minor." }
+      : {}
+  },
 }

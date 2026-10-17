@@ -70,6 +70,41 @@ describe("signature step", () => {
     expect(validateStep("signature", a, ON)).toEqual({})
   })
 
+  describe("non-emancipated minor signing as the applicant", () => {
+    const MSG = "A responsible party must sign for an applicant who is younger than 18 and not an emancipated minor."
+    const minor = (signedBy: "applicant" | "responsibleParty" | null, emancipated: "yes" | "no" | null) =>
+      answers((x) => {
+        x.persons[0].dateOfBirth = "2012-05-01"
+        x.signature.signedBy = signedBy
+        x.signing.emancipatedMinor = emancipated
+      })
+
+    it("rejects the applicant as signer", () => {
+      const errors = validateStep("signature", minor("applicant", "no"), ON)
+      expect(errors["signature.signedBy"]).toBe(MSG)
+      expect(Object.keys(errors).sort()).toEqual(["signature.signedBy", ...RESPONSIBLE_REQUIRED].sort())
+      expect(validateStep("signature", minor("responsibleParty", "no"), ON)["signature.signedBy"]).toBeUndefined()
+    })
+    it("allows an emancipated minor to sign", () => {
+      expect(validateStep("signature", minor("applicant", "yes"), ON)).toEqual({})
+    })
+    it("leaves an adult alone", () => {
+      const a = answers((x) => {
+        x.persons[0].dateOfBirth = "1950-04-02"
+        x.signature.signedBy = "applicant"
+        x.signing.emancipatedMinor = "no"
+      })
+      expect(validateStep("signature", a, ON)).toEqual({})
+    })
+    it("gives only the required error when nobody is chosen", () => {
+      expect(validateStep("signature", minor(null, "no"), ON)["signature.signedBy"]).toBe("This question is required.")
+      expect(validateStep("signature", minor("applicant", "no"), ON)["signature.signedBy"]).not.toBe("This question is required.")
+    })
+    it("gives only the emancipation required error when it is unanswered", () => {
+      expect(validateStep("signature", minor("applicant", null), ON)).toEqual({ "signing.emancipatedMinor": "This question is required." })
+    })
+  })
+
   it("requires the responsible-party details whenever a responsible party signs, with valid formats", () => {
     const a = answers((x) => {
       x.persons[0].dateOfBirth = "1950-04-02"
