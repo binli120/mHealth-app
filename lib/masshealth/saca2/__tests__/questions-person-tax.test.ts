@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest"
 import { getStepContent, validateStep } from "@/lib/masshealth/saca2/questions"
-import { emptySaca2Answers, type Saca2Answers, type TaxDependent } from "@/lib/masshealth/saca2/types"
+import { emptySaca2Answers, emptySaca2Person, type Saca2Answers, type TaxDependent } from "@/lib/masshealth/saca2/types"
 
 const ON = new Date("2026-10-13T12:00:00Z")
 const REQ = "This question is required."
@@ -116,12 +116,16 @@ describe("tax filing questions", () => {
     })
 
     it("is never shown for Person 2", () => {
-      expect(q("person2").visibleWhen!(ctx(1))).toBe(false)
+      const c = ctx(1)
+      const second = emptySaca2Person()
+      second.applyingForCoverage = "yes"
+      c.answers.persons.push(second)
+      expect(q("person2").visibleWhen!(c)).toBe(false)
     })
 
     it("uses the form's wording", () => {
       expect(q("person1").label).toBe(
-        "I filed a federal income tax return with the IRS for each year in the past two years that I received an Advance Premium Tax Credit (APTC) to lower my monthly premium payment, including if I was enrolled in ConnectorCare. I included the tax forms showing the tax credits I received when I filed my tax return so the IRS could calculate how much APTC I was eligible to receive based on my final income for the year.",
+        "I filed a federal income tax return with the Internal Revenue Service (IRS) for each year in the past two years that I received an Advance Premium Tax Credit (APTC) to lower my monthly premium payment, including if I was enrolled in ConnectorCare. I included the tax forms showing the tax credits I received when I filed my tax return so the IRS could calculate how much Advance Premium Tax Credit I was eligible to receive based on my final income for the year.",
       )
     })
   })
