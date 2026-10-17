@@ -79,7 +79,7 @@ export const INCOME_SECTION: Saca2Section = {
           date("effectiveDate", "Income effective date", { visibleWhen: isWages }),
           number("hoursPerWeek", "Average hours worked each week", {
             required: kindIs("selfEmployment"),
-            visibleWhen: kindIs("wages", "selfEmployment"),
+            visibleWhen: kindIs("wages", "selfEmployment", "farmingFishing"),
           }),
           yesNo("seasonal", who("Are you seasonally employed?", "Is this person seasonally employed?"), {
             required: isWages,

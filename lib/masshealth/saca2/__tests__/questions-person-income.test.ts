@@ -139,7 +139,7 @@ describe("income row: required and visible fields per kind", () => {
     expect(visible("wages")).toEqual(["amount", "effectiveDate", "employerFederalTaxId", "employerNameAndAddress", "frequency", "hoursPerWeek", "kind", "seasonal"])
     expect(visible("selfEmployment")).toEqual(["amount", "description", "hoursPerWeek", "isLoss", "kind"])
     expect(visible("capitalGains")).toEqual(["amount", "isLoss", "kind"])
-    expect(visible("farmingFishing")).toEqual(["amount", "isLoss", "kind"])
+    expect(visible("farmingFishing")).toEqual(["amount", "hoursPerWeek", "isLoss", "kind"])
     expect(visible("pension")).toEqual(["amount", "description", "frequency", "kind"])
     expect(visible("otherTaxable")).toEqual(["amount", "description", "frequency", "kind"])
     expect(visible("alimony")).toEqual(["amount", "frequency", "kind", "preTcjaAmount"])
@@ -257,5 +257,37 @@ describe("income row: Person 2", () => {
     const a = answers([], 1)
     expect(validateStep("person2", a, ON)["persons.1.income"]).toBe("Add at least one.")
     expect(validateStep("person2", a, ON)["persons.1.expectedIncomeThisYear"]).toBe(REQ)
+  })
+})
+
+describe("income row: farming and fishing weekly hours", () => {
+  const hours = () => rowQuestions("hoursPerWeek")[0]
+
+  it("shows the hours field for farming and fishing", () => {
+    expect(hours().visibleWhen!(ctxFor({ kind: "farmingFishing" }))).toBe(true)
+  })
+
+  it("does not require hours, but still validates a filled value", () => {
+    expect(rowKeys({ kind: "farmingFishing", amount: 50 })).toEqual([])
+    expect(rowKeys({ kind: "farmingFishing", amount: 50, hoursPerWeek: null })).toEqual([])
+    expect(rowKeys({ kind: "farmingFishing", amount: 50, hoursPerWeek: -2 })).toEqual(["hoursPerWeek"])
+    expect(rowKeys({ kind: "farmingFishing", amount: 50, hoursPerWeek: 20 })).toEqual([])
+  })
+
+  it.each(["capitalGains", "pension", "lottery", "alimony", "socialSecurity", null])("keeps hours hidden for %s", (kind) => {
+    expect(hours().visibleWhen!(ctxFor({ kind }))).toBe(false)
+  })
+
+  it("keeps the monthly-net label, loss box, and no frequency alongside hours", () => {
+    const ctx = ctxFor({ kind: "farmingFishing", hoursPerWeek: 10 })
+    expect(resolveText(rowQuestions("amount")[0].label, ctx)).toBe("Average monthly net income or loss ($)")
+    expect(rowQuestions("isLoss")[0].visibleWhen!(ctx)).toBe(true)
+    expect(rowQuestions("frequency")[0].visibleWhen!(ctx)).toBe(false)
+    expect(rowKeys({ kind: "farmingFishing", amount: 5, isLoss: true, hoursPerWeek: 10 })).toEqual([])
+  })
+
+  it("leaves hours required for self-employment and optional for wages", () => {
+    expect(rowKeys({ kind: "selfEmployment", amount: 1, description: "x" })).toEqual(["hoursPerWeek"])
+    expect(rowKeys({ kind: "wages", amount: 1, frequency: "monthly", seasonal: "no" })).toEqual([])
   })
 })
