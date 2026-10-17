@@ -75,14 +75,16 @@
   - In `upsertApplicationDraft`'s `DO UPDATE` add to the final `WHERE` (after the `applicant_id` check):
 
 ```sql
-        AND NOT (
+        AND (
           (
             public.applications.application_type = 'saca2'
-            OR (public.applications.draft_state ? 'schemaVersion')
+            OR jsonb_exists(public.applications.draft_state, 'schemaVersion')
           )
-          AND NOT ($5::jsonb ? 'schemaVersion')
-        )
+          AND NOT jsonb_exists($5::jsonb, 'schemaVersion')
+        ) IS NOT TRUE
 ```
+
+    The `IS NOT TRUE` wrapper is required: a stored NULL `application_type` or `draft_state` (rows created by `createApplicationDraft` / `swapPhiDraftResumeId`) would otherwise make the whole predicate NULL and block legitimate ACA-3 saves (found in the Task 1 review).
 
     (`?` here is the Postgres jsonb key-exists operator; node-postgres only treats `$n` as placeholders, so it is safe. If the project's SQL linter or the pool wrapper rejects `?`, use `jsonb_exists(public.applications.draft_state, 'schemaVersion')` and `jsonb_exists($5::jsonb, 'schemaVersion')` instead and pin those fragments in test 1.)
   - After the query, when `rows.length === 0`, run one more query selecting `id` for `id = $1 AND applicant_id = $2`; if a row comes back throw `new ApplicationDraftTypeConflictError()`, else throw `ApplicationDraftAccessError` as before. Add the class next to `ApplicationDraftAccessError` (same shape, default message "This application is a SACA-2 application and cannot be changed by this form.").
