@@ -18,6 +18,7 @@ import { isStepVisible } from "../visibility"
 import { ASSETS_DERIVED } from "./derived-assets"
 import { HEALTH_DERIVED } from "./derived-health"
 import { INCOME_DERIVED } from "./derived-income"
+import { SIGNING_DERIVED } from "./derived-signing"
 import { encodeText } from "./encoders"
 import type { DerivedRegistry, DerivedResolver } from "./pdf-fill"
 import type { VisibleReader } from "./visible-reader"
@@ -121,6 +122,7 @@ export const DERIVED: DerivedRegistry = {
   ...INCOME_DERIVED,
   ...ASSETS_DERIVED,
   ...HEALTH_DERIVED,
+  ...SIGNING_DERIVED,
 
   "person.fullName": (reader, _answers, _on, person) => fullName(reader, requirePerson(person, "person.fullName")),
 
