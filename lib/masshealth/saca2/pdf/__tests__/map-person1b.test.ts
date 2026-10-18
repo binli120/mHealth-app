@@ -656,6 +656,24 @@ describe("Person 1 pages 4-6: every answerable field", () => {
     expect(text[INCOME_NEXT]).toBe("70000.50")
   })
 
+  it("a $0 deduction is no deduction: neither the box nor a '0' is written; a blank amount likewise", async () => {
+    const a = completeRichHousehold()
+    person(a).deductions = {
+      none: false,
+      amounts: { ...person(a).deductions.amounts, hsa: 0, ira: 2500, educator: null },
+    }
+    const { text, checks } = await fillRegion(a)
+    const [hsaBox, hsaAmount] = DEDUCTIONS.hsa
+    expect(checks).not.toHaveProperty([hsaBox])
+    expect(text).not.toHaveProperty([hsaAmount])
+    const [educatorBox, educatorAmount] = DEDUCTIONS.educator
+    expect(checks).not.toHaveProperty([educatorBox])
+    expect(text).not.toHaveProperty([educatorAmount])
+    // an amount that was given is written with its box, as before
+    expect(checks[DEDUCTIONS.ira[0]]).toBe("On")
+    expect(text[DEDUCTIONS.ira[1]]).toBe("2500")
+  })
+
   it("ticks 'None' and writes no deduction when none is claimed", async () => {
     const a = completeRichHousehold()
     person(a).deductions = { ...person(a).deductions, none: true }

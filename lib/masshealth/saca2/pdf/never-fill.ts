@@ -82,6 +82,50 @@ export const NEVER_FILL: Record<string, { reason: NeverFillReason; note?: string
     note: "WIZARD GAP: vehicles (Your spouse) mobile-home address; the wizard has one 'year, make, and model (or mobile home address)' answer, written to the Year/make/model line",
   },
 
+  // Form page 5 (PDF index 6): the Name line beside the Q19 disability Yes/No
+  "19. Name": {
+    reason: "other",
+    note: "Q19 (Person 1) 'Name:' line after the disability Yes/No; the form does not say whose name or why, and the wizard has no such question",
+  },
+
+  // Form page 5/6 Q13f (Person 1) and Q23f (Person 2): the four optional category boxes
+  "victim of severe trafficking": {
+    reason: "other",
+    note: "WIZARD GAP: Q13f category box; the wizard asks one Yes/No for the whole optional question, so the category is unknown (a Yes is recorded on the continuation sheet instead); see owner decisions",
+  },
+  "a spouse child sibling or parent of a trafficking victim": {
+    reason: "other",
+    note: "WIZARD GAP: Q13f category box; the wizard asks one Yes/No for the whole optional question, so the category is unknown (a Yes is recorded on the continuation sheet instead); see owner decisions",
+  },
+  "a battered spouse": {
+    reason: "other",
+    note: "WIZARD GAP: Q13f category box; the wizard asks one Yes/No for the whole optional question, so the category is unknown (a Yes is recorded on the continuation sheet instead); see owner decisions",
+  },
+  "a child or the parent of battered spouse": {
+    reason: "other",
+    note: "WIZARD GAP: Q13f category box; the wizard asks one Yes/No for the whole optional question, so the category is unknown (a Yes is recorded on the continuation sheet instead); see owner decisions",
+  },
+  "victim of severe trafficking_2": {
+    reason: "other",
+    note: "WIZARD GAP: Person 2's Q23f category box; the wizard asks one Yes/No for the whole optional question, so the category is unknown (a Yes is recorded on the continuation sheet instead); see owner decisions",
+  },
+  "a spouse child sibling or parent of a trafficking victim_2": {
+    reason: "other",
+    note: "WIZARD GAP: Person 2's Q23f category box; the wizard asks one Yes/No for the whole optional question, so the category is unknown (a Yes is recorded on the continuation sheet instead); see owner decisions",
+  },
+  "a battered spouse_2": {
+    reason: "other",
+    note: "WIZARD GAP: Person 2's Q23f category box; the wizard asks one Yes/No for the whole optional question, so the category is unknown (a Yes is recorded on the continuation sheet instead); see owner decisions",
+  },
+  "a child or the parent of battered spouse_2": {
+    reason: "other",
+    note: "WIZARD GAP: Person 2's Q23f category box; the wizard asks one Yes/No for the whole optional question, so the category is unknown (a Yes is recorded on the continuation sheet instead); see owner decisions",
+  },
+  "29. Name_P2": {
+    reason: "other",
+    note: "Person 2's Q29 'Name:' line after the disability Yes/No (same as Person 1's `19. Name`); the form does not say whose name or why, and the wizard has no such question",
+  },
+
   // Step 8 (form page 18, PDF index 19)
   "eligibility as if you do not need PCA services": {
     reason: "other",
@@ -208,8 +252,8 @@ export const NEVER_FILL: Record<string, { reason: NeverFillReason; note?: string
     note: "IRS 4506 signature block: the DATE box above the Date label beside the taxpayer's signature line (the template name is a garbled label, 'authority to sign'); dated by the signer, never pre-filled. The form has no widget on the signature line itself",
   },
   "Phone number of taxpayer on line 1a or 2a": {
-    reason: "signature",
-    note: "IRS 4506 signature block: the signer's phone number (for the IRS to reach the signer about the signature); belongs to the signature block the signer completes, so it is not pre-filled",
+    reason: "other",
+    note: "WIZARD / OWNER DECISION: IRS 4506 signature block phone number (for the IRS to reach the signer about the signature). The wizard asks for the applicant's phone, but whether to copy it here depends on who signs (applicant, authorized representative, or Person 2); left blank until the owner decides (see docs/superpowers/saca2-pdf-owner-decisions.md)",
   },
   "Print/Type name": {
     reason: "signature",
@@ -217,6 +261,6 @@ export const NEVER_FILL: Record<string, { reason: NeverFillReason; note?: string
   },
   "PrintType name": {
     reason: "signature",
-    note: "IRS 4506 signature block: printed name of the spouse under the spouse's signature line; written with the signature, never pre-filled",
+    note: "IRS 4506 signature block: this widget (template name misleading) sits in the SPOUSE'S SIGNATURE space, between the \"Spouse's signature\" label and the line above the lower \"Print/Type name\" label (verified by position and render); the spouse signs there by hand. The form has no widget for the spouse's printed name",
   },
 }

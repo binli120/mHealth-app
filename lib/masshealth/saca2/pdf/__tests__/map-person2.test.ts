@@ -404,7 +404,7 @@ describe("Person 2 rows of the shared person table", () => {
 
   it("maps Person 2's amounts to the split __p2 fields and gives every deduction its own box", () => {
     const entries = expandPersonTable(PERSON_TABLE).filter((e) => e.source.person === 1)
-    const amounts = entries.filter((e) => e.source.kind === "answer" && e.source.path.startsWith("deductions.amounts."))
+    const amounts = entries.filter((e) => e.source.kind === "derived" && /^deductions\..+\.amount$/.test(e.source.id))
     expect(amounts).toHaveLength(11)
     expect(amounts.filter((e) => e.fields[0].endsWith("__p2"))).toHaveLength(8)
     for (const [box, amount] of Object.values(DEDUCTIONS)) {
@@ -1099,13 +1099,13 @@ describe("PARITY of the Person 1 and Person 2 columns", () => {
     }
   })
 
-  it("leaves only the listed unresolved boxes unmapped on Person 2's pages, and maps the yearly income on page 13", () => {
+  it("leaves nothing unmapped on Person 2's pages: the formerly unresolved boxes are never-fill with a wizard-gap note; the yearly income on page 13 is mapped", () => {
     const unmapped = new Set(computeUnmappedFields(FIELD_MAP))
     const left = getInventory()
       .filter((field) => unmapped.has(field.name) && field.pages.some((page) => page >= 9 && page <= 12))
       .map((field) => field.name)
       .sort()
-    expect(left).toEqual([...UNRESOLVED_P2].sort())
+    expect(left).toEqual([])
     // the Person 2 half of page 8 (index 8) holds Person 1's tail and Person 2's start; none is left unmapped
     expect(unmapped.has(NAME)).toBe(false)
     expect(unmapped.has(INCOME_THIS)).toBe(false)
@@ -1114,7 +1114,8 @@ describe("PARITY of the Person 1 and Person 2 columns", () => {
     const mapped = new Set(expandPersonTable(PERSON_TABLE).flatMap((e) => e.fields))
     for (const field of UNRESOLVED_P2) {
       expect(mapped.has(field), field).toBe(false)
-      expect(NEVER_FILL[field], field).toBeUndefined()
+      expect(NEVER_FILL[field]?.reason, field).toBe("other")
+      expect(NEVER_FILL[field]?.note, field).toMatch(/WIZARD GAP|no such question/)
     }
   })
 })

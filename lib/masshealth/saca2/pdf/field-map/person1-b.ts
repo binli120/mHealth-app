@@ -502,10 +502,10 @@ function rentalUnit(index: number, p1: RentalFields, p2: RentalFields): PersonRo
 
 type DeductionFields = readonly [box: string, amount: string]
 
-/** One deduction of Q32: its box is ticked when a yearly amount is given. */
+/** One deduction of Q32: its box is ticked, and the amount written, when a yearly amount above zero is given. */
 function deduction(key: string, p1: DeductionFields, p2: DeductionFields): PersonRow[] {
   return [
     derived(`deductions.${key}.checked`, p1[0], CHECK, p2[0]),
-    answer(`deductions.amounts.${key}`, p1[1], "money", p2[1]),
+    derived(`deductions.${key}.amount`, p1[1], "money", p2[1]),
   ]
 }

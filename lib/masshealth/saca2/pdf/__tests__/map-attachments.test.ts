@@ -24,6 +24,7 @@ vi.setConfig({ testTimeout: 120_000 })
 
 const ON = new Date("2026-10-13T12:00:00Z")
 const SENTINEL = "STALE-SENTINEL"
+const IRS_PHONE = "Phone number of taxpayer on line 1a or 2a"
 const MAPPED = new Set(ATTACHMENTS_ENTRIES.flatMap((e) => e.fields))
 const ATTACH_PAGES = [...PAGE_RANGES.ard, ...PAGE_RANGES.irs4506]
 /** Every inventory name with a widget on an ARD / IRS page. */
@@ -228,11 +229,24 @@ describe("template facts the map relies on", () => {
     }
   })
 
+  it("the IRS signer's phone is recorded as an owner decision, not as a signature", () => {
+    expect(NEVER_FILL[IRS_PHONE].reason).toBe("other")
+    expect(NEVER_FILL[IRS_PHONE].note).toMatch(/OWNER DECISION/)
+  })
+
+  it("the lower IRS 'PrintType name' widget is the spouse's signature space, below the Spouse's signature label and under the first signer's printed-name widget", () => {
+    const rect = (name: string) => getFieldInfo(name)!.widgets[0].rect
+    expect(rect("PrintType name")[3]).toBeLessThan(rect("Print/Type name")[1])
+    expect(NEVER_FILL["PrintType name"].note).toMatch(/SPOUSE'S SIGNATURE space/)
+    expect(NEVER_FILL["PrintType name"].note).not.toMatch(/printed name of the spouse/)
+  })
+
   it("every signature-like field has a specific never-fill reason and note, and none is mapped", () => {
     for (const name of SIGNATURE_NAMES) {
       const entry = NEVER_FILL[name]
       expect(entry, name).toBeDefined()
-      expect(["signature", "signature-date", "consent"]).toContain(entry.reason)
+      // the signer's phone is an owner decision (copy the applicant's phone or not), not a signature
+      expect(name === IRS_PHONE ? ["other"] : ["signature", "signature-date", "consent"]).toContain(entry.reason)
       expect(entry.note ?? "", name).toMatch(/ARD-1122|IRS 4506/)
       expect(MAPPED.has(name), name).toBe(false)
     }
@@ -414,6 +428,20 @@ describe("IRS 4506", () => {
     expect(Object.values(out.text)).not.toContain(SENTINEL)
   })
 
+  it("a partial SSN never reaches line 1b or 2b (only a complete nine-digit SSN is printed there)", async () => {
+    const a = jointCouple()
+    a.persons[0].ssn = "123-45"
+    a.persons[1].ssn = "987-65"
+    const out = await fillRegion(a)
+    expect(out.text[IRS.id1]).toBeUndefined()
+    expect(out.text[IRS.id2]).toBeUndefined()
+    expect(JSON.stringify(out.text)).not.toMatch(/123-45(?!-6789)|987-65(?!-4321)/)
+    // Person 1 without a usable SSN still gets the ITIN the wizard asked for
+    a.persons[0].hasSsn = "no"
+    a.attachments.irs4506.taxpayerId = "912-70-1234"
+    expect((await fillRegion(a)).text[IRS.id1]).toBe("912-70-1234")
+  })
+
   it("an invalid or missing year leaves its boxes empty; line 5, fee, signature block stay empty", async () => {
     const a = jointCouple()
     a.attachments.irs4506.yearsRequested = [{ periodEnd: null }, { periodEnd: "2023-02-30" }, { periodEnd: "2024-12-31" }]
@@ -471,9 +499,9 @@ describe("stale answers", () => {
     expect(Object.values(out.text)).not.toContain("77 Old Rd, Elsewhere, NH 03301")
   })
 
-  it("IRS 4506 hidden by no tax returns filed, with stale data: absent", async () => {
+  it("IRS 4506 hidden by neither year filed, with stale data: absent", async () => {
     const a = jointCouple()
-    a.supplements.a.taxReturnsFiled = "none" as never
+    a.supplements.a.taxReturnsFiled = "neither"
     expect(pagesToKeep(a, ON).filter((p) => PAGE_RANGES.irs4506.includes(p))).toEqual([])
     const out = await readFilled(await fillSaca2Pdf(a, null, ON))
     for (const name of ATTACH_NAMES.filter((n) => getFieldInfo(n)!.pages.includes(38))) expect(out.text[name], name).toBeUndefined()

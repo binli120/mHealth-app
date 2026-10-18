@@ -75,9 +75,17 @@ describe("coverage ratchet", () => {
     expect(Object.keys(NEVER_FILL)).toEqual(expect.arrayContaining(["Clear", "Print"]))
   })
 
-  it("lists every field that is neither mapped nor never-filled (1,158 in all)", () => {
-    const mapped = new Set(FIELD_MAP.flatMap((e) => e.fields))
-    expect(unmappedJson).toHaveLength(1158 - mapped.size - Object.keys(NEVER_FILL).length)
+  it("is closed: every inventory field is mapped or deliberately never filled", () => {
+    expect(unmappedJson).toEqual([])
+    expect(computeUnmappedFields(FIELD_MAP)).toEqual([])
+  })
+
+  it("every never-fill entry has an allowed reason, and a non-empty note when the reason is other", () => {
+    const allowed = ["button", "signature", "signature-date", "consent", "office-use", "voter", "other"]
+    for (const [name, entry] of Object.entries(NEVER_FILL)) {
+      expect(allowed, `${name}: reason`).toContain(entry.reason)
+      if (entry.reason === "other") expect((entry.note ?? "").trim().length, `${name}: note`).toBeGreaterThan(0)
+    }
   })
 })
 

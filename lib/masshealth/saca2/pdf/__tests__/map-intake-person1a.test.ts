@@ -6,7 +6,7 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { completeFacilityCouple, completeRichHousehold } from "../../__tests__/complete-answers"
-import type { Saca2Answers } from "../../types"
+import { emptySaca2Person, type Saca2Answers } from "../../types"
 import { FIELD_MAP } from "../field-map"
 import { PERSON_TABLE, expandPersonTable } from "../field-map/person-table"
 import { getFieldInfo } from "../inventory"
@@ -306,11 +306,38 @@ describe("intake and Person 1 pages: program boxes and name lines", () => {
     expect(text).not.toHaveProperty("You")
   })
 
-  it("leaves the Spouse line empty when Person 2 is not a spouse", async () => {
+  it("leaves the Spouse line empty when Person 1 is not married, whatever the relationship text says", async () => {
     const a = completeRichHousehold()
-    a.persons[1].relationshipToPerson1 = "daughter"
+    a.persons[0].isLegallyMarried = "no"
+    a.persons[1].relationshipToPerson1 = "wife"
     const { text } = await fillRegion(a)
     expect(text.You).toBe("Maria Q Testcase")
+    expect(text).not.toHaveProperty("Spouse")
+  })
+
+  it("names a married Person 2 on the Spouse line whatever language the relationship text is in", async () => {
+    const a = completeRichHousehold()
+    a.persons[0].isLegallyMarried = "yes"
+    a.persons[1].relationshipToPerson1 = "esposo"
+    const { text } = await fillRegion(a)
+    expect(text.Spouse).toBe("Pedro Testcase")
+  })
+
+  it("does not take a married household's Person 2 for a non-spouse because of a 'wife's mother' style text", async () => {
+    const a = completeRichHousehold()
+    a.persons[0].isLegallyMarried = "yes"
+    a.persons[1].relationshipToPerson1 = "wife's mother"
+    const { text } = await fillRegion(a)
+    // Person 1 says married and Person 2 is on the application: the wizard treats Person 2 as the spouse
+    expect(text.Spouse).toBe("Pedro Testcase")
+  })
+
+  it("counts only non-blank people in '# of people listed'", async () => {
+    const a = completeRichHousehold()
+    a.persons[0].isLegallyMarried = "yes"
+    a.persons[1] = emptySaca2Person()
+    const { text } = await fillRegion(a)
+    expect(text["19. # of people listed on the application"]).toBe("1")
     expect(text).not.toHaveProperty("Spouse")
   })
 

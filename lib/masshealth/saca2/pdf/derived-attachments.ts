@@ -102,8 +102,8 @@ const irsAnswer = (reader: VisibleReader, key: string): unknown =>
 const irsShown = (reader: VisibleReader): boolean =>
   reader.isVisible({ kind: "answer", stepId: "irs4506", path: "attachments.irs4506.jointReturn" })
 
-/** A nine-digit number as "123-45-6789", anything else as typed (an ITIN or EIN keeps the applicant's own formatting). */
-const taxpayerNumber = (raw: unknown): string | undefined => ssnLine(raw) ?? encodeText("text", raw)
+/** An ITIN or EIN the applicant typed on the IRS step: nine digits as "123-45-6789", anything else as typed. */
+const taxpayerIdNumber = (raw: unknown): string | undefined => ssnLine(raw) ?? encodeText("text", raw)
 
 const irsJoint = (reader: VisibleReader, answers: Parameters<typeof householdHasSpouse>[1], on: Date): boolean =>
   irsAnswer(reader, "jointReturn") === "yes" && householdHasSpouse(reader, answers, on)
@@ -111,13 +111,13 @@ const irsJoint = (reader: VisibleReader, answers: Parameters<typeof householdHas
 export const IRS_DERIVED: DerivedRegistry = {
   /** Line 1a: the applicant (Person 1) is the taxpayer. */
   "irs4506.name1": (reader) => (irsShown(reader) ? personName(reader, 0) : undefined),
-  /** Line 1b: Person 1's SSN, else the ITIN the wizard asks for when Person 1 has no SSN. */
+  /** Line 1b: Person 1's SSN (only when complete: a partial SSN is never printed), else the ITIN the wizard asks for when Person 1 has no SSN. */
   "irs4506.id1": (reader) =>
-    irsShown(reader) ? (taxpayerNumber(readPerson(reader, 0, "ssn")) ?? taxpayerNumber(irsAnswer(reader, "taxpayerId"))) : undefined,
+    irsShown(reader) ? (ssnLine(readPerson(reader, 0, "ssn")) ?? taxpayerIdNumber(irsAnswer(reader, "taxpayerId"))) : undefined,
   /** Lines 2a and 2b: the spouse of a joint return, only when the household really has a spouse. */
   "irs4506.name2": (reader, answers, on) => (irsShown(reader) && irsJoint(reader, answers, on) ? personName(reader, 1) : undefined),
   "irs4506.id2": (reader, answers, on) =>
-    irsShown(reader) && irsJoint(reader, answers, on) ? taxpayerNumber(readPerson(reader, 1, "ssn")) : undefined,
+    irsShown(reader) && irsJoint(reader, answers, on) ? ssnLine(readPerson(reader, 1, "ssn")) : undefined,
   /** Line 3: Person 1's current address on one line. */
   "irs4506.address": (reader) => {
     if (!irsShown(reader)) return undefined

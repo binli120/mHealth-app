@@ -14,7 +14,8 @@ import {
 } from "../demographic-options"
 import { IMMIGRATION_DOCUMENT_OPTIONS, IMMIGRATION_STATUS_OPTIONS } from "../questions/immigration-options"
 import type { Saca2Option } from "../questions/types"
-import { isStepVisible } from "../visibility"
+import type { Saca2Answers } from "../types"
+import { isPersonBlank, isStepVisible } from "../visibility"
 import { ATTACHMENTS_DERIVED } from "./derived-attachments"
 import { ASSETS_DERIVED } from "./derived-assets"
 import { HEALTH_DERIVED } from "./derived-health"
@@ -54,8 +55,6 @@ function isApplying(reader: VisibleReader, person: PersonIndex): boolean {
   return readPerson(reader, person, "applyingForCoverage") === "yes"
 }
 
-const SPOUSE_RELATIONSHIP = /\b(spouse|husband|wife)\b/i
-
 type ProgramKey = "masshealthHsn" | "longTermCare" | "hcbsWaiver" | "healthConnector"
 
 function programChecked(reader: VisibleReader, key: ProgramKey): boolean {
@@ -63,17 +62,28 @@ function programChecked(reader: VisibleReader, key: ProgramKey): boolean {
 }
 
 /**
+ * True when Person 1 says they are legally married and the Person 2 step is on the application.
+ * Read from the raw answer on purpose: unlike `householdHasSpouse` this must hold when Person 1 is
+ * not applying (the married question is then hidden, but the wizard still shows Person 2 as the spouse).
+ */
+function isMarriedToPerson2(answers: Saca2Answers, on: Date): boolean {
+  return answers.persons[0]?.isLegallyMarried === "yes" && isStepVisible("person2", answers, on)
+}
+
+/**
  * The intake page's "You:" / "Spouse:" lines list who is applying under each program. The wizard
  * asks for programs once for the whole application, so a line is filled when one of the program
  * boxes it sits under is checked and that person is applying. The spouse line takes Person 2 only
- * when the relationship text says spouse, husband or wife; anyone else has no line on the form.
+ * when the application has a spouse (Person 1 legally married and Person 2 on the application,
+ * `isMarriedToPerson2`); the relationship text is free text in any language and is never parsed.
+ * Anyone else has no line on the form.
  */
 function programLine(programs: ProgramKey[], who: "you" | "spouse") {
-  return (reader: VisibleReader): string | undefined => {
+  return (reader: VisibleReader, answers: Saca2Answers, on: Date): string | undefined => {
     if (!programs.some((key) => programChecked(reader, key))) return undefined
     if (who === "you") return isApplying(reader, 0) ? fullName(reader, 0) : undefined
-    if (!isApplying(reader, 1)) return undefined
-    return SPOUSE_RELATIONSHIP.test(readString(reader, 1, "relationshipToPerson1")) ? fullName(reader, 1) : undefined
+    if (!isApplying(reader, 1) || !isMarriedToPerson2(answers, on)) return undefined
+    return fullName(reader, 1)
   }
 }
 
@@ -132,9 +142,9 @@ export const DERIVED: DerivedRegistry = {
 
   "person.fullName": (reader, _answers, _on, person) => fullName(reader, requirePerson(person, "person.fullName")),
 
-  /** "# of people listed on the application": everyone with a Person block on this application. */
+  /** "# of people listed on the application": Person 1 plus Person 2 when that person has anything entered (a blank Person 2 is not listed). */
   "application.peopleListed": (_reader, answers, on) =>
-    1 + (isStepVisible("person2", answers, on) && answers.persons[1] !== undefined ? 1 : 0),
+    1 + (isStepVisible("person2", answers, on) && answers.persons[1] !== undefined && !isPersonBlank(answers.persons[1]) ? 1 : 0),
 
   /**
    * Person 2's Q5 "If No, provide street address": one line, only when "Does this person live with
@@ -212,14 +222,28 @@ export const DERIVED: DerivedRegistry = {
   "household.caregiverChildren": (reader, _answers, _on, person) =>
     nameDobLine(reader, requirePerson(person, "household.caregiverChildren"), "caregiverChildren"),
 
-  /** Q32: a deduction box is ticked when its yearly amount is filled (amounts are hidden under "None"). */
+  /**
+   * Q32: a deduction box is ticked, and its yearly amount written, only for an amount above zero.
+   * A $0 deduction is no deduction: ticking the box and printing "0" would claim one (amounts are
+   * hidden under "None").
+   */
   ...Object.fromEntries(
-    DEDUCTION_KEYS.map((key) => [
-      `deductions.${key}.checked`,
-      ((reader, _answers, _on, person) =>
-        typeof readPerson(reader, requirePerson(person, `deductions.${key}.checked`), `deductions.amounts.${key}`) === "number"
-          ? true
-          : undefined) as DerivedResolver,
-    ]),
+    DEDUCTION_KEYS.flatMap((key) => {
+      const positive = (reader: VisibleReader, person: PersonIndex | undefined, id: string): number | undefined => {
+        const amount = readPerson(reader, requirePerson(person, id), `deductions.amounts.${key}`)
+        return typeof amount === "number" && amount > 0 ? amount : undefined
+      }
+      return [
+        [
+          `deductions.${key}.checked`,
+          ((reader, _answers, _on, person) =>
+            positive(reader, person, `deductions.${key}.checked`) === undefined ? undefined : true) as DerivedResolver,
+        ],
+        [
+          `deductions.${key}.amount`,
+          ((reader, _answers, _on, person) => positive(reader, person, `deductions.${key}.amount`)) as DerivedResolver,
+        ],
+      ]
+    }),
   ),
 }
