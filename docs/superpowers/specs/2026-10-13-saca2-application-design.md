@@ -220,6 +220,29 @@ applicable.
   ownership/social-worker authorization (§7), PHI never logged (ids/counts only),
   response streamed, nothing stored, rate-limited like other PDF routes.
 
+**As built (plan `docs/superpowers/plans/2026-10-18-saca2-pdf-fill.md`):**
+- **Flow:** on the last step, Finish shows a completion panel (`Saca2Download`). The
+  client posts `{ applicationId, wizardState }` (the full `buildSaca2Snapshot` data,
+  in memory only; `X-Acting-For-Patient` when acting for a patient). The route checks
+  auth, the flag (404 when off), the rate limit, and the draft's ownership and type
+  (404 / 409), then **re-validates** the answers with `normalizeSaca2State` (422),
+  fills the pinned template, and returns the PDF as an attachment
+  (`SACA-2-application.pdf`, `Cache-Control: no-store`). Nothing is stored; only ids
+  are logged.
+- **Limits:** 10 downloads per user per 10 minutes (429); 200 KB body cap, checked on
+  `Content-Length` and on the bytes actually read (413). Answers that cannot be placed
+  on the form (the `Saca2FitError` cases) return 422 with a generic message and no
+  answer content; the UI points the user at the long lists (IRS years, Supplement B
+  people, Supplement D jobs) or support. Template hash mismatch is a 500.
+- **Never filled:** signatures, signature dates, consents, and other signature-like
+  fields are classified `NEVER_FILL` in the field map; a test fails if any such field
+  is written. The completion panel says so persistently. Open per-field decisions are
+  in `docs/superpowers/saca2-pdf-owner-decisions.md`.
+- **Overflow and repeats:** extra rows go to generated continuation sheets headed with
+  Person 1's name and SSN; Supplement B/C/D pages are duplicated for additional
+  people/jobs (period-free copy field names); pages are included only when triggered.
+  Output stays an editable AcroForm.
+
 ### 4.7 Rollout
 Rollout flag: runtime env var `SACA2_ENABLED` (off by default), exposed to the client by the public route `GET /api/config/saca2` and the `useSaca2Enabled` hook. The unused `public.feature_flags` table is not used. A failed flag lookup fails closed to the notice. While off: the SACA-2 tile must **not** route into the ACA-3
 wizard — show the official-PDF link / "coming soon" instead (this fixes the current
@@ -272,7 +295,7 @@ accessibility checks.
 |---|---|
 | 0 | `types`, step registry (`schema.ts`), `visibility`, `figures-2026` + staleness guard, synthetic cases, and a guard so SACA-2 drafts show a notice instead of the ACA-3 wizard (plan `2026-10-13-saca2-foundation.md`). Question-level schema and the `saca2_enabled` flag move to Phase 1, where the renderer and the wizard they gate are built. |
 | 1 | `Saca2Wizard`, step renderer, question model/validation, flag, PHI-safe save/resume for: intake, Person 1/2, AI/AN, previous bills, who-signs (plan `2026-10-13-saca2-wizard-core.md`). **1b** is split into three plans: **1b-1** (plan `2026-10-14-saca2-remaining-steps.md`: previous-bills detail, Step 5 assets, Steps 6–7 health insurance and HRAs, Steps 8–9 PCA and additional coverage, Step 10 signer details), **1b-2** (plan `2026-10-14-saca2-supplements.md`: Supplements A–D and the ARD-1122 / IRS 4506 attachment data — done once merged), and **1b-3** (plan `2026-10-16-saca2-person-details.md`: remaining Person-block questions: optional demographics, tax/Health Connector, accommodations, pregnancy/foster care, deductions, rental/one-time/seasonal/self-employment income — done once merged), and the **pre-flag gate** (plan `2026-10-17-saca2-flag-gate.md`: the gate before the flag — done once merged). The flag stays off until 1b-3 ships and the pre-flag gate items from the Phase 1 final review are done. |
-| 2 | Field inventory, `pdf-field-map`, `pdf-fill`, `/api/forms/saca2/fill`, template hash, coverage test |
+| 2 | Field inventory, `pdf-field-map`, `pdf-fill`, `/api/forms/saca2/fill`, template hash, coverage test, wizard download (plan `2026-10-18-saca2-pdf-fill.md` — done once merged) |
 | 3 | `eligibility-engine`, `document-checklist`, redirects, results panel; 130 CMR confirmation of rules 3–7 |
 | 4 | 6-language strings and reference translations |
 | 5 | Chat intake driver |

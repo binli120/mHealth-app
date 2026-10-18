@@ -412,3 +412,65 @@ describe("Saca2Wizard: married to not married", () => {
     expect(await screen.findByRole("heading", { name: /American Indian|Alaska Native/i })).toBeInTheDocument()
   })
 })
+
+describe("Saca2Wizard: completion panel", () => {
+  async function renderAtLastStep() {
+    const base = getSyntheticCase("single-senior-home").answers
+    const answers = { ...base, signature: { signedBy: "applicant" as const } }
+    mocks.authenticatedFetch.mockImplementation(async (_url: string, init?: { method?: string }) => {
+      if (init?.method === "PUT") return ok({ ok: true })
+      return draftGet({
+        ok: true,
+        record: {},
+        draftState: { schemaVersion: "saca2-2026-08", currentStepId: "signature", data: answers },
+      })
+    })
+    render(<Saca2Wizard applicationId={APP_ID} actingForPatientId="patient-9" />)
+    await screen.findByTestId("saca2-wizard")
+    return answers
+  }
+
+  it("Finish on the last step shows the panel with the download, and Back to editing returns with answers intact", async () => {
+    const answers = await renderAtLastStep()
+    expect(screen.queryByTestId("saca2-complete")).toBeNull()
+    await userEvent.click(screen.getByRole("button", { name: "Finish" }))
+
+    const panel = await screen.findByTestId("saca2-complete")
+    expect(within(panel).getByRole("button", { name: "Download your filled SACA-2 (PDF)" })).toBeInTheDocument()
+    expect(within(panel).getByRole("note")).toHaveTextContent(/sign, and date the form yourself/)
+    expect(screen.queryByRole("button", { name: "Finish" })).toBeNull()
+    expect(screen.queryByTestId("save-exit-dialog")).toBeNull()
+
+    await userEvent.click(within(panel).getByRole("button", { name: "Back to editing" }))
+    expect(screen.queryByTestId("saca2-complete")).toBeNull()
+    expect(screen.getByRole("button", { name: "Finish" })).toBeInTheDocument()
+    // The last step still shows the saved signer choice.
+    expect(screen.getByRole("combobox")).toHaveTextContent("The applicant")
+  })
+
+  it("Save & Exit inside the panel opens the dialog", async () => {
+    await renderAtLastStep()
+    await userEvent.click(screen.getByRole("button", { name: "Finish" }))
+    const panel = await screen.findByTestId("saca2-complete")
+    await userEvent.click(within(panel).getByRole("button", { name: /save (&|and) exit/i }))
+    expect(await screen.findByTestId("save-exit-dialog")).toBeInTheDocument()
+  })
+
+  it("posts the full answers with applicationId and the acting-for header from the panel", async () => {
+    const answers = await renderAtLastStep()
+    URL.createObjectURL = vi.fn(() => "blob:x")
+    URL.revokeObjectURL = vi.fn()
+    await userEvent.click(screen.getByRole("button", { name: "Finish" }))
+    mocks.authenticatedFetch.mockClear()
+    mocks.authenticatedFetch.mockResolvedValue({ ok: true, status: 200, blob: async () => new Blob(["%PDF"]) } as unknown as Response)
+    await userEvent.click(await screen.findByRole("button", { name: "Download your filled SACA-2 (PDF)" }))
+    await waitFor(() => expect(mocks.authenticatedFetch).toHaveBeenCalled())
+    const [url, init] = mocks.authenticatedFetch.mock.calls[0] as [string, { headers: Record<string, string>; body: string }]
+    expect(url).toBe("/api/forms/saca2/fill")
+    expect(init.headers["X-Acting-For-Patient"]).toBe("patient-9")
+    const body = JSON.parse(init.body)
+    expect(body.applicationId).toBe(APP_ID)
+    expect(body.wizardState.schemaVersion).toBe("saca2-2026-08")
+    expect(body.wizardState.data.persons[0].firstName).toBe(answers.persons[0].firstName)
+  })
+})

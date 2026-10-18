@@ -24,6 +24,7 @@ import {
 } from "@/lib/masshealth/saca2/wizard-state"
 import { restorePhiDraftState } from "@/lib/phi-token/restore"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { Saca2Download } from "./saca2-download"
 import { Saca2SaveStatus, type Saca2SaveStatusValue } from "./saca2-save-status"
 import { Saca2StepForm } from "./saca2-step-form"
 
@@ -58,6 +59,8 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
   const [hydrated, setHydrated] = useState(false)
   const [pendingResume, setPendingResume] = useState<PendingResume | null>(null)
   const [saveExitOpen, setSaveExitOpen] = useState(false)
+  // Finish on the last step shows the completion panel; the wizard state stays mounted behind it.
+  const [showComplete, setShowComplete] = useState(false)
   const [restoreError, setRestoreError] = useState(false)
   const [saveStatus, setSaveStatus] = useState<Saca2SaveStatusValue>("idle")
 
@@ -270,7 +273,7 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
     }
     dispatch({ type: "mark_complete", stepId: effectiveStepId })
     if (isLastStep) {
-      setSaveExitOpen(true)
+      setShowComplete(true)
       return
     }
     dispatch({ type: "set_step", stepId: stepIds[currentIndex + 1] })
@@ -336,6 +339,32 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
                 setPendingResume(null)
               }}
             />
+          ) : showComplete ? (
+            <section
+              data-testid="saca2-complete"
+              className="space-y-4 rounded-lg border bg-card p-6 text-card-foreground"
+              aria-labelledby="saca2-complete-title"
+            >
+              <h2 id="saca2-complete-title" className="text-lg font-semibold">
+                Your answers are ready
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Download the filled SACA-2 to print, sign, and send in. You can also save your progress and finish later.
+              </p>
+              <Saca2Download
+                applicationId={applicationId}
+                wizardState={buildSaca2Snapshot(state)}
+                actingForPatientId={actingForPatientId}
+              />
+              <div className="flex items-center justify-between gap-3">
+                <Button type="button" variant="outline" onClick={() => setShowComplete(false)}>
+                  Back to editing
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setSaveExitOpen(true)}>
+                  Save &amp; Exit
+                </Button>
+              </div>
+            </section>
           ) : (
             <>
               <Saca2StepForm
