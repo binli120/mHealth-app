@@ -89,6 +89,14 @@ Each item gives: where it is on the form, what the wizard lacks, and the recomme
   no spouse.
 - Recommended: stop asking the spouse PCA questions unless Person 1 is married, or decide that Person 2 always
   gets the spouse column. This is a wizard-consistency fix, not a form question.
+- Related stale state: Person 1 not applying plus a stale `isLegallyMarried = yes`. The intake "Spouse:" line uses the
+  raw answer (this matches `visibility.ts` in the wizard), while assets, PCA, Supplement A and the IRS pages treat the
+  household as single through the visible reader. The two rules differ only in this state; pick one.
+- Related form-semantics question: the "You" column on the real-estate and trust gate questions when Person 1 is not
+  applying but Person 2 is. Whose answers belong under "You" is a call for the owner.
+- Related: Finish validates only the last step. A draft resumed with the PHI restore skipped (or never completed) can
+  reach the completion panel and download a PDF with blank names and SSN. The owner may want "validate every visible
+  step" before the panel opens.
 
 ### A13. Person 2 is asked for a home address, phone and email the form has no place for
 - Form: Person 2's page has only "Does this person live with Person 1" and a street-address line for No. There is no
@@ -162,6 +170,17 @@ Each item gives: where it is on the form, what the wizard lacks, and the recomme
 ### C4. IRS line 6 "1040" prints in a small font
 - The form number box is 9.5 points tall and uses automatic font size (about 8 points), so "1040" is small but legible.
   Making it larger would overflow the box. Left as is; this is template geometry.
+
+### C5. Characters the form font cannot print show as "?"
+- The generator uses the standard Helvetica (WinAnsi) font. Any character outside it, for example Vietnamese
+  diacritics ("Hương Nguyễn") or Chinese ("王 李"), is replaced with "?" in form fields and continuation sheets. The app
+  serves Vietnamese and Chinese speakers, so this will happen.
+- Current mitigation: the route counts the replaced characters (a number only, never the text) and sends it in the
+  `X-Saca2-Substituted-Chars` response header; the download panel then shows a persistent warning to check the printed
+  form and hand-write the affected entries.
+- Proper fix: embed Unicode fonts (Noto Sans plus a CJK face) through `@pdf-lib/fontkit` (already a dependency).
+  Owner choices: which font files, their licensing (Noto is OFL), the bundle and image size (CJK fonts are large;
+  subsetting helps), and how field appearances are regenerated so the text stays editable.
 
 ## D. Open items from the spec (section 7), still open
 

@@ -218,17 +218,22 @@ applicable.
 - Output stays editable (not flattened).
 - Route `POST /api/forms/saca2/fill`: `requireAuthenticatedUser`, Zod validation,
   ownership/social-worker authorization (§7), PHI never logged (ids/counts only),
-  response streamed, nothing stored, rate-limited like other PDF routes.
+  response buffered, nothing stored, rate-limited like other PDF routes.
 
 **As built (plan `docs/superpowers/plans/2026-10-18-saca2-pdf-fill.md`):**
 - **Flow:** on the last step, Finish shows a completion panel (`Saca2Download`). The
   client posts `{ applicationId, wizardState }` (the full `buildSaca2Snapshot` data,
   in memory only; `X-Acting-For-Patient` when acting for a patient). The route checks
   auth, the flag (404 when off), the rate limit, and the draft's ownership and type
-  (404 / 409), then **re-validates** the answers with `normalizeSaca2State` (422),
-  fills the pinned template, and returns the PDF as an attachment
+  (404 / 409), then shape-checks the answers with `normalizeSaca2State` (422; the client validates step by step, the route does not re-run the step rules),
+  fills the pinned template, and returns the PDF as a buffered (not streamed) attachment
   (`SACA-2-application.pdf`, `Cache-Control: no-store`). Nothing is stored; only ids
   are logged.
+- **Pages:** the voter-registration pages (idx 40-41) are always kept on purpose; the blank voter form is included as a
+  handout. The owner may trim them.
+- **Unprintable characters:** the fill uses the standard WinAnsi font, so other characters print as "?". The route counts
+  them and sets `X-Saca2-Substituted-Chars: <n>` (only when above zero); the download panel then warns the user. Embedding
+  Unicode fonts is an open owner decision (`saca2-pdf-owner-decisions.md` C5).
 - **Limits:** 10 downloads per user per 10 minutes (429); 200 KB body cap, checked on
   `Content-Length` and on the bytes actually read (413). Answers that cannot be placed
   on the form (the `Saca2FitError` cases) return 422 with a generic message and no
