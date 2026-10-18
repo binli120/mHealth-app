@@ -9,6 +9,7 @@ import { INTAKE_ENTRIES } from "./intake"
 import { PERSON_TABLE, expandPersonTable } from "./person-table"
 import { PERSON1_A_ENTRIES } from "./person1-a"
 import { STEP_10_ENTRIES } from "./step-10"
+import { SUPP_A_ENTRIES } from "./supp-a"
 import { STEPS_3_4_ENTRIES } from "./steps-3-5"
 import { STEPS_6_9_ENTRIES } from "./steps-6-9"
 
@@ -24,4 +25,5 @@ export const FIELD_MAP: FieldEntry[] = [
   ...ASSETS_ENTRIES,
   ...STEPS_6_9_ENTRIES,
   ...STEP_10_ENTRIES,
+  ...SUPP_A_ENTRIES,
 ]

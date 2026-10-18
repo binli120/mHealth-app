@@ -87,4 +87,14 @@ export const NEVER_FILL: Record<string, { reason: NeverFillReason; note?: string
     reason: "other",
     note: "WIZARD GAP: responsible party second phone type; the wizard asks the phone type only for the first phone",
   },
+
+  // Supplement A (form pages 25-28, PDF indexes 26-29): the supplement's own signature block
+  Date_SuppA_Signature_2: {
+    reason: "signature-date",
+    note: "Date of the Supplement A signature (form p.28); the person dates it when signing, never pre-filled",
+  },
+  "Print name_SuppA_Signature_2": {
+    reason: "signature",
+    note: "Printed name of the Supplement A signer (form p.28); the signer may be the applicant or an authorized representative and signs and prints it by hand",
+  },
 }
