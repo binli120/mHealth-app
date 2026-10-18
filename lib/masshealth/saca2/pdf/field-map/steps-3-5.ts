@@ -3,6 +3,7 @@
  * @email: blee@comura.ai
  */
 
+import { fitLines, PREVIOUS_BILLS_LINES } from "../derived-assets"
 import type { Encoder, FieldEntry, Source } from "../types"
 
 /** Every Yes / No group on this page: the Yes widget is the first (left) one, `/1`; No is `/2`. */
@@ -42,7 +43,7 @@ export const STEPS_3_4_ENTRIES: FieldEntry[] = [
     YES_NO_1_2,
   ),
   answer("If Yes what is the earliest date for which you need MassHealth_S4", "previousBills", "previousMedicalBills.earliestDate", "date"),
-  ...REQUEST_LINES.flatMap((line, index) => [
+  ...fitLines(REQUEST_LINES, PREVIOUS_BILLS_LINES, "REQUEST_LINES").flatMap((line, index) => [
     requestRow(index, "name", line.name, "text"),
     requestRow(index, "earliestDateRequested", line.date, "date"),
     requestRow(index, "circumstancesChanged", line.changed, YES_NO_1_2),

@@ -184,3 +184,18 @@ export const previousBillsCollector: OverflowCollector = (reader) => {
         },
       ]
 }
+
+/**
+ * The form has no amount field for a burial plot (only a Yes / No), so each plot on the form that
+ * has an amount is listed on the notes sheet as a `[who, note]` row. Plots that are extra rows are
+ * already on the burial sheet with their amount.
+ */
+export function burialPlotNotes(reader: VisibleReader): string[][] {
+  const notes: string[][] = []
+  for (const [owner, ownerLabel] of OWNERS) {
+    const ref = placeBurial(reader).onForm.get(`${owner}.plot`)
+    const amount = ref === undefined ? "" : money(readRow(reader, ref, "amount"))
+    if (amount !== "") notes.push(["Prepaid burial", `Burial plot (${ownerLabel.toLowerCase()}): $${amount}; the form has no amount line for a plot`])
+  }
+  return notes
+}

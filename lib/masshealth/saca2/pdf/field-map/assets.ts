@@ -3,7 +3,18 @@
  * @email: blee@comura.ai
  */
 
-import { BANK_LINES, BURIAL_KINDS, OWNERS, SECURITIES_KINDS, TRUST_LINES } from "../derived-assets"
+import {
+  ANNUITY_LINES,
+  BANK_LINES,
+  BURIAL_KINDS,
+  DEPOSIT_LINES,
+  fitLines,
+  LIFE_INSURANCE_LINES,
+  OWNERS,
+  REAL_ESTATE_LINES,
+  SECURITIES_KINDS,
+  TRUST_LINES,
+} from "../derived-assets"
 import type { Encoder, FieldEntry } from "../types"
 
 const YES_NO_1_2: Encoder = { kind: "yesNo", yes: "1", no: "2" }
@@ -65,7 +76,7 @@ const bankEntries: FieldEntry[] = [
   gate("S5.1", "bankAccounts", YES_NO_1_2),
   gate("S5.1a", "retirementAccounts", YES_NO_1_2),
   gate("S5.1b", "closedAccounts", YES_NO_1_2),
-  ...BANK_FIELDS.slice(0, BANK_LINES).flatMap((f, line) => [
+  ...fitLines(BANK_FIELDS, BANK_LINES, "BANK_FIELDS").flatMap((f, line) => [
     row(f.owner, BANK_PATH, line, "ownerName", "text"),
     derived(f.type, `assets.bank.${line}.accountType`, "text"),
     row(f.institution, BANK_PATH, line, "institution", "text"),
@@ -89,15 +100,15 @@ const REAL_ESTATE_FIELDS = [
 ]
 
 const realEstateEntries: FieldEntry[] = [
-  derived("Do you own or have a legal interest in your primary residence?", "assets.realEstate.primary.ownerGate", YES_NO_NAMED),
-  derived("Does your spouse own or have a legal interest in your primary residence?", "assets.realEstate.primary.ownerGate", YES_NO_NAMED),
-  derived("Do you own or have a legal interest in any real estate other than your primary residence?", "assets.realEstate.other.ownerGate", YES_NO_NAMED),
+  derived("Do you own or have a legal interest in your primary residence?", "assets.realEstate.primary.you", YES_NO_NAMED),
+  derived("Does your spouse own or have a legal interest in your primary residence?", "assets.realEstate.primary.spouse", YES_NO_NAMED),
+  derived("Do you own or have a legal interest in any real estate other than your primary residence?", "assets.realEstate.other.you", YES_NO_NAMED),
   derived(
     "Does your spouse own or have a legal interest in any real estate other than your primary residence?",
-    "assets.realEstate.other.ownerGate",
+    "assets.realEstate.other.spouse",
     YES_NO_NAMED,
   ),
-  ...REAL_ESTATE_FIELDS.flatMap((f, line) => [
+  ...fitLines(REAL_ESTATE_FIELDS, REAL_ESTATE_LINES, "REAL_ESTATE_FIELDS").flatMap((f, line) => [
     derived(f.address, `assets.realEstate.${line}.address`, "text"),
     derived(f.type, `assets.realEstate.${line}.propertyType`, "text"),
     derived(f.value, `assets.realEstate.${line}.currentValue`, "money"),
@@ -128,7 +139,7 @@ const LIFE_FIELDS = [
 
 const lifeEntries: FieldEntry[] = [
   gate("Do you or your spouse own any life insurance?", "lifeInsurance"),
-  ...LIFE_FIELDS.flatMap((f, line) => [
+  ...fitLines(LIFE_FIELDS, LIFE_INSURANCE_LINES, "LIFE_FIELDS").flatMap((f, line) => [
     row(f.owners, LIFE_PATH, line, "owners", "text"),
     row(f.company, LIFE_PATH, line, "company", "text"),
     row(f.number, LIFE_PATH, line, "policyNumber", "text"),
@@ -190,20 +201,30 @@ const ANNUITY_FIELDS = [
 ]
 
 const DEPOSIT_PATH = "assets.assistedLivingDeposits"
+const DEPOSIT_FIELDS = [
+  {
+    name: "Name of facility_Assisted living",
+    address: "Address_Assisted living",
+    amount: "Amount of deposit_Assisted living",
+    date: "Date deposit given to facility_Assisted living",
+  },
+]
 
 const annuityEntries: FieldEntry[] = [
   gate("Annuities", "annuities"),
-  ...ANNUITY_FIELDS.flatMap((f, line) => [
+  ...fitLines(ANNUITY_FIELDS, ANNUITY_LINES, "ANNUITY_FIELDS").flatMap((f, line) => [
     row(f.owners, ANNUITY_PATH, line, "owners", "text"),
     row(f.institution, ANNUITY_PATH, line, "institution", "text"),
     row(f.contract, ANNUITY_PATH, line, "contractNumber", "text"),
     row(f.date, ANNUITY_PATH, line, "purchasedOn", "date"),
   ]),
   gate("Assisted living", "assistedLivingDeposit"),
-  row("Name of facility_Assisted living", DEPOSIT_PATH, 0, "facilityName", "text"),
-  row("Address_Assisted living", DEPOSIT_PATH, 0, "facilityAddress", "text"),
-  row("Amount of deposit_Assisted living", DEPOSIT_PATH, 0, "amount", "money"),
-  row("Date deposit given to facility_Assisted living", DEPOSIT_PATH, 0, "depositedOn", "date"),
+  ...fitLines(DEPOSIT_FIELDS, DEPOSIT_LINES, "DEPOSIT_FIELDS").flatMap((f, line) => [
+    row(f.name, DEPOSIT_PATH, line, "facilityName", "text"),
+    row(f.address, DEPOSIT_PATH, line, "facilityAddress", "text"),
+    row(f.amount, DEPOSIT_PATH, line, "amount", "money"),
+    row(f.date, DEPOSIT_PATH, line, "depositedOn", "date"),
+  ]),
 ]
 
 // ---------------------------------------------------------------------------------------------
@@ -290,7 +311,7 @@ const TRUST_FIELDS = [
 const trustEntries: FieldEntry[] = [
   derived("10. Are you or your spouse the grantor/donor, trustee, or beneficiary of any trusts?", "assets.trusts.gate", YES_NO_NAMED),
   derived("11. Have you, your spousecontributed income owned by you or your spouse to a trust?", "assets.trusts.gate", YES_NO_NAMED),
-  ...TRUST_FIELDS.slice(0, TRUST_LINES).flatMap((f, line) => [
+  ...fitLines(TRUST_FIELDS, TRUST_LINES, "TRUST_FIELDS").flatMap((f, line) => [
     row(f.name, TRUST_PATH, line, "name", "text"),
     derived(f.revocable, `assets.trusts.${line}.revocable`, YES_NO_NAMED),
     row(f.principal, TRUST_PATH, line, "currentPrincipal", "money"),

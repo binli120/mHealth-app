@@ -4,6 +4,8 @@
  */
 
 import { ACCOUNT_TYPES, PROPERTY_TYPES } from "../questions/assets"
+import { isStepVisible } from "../visibility"
+import type { Saca2Answers } from "../types"
 import type { DerivedRegistry, DerivedResolver } from "./pdf-fill"
 import type { VisibleReader } from "./visible-reader"
 
@@ -162,6 +164,12 @@ function cell(place: (reader: VisibleReader) => Placement, slot: string, key: st
   }
 }
 
+/** Fails at module load when a table of field names does not have exactly the form's number of lines. */
+export function fitLines<T>(table: readonly T[], lines: number, name: string): readonly T[] {
+  if (table.length !== lines) throw new Error(`${name} has ${table.length} lines, the form has ${lines}`)
+  return table
+}
+
 const registry: DerivedRegistry = {}
 
 // Bank accounts: type label and the open / closed group. Closed accounts hide their current balance
@@ -181,19 +189,41 @@ for (let line = 0; line < REAL_ESTATE_LINES; line += 1) {
 }
 
 /**
+ * True when the application has a spouse: Person 1 is legally married and the Person 2 step is
+ * visible. Read through the visible reader and step visibility, never from raw answers. Every
+ * "You / Your spouse" box is written for the spouse only when this holds, so a single applicant
+ * never gets answers about a spouse who does not exist.
+ */
+export function householdHasSpouse(reader: VisibleReader, answers: Saca2Answers, on: Date): boolean {
+  return (
+    reader.get({ kind: "answer", stepId: "person1", path: "isLegallyMarried", person: 0 }) === "yes" &&
+    isStepVisible("person2", answers, on)
+  )
+}
+
+/**
  * The form asks "You" and "Your spouse" separately; the wizard asks once about "you or your spouse".
- * A "No" answers both people, so it is written to both boxes. A "Yes" does not say whose it is, so
- * the owner boxes stay blank (the filled address table carries the Yes).
+ * - Gate No answers every person: "You" is No, and "Your spouse" is No only when there is a spouse.
+ * - Gate Yes with no spouse can only mean "You: Yes"; the spouse boxes stay blank.
+ * - Gate Yes with a spouse does not say whose it is: both boxes stay blank (WIZARD GAP: the wizard
+ *   has no owner question for real estate; the filled address table carries the Yes).
  */
 for (const [id, category] of [
   ["primary", "primaryResidence"],
   ["other", "otherRealEstate"],
 ] as const) {
-  registry[`assets.realEstate.${id}.ownerGate`] = (reader) => (gateAnswer(reader, category) === "no" ? "no" : undefined)
+  registry[`assets.realEstate.${id}.you`] = (reader, answers, on) => {
+    const gate = gateAnswer(reader, category)
+    if (gate === "no") return "no"
+    return gate === "yes" && !householdHasSpouse(reader, answers, on) ? "yes" : undefined
+  }
+  registry[`assets.realEstate.${id}.spouse`] = (reader, answers, on) =>
+    gateAnswer(reader, category) === "no" && householdHasSpouse(reader, answers, on) ? "no" : undefined
 }
 
 // Life insurance rows map straight from row sources; trusts need a Yes / No for "Revocable?".
-// Trust questions 10 and 11 are one wizard gate; only "No" can be written to both.
+// Trust questions 10 and 11 are one wizard gate and have no You / spouse boxes; only "No" can be
+// written to both (WIZARD GAP: a Yes does not say which question, so both stay blank).
 registry["assets.trusts.gate"] = (reader) => (gateAnswer(reader, "trusts") === "no" ? "no" : undefined)
 for (let line = 0; line < TRUST_LINES; line += 1) {
   registry[`assets.trusts.${line}.revocable`] = cell(placeTrusts, String(line), "revocable", yesNoOf)
@@ -214,14 +244,16 @@ for (const [owner] of OWNERS) {
   }
 }
 
-// Prepaid burial: when the gate says Yes, every line of both blocks is answered; a line with a row
-// is Yes (with its amount), a line without one is No.
+// Prepaid burial: when the gate says Yes, every line of the "You" block is answered; a line with a row
+// is Yes (with its amount), a line without one is No. The spouse block is answered "No" only when the
+// household has a spouse; a spouse row that exists is always written.
 for (const [owner] of OWNERS) {
   for (const [kind] of BURIAL_KINDS) {
     const slot = `${owner}.${kind}`
-    registry[`assets.burial.${slot}.checked`] = (reader) => {
+    registry[`assets.burial.${slot}.checked`] = (reader, answers, on) => {
       if (gateAnswer(reader, "burial") !== "yes") return undefined
-      return placeBurial(reader).onForm.has(slot) ? "yes" : "no"
+      if (placeBurial(reader).onForm.has(slot)) return "yes"
+      return owner === "spouse" && !householdHasSpouse(reader, answers, on) ? undefined : "no"
     }
     registry[`assets.burial.${slot}.amount`] = cell(placeBurial, slot, "amount")
   }

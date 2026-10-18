@@ -3,14 +3,14 @@
  * @email: blee@comura.ai
  */
 
-import { PDFDocument } from "pdf-lib"
+import { PDFDocument, PDFTextField } from "pdf-lib"
 import { describe, expect, it } from "vitest"
 
 import { completeRichHousehold } from "../../__tests__/complete-answers"
 import { extractInventory } from "../extract"
 import { getInventory } from "../inventory"
 import { fillSaca2Pdf } from "../pdf-fill"
-import { splitSharedFields, SHARED_FIELD_SUFFIX } from "../split-shared-fields"
+import { removeStrayTableWidgets, splitSharedFields, SHARED_FIELD_SUFFIX } from "../split-shared-fields"
 import { loadSaca2Template } from "../template"
 import { readFilled } from "./helpers/read-filled"
 
@@ -98,5 +98,36 @@ describe("splitSharedFields", () => {
     const doc = await PDFDocument.load(bytes)
     const pages = await widgetPages(doc)
     expect(pages.get(SHARED[2])).not.toContain(12)
+  })
+})
+
+describe("removeStrayTableWidgets", () => {
+  /** Widget rectangles by field name for the text fields of PDF index 15. */
+  async function securitiesWidgets(doc: PDFDocument) {
+    const page = doc.getPage(15).ref
+    const out = new Map<string, number[]>()
+    for (const field of doc.getForm().getFields()) {
+      if (!(field instanceof PDFTextField)) continue
+      const tops = field.acroField.getWidgets().filter((w) => w.P() === page).map((w) => w.getRectangle().y)
+      if (tops.length > 0) out.set(field.getName(), tops)
+    }
+    return out
+  }
+
+  it("removes exactly the 39 stray widgets, keeps each field's topmost one, and is idempotent", async () => {
+    const doc = await PDFDocument.load(await loadSaca2Template())
+    splitSharedFields(doc)
+    const before = await securitiesWidgets(doc)
+    const multi = [...before].filter(([, tops]) => tops.length > 1)
+    const extra = multi.reduce((n, [, tops]) => n + tops.length - 1, 0)
+    expect(extra).toBe(39)
+
+    removeStrayTableWidgets(doc)
+    const after = await securitiesWidgets(doc)
+    for (const [name, tops] of before) expect(after.get(name)).toEqual([Math.max(...tops)])
+    expect([...after.values()].reduce((n, t) => n + t.length, 0)).toBe([...before.values()].reduce((n, t) => n + t.length, 0) - 39)
+
+    removeStrayTableWidgets(doc)
+    expect(await securitiesWidgets(doc)).toEqual(after)
   })
 })

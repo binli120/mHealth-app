@@ -76,17 +76,19 @@ const SECURITIES_PAGE = 15
 
 /**
  * The template's securities table on PDF index 15 carries a second, stray copy of its text widgets
- * about 82 points lower, sharing the SAME fields: a value written to the Cash row would also print on
- * the Options row (overlapping that row's own text) and over the Annuities text. For every text
- * field whose widgets all sit on that page and number two or more, only the topmost widget (the
- * table's own row) is kept; the others are removed from the field's kids and from the page's
- * annotations. Idempotent: afterwards no field has more than one widget there.
+ * about 82 points lower, sharing the SAME fields (39 extra widgets). The strays are listed in no
+ * page's /Annots, so viewers such as poppler and Ghostscript do not draw them, but tools that place
+ * widgets by their /P entry (pdf-lib `flatten()`) would print a Cash value on the Options row, and an
+ * orphan appearance stream would carry the value. For every text field whose widgets all sit on that
+ * page and number two or more, one widget is kept (the one listed in the page's /Annots, topmost
+ * if several or none) and the others leave the field's /Kids. Idempotent.
  */
 export function removeStrayTableWidgets(doc: PDFDocument): void {
   const form = doc.getForm()
   const pages = doc.getPages()
   const pageIndexByRef = new Map(pages.map((p, i) => [p.ref.toString(), i]))
   const context = doc.context
+  const listed = new Set((pages[SECURITIES_PAGE].node.Annots()?.asArray() ?? []).map((a) => a.toString()))
 
   for (const field of form.getFields()) {
     if (!(field instanceof PDFTextField)) continue
@@ -99,15 +101,14 @@ export function removeStrayTableWidgets(doc: PDFDocument): void {
     if (widgets.length < 2 || !widgets.every((w) => w.page === SECURITIES_PAGE)) continue
     if (widgets.some((w) => w.ref === undefined)) throw new Error(`Cannot remove a widget of "${field.getName()}"`)
 
-    const keep = widgets.reduce((best, w) => (w.top > best.top ? w : best))
+    const inAnnots = widgets.filter((w) => listed.has(String(w.ref)))
+    const candidates = inAnnots.length > 0 ? inAnnots : widgets
+    const keep = candidates.reduce((best, w) => (w.top > best.top ? w : best))
     const kids = field.acroField.dict.lookup(PDFName.of("Kids"), PDFArray)
-    const annots = pages[SECURITIES_PAGE].node.Annots()
     for (const w of widgets) {
       if (w === keep) continue
       const kidAt = kids.asArray().findIndex((k) => k === w.ref)
       if (kidAt >= 0) kids.remove(kidAt)
-      const annotAt = annots?.asArray().findIndex((a) => a === w.ref) ?? -1
-      if (annotAt >= 0) annots?.remove(annotAt)
     }
   }
 }

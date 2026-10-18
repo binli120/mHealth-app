@@ -9,9 +9,9 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 
 import { PDFDocument } from "pdf-lib"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
-import { completeFacilityCouple, completeRichHousehold } from "../../__tests__/complete-answers"
+import { completeFacilityCouple, completeRichHousehold, completeSingleSenior } from "../../__tests__/complete-answers"
 import type { BankAccountRow, Saca2Answers, SecuritiesRow, TrustRow } from "../../types"
 import { ASSETS_ENTRIES } from "../field-map/assets"
 import { STEPS_3_4_ENTRIES } from "../field-map/steps-3-5"
@@ -23,6 +23,9 @@ import { fillSaca2Pdf } from "../pdf-fill"
 import { pagesToKeep } from "../page-selection"
 import { createVisibleReader } from "../visible-reader"
 import { readFilled, type FilledValues } from "./helpers/read-filled"
+
+// each test fills the 1.7 MB template (once or twice); the full suite runs many files in parallel
+vi.setConfig({ testTimeout: 60_000 })
 
 const ON = new Date("2026-10-13T12:00:00Z")
 const SENTINEL = "STALE-SENTINEL"
@@ -709,6 +712,78 @@ describe("Steps 3-5: stale answers never reach the form", () => {
     const { checks } = await fillRegion(a)
     expect(checks.Vehicles).toBeUndefined()
     for (const name of TRUST_GATES) expect(checks[name]).toBeUndefined()
+  })
+})
+
+// ---------------------------------------------------------------------------------------------
+// Single applicant: no answers about a spouse who does not exist
+// ---------------------------------------------------------------------------------------------
+
+describe("Steps 3-5: a single applicant has no spouse-side answers", () => {
+  const single = (gates: Partial<Record<keyof Saca2Answers["assets"]["gates"], "yes" | "no">>): Saca2Answers => {
+    const a = completeSingleSenior()
+    Object.assign(a.assets.gates, gates)
+    return a
+  }
+  const SPOUSE_BOXES = [REAL_ESTATE_GATES[1], REAL_ESTATE_GATES[3], ...Object.entries(BURIAL_BOXES).filter(([k]) => k.startsWith("spouse")).map(([, v]) => v)]
+
+  it("burial Yes with no rows: the five 'you' lines say No, the five spouse lines stay blank", async () => {
+    const { checks } = await fillRegion(single({ burial: "yes" }))
+    for (const [slot, name] of Object.entries(BURIAL_BOXES)) expect(checks[name]).toBe(slot.startsWith("you") ? "No" : undefined)
+    expect(checks["Prepaid Burial Plans"]).toBe("Yes")
+  })
+
+  it("real estate Yes: 'You: Yes' is written (it can only be the applicant), spouse boxes stay blank", async () => {
+    const { checks } = await fillRegion(single({ primaryResidence: "yes", otherRealEstate: "yes" }))
+    expect(checks[REAL_ESTATE_GATES[0]]).toBe("Yes")
+    expect(checks[REAL_ESTATE_GATES[2]]).toBe("Yes")
+    for (const name of SPOUSE_BOXES) expect(checks[name]).toBeUndefined()
+  })
+
+  it("real estate No: 'You: No' only", async () => {
+    const { checks } = await fillRegion(single({ primaryResidence: "no", otherRealEstate: "no" }))
+    expect(checks[REAL_ESTATE_GATES[0]]).toBe("No")
+    expect(checks[REAL_ESTATE_GATES[2]]).toBe("No")
+    expect(checks[REAL_ESTATE_GATES[1]]).toBeUndefined()
+    expect(checks[REAL_ESTATE_GATES[3]]).toBeUndefined()
+  })
+
+  it("trusts: No answers both questions, Yes leaves both blank (the wizard does not say which)", async () => {
+    const no = await fillRegion(single({ trusts: "no" }))
+    for (const name of TRUST_GATES) expect(no.checks[name]).toBe("No")
+    const yes = await fillRegion(single({ trusts: "yes" }))
+    for (const name of TRUST_GATES) expect(yes.checks[name]).toBeUndefined()
+  })
+
+  it("a couple still gets spouse-side No answers and blank owner boxes on Yes (facility couple, rich household)", async () => {
+    const couple = completeFacilityCouple()
+    const { checks } = await fillRegion(couple)
+    for (const [slot, name] of Object.entries(BURIAL_BOXES)) expect(checks[name]).toBe(slot === "you.contract" ? "Yes" : "No")
+    for (const name of REAL_ESTATE_GATES) expect(checks[name]).toBeUndefined()
+    const rich = completeRichHousehold()
+    rich.assets.gates.burial = "yes"
+    expect((await fillRegion(rich)).checks[BURIAL_BOXES["spouse.plot"]]).toBe("No")
+  })
+})
+
+describe("Steps 3-5: burial plot amounts", () => {
+  it("lists each plot on the form with an amount on the notes sheet (the form has no plot amount line)", () => {
+    const a = richAssets()
+    a.assets.burial = [
+      { owner: "you", kind: "plot", amount: 800 },
+      { owner: "spouse", kind: "plot", amount: 1250.5 },
+      { owner: "you", kind: "trust", amount: 10 },
+    ]
+    expect(buildOverflowSheets(a, ON).find((s) => s.title === "Additional information")).toEqual({
+      title: "Additional information",
+      columns: ["Person", "Note"],
+      rows: [
+        ["Prepaid burial", "Burial plot (you): $800; the form has no amount line for a plot"],
+        ["Prepaid burial", "Burial plot (your spouse): $1250.50; the form has no amount line for a plot"],
+      ],
+    })
+    a.assets.gates.burial = "no"
+    expect(buildOverflowSheets(a, ON).some((s) => s.title === "Additional information")).toBe(false)
   })
 })
 

@@ -11,7 +11,7 @@ import type { Saca2Answers } from "../types"
 import { DERIVED } from "./derived"
 import { RENTAL_LINES } from "./derived-income"
 import { encodeText } from "./encoders"
-import { assetsCollector, previousBillsCollector } from "./overflow-assets"
+import { assetsCollector, burialPlotNotes, previousBillsCollector } from "./overflow-assets"
 import { createVisibleReader, type VisibleReader } from "./visible-reader"
 
 /** One continuation sheet's content: a title, column headings and plain-string rows. */
@@ -231,7 +231,10 @@ function notesFor(reader: VisibleReader, person: Person): string[] {
 }
 
 const notesCollector: OverflowCollector = (reader) => {
-  const rows = PEOPLE.flatMap((person) => notesFor(reader, person).map((note) => [personLabel(person), note]))
+  const rows = [
+    ...PEOPLE.flatMap((person) => notesFor(reader, person).map((note) => [personLabel(person), note])),
+    ...burialPlotNotes(reader),
+  ]
   return rows.length === 0 ? [] : [{ title: "Additional information", columns: ["Person", "Note"], rows }]
 }
 

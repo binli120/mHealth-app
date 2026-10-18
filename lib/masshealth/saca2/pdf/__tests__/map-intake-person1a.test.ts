@@ -3,7 +3,7 @@
  * @email: blee@comura.ai
  */
 
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { completeFacilityCouple, completeRichHousehold } from "../../__tests__/complete-answers"
 import type { Saca2Answers } from "../../types"
@@ -12,6 +12,9 @@ import { PERSON_TABLE, expandPersonTable } from "../field-map/person-table"
 import { getFieldInfo } from "../inventory"
 import { fillSaca2Pdf } from "../pdf-fill"
 import { readFilled, type FilledValues } from "./helpers/read-filled"
+
+// each test fills the 1.7 MB template (once or twice); the full suite runs many files in parallel
+vi.setConfig({ testTimeout: 60_000 })
 
 const ON = new Date("2026-10-13T12:00:00Z")
 const SENTINEL = "STALE-SENTINEL"
