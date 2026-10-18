@@ -101,13 +101,20 @@ const MAX_MIN_WIDTH = 120
  * word (capped, so one huge token cannot starve the rest) so short values like "Weekly" never break
  * mid-word; what is left is shared in proportion to how much more room each column's text wants.
  */
-export function computeColumnWidths(columns: string[], rows: string[][], font: TextMeasurer): number[] {
-  const measure = (value: string) => font.widthOfTextAtSize(value, FONT_SIZE)
+export function computeColumnWidths(
+  columns: string[],
+  rows: string[][],
+  font: TextMeasurer,
+  headerFont: TextMeasurer = font,
+): number[] {
+  const measure = (value: string, f: TextMeasurer = font) => f.widthOfTextAtSize(value, FONT_SIZE)
   const stats = columns.map((column, i) => {
-    const cells = [sanitizeText(column), ...rows.map((row) => sanitizeText(row[i] ?? ""))]
-    let widest = 0
+    const head = sanitizeText(column)
+    let widest = measure(head, headerFont)
     let longestWord = 0
-    for (const cell of cells) {
+    for (const word of head.split(" ")) longestWord = Math.max(longestWord, measure(word, headerFont))
+    for (const row of rows) {
+      const cell = sanitizeText(row[i] ?? "")
       widest = Math.max(widest, measure(cell))
       for (const word of cell.split(" ")) longestWord = Math.max(longestWord, measure(word))
     }
@@ -133,9 +140,10 @@ export function layoutRows(
   font: TextMeasurer,
   widths: number[],
   tableHeight: number = TABLE_HEIGHT,
+  headerFont: TextMeasurer = font,
 ): CellLines[][][] {
   if (rows.length === 0) return []
-  const headerLines = Math.max(...wrapRow(columns, widths, font).map((cell) => cell.length))
+  const headerLines = Math.max(...wrapRow(columns, widths, headerFont).map((cell) => cell.length))
   const area = tableHeight - lineBlockHeight(headerLines)
   const maxLines = Math.max(Math.floor((area - 2 * CELL_PAD_Y) / LINE_HEIGHT), 1)
 
@@ -210,7 +218,8 @@ function drawPage(
   const rule = (y: number) =>
     page.drawLine({ start: { x: MARGIN, y }, end: { x: MARGIN + TABLE_WIDTH, y }, thickness: 0.5, color: grey })
 
-  const headerCells = wrapRow(columns, widths, regular)
+  // the header is drawn in bold, which is wider: wrap it with the bold font
+  const headerCells = wrapRow(columns, widths, bold)
   const headerHeight = lineBlockHeight(Math.max(...headerCells.map((cell) => cell.length)))
   page.drawRectangle({ x: MARGIN, y: TABLE_TOP - headerHeight, width: TABLE_WIDTH, height: headerHeight, color: rgb(0.92, 0.92, 0.92) })
   drawCells(headerCells, TABLE_TOP, bold)
@@ -236,6 +245,20 @@ function drawPage(
   })
 }
 
+const fontCache = new WeakMap<PDFDocument, Promise<{ regular: PDFFont; bold: PDFFont }>>()
+
+/** Embeds Helvetica and Helvetica-Bold once per document, however many sheets are appended. */
+function fontsFor(doc: PDFDocument): Promise<{ regular: PDFFont; bold: PDFFont }> {
+  let fonts = fontCache.get(doc)
+  if (!fonts) {
+    fonts = Promise.all([doc.embedFont(StandardFonts.Helvetica), doc.embedFont(StandardFonts.HelveticaBold)]).then(
+      ([regular, bold]) => ({ regular, bold }),
+    )
+    fontCache.set(doc, fonts)
+  }
+  return fonts
+}
+
 /**
  * Appends continuation pages (US letter) with a table of `rows` to `doc`: heading
  * "Continuation — {title}", "Applicant: {name}   SSN: {ssn}" on every page (the form asks for the
@@ -246,12 +269,11 @@ function drawPage(
  */
 export async function overflowSheet(doc: PDFDocument, options: OverflowSheetOptions): Promise<number> {
   if (options.rows.length === 0) return 0
-  const regular = await doc.embedFont(StandardFonts.Helvetica)
-  const bold = await doc.embedFont(StandardFonts.HelveticaBold)
+  const { regular, bold } = await fontsFor(doc)
 
   const columns = options.columns.map(sanitizeText)
-  const widths = computeColumnWidths(columns, options.rows, regular)
-  const pages = layoutRows(columns, options.rows, regular, widths)
+  const widths = computeColumnWidths(columns, options.rows, regular, bold)
+  const pages = layoutRows(columns, options.rows, regular, widths, TABLE_HEIGHT, bold)
   const title = `Continuation — ${sanitizeText(options.title)}`
   const applicant = `Applicant: ${sanitizeText(options.headerName)}   SSN: ${sanitizeText(options.headerSsn)}`
 

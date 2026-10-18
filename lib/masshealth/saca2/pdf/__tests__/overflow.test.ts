@@ -8,7 +8,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
 
-import { PDFDocument, StandardFonts } from "pdf-lib"
+import { PDFDict, PDFDocument, PDFName, StandardFonts } from "pdf-lib"
 import { describe, expect, it } from "vitest"
 
 import { computeColumnWidths, layoutRows, overflowSheet, TABLE_WIDTH, type TextMeasurer } from "../overflow"
@@ -180,6 +180,33 @@ describe("overflowSheet", () => {
       return doc.save()
     }
     expect(Buffer.from(await make()).equals(Buffer.from(await make()))).toBe(true)
+  })
+
+  it("embeds the two fonts once per document, however many sheets are appended", async () => {
+    const doc = await PDFDocument.create()
+    await overflowSheet(doc, { ...OPTIONS, rows: rowsOf(3) })
+    await overflowSheet(doc, { ...OPTIONS, title: "Second", rows: rowsOf(3) })
+    // pdf-lib writes embedded standard fonts when saving
+    const saved = await PDFDocument.load(await doc.save())
+    const fonts = [...saved.context.enumerateIndirectObjects()].filter(
+      ([, o]) => o instanceof PDFDict && o.get(PDFName.of("Type")) === PDFName.of("Font"),
+    )
+    expect(fonts).toHaveLength(2)
+  })
+
+  it("wraps the header with the bold font it is drawn in", async () => {
+    const doc = await PDFDocument.create()
+    const bold = await doc.embedFont(StandardFonts.HelveticaBold)
+    const regular = await doc.embedFont(StandardFonts.Helvetica)
+    const title = "Amount before taxes"
+    const width = regular.widthOfTextAtSize(title, 9) + 8 + 1 // fits in regular, not in bold
+    expect(bold.widthOfTextAtSize(title, 9)).toBeGreaterThan(regular.widthOfTextAtSize(title, 9) + 1)
+    expect(layoutRows([title], [["x"]], regular, [width])[0]).toBeDefined()
+    // header height uses the bold measure: more header lines leave less room, so fewer rows fit
+    const rows = Array.from({ length: 200 }, () => ["x"])
+    const withRegular = layoutRows([title], rows, regular, [width])[0].length
+    const withBold = layoutRows([title], rows, regular, [width], undefined, bold)[0].length
+    expect(withBold).toBeLessThanOrEqual(withRegular)
   })
 
   it("measures with the same Helvetica the sheet draws with", async () => {

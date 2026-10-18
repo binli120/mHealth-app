@@ -12,7 +12,7 @@ import { encodeCheckbox, encodeToParts, isCheckboxEncoder } from "./encoders"
 import { FIELD_MAP } from "./field-map"
 import { overflowSheet } from "./overflow"
 import { buildOverflowSheets, overflowHeader } from "./overflow-plan"
-import { pagesToKeep, selectPages } from "./page-selection"
+import { fieldsOnDroppedPages, pagesToKeep, selectPages } from "./page-selection"
 import { splitSharedFields } from "./split-shared-fields"
 import { loadSaca2Template } from "./template"
 import type { FieldEntry, FillItem } from "./types"
@@ -124,6 +124,15 @@ export async function fillSaca2Pdf(
     }
   }
 
+  // pdf-lib keeps the objects of removed pages in the saved file, so a value written to a field whose
+  // pages are all dropped would stay in the bytes. The reader hides such fields; a map entry that
+  // still targets one is a mapping bug (field name only in the message, never the value).
+  const keep = pagesToKeep(answers, on)
+  const dropped = fieldsOnDroppedPages(doc, keep)
+  for (const { field } of items) {
+    if (dropped.has(field)) throw new Error(`Field "${field}" is on a page that is not kept; refusing to write it`)
+  }
+
   clearInvalidCheckboxValues(fields)
 
   for (const { field: name, value } of items) {
@@ -144,7 +153,7 @@ export async function fillSaca2Pdf(
 
   // Hidden supplements and attachments leave with their fields; then the continuation sheets (rows
   // the form's blocks cannot hold) are appended after the kept form pages.
-  selectPages(doc, pagesToKeep(answers, on))
+  selectPages(doc, keep)
   const header = overflowHeader(answers, on)
   for (const spec of buildOverflowSheets(answers, on)) await overflowSheet(doc, { ...header, ...spec })
 

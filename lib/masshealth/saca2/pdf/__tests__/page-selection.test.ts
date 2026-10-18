@@ -8,7 +8,9 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
 
-import { PDFDocument, PDFName, PDFTextField } from "pdf-lib"
+import { inflateSync } from "node:zlib"
+
+import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFRawStream, PDFString, type PDFObject } from "pdf-lib"
 import { beforeAll, describe, expect, it, vi } from "vitest"
 
 import { completeHomeWithAllSupplements, completeRichHousehold, completeSingleSenior } from "../../__tests__/complete-answers"
@@ -17,6 +19,7 @@ import { getInventory } from "../inventory"
 import { PAGE_RANGES, pagesToKeep, selectPages, TEMPLATE_PAGE_COUNT } from "../page-selection"
 import { collectFillValues, fillSaca2Pdf } from "../pdf-fill"
 import { splitSharedFields } from "../split-shared-fields"
+import type { FieldEntry } from "../types"
 import { loadSaca2Template } from "../template"
 import { readFilled } from "./helpers/read-filled"
 
@@ -31,6 +34,33 @@ let template: Uint8Array
 beforeAll(async () => {
   template = await loadSaca2Template()
 })
+
+const SENTINEL = "REMOVED-PAGE-SENTINEL"
+
+/** True when `object` (recursively: dicts, arrays, decoded strings, inflated streams) holds `needle`. */
+function holds(object: PDFObject | undefined, needle: string): boolean {
+  if (object instanceof PDFRawStream) {
+    const raw = Buffer.from(object.contents)
+    let text = raw.toString("latin1")
+    try {
+      text += inflateSync(raw).toString("latin1")
+    } catch {
+      // not Flate data
+    }
+    return text.includes(needle) || holds(object.dict, needle)
+  }
+  if (object instanceof PDFDict) return [...object.entries()].some(([, v]) => holds(v, needle))
+  if (object instanceof PDFArray) return object.asArray().some((v) => holds(v, needle))
+  if (object instanceof PDFHexString || object instanceof PDFString) {
+    return object.decodeText().includes(needle) || object.asString().includes(needle)
+  }
+  return false
+}
+
+function objectsContain(doc: PDFDocument, needle: string): boolean {
+  for (const [, object] of doc.context.enumerateIndirectObjects()) if (holds(object, needle)) return true
+  return false
+}
 
 async function loadSplit(): Promise<PDFDocument> {
   const doc = await PDFDocument.load(template)
@@ -193,16 +223,21 @@ describe("selectPages", () => {
     expect(doc.getPageCount()).toBe(42)
   })
 
-  it("does not carry removed fields' values: a filled value on a removed page is gone", async () => {
+  it("drops the removed fields from the form; the sentinel scan shows what pdf-lib keeps of a removed page", async () => {
     const doc = await loadSplit()
     const name = fieldsOnlyOn([31]).find((f) => f.type === "text")!.name
-    doc.getForm().getTextField(name).setText("REMOVED-PAGE-VALUE")
+    doc.getForm().getTextField(name).setText(SENTINEL)
+    doc.getForm().updateFieldAppearances()
     selectPages(doc, ALL.filter((i) => i !== 31))
-    const reloaded = await PDFDocument.load(await doc.save())
+    const bytes = await doc.save({ updateFieldAppearances: true })
+
+    const reloaded = await PDFDocument.load(bytes)
     expect(reloaded.getForm().getFields().some((f) => f.getName() === name)).toBe(false)
-    const acro = reloaded.catalog.lookup(PDFName.of("AcroForm"))
-    expect(acro).toBeDefined()
-    expect(reloaded.getForm().getFields().every((f) => !(f instanceof PDFTextField) || f.getText() !== "REMOVED-PAGE-VALUE")).toBe(true)
+    // pdf-lib writes every object of its context, reachable or not, and the catalog's StructTreeRoot
+    // still points at the removed pages, so the value is NOT guaranteed to leave the bytes. This is
+    // why fillSaca2Pdf refuses to write to such a field (see the guard test below). Pin the fact so a
+    // change in pdf-lib behaviour is noticed rather than silently relied on.
+    expect(objectsContain(reloaded, SENTINEL)).toBe(true)
   })
 })
 
@@ -282,6 +317,35 @@ describe("fillSaca2Pdf with page selection and overflow sheets", () => {
       checked += 1
     }
     expect(checked).toBeGreaterThan(100)
+  })
+
+  it("refuses to write a field whose pages are all dropped (field name only, never the value)", async () => {
+    const suppCField = fieldsOnlyOn([31]).find((f) => f.type === "text")!.name
+    const map: FieldEntry[] = [
+      { fields: [suppCField], source: { kind: "answer", stepId: "person1", path: "city" }, encode: "text" },
+    ]
+    const a = completeSingleSenior() // Supplement C is hidden here
+    a.persons[0].city = SENTINEL
+    const error = await fillSaca2Pdf(a, template, ON, map).then(
+      () => null,
+      (e: Error) => e,
+    )
+    expect(error?.message).toContain(suppCField)
+    expect(error?.message).not.toContain(SENTINEL)
+    // the same entry is fine when Supplement C is kept
+    const kept = completeHomeWithAllSupplements()
+    kept.persons[0].city = "Boston"
+    await expect(fillSaca2Pdf(kept, template, ON, map)).resolves.toBeInstanceOf(Uint8Array)
+  })
+
+  it("scan sanity: a kept-page value is found in the saved bytes and an unfilled sentinel is not", async () => {
+    const a = completeSingleSenior()
+    a.persons[0].city = SENTINEL
+    const bytes = await fillSaca2Pdf(a, template, ON)
+    expect(objectsContain(await PDFDocument.load(bytes), SENTINEL)).toBe(true) // City is on a kept page
+    const b = completeSingleSenior()
+    const clean = await fillSaca2Pdf(b, template, ON)
+    expect(objectsContain(await PDFDocument.load(clean), SENTINEL)).toBe(false)
   })
 
   it("stays editable and is deterministic apart from the modification date", async () => {

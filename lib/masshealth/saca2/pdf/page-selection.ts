@@ -118,3 +118,19 @@ function assertConsistent(doc: PDFDocument, removedPages: Set<string>, removedWi
     }
   }
 }
+
+/**
+ * Names of the fields whose widgets ALL sit on pages outside `keepIndexes` (a field that also has a
+ * widget on a kept page stays in the output and is not listed).
+ */
+export function fieldsOnDroppedPages(doc: PDFDocument, keepIndexes: number[]): Set<string> {
+  const keep = new Set(keepIndexes)
+  const pageIndex = new Map(doc.getPages().map((page, i) => [page.ref.toString(), i]))
+  const dropped = new Set<string>()
+  for (const field of doc.getForm().getFields()) {
+    const widgets = field.acroField.getWidgets()
+    const pages = widgets.map((w) => pageIndex.get(w.P()?.toString() ?? ""))
+    if (widgets.length > 0 && pages.every((p) => p !== undefined && !keep.has(p))) dropped.add(field.getName())
+  }
+  return dropped
+}
