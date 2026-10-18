@@ -15,6 +15,7 @@ import {
 import { IMMIGRATION_DOCUMENT_OPTIONS, IMMIGRATION_STATUS_OPTIONS } from "../questions/immigration-options"
 import type { Saca2Option } from "../questions/types"
 import { isStepVisible } from "../visibility"
+import { ATTACHMENTS_DERIVED } from "./derived-attachments"
 import { ASSETS_DERIVED } from "./derived-assets"
 import { HEALTH_DERIVED } from "./derived-health"
 import { INCOME_DERIVED } from "./derived-income"
@@ -127,6 +128,7 @@ export const DERIVED: DerivedRegistry = {
   ...SIGNING_DERIVED,
   ...SUPP_A_DERIVED,
   ...SUPP_BCD_DERIVED,
+  ...ATTACHMENTS_DERIVED,
 
   "person.fullName": (reader, _answers, _on, person) => fullName(reader, requirePerson(person, "person.fullName")),
 

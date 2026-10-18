@@ -65,16 +65,16 @@ const frequencyLabel = (raw: unknown): string | undefined => (typeof raw === "st
 // Supplement C: the person's header block and answers
 // ---------------------------------------------------------------------------------------------
 
-const readPerson = (reader: VisibleReader, person: PersonIndex, path: string): unknown =>
+export const readPerson = (reader: VisibleReader, person: PersonIndex, path: string): unknown =>
   reader.get({ kind: "answer", stepId: PERSON_STEP(person), path, person })
 
-const readText = (reader: VisibleReader, person: PersonIndex, path: string): string => {
+export const readText = (reader: VisibleReader, person: PersonIndex, path: string): string => {
   const value = readPerson(reader, person, path)
   return typeof value === "string" ? value.trim() : ""
 }
 
 /** The street, city, state and ZIP printed for a person: their own home address, else a spouse's living with Person 1, else the mailing address. */
-function addressOf(reader: VisibleReader, person: PersonIndex) {
+export function addressOf(reader: VisibleReader, person: PersonIndex) {
   const home = (who: PersonIndex) => ({
     street: [readText(reader, who, "streetAddress"), readText(reader, who, "apartment")].filter((p) => p !== "").join(", "),
     city: readText(reader, who, "city"),
@@ -95,7 +95,7 @@ function addressOf(reader: VisibleReader, person: PersonIndex) {
   }
 }
 
-const ssnLine = (raw: unknown): string | undefined => {
+export const ssnLine = (raw: unknown): string | undefined => {
   const digits = typeof raw === "string" ? raw.replace(/\D/g, "") : ""
   return digits.length === 9 ? `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}` : undefined
 }

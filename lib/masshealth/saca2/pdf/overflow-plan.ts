@@ -12,6 +12,7 @@ import { DERIVED } from "./derived"
 import { RENTAL_LINES } from "./derived-income"
 import { encodeText } from "./encoders"
 import { assetsCollector, burialPlotNotes, previousBillsCollector } from "./overflow-assets"
+import { attachmentsCollector } from "./overflow-attachments"
 import { healthCollector } from "./overflow-health"
 import { supplementACollector } from "./overflow-supp-a"
 import { supplementBcdCollector } from "./overflow-supp-bcd"
@@ -252,6 +253,7 @@ export const OVERFLOW_COLLECTORS: OverflowCollector[] = [
   healthCollector,
   supplementACollector,
   supplementBcdCollector,
+  attachmentsCollector,
 ]
 
 /** All continuation sheets the answers need; empty when everything fits the form. Pure. */
