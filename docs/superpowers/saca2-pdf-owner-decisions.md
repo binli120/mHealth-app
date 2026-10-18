@@ -132,7 +132,7 @@ Each item gives: where it is on the form, what the wizard lacks, and the recomme
 - Recommended: leave the signer phone blank unless the owner wants the applicant's phone copied when the applicant signs.
 
 ### B3. ARD-1122 values that go on an extra continuation sheet
-- The organization name, the legal-document description (Section III) and the organization's email have no field on the
+- The organization name, the legal-document description (Section III) and the representative's email, when the representative is an organization, have no field on the
   printed ARD-1122 section pages that fits the wizard's answers, so they are written on an additional continuation
   sheet. The owner should confirm that MassHealth accepts such a sheet attached to the ARD-1122, or require the
   information to be handwritten on the form.

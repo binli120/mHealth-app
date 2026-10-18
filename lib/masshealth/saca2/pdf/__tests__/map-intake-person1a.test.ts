@@ -323,7 +323,7 @@ describe("intake and Person 1 pages: program boxes and name lines", () => {
     expect(text.Spouse).toBe("Pedro Testcase")
   })
 
-  it("does not take a married household's Person 2 for a non-spouse because of a 'wife's mother' style text", async () => {
+  it("names Person 2 on the Spouse line of a married household even when the relationship text is a wife's-mother style phrase", async () => {
     const a = completeRichHousehold()
     a.persons[0].isLegallyMarried = "yes"
     a.persons[1].relationshipToPerson1 = "wife's mother"

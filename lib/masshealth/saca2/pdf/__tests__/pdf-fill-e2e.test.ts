@@ -50,13 +50,18 @@ function withTempPdf<T>(bytes: Uint8Array, run: (file: string) => T): T {
   }
 }
 
-/** All page text of a PDF with runs of spaces collapsed, or null (with a message) when pdftotext is not installed. */
-function pdfText(bytes: Uint8Array): string | null {
-  if (!hasBinary("pdftotext", ["-v"])) {
-    console.warn("pdftotext is not installed; skipping the text extraction assertions (CI installs poppler-utils)")
-    return null
-  }
-  return withTempPdf(bytes, (file) => spawnSync("pdftotext", ["-layout", file, "-"], { encoding: "utf8" }).stdout.replace(/[ \t]+/g, " "))
+const HAS_PDFTOTEXT = hasBinary("pdftotext", ["-v"])
+const HAS_PDFINFO = hasBinary("pdfinfo", ["-v"])
+const HAS_GS = hasBinary("gs", ["--version"])
+
+/** All page text of a PDF with runs of spaces collapsed. Throws when pdftotext fails, so an absence check cannot pass vacuously. */
+function pdfText(bytes: Uint8Array, args: string[] = ["-layout"]): string {
+  return withTempPdf(bytes, (file) => {
+    const run = spawnSync("pdftotext", [...args, file, "-"], { encoding: "utf8" })
+    expect(run.error).toBeUndefined()
+    expect(run.status, run.stderr).toBe(0)
+    return run.stdout.replace(/[ \t]+/g, " ")
+  })
 }
 
 // --- the fixtures and what they should produce -----------------------------------------------------
@@ -137,10 +142,9 @@ describe.each(FIXTURES)("fillSaca2Pdf end to end: %s", (_name, build) => {
     expect(Object.values(values.text).some((v) => v.includes(answers.persons[0].lastName))).toBe(true)
   })
 
-  it("prints Person 1's name and none of a stale sentinel", async () => {
+  it.skipIf(!HAS_PDFTOTEXT)("prints Person 1's name and none of a stale sentinel", async () => {
     const answers = build()
     const text = pdfText(await fillSaca2Pdf(answers, null, ON))
-    if (text === null) return
     expect(text).toContain(answers.persons[0].firstName)
     expect(text).toContain(answers.persons[0].lastName)
     expect(text).not.toContain(SENTINEL)
@@ -153,26 +157,22 @@ describe.each(FIXTURES)("fillSaca2Pdf end to end: %s", (_name, build) => {
     expect(second).toEqual(first)
   })
 
-  it("is a valid PDF for pdfinfo and Ghostscript, with the page count pdf-lib reports", async () => {
+  it.skipIf(!HAS_PDFINFO)("is a valid PDF for pdfinfo, with the page count pdf-lib reports", async () => {
     const bytes = await fillSaca2Pdf(build(), null, ON)
     const pages = (await PDFDocument.load(bytes)).getPageCount()
-    if (hasBinary("pdfinfo", ["-v"])) {
-      const info = withTempPdf(bytes, (file) => spawnSync("pdfinfo", [file], { encoding: "utf8" }))
-      expect(info.status, info.stderr).toBe(0)
-      expect(info.stderr).toBe("")
-      expect(info.stdout.split("\n").find((line) => line.startsWith("Pages:"))?.replace("Pages:", "").trim()).toBe(String(pages))
-    } else {
-      console.warn("pdfinfo is not installed; skipping the pdfinfo validity check")
-    }
-    if (hasBinary("gs", ["--version"])) {
-      const gs = withTempPdf(bytes, (file) =>
-        spawnSync("gs", ["-q", "-dNOPAUSE", "-dBATCH", "-dNOSAFER", "-sDEVICE=nullpage", file], { encoding: "utf8", timeout: 170_000 }),
-      )
-      expect(gs.status, gs.stderr).toBe(0)
-      expect(`${gs.stdout}${gs.stderr}`.trim()).toBe("")
-    } else {
-      console.warn("gs (Ghostscript) is not installed; skipping the Ghostscript validity check")
-    }
+    const info = withTempPdf(bytes, (file) => spawnSync("pdfinfo", [file], { encoding: "utf8" }))
+    expect(info.status, info.stderr).toBe(0)
+    expect(info.stderr).toBe("")
+    expect(info.stdout.split("\n").find((line) => line.startsWith("Pages:"))?.replace("Pages:", "").trim()).toBe(String(pages))
+  })
+
+  it.skipIf(!HAS_GS)("renders without a Ghostscript error or warning", async () => {
+    const bytes = await fillSaca2Pdf(build(), null, ON)
+    const gs = withTempPdf(bytes, (file) =>
+      spawnSync("gs", ["-q", "-dNOPAUSE", "-dBATCH", "-dNOSAFER", "-sDEVICE=nullpage", file], { encoding: "utf8", timeout: 170_000 }),
+    )
+    expect(gs.status, gs.stderr).toBe(0)
+    expect(`${gs.stdout}${gs.stderr}`.trim()).toBe("")
   })
 })
 
@@ -544,16 +544,16 @@ const SCENARIOS: Scenario[] = [
 ]
 
 describe("stale answers behind closed gates never reach the PDF (every gate-flip scenario of the region tests)", () => {
-  it("the detector bites: a sentinel in a visible answer is found in the field values and in the printed text", async () => {
+  it("the detector bites: a sentinel in a visible answer is found in the field values and in the printed text", async (ctx) => {
     const a = completeRichHousehold()
     person(a, 0).streetAddress = SENTINEL
     const bytes = await fillSaca2Pdf(a, null, ON)
     expect(everything(await readFilled(bytes))).toContain(SENTINEL)
-    const text = pdfText(bytes)
-    if (text !== null) expect(text).toContain(SENTINEL)
+    if (!HAS_PDFTOTEXT) return ctx.skip()
+    expect(pdfText(bytes)).toContain(SENTINEL)
   })
 
-  it.each(SCENARIOS)("$name", async ({ base, flip }) => {
+  it.for(SCENARIOS)("$name", async ({ base, flip }, ctx) => {
     const answers = base()
     flip(answers)
     // the scenario really plants something: the sentinel is in the answers
@@ -563,10 +563,10 @@ describe("stale answers behind closed gates never reach the PDF (every gate-flip
     const values = await readFilled(bytes)
     expect(everything(values)).not.toContain(SENTINEL)
     expect(everything(values)).not.toContain(String(STALE_NUMBER))
+    // the field values were checked above; without pdftotext the printed-text half is reported as skipped
+    if (!HAS_PDFTOTEXT) return ctx.skip()
     const text = pdfText(bytes)
-    if (text !== null) {
-      expect(text).not.toContain(SENTINEL)
-      expect(text).not.toContain(String(STALE_NUMBER))
-    }
+    expect(text).not.toContain(SENTINEL)
+    expect(text).not.toContain(String(STALE_NUMBER))
   })
 })
