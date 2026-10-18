@@ -16,10 +16,11 @@ const APP_ID = "88cbe518-ea42-476b-a8e9-12207573ff2c"
 const STATE = { schemaVersion: "saca2-2026-08", data: { persons: [{ firstName: "Ada" }] } }
 const NOTE = "Print, sign, and date the form yourself — signatures and consents are never filled in for you."
 
-function pdfResponse() {
+function pdfResponse(substituted?: string) {
   return {
     ok: true,
     status: 200,
+    headers: new Headers(substituted === undefined ? {} : { "X-Saca2-Substituted-Chars": substituted }),
     blob: async () => new Blob(["%PDF-1.7"], { type: "application/pdf" }),
   } as unknown as Response
 }
@@ -125,7 +126,7 @@ describe("Saca2Download", () => {
     expect(alert).not.toHaveTextContent("Ada")
   })
 
-  it.each([500, 413, 404, 401])("shows a retryable alert on %i", async (status) => {
+  it.each([500, 404, 401])("shows a retryable alert on %i", async (status) => {
     mocks.authenticatedFetch.mockResolvedValueOnce(errorResponse(status, "server detail"))
     render(<Saca2Download applicationId={APP_ID} wizardState={STATE} />)
     await userEvent.click(screen.getByRole("button", { name: /Download your filled/ }))
@@ -137,6 +138,42 @@ describe("Saca2Download", () => {
     await userEvent.click(screen.getByRole("button", { name: /Download your filled/ }))
     await waitFor(() => expect(clickedAnchors).toHaveLength(1))
     expect(screen.queryByRole("alert")).toBeNull()
+  })
+
+  it("gives 413 its own message, not a retry prompt", async () => {
+    mocks.authenticatedFetch.mockResolvedValue(errorResponse(413))
+    render(<Saca2Download applicationId={APP_ID} wizardState={STATE} />)
+    await userEvent.click(screen.getByRole("button", { name: /Download your filled/ }))
+    const alert = await screen.findByRole("alert")
+    expect(alert).toHaveTextContent("Your application is too large to download from here. Please contact support.")
+    expect(alert).not.toHaveTextContent(/try again/i)
+  })
+
+  it.each([[undefined], ["0"], ["abc"]])("shows no substitution warning when the header is %s", async (value) => {
+    mocks.authenticatedFetch.mockResolvedValue(pdfResponse(value))
+    render(<Saca2Download applicationId={APP_ID} wizardState={STATE} />)
+    await userEvent.click(screen.getByRole("button", { name: /Download your filled/ }))
+    await waitFor(() => expect(clickedAnchors).toHaveLength(1))
+    expect(screen.queryByText(/can’t be printed/i)).toBeNull()
+  })
+
+  it("shows a persistent warning, without answer content, when characters were replaced", async () => {
+    mocks.authenticatedFetch.mockResolvedValue(pdfResponse("3"))
+    render(<Saca2Download applicationId={APP_ID} wizardState={STATE} />)
+    await userEvent.click(screen.getByRole("button", { name: /Download your filled/ }))
+    await waitFor(() => expect(clickedAnchors).toHaveLength(1))
+    const warning = await screen.findByText(/can’t be printed on the form/i)
+    expect(warning).toHaveAttribute("role", "alert")
+    expect(warning).toHaveTextContent(/appear as “\?”/)
+    expect(warning).toHaveTextContent(/hand-write/i)
+    expect(warning).not.toHaveTextContent("Ada")
+    expect(screen.getByRole("note")).toHaveTextContent(NOTE)
+
+    // a later clean download clears it
+    mocks.authenticatedFetch.mockResolvedValue(pdfResponse())
+    await userEvent.click(screen.getByRole("button", { name: /Download your filled/ }))
+    await waitFor(() => expect(clickedAnchors).toHaveLength(2))
+    expect(screen.queryByText(/can’t be printed/i)).toBeNull()
   })
 
   it("shows the retryable alert when the network fails", async () => {

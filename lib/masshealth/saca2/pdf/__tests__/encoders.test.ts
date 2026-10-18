@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest"
 
-import { encodeCheckbox, encodeSsn, encodeText, encodeToParts, isCheckboxEncoder, sanitizeText } from "../encoders"
+import { encodeCheckbox, encodeSsn, encodeText, encodeToParts, isCheckboxEncoder, sanitizeText, countSubstitutions } from "../encoders"
 
 describe("encodeText: date", () => {
   it("formats an ISO date as MM/DD/YYYY", () => {
@@ -179,5 +179,37 @@ describe("encodeCheckbox", () => {
     expect(isCheckboxEncoder({ kind: "check" })).toBe(true)
     expect(isCheckboxEncoder({ kind: "ssn" })).toBe(false)
     expect(isCheckboxEncoder("text")).toBe(false)
+  })
+})
+
+describe("countSubstitutions", () => {
+  it("counts every character sanitizeText replaces with ?, across sync and async work", async () => {
+    const { result, count } = await countSubstitutions(async () => {
+      sanitizeText("Hương") // ư, ơ
+      await Promise.resolve()
+      sanitizeText("王 李") // 2
+      sanitizeText("plain ASCII é")
+      return "done"
+    })
+    expect(result).toBe("done")
+    expect(count).toBe(4)
+  })
+
+  it("counts nothing for text the form can print, and keeps concurrent runs apart", async () => {
+    const [a, b] = await Promise.all([
+      countSubstitutions(async () => {
+        await new Promise((r) => setTimeout(r, 5))
+        sanitizeText("王")
+      }),
+      countSubstitutions(async () => {
+        sanitizeText("José Núñez")
+      }),
+    ])
+    expect(a.count).toBe(1)
+    expect(b.count).toBe(0)
+  })
+
+  it("does not throw or count outside a counting run", () => {
+    expect(sanitizeText("王")).toBe("?")
   })
 })

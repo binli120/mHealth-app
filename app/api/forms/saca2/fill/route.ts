@@ -9,6 +9,7 @@ import { uuidSchema } from "@/lib/api/validation"
 import { requireAuthenticatedUser } from "@/lib/auth/require-auth"
 import { getApplicationDraft } from "@/lib/db/application-drafts"
 import { isSaca2Enabled } from "@/lib/masshealth/saca2/flag"
+import { countSubstitutions } from "@/lib/masshealth/saca2/pdf/encoders"
 import { Saca2FitError } from "@/lib/masshealth/saca2/pdf/fit-error"
 import { fillSaca2Pdf } from "@/lib/masshealth/saca2/pdf/pdf-fill"
 import { Saca2TemplateIntegrityError, loadSaca2Template } from "@/lib/masshealth/saca2/pdf/template"
@@ -94,15 +95,18 @@ export async function POST(request: Request) {
     const state = normalizeSaca2State(parsed.data.wizardState)
     if (!state) return fail("The application answers are not valid.", 422)
 
-    const bytes = await fillSaca2Pdf(state.data, await loadSaca2Template(), new Date())
-    return new Response(Buffer.from(bytes), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": 'attachment; filename="SACA-2-application.pdf"',
-        "Cache-Control": "no-store",
-      },
-    })
+    const template = await loadSaca2Template()
+    const { result: bytes, count: substituted } = await countSubstitutions(() =>
+      fillSaca2Pdf(state.data, template, new Date()),
+    )
+    const headers: Record<string, string> = {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": 'attachment; filename="SACA-2-application.pdf"',
+      "Cache-Control": "no-store",
+    }
+    // Characters the form's font cannot print came out as "?": tell the client (a count only, never the text).
+    if (substituted > 0) headers["X-Saca2-Substituted-Chars"] = String(substituted)
+    return new Response(Buffer.from(bytes), { status: 200, headers })
   } catch (error) {
     // Only ids go to the log: never the body or the answers.
     logServerError(LOG_EVENT, error, { module: "saca2-fill", userId, applicationId })

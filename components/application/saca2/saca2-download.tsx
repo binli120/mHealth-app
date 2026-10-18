@@ -23,11 +23,16 @@ const SIGNATURE_NOTE = "Print, sign, and date the form yourself — signatures a
 const RATE_LIMIT_MESSAGE = "Too many downloads, try again in a few minutes."
 const FIT_MESSAGE =
   "Some answers could not be placed on the form. Please review the long lists (IRS years, Supplement B people, or Supplement D jobs) and try again, or contact support."
+const TOO_LARGE_MESSAGE = "Your application is too large to download from here. Please contact support."
+const SUBSTITUTED_HEADER = "X-Saca2-Substituted-Chars"
+const SUBSTITUTED_WARNING =
+  "Some characters in names, addresses, or free text can’t be printed on the form and appear as “?”. Check the printed form and hand-write the affected entries."
 const RETRY_MESSAGE = "We couldn’t prepare your PDF. Please try again."
 
 function messageForStatus(status: number): string {
   if (status === 429) return RATE_LIMIT_MESSAGE
   if (status === 422) return FIT_MESSAGE
+  if (status === 413) return TOO_LARGE_MESSAGE
   return RETRY_MESSAGE
 }
 
@@ -47,6 +52,7 @@ function saveBlob(blob: Blob) {
 export function Saca2Download({ applicationId, wizardState, actingForPatientId }: Saca2DownloadProps) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [substituted, setSubstituted] = useState(false)
   const inFlight = useRef(false)
 
   const handleDownload = async () => {
@@ -54,6 +60,7 @@ export function Saca2Download({ applicationId, wizardState, actingForPatientId }
     inFlight.current = true
     setPending(true)
     setError(null)
+    setSubstituted(false)
     try {
       const headers: Record<string, string> = { "Content-Type": "application/json" }
       if (actingForPatientId) headers["X-Acting-For-Patient"] = actingForPatientId
@@ -66,6 +73,7 @@ export function Saca2Download({ applicationId, wizardState, actingForPatientId }
         setError(messageForStatus(response.status))
         return
       }
+      setSubstituted(Number(response.headers?.get(SUBSTITUTED_HEADER)) > 0)
       saveBlob(await response.blob())
     } catch {
       setError(RETRY_MESSAGE)
@@ -88,6 +96,11 @@ export function Saca2Download({ applicationId, wizardState, actingForPatientId }
       <p role="note" className="text-sm text-muted-foreground">
         {SIGNATURE_NOTE}
       </p>
+      {substituted ? (
+        <p role="alert" className="text-sm font-medium text-destructive">
+          {SUBSTITUTED_WARNING}
+        </p>
+      ) : null}
     </div>
   )
 }

@@ -11,6 +11,7 @@ import path from "node:path"
 import { PDFDict, PDFDocument, PDFName, StandardFonts } from "pdf-lib"
 import { describe, expect, it } from "vitest"
 
+import { countSubstitutions } from "../encoders"
 import { computeColumnWidths, layoutRows, overflowSheet, TABLE_WIDTH, type TextMeasurer } from "../overflow"
 
 /** Every character is 5 points wide, so wrapping is easy to reason about. */
@@ -214,5 +215,15 @@ describe("overflowSheet", () => {
     const font = await doc.embedFont(StandardFonts.Helvetica)
     const pages = layoutRows(["A"], [["The quick brown fox jumps over the lazy dog"]], font, [90])
     for (const line of pages[0][0][0]) expect(font.widthOfTextAtSize(line, 9)).toBeLessThanOrEqual(90 - 8)
+  })
+})
+
+describe("overflowSheet substitution counting", () => {
+  it("counts non-WinAnsi characters in cells, headings and the applicant header", async () => {
+    const doc = await PDFDocument.create()
+    const { count } = await countSubstitutions(() =>
+      overflowSheet(doc, { ...OPTIONS, headerName: "王", rows: [["Nguyễn", ...rowsOf(1)[0].slice(1)]] }),
+    )
+    expect(count).toBeGreaterThanOrEqual(2)
   })
 })

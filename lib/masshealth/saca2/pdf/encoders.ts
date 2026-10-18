@@ -3,6 +3,8 @@
  * @email: blee@comura.ai
  */
 
+import { AsyncLocalStorage } from "node:async_hooks"
+
 import { isRealIsoDate } from "../questions/validate"
 import type { Encoder } from "./types"
 
@@ -29,6 +31,19 @@ function isWinAnsi(codePoint: number): boolean {
   )
 }
 
+const substitutionCounter = new AsyncLocalStorage<{ count: number }>()
+
+/**
+ * Runs `work` and returns its result with the number of characters `sanitizeText` replaced by "?" while it ran
+ * (form fields and overflow sheets alike; a value sanitized twice counts twice, so treat it as "any" not "exact").
+ * Only a count is kept, never the characters. Concurrent runs are kept apart.
+ */
+export async function countSubstitutions<T>(work: () => Promise<T>): Promise<{ result: T; count: number }> {
+  const store = { count: 0 }
+  const result = await substitutionCounter.run(store, work)
+  return { result, count: store.count }
+}
+
 /**
  * Makes a string safe to hand to a standard-font text field: line breaks and tabs become a single
  * space (runs of whitespace collapse), other control characters are removed, and every character
@@ -40,7 +55,12 @@ export function sanitizeText(value: string): string {
     const cp = ch.codePointAt(0)!
     if (cp === 0x0a || cp === 0x0d || cp === 0x09) out += " "
     else if (cp < 0x20 || (cp >= 0x7f && cp <= 0x9f)) continue
-    else out += isWinAnsi(cp) ? ch : "?"
+    else if (isWinAnsi(cp)) out += ch
+    else {
+      out += "?"
+      const store = substitutionCounter.getStore()
+      if (store) store.count += 1
+    }
   }
   return out.replace(/ {2,}/g, " ")
 }

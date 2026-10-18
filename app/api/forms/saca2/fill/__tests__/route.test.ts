@@ -242,4 +242,21 @@ describe("POST /api/forms/saca2/fill", () => {
     expect(await res.json()).toEqual({ ok: false, error: "Some answers could not be placed on the form." })
     expect(JSON.stringify(logServerError.mock.calls)).not.toContain(SENTINEL)
   }, 60_000)
+
+  it("sends no substitution header when every character can be printed", async () => {
+    const res = await POST(post(goodBody()))
+    expect(res.status).toBe(200)
+    expect(res.headers.get("X-Saca2-Substituted-Chars")).toBeNull()
+  })
+
+  it("adds X-Saca2-Substituted-Chars with a count only when characters were replaced", async () => {
+    const body = goodBody() as { wizardState: { data: { persons: Array<{ firstName: string }> } } }
+    body.wizardState.data.persons[0].firstName = "Hương"
+    const res = await POST(post(body))
+    expect(res.status).toBe(200)
+    expect(Number(res.headers.get("X-Saca2-Substituted-Chars"))).toBeGreaterThanOrEqual(2)
+    expect(res.headers.get("Cache-Control")).toBe("no-store")
+    expect(res.headers.get("Content-Type")).toBe("application/pdf")
+    expect(JSON.stringify(logServerError.mock.calls)).not.toContain("Hương")
+  })
 })
