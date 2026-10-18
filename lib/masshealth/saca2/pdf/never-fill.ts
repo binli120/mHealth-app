@@ -71,12 +71,8 @@ export const NEVER_FILL: Record<string, { reason: NeverFillReason; note?: string
     note: "Stray text widget over the continuation of the printed Step 8 paragraph (\"...we will determine your MassHealth eligibility as if you do not need PCA services.\"); the form asks nothing here, so there is no wizard question",
   },
 
-  // Step 10 (form pages 23-24, PDF indexes 24-25): voter registration, the signature block, and
+  // Step 10 (form pages 23-24, PDF indexes 24-25): the signature block, and
   // phone lines the wizard has no question for
-  "would you like to apply to register to vote today?": {
-    reason: "voter",
-    note: "Voter-registration Yes/No (form p.23). Never auto-filled: leaving it blank means the person declined, and checking Yes starts a voter-registration request. NOTE: the wizard does ask `signing.registerToVote`; it is deliberately not written (Task 10 brief), the owner may map it at Task 13",
-  },
   "Print name": {
     reason: "signature",
     note: "Printed name of the signer in the signature block (form p.24); the signer may be the applicant, an authorized representative or a responsible party, and signs and prints it by hand",

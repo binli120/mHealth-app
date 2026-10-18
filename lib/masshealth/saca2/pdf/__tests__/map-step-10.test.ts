@@ -31,6 +31,7 @@ async function fillRegion(answers: Saca2Answers): Promise<FilledValues> {
 }
 
 // literal field names, so a wrong map entry cannot hide behind a shared constant
+const VOTER = "would you like to apply to register to vote today?"
 const EMANCIPATED = "If you are under 18 years of age, are you an emancipated minor? "
 
 function setResponsibleParty(a: Saca2Answers, text: string) {
@@ -88,7 +89,7 @@ describe("Step 10 responsible party", () => {
         "Second Phone_S": "(617) 555-0199",
         "Email_S": "pat.guardian@example.test",
       },
-      checks: { [EMANCIPATED]: "No" },
+      checks: { [EMANCIPATED]: "No", [VOTER]: "1" },
     })
   })
 
@@ -98,7 +99,7 @@ describe("Step 10 responsible party", () => {
     a.signature.signedBy = "applicant"
     setResponsibleParty(a, SENTINEL)
     const out = await fillRegion(a)
-    expect(out).toEqual({ text: {}, checks: { [EMANCIPATED]: "Yes" } })
+    expect(out).toEqual({ text: {}, checks: { [EMANCIPATED]: "Yes", [VOTER]: "1" } })
   })
 
   it("leaves the whole block empty for an adult with stale responsible-party data", async () => {
@@ -113,7 +114,7 @@ describe("Step 10 responsible party", () => {
     a.signing.emancipatedMinor = "yes"
     a.signature.signedBy = "authorizedRepresentative"
     setResponsibleParty(a, SENTINEL)
-    expect(await fillRegion(a)).toEqual({ text: {}, checks: { [EMANCIPATED]: "Yes" } })
+    expect(await fillRegion(a)).toEqual({ text: {}, checks: { [EMANCIPATED]: "Yes", [VOTER]: "1" } })
   })
 
   it("shows the block when an adult chooses a responsible party; an invalid SSN and a missing phone type write nothing", async () => {
@@ -141,17 +142,44 @@ describe("Step 10 responsible party", () => {
   })
 })
 
+describe("voter registration answer", () => {
+  const voter = async (value: "yes" | "no" | null, signedBy: "applicant" | null = "applicant") => {
+    const a = completeSingleSenior()
+    a.signing.registerToVote = value
+    a.signature.signedBy = signedBy
+    return (await fillRegion(a)).checks[VOTER]
+  }
+
+  it("writes Yes on the left widget, No on the right, and nothing when unanswered", async () => {
+    expect(await voter("yes")).toBe("1")
+    expect(await voter("no")).toBe("2")
+    expect(await voter(null)).toBeUndefined()
+  })
+
+  it("is not gated by the signer or the applicant's age (the wizard question has no visibleWhen)", async () => {
+    expect(await voter("yes", null)).toBe("1")
+    const a = minorFixture()
+    a.signing.registerToVote = "no"
+    expect((await fillRegion(a)).checks[VOTER]).toBe("2")
+  })
+
+  it("keeps Yes as the left widget in the template", () => {
+    const [left, right] = [...getFieldInfo(VOTER)!.widgets].sort((a, b) => a.rect[0] - b.rect[0])
+    expect([left.onState, right.onState]).toEqual(["1", "2"])
+  })
+})
+
 describe("never-fill sweep (signatures, dates, consents, voter, office use)", () => {
   const SWEPT = new Set(["signature", "signature-date", "consent", "voter", "office-use"])
   const swept = Object.entries(NEVER_FILL)
     .filter(([, v]) => SWEPT.has(v.reason))
     .map(([name]) => name)
 
-  it("covers the signature, its date, the printed name and the voter box", () => {
-    expect(swept).toEqual(expect.arrayContaining(["Print name", "Date", "would you like to apply to register to vote today?"]))
+  it("covers the signature, its date and the printed name; the voter box is mapped, not never-fill", () => {
+    expect(swept).toEqual(expect.arrayContaining(["Print name", "Date"]))
+    expect(NEVER_FILL[VOTER]).toBeUndefined()
     expect(NEVER_FILL["Print name"].reason).toBe("signature")
     expect(NEVER_FILL.Date.reason).toBe("signature-date")
-    expect(NEVER_FILL["would you like to apply to register to vote today?"].reason).toBe("voter")
     expect(swept.some((name) => FIELD_MAP.some((e) => e.fields.includes(name)))).toBe(false)
   })
 
@@ -163,7 +191,6 @@ describe("never-fill sweep (signatures, dates, consents, voter, office use)", ()
   for (const [label, build] of fixtures) {
     it(`leaves every such field empty after filling ${label}`, async () => {
       const a = build()
-      a.signing.registerToVote = "yes"
       const { text, checks } = await readFilled(await fillSaca2Pdf(a, null, ON))
       for (const name of swept) {
         expect(getFieldInfo(name), name).toBeDefined()

@@ -20,8 +20,8 @@ const derived = (field: string, id: string): FieldEntry => ({
 })
 
 /**
- * Step 10, form page 24 (PDF index 25): the emancipated-minor question and the responsible-party
- * block. The form has no "who signs" box, so `signature.signedBy` is never written; the signature,
+ * Step 10: the voter-registration answer (PDF index 24), the emancipated-minor question and the
+ * responsible-party block (form page 24, PDF index 25). The form has no "who signs" box, so `signature.signedBy` is never written; the signature,
  * its date and the printed name are never-fill. The wizard shows the block only when it applies.
  */
 export const STEP_10_ENTRIES: FieldEntry[] = [
@@ -30,6 +30,13 @@ export const STEP_10_ENTRIES: FieldEntry[] = [
     fields: ["If you are under 18 years of age, are you an emancipated minor?\u2003"],
     source: { kind: "answer", stepId: "signature", path: "signing.emancipatedMinor" },
     encode: YES_NO_NAMED,
+  },
+  // Voter registration (form p.23, PDF index 24): the applicant answers it in the wizard, so writing it
+  // is not an auto-filled consent or signature. Widgets: Yes (left) = "1", No = "2"; unanswered stays blank.
+  {
+    fields: ["would you like to apply to register to vote today?"],
+    source: { kind: "answer", stepId: "signature", path: "signing.registerToVote" },
+    encode: { kind: "yesNo", yes: "1", no: "2" },
   },
   part("First name_S", "firstName", "text"),
   part("Middle name_S", "middleName", "text"),
