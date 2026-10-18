@@ -4,6 +4,7 @@
  */
 
 import { IRS_YEAR_SLOTS, IRS_YEARS_PATH } from "./derived-attachments"
+import { Saca2FitError } from "./fit-error"
 import { encodeText } from "./encoders"
 import type { OverflowCollector } from "./overflow-plan"
 
@@ -19,7 +20,7 @@ const text = (raw: unknown): string => encodeText("text", raw) ?? ""
 
 export const attachmentsCollector: OverflowCollector = (reader) => {
   if (reader.rows("irs4506", IRS_YEARS_PATH) > IRS_YEAR_SLOTS) {
-    throw new Error(`The IRS 4506 request has more years than the ${IRS_YEAR_SLOTS} date lines of the form`)
+    throw new Saca2FitError(`The IRS 4506 request has more years than the ${IRS_YEAR_SLOTS} date lines of the form`)
   }
   const get = (key: string) => reader.get({ kind: "answer", stepId: "ard", path: `attachments.ard.${key}` })
   const section = get("section")

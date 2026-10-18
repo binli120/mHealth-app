@@ -189,6 +189,9 @@ export const aiChatLimiter = new DbRateLimiter({ limit: 30, windowMs: 5 * 60_000
 /** Document upload — 20 uploads per 10 min per user */
 export const documentUploadLimiter = new DbRateLimiter({ limit: 20, windowMs: 10 * 60_000 })
 
+/** SACA-2 PDF fill — 10 fills per 10 min per user */
+export const saca2FillLimiter = new DbRateLimiter({ limit: 10, windowMs: 10 * 60_000 })
+
 /** Mobile upload — 5 attempts per token per 15 min */
 export const mobileUploadLimiter = new DbRateLimiter({ limit: 5, windowMs: 15 * 60_000 })
 

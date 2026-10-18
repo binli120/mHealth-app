@@ -10,6 +10,7 @@ import { applyCheckboxState } from "./checkbox-writer"
 import { DERIVED } from "./derived"
 import { encodeCheckbox, encodeToParts, isCheckboxEncoder } from "./encoders"
 import { FILL_MAP } from "./field-map"
+import { Saca2FitError } from "./fit-error"
 import { overflowSheet } from "./overflow"
 import { buildOverflowSheets, overflowHeader } from "./overflow-plan"
 import { createPageCopies, placePageCopies } from "./page-copies"
@@ -148,7 +149,7 @@ export async function fillSaca2Pdf(
       const text = field as PDFTextField
       const max = text.getMaxLength()
       if (max !== undefined && value.length > max) {
-        throw new Error(`Value for field "${name}" exceeds its maximum length of ${max}`)
+        throw new Saca2FitError(`Value for field "${name}" exceeds its maximum length of ${max}`)
       }
       text.setText(value)
     } else {

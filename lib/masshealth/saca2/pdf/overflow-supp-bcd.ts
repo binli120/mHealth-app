@@ -11,6 +11,7 @@ import {
   federalTaxIdDigits,
 } from "./derived-supp-bcd"
 import { encodeText } from "./encoders"
+import { Saca2FitError } from "./fit-error"
 import type { OverflowCollector } from "./overflow-plan"
 
 /**
@@ -27,10 +28,10 @@ const text = (raw: unknown): string => encodeText("text", raw) ?? ""
 
 export const supplementBcdCollector: OverflowCollector = (reader) => {
   if (reader.rows("suppB", SUPP_B_MEMBERS_PATH) > SUPP_B_CAPACITY) {
-    throw new Error(`Supplement B has more people than the ${SUPP_B_CAPACITY} the form pages and their copies hold`)
+    throw new Saca2FitError(`Supplement B has more people than the ${SUPP_B_CAPACITY} the form pages and their copies hold`)
   }
   const jobs = reader.rows("suppD", SUPP_D_JOBS_PATH)
-  if (jobs > SUPP_D_PAGES) throw new Error(`Supplement D has more jobs than the ${SUPP_D_PAGES} the form pages and their copies hold`)
+  if (jobs > SUPP_D_PAGES) throw new Saca2FitError(`Supplement D has more jobs than the ${SUPP_D_PAGES} the form pages and their copies hold`)
 
   const rows: string[][] = []
   for (let index = 0; index < jobs; index += 1) {
