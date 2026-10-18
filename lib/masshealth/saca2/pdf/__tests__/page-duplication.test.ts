@@ -8,7 +8,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
 
-import { PDFArray, PDFCheckBox, PDFDict, PDFDocument, PDFName, PDFRef, PDFTextField } from "pdf-lib"
+import { PDFArray, PDFCheckBox, PDFDict, PDFDocument, PDFHexString, PDFName, PDFRef, PDFString, PDFTextField } from "pdf-lib"
 import { beforeAll, describe, expect, it, vi } from "vitest"
 
 import { completeHomeWithAllSupplements } from "../../__tests__/complete-answers"
@@ -17,7 +17,7 @@ import { copyFieldName, duplicatePage } from "../page-duplication"
 import { fillSaca2Pdf } from "../pdf-fill"
 import { splitCoverageNames, splitSharedFields, removeStrayTableWidgets } from "../split-shared-fields"
 import { loadSaca2Template } from "../template"
-import { B, job, member } from "./supp-bcd-helpers"
+import { B, coupleBoth, job, member } from "./supp-bcd-helpers"
 
 vi.setConfig({ testTimeout: 120_000 })
 
@@ -42,7 +42,7 @@ describe("duplicatePage", () => {
     const before = doc.getForm().getFields().length
     const expected = getInventory().filter((f) => [30, 31, 32].some((p) => f.pages.includes(p)))
     for (const index of [30, 31, 32]) {
-      const copy = duplicatePage(doc, index, "__copy1")
+      const copy = duplicatePage(doc, index, 1)
       expect(copy.page.ref.toString()).toBe(doc.getPages().at(-1)!.ref.toString())
     }
     const fields = doc.getForm().getFields()
@@ -62,9 +62,9 @@ describe("duplicatePage", () => {
 
   it("keeps the template's field properties (maxLength, type) on the copy and rejects a bad page", async () => {
     const doc = await loadSplit()
-    duplicatePage(doc, 31, "__copy1")
+    duplicatePage(doc, 31, 1)
     expect((doc.getForm().getField("MI_SuppC__copy1") as PDFTextField).getMaxLength()).toBe(2)
-    expect(() => duplicatePage(doc, 999, "__copy2")).toThrow(/page index/i)
+    expect(() => duplicatePage(doc, 999, 2)).toThrow(/page index/i)
   })
 
   it("every widget of a copy sits on the copy page, with a parent that lists it, and no ref dangles", async () => {
@@ -89,6 +89,16 @@ describe("duplicatePage", () => {
     for (const ref of fields.asArray()) expect(doc.context.lookup(ref as PDFRef)).toBeDefined()
   })
 })
+
+/** The full scenario: B with 6 members, C for both spouses, D with 4 jobs. */
+function withBoth() {
+  const a = coupleBoth()
+  a.aian.anyMember = "yes"
+  a.supplements.b.members = [1, 2, 3, 4, 5, 6].map((n) => member(n))
+  a.health.employerOfferedCoverage = "yes"
+  a.supplements.d.jobs = [1, 2, 3, 4].map((n) => job(n))
+  return a
+}
 
 function withCopies() {
   const a = completeHomeWithAllSupplements()
@@ -128,6 +138,27 @@ describe("filled output with page copies", () => {
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
+  })
+
+  it("no field in the output has a period in its partial name /T (whole /Fields tree), names match the pattern", async () => {
+    const doc = await PDFDocument.load(await fillSaca2Pdf(withBoth(), template, ON))
+    const partials: string[] = []
+    const walk = (array: PDFArray) => {
+      for (const entry of array.asArray()) {
+        const node = doc.context.lookup(entry, PDFDict)
+        const t = node.lookup(PDFName.of("T"))
+        if (t instanceof PDFHexString || t instanceof PDFString) partials.push(t.decodeText())
+        const kids = node.lookupMaybe(PDFName.of("Kids"), PDFArray)
+        if (kids) walk(kids)
+      }
+    }
+    walk(doc.catalog.lookup(PDFName.of("AcroForm"), PDFDict).lookup(PDFName.of("Fields"), PDFArray))
+    const copies = partials.filter((t) => t.includes("__copy"))
+    expect(copies.length).toBeGreaterThan(100)
+    expect(copies.filter((t) => t.includes("."))).toEqual([])
+    for (const t of copies) expect(t).toMatch(/^[^.]+__copy[1-3]$/)
+    const names = doc.getForm().getFields().map((f) => f.getName())
+    expect(new Set(names).size).toBe(names.length)
   })
 
   it("unused copies leave no field behind: the base fixture has exactly the template's 1,158 fields", async () => {

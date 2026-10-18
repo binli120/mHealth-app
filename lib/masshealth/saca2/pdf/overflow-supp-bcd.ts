@@ -35,16 +35,17 @@ export const supplementBcdCollector: OverflowCollector = (reader) => {
   const rows: string[][] = []
   for (let index = 0; index < jobs; index += 1) {
     const get = (key: string) => reader.get({ kind: "row", stepId: "suppD", path: SUPP_D_JOBS_PATH, index, key })
-    const job = `Job ${index + 1}`
     const employee = text(get("employeeName"))
+    const employer = text(get("employerName"))
+    const job = `Job ${index + 1} - ${[employee, employer].filter((part) => part !== "").join(" / ")}`.replace(/ - $/, "")
     const plan = text(get("individualPlanName"))
-    if (plan !== "") rows.push([job, employee, "14a. Name of the lowest-cost individual health plan offered to the employee", plan])
+    if (plan !== "") rows.push([job, "14a. Name of the lowest-cost individual health plan offered to the employee", plan])
     const taxId = text(get("employerFederalTaxId"))
     if (taxId !== "" && federalTaxIdDigits(taxId) === undefined) {
-      rows.push([job, employee, "5. Federal Tax ID (not nine digits, so it does not fit the form's boxes)", taxId])
+      rows.push([job, "5. Federal Tax ID (not nine digits, so it does not fit the form's boxes)", taxId])
     }
   }
   return rows.length === 0
     ? []
-    : [{ title: "Supplement D: additional information", columns: ["Job", "Employee", "Item", "Answer"], rows }]
+    : [{ title: "Supplement D: additional information", columns: ["Job (employee / employer)", "Item", "Answer"], rows }]
 }

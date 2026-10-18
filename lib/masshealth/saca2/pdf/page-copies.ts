@@ -5,7 +5,7 @@
 
 import { PDFPageLeaf, type PDFDocument, type PDFPage } from "pdf-lib"
 
-import { copyFieldName, duplicatePage, type DuplicatedPage } from "./page-duplication"
+import { duplicatePage, type DuplicatedPage } from "./page-duplication"
 import { PAGE_COPIES, copyPageIndex } from "./page-selection"
 import type { CopyRegion } from "./derived-supp-bcd"
 
@@ -26,7 +26,7 @@ export function createPageCopies(doc: PDFDocument): PageCopy[] {
   const made: PageCopy[] = []
   for (const { region, source, copies } of PAGE_COPIES) {
     for (let copy = 1; copy <= copies; copy += 1) {
-      const duplicate = duplicatePage(doc, source, copyFieldName("", copy))
+      const duplicate = duplicatePage(doc, source, copy)
       if (doc.getPages().indexOf(duplicate.page) !== copyPageIndex(region, copy)) {
         throw new Error(`Copy ${copy} of region "${region}" is not at its expected page index`)
       }

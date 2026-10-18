@@ -14,10 +14,15 @@ import {
   type PDFPage,
 } from "pdf-lib"
 
-/** Name of the copy `copy` (1-based) of a template field: `<template field>__copy1`. */
+/**
+ * Name of copy `copy` (1-based; 0 = the template field itself) of a template field: the template's full name
+ * with every "." replaced by "_", then `__copy<copy>` ("AI/AN Person 1. Name" -> "AI/AN Person 1_ Name__copy1").
+ * A copy is a top-level field, and ISO 32000-1 12.7.3.2 forbids a period in a partial name (readers would take
+ * it for the field hierarchy). The ONE place the copy naming lives: the duplicator and the field map both use it.
+ */
 export function copyFieldName(name: string, copy: number): string {
   if (!Number.isInteger(copy) || copy < 0) throw new Error("Page copy number must be a whole number from 0")
-  return copy === 0 ? name : `${name}__copy${copy}`
+  return copy === 0 ? name : `${name.replaceAll(".", "_")}__copy${copy}`
 }
 
 /** A page appended by `duplicatePage` and everything created for it. */
@@ -83,18 +88,18 @@ function copyEntries(doc: PDFDocument, from: PDFDict, to: PDFDict): void {
 
 /**
  * Appends a copy of page `pageIndex` whose form fields are NEW, uniquely named AcroForm fields
- * (`<field name>` + `suffix`), so the copy is independently fillable and editable. The source page is
+ * (`copyFieldName(<field name>, copyNumber)`), so the copy is independently fillable and editable. The source page is
  * untouched. Each widget keeps its position, flags, appearance characteristics and appearance states;
  * field type, flags, default appearance, quadding, maximum length and tooltip are resolved through
  * the source's field hierarchy and written onto the new field, which is a top-level field of its own
- * (the template's grouped names such as "AI/AN Person 1" + ". Name" become the single name
- * "AI/AN Person 1. Name__copy1"). The copy starts blank: no values, every box Off. Page content,
+ * (the template's grouped names such as "AI/AN Person 1" + ". Name" become the single period-free name
+ * "AI/AN Person 1_ Name__copy1"). The copy starts blank: no values, every box Off. Page content,
  * resources and appearance streams are shared with the source (legal PDF, nothing to copy).
  *
  * Throws, naming only the field, when the page holds anything this does not model (a non-widget
  * annotation, a field with a widget on another page).
  */
-export function duplicatePage(doc: PDFDocument, pageIndex: number, suffix: string): DuplicatedPage {
+export function duplicatePage(doc: PDFDocument, pageIndex: number, copyNumber: number): DuplicatedPage {
   const pages = doc.getPages()
   const source = pages[pageIndex]
   if (!source) throw new Error(`Invalid page index: expected a whole number from 0 to ${pages.length - 1}`)
@@ -134,7 +139,7 @@ export function duplicatePage(doc: PDFDocument, pageIndex: number, suffix: strin
     if (done.has(terminal)) continue
     done.add(terminal)
 
-    const newName = `${name}${suffix}`
+    const newName = copyFieldName(name, copyNumber)
     const field = context.obj({}) as PDFDict
     const widgetDict = lookupDict(doc, annot)!
     const merged = terminal === widgetDict

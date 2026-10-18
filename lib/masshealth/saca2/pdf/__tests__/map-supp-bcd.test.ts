@@ -12,7 +12,7 @@ import type { Saca2Answers } from "../../types"
 import { SUPP_B_CAPACITY, SUPP_C_PAGES, SUPP_D_PAGES, federalTaxIdDigits } from "../derived-supp-bcd"
 import { FIELD_MAP, FILL_MAP } from "../field-map"
 import { SUPP_BCD_COPY_ENTRIES, SUPP_BCD_ENTRIES } from "../field-map/supp-bcd"
-import { getFieldInfo } from "../inventory"
+import { getFieldInfo, getInventory } from "../inventory"
 import { NEVER_FILL } from "../never-fill"
 import { buildOverflowSheets } from "../overflow-plan"
 import { copyFieldName } from "../page-duplication"
@@ -42,13 +42,17 @@ const stateOf = (checks: FilledValues["checks"], name: string) => checks[name] ?
 
 describe("template facts the map relies on", () => {
   it("copy entries are the template entries renamed <field>__copyN; FIELD_MAP holds the template only", () => {
+    const copies = new Map(getInventory().flatMap((f) => [1, 2, 3].map((n) => [copyFieldName(f.name, n), f.name] as const)))
     for (const entry of SUPP_BCD_COPY_ENTRIES) {
       for (const name of entry.fields) {
-        expect(name, name).toMatch(/__copy[1-3]$/)
-        expect(getFieldInfo(name.replace(/__copy\d+$/, "")), name).toBeDefined()
+        expect(name, name).toMatch(/^[^.]+__copy[1-3]$/) // period-free partial name
+        expect(getFieldInfo(copies.get(name) ?? ""), name).toBeDefined()
         expect(getFieldInfo(name), name).toBeUndefined()
       }
     }
+    // renaming "." must not merge two template names
+    const all = getInventory().flatMap((f) => [1, 2, 3].map((n) => copyFieldName(f.name, n)))
+    expect(new Set(all).size).toBe(all.length)
     expect(FIELD_MAP.flatMap((e) => e.fields).some((n) => n.includes("__copy"))).toBe(false)
     expect(FILL_MAP.length).toBe(FIELD_MAP.length + SUPP_BCD_COPY_ENTRIES.length)
     const count = (entries: typeof FIELD_MAP, re: RegExp) => entries.flatMap((e) => e.fields).filter((n) => re.test(n)).length
@@ -132,8 +136,8 @@ describe("base fixture (one member, one person, one job)", () => {
     expect(sheets).toEqual([
       {
         title: "Supplement D: additional information",
-        columns: ["Job", "Employee", "Item", "Answer"],
-        rows: [["Job 1", "Edna Testcase", "14a. Name of the lowest-cost individual health plan offered to the employee", "Gold Individual"]],
+        columns: ["Job (employee / employer)", "Item", "Answer"],
+        rows: [["Job 1 - Edna Testcase / Acme", "14a. Name of the lowest-cost individual health plan offered to the employee", "Gold Individual"]],
       },
     ])
   })
@@ -172,7 +176,7 @@ describe("Supplement B with six members", () => {
     for (const f of form.getFields()) for (const w of f.acroField.getWidgets()) refToName.set(doc.context.getObjectRef(w.dict)!.toString(), f.getName())
     const firstNames = doc.getPages().map((p) => {
       const refs = (p.node.Annots()?.asArray() ?? []).filter((x): x is PDFRef => x instanceof PDFRef)
-      return refs.map((r) => refToName.get(r.toString())!).find((n) => /^AI\/AN Person 1\. Name first middle last/.test(n))
+      return refs.map((r) => refToName.get(r.toString())!).find((n) => /^AI\/AN Person 1[._] Name first middle last/.test(n))
     })
     const at = firstNames.findIndex((n) => n === B(0).name)
     expect(firstNames.slice(at, at + 3)).toEqual([B(0).name, B(0, 1).name, B(0, 2).name])
@@ -264,9 +268,9 @@ describe("Supplement D with four jobs", () => {
     const sheet = buildOverflowSheets(a, ON).find((s) => s.title === "Supplement D: additional information")!
     const item14a = "14a. Name of the lowest-cost individual health plan offered to the employee"
     expect(sheet.rows).toEqual([
-      ["Job 1", "Employee 1", item14a, "Plan 1"],
-      ["Job 2", "Employee 2", item14a, "Plan 2"],
-      ["Job 2", "Employee 2", "5. Federal Tax ID (not nine digits, so it does not fit the form's boxes)", "12-345"],
+      ["Job 1 - Employee 1 / Employer 1", item14a, "Plan 1"],
+      ["Job 2 - Employee 2 / Employer 2", item14a, "Plan 2"],
+      ["Job 2 - Employee 2 / Employer 2", "5. Federal Tax ID (not nine digits, so it does not fit the form's boxes)", "12-345"],
     ])
     expect(federalTaxIdDigits("98-7654321")).toBe("987654321")
     expect(federalTaxIdDigits("12-345")).toBeUndefined()
