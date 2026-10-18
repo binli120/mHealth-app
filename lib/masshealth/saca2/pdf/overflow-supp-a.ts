@@ -9,7 +9,7 @@ import {
   SUPP_A_PROPERTY_LINES,
   SUPP_A_TRANSFER_LINES,
   WRAPPED_TEXTS,
-  wrapLines,
+  wrapText,
 } from "./derived-supp-a"
 import { encodeText } from "./encoders"
 import type { OverflowCollector, OverflowSheetSpec } from "./overflow-plan"
@@ -98,7 +98,7 @@ export const supplementACollector: OverflowCollector = (reader) => [
     "Supplement A: text continued",
     ["Question", "Continued text"],
     Object.values(WRAPPED_TEXTS).flatMap((spec) => {
-      const rest = wrapLines(spec.read(reader), spec.limits).rest
+      const rest = wrapText(spec, reader).rest
       return rest === "" ? [] : [[spec.label, rest]]
     }),
   ),

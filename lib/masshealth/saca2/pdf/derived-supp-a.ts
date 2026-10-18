@@ -4,7 +4,11 @@
  */
 
 import { householdHasSpouse } from "./derived-assets"
+import { StandardFontEmbedder, StandardFonts } from "pdf-lib"
+
+import type { Saca2Answers } from "../types"
 import { encodeSsn, encodeText } from "./encoders"
+import { getFieldInfo } from "./inventory"
 import type { DerivedRegistry } from "./pdf-fill"
 import type { VisibleReader } from "./visible-reader"
 import { isStepVisible } from "../visibility"
@@ -53,13 +57,13 @@ function ssnLineOf(reader: VisibleReader, person: 0 | 1): string | undefined {
 }
 
 /** True only when the wizard shows Supplement A (the pages of a hidden supplement are dropped). */
-const suppAVisible = (answers: Parameters<typeof isStepVisible>[1], on: Date): boolean => isStepVisible(STEP, answers, on)
+const suppAVisible = (answers: Saca2Answers, on: Date): boolean => isStepVisible(STEP, answers, on)
 
 /**
  * The spouse's header lines: written only for a nursing-facility applicant whose Person 2 is a legally
  * married spouse (`householdHasSpouse`); a visible Person 2 who is not a married spouse is never named here.
  */
-function spouseApplies(reader: VisibleReader, answers: Parameters<typeof isStepVisible>[1], on: Date): boolean {
+function spouseApplies(reader: VisibleReader, answers: Saca2Answers, on: Date): boolean {
   return suppAAnswer(reader, "supplements.a.needsNursingFacility") === "yes" && householdHasSpouse(reader, answers, on)
 }
 
@@ -67,25 +71,43 @@ function spouseApplies(reader: VisibleReader, answers: Parameters<typeof isStepV
 // Long free-text answers across the form's several lines
 // ---------------------------------------------------------------------------------------------
 
+/** The text fields render in /Helv 10 Tf (Helvetica 10 pt, single line, no auto-size). */
+const FONT_SIZE = 10
+/** Room kept free inside each widget (the form's own text inset is about 2 pt per side). */
+const PADDING = 4
+const HELVETICA = StandardFontEmbedder.for(StandardFonts.Helvetica as unknown as Parameters<typeof StandardFontEmbedder.for>[0])
+
+/** Width of `text` as the form's fields draw it. */
+export const measureHelvetica = (text: string): number => HELVETICA.widthOfTextAtSize(text, FONT_SIZE)
+
 /**
- * Splits `raw` over lines holding at most `limits[i]` characters, breaking at spaces (a word longer than
- * a line is cut). `rest` is whatever does not fit, for the continuation sheet.
+ * Splits `raw` over lines no wider than `widths[i]` points (measured by `measure`), breaking at spaces;
+ * a word wider than a whole line is split by characters. `rest` is whatever does not fit, in order.
+ * Pure: no word is dropped or repeated (lines joined with `rest`, split at spaces or inside a long
+ * word, always give back the sanitized text).
  */
-export function wrapLines(raw: unknown, limits: readonly number[]): { lines: string[]; rest: string } {
+export function wrapLines(
+  raw: unknown,
+  widths: readonly number[],
+  measure: (text: string) => number = measureHelvetica,
+): { lines: string[]; rest: string } {
   const text = encodeText("text", raw) ?? ""
   let words = text === "" ? [] : text.split(" ")
   const lines: string[] = []
-  for (const limit of limits) {
+  for (const width of widths) {
     let line = ""
     while (words.length > 0) {
       const word = words[0]
       const candidate = line === "" ? word : `${line} ${word}`
-      if (candidate.length <= limit) {
+      if (measure(candidate) <= width) {
         line = candidate
         words = words.slice(1)
       } else if (line === "") {
-        line = word.slice(0, limit)
-        words = [word.slice(limit), ...words.slice(1)]
+        // longer than a whole line: take the longest prefix that fits (at least one character)
+        let cut = 1
+        while (cut < word.length && measure(word.slice(0, cut + 1)) <= width) cut += 1
+        line = word.slice(0, cut)
+        words = word.length > cut ? [word.slice(cut), ...words.slice(1)] : words.slice(1)
         break
       } else break
     }
@@ -97,31 +119,61 @@ export function wrapLines(raw: unknown, limits: readonly number[]): { lines: str
 interface WrappedText {
   /** Label of the question, for the continuation sheet. */
   label: string
-  limits: readonly number[]
+  /** The printed lines, in order; their widths come from the template inventory. */
+  fields: readonly string[]
   read: (reader: VisibleReader) => unknown
 }
 
 const propertyText = (index: number, key: string) => (reader: VisibleReader) => suppARow(reader, "supplements.a.home.properties", index, key)
 
-/** Characters that fit on each printed line (the lines are 330-570 points wide). */
 export const WRAPPED_TEXTS: Record<string, WrappedText> = {
-  ...Object.fromEntries(
-    Array.from({ length: SUPP_A_PROPERTY_LINES }, (_, index) => index).flatMap((index) => [
-      [`property${index}.owners`, { label: `8. Name and address of person(s) on ownership papers (property ${index + 1})`, limits: [55, 95], read: propertyText(index, "ownerNames") }],
-      [`property${index}.address`, { label: `8. Description and address of property location (property ${index + 1})`, limits: [55, 95], read: propertyText(index, "propertyAddress") }],
-    ]),
-  ),
+  "property0.owners": {
+    label: "8. Name and address of person(s) on ownership papers (property 1)",
+    fields: ["Name and address of persons on ownership papers_SuppA", "Name and address of persons on ownership papers_SuppA_2"],
+    read: propertyText(0, "ownerNames"),
+  },
+  "property0.address": {
+    label: "8. Description and address of property location (property 1)",
+    fields: ["Description and address of property location_SuppA", "Description and address of property location_SuppA_2"],
+    read: propertyText(0, "propertyAddress"),
+  },
+  "property1.owners": {
+    label: "8. Name and address of person(s) on ownership papers (property 2)",
+    fields: ["Name and address of persons on ownership papers 1_2", "Name and address of persons on ownership papers 2_2"],
+    read: propertyText(1, "ownerNames"),
+  },
+  "property1.address": {
+    label: "8. Description and address of property location (property 2)",
+    fields: ["Description and address of property location 1_2", "Description and address of property location 2_2"],
+    read: propertyText(1, "propertyAddress"),
+  },
   dependentRelative: {
     label: "14. Relationship and the nature of the dependency",
-    limits: [55, 95],
+    fields: ["Describe the relationship and the nature of the dependency 1", "Describe the relationship and the nature of the dependency 2"],
     read: (reader) => suppAAnswer(reader, "supplements.a.home.dependentRelative.relationshipDescription"),
   },
   otherRealEstate: {
     label: "16. Other real estate: description and address",
-    limits: [100, 100, 100],
+    fields: [
+      "If Yes please describe the property and list its address below 1",
+      "If Yes please describe the property and list its address below 2",
+      "If Yes please describe the property and list its address below 3",
+    ],
     read: (reader) => suppAAnswer(reader, "supplements.a.home.otherRealEstateDescription"),
   },
 }
+
+/** Usable width of each printed line: the widget's width from the template inventory minus padding. */
+export function lineWidths(spec: WrappedText): number[] {
+  return spec.fields.map((field) => {
+    const widget = getFieldInfo(field)?.widgets[0]
+    if (!widget) throw new Error(`Wrapped field "${field}" is not in the template`)
+    return widget.rect[2] - widget.rect[0] - PADDING
+  })
+}
+
+/** The printed lines and the text that continues on the sheet. */
+export const wrapText = (spec: WrappedText, reader: VisibleReader) => wrapLines(spec.read(reader), lineWidths(spec))
 
 const registry: DerivedRegistry = {
   /** Person 1's name and SSN repeat at the top of Supplement A; nothing is written when the supplement is hidden. */
@@ -156,9 +208,9 @@ for (let index = 0; index < SUPP_A_PROPERTY_LINES; index += 1) {
 }
 
 for (const [name, spec] of Object.entries(WRAPPED_TEXTS)) {
-  spec.limits.forEach((_, line) => {
+  spec.fields.forEach((_, line) => {
     registry[`suppA.wrap.${name}.${line}`] = (reader) => {
-      const value = wrapLines(spec.read(reader), spec.limits).lines[line]
+      const value = wrapText(spec, reader).lines[line]
       return value === "" ? undefined : value
     }
   })

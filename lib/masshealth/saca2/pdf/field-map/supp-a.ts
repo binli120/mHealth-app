@@ -173,8 +173,6 @@ const PAGE_26: FieldEntry[] = [
  */
 const PROPERTY_BLOCKS = [
   {
-    owners: ["Name and address of persons on ownership papers_SuppA", "Name and address of persons on ownership papers_SuppA_2"],
-    address: ["Description and address of property location_SuppA", "Description and address of property location_SuppA_2"],
     ownership: "Type of ownership (Check one.)",
     states: { individual: "1", tenancyInCommon: "2", jointTenancy: "3", lifeEstate: "4" },
     value: {
@@ -185,8 +183,6 @@ const PROPERTY_BLOCKS = [
     },
   },
   {
-    owners: ["Name and address of persons on ownership papers 1_2", "Name and address of persons on ownership papers 2_2"],
-    address: ["Description and address of property location 1_2", "Description and address of property location 2_2"],
     ownership: "Type of ownership (Check one.)_2",
     states: { individual: "1", tenancyInCommon: "3", jointTenancy: "2", lifeEstate: "4" },
     value: {
@@ -214,11 +210,9 @@ const RELATIVES: Array<{ key: string; has: string; name: string; lives: string; 
   { key: "dependentRelative", has: "14. Do you have a dependent relative?", name: "14. Name_12", lives: "Is this person living in your home?_14" },
 ]
 
-/** Long answers go over the form's several printed lines (derived `suppA.wrap.*`); the rest is on a sheet. */
-const wrapped = (name: string, fields: string[]): FieldEntry[] =>
-  fitLines(fields, WRAPPED_TEXTS[name].limits.length, `wrapped ${name}`).map((field, line) =>
-    derived(field, `suppA.wrap.${name}.${line}`),
-  )
+/** Long answers go over the form's several printed lines (derived `suppA.wrap.*`, wrapped by measured width); the rest is on a sheet. */
+const wrapped = (name: string): FieldEntry[] =>
+  WRAPPED_TEXTS[name].fields.map((field, line) => derived(field, `suppA.wrap.${name}.${line}`))
 
 const POLICY_BLOCKS = [
   {
@@ -238,8 +232,8 @@ const POLICY_BLOCKS = [
 const PAGES_27_28: FieldEntry[] = [
   answer("Real estate?", a("home.ownsHome"), YES_NO),
   ...fitLines(PROPERTY_BLOCKS, SUPP_A_PROPERTY_LINES, "PROPERTY_BLOCKS").flatMap((block, index) => [
-    ...wrapped(`property${index}.owners`, block.owners),
-    ...wrapped(`property${index}.address`, block.address),
+    ...wrapped(`property${index}.owners`),
+    ...wrapped(`property${index}.address`),
     rowOf(a("home.properties"), index)(block.ownership, "ownershipType", { kind: "pick", states: block.states }),
     ...OWNERSHIP_TYPES.map((type) => derived(block.value[type], `suppA.property.${index}.fmv.${type}`, "money")),
   ]),
@@ -249,15 +243,11 @@ const PAGES_27_28: FieldEntry[] = [
     ...(dob === undefined ? [] : [answer(dob, a(`home.${key}.dateOfBirth`), "date")]),
     answer(lives, a(`home.${key}.livesInHome`), YES_NO),
   ]),
-  ...wrapped("dependentRelative", ["Describe the relationship and the nature of the dependency 1", "Describe the relationship and the nature of the dependency 2"]),
+  ...wrapped("dependentRelative"),
   answer("15. Do you intend to return to your home?", a("intendsToReturnHome"), YES_NO),
 
   answer("16 Do you or your spouse own or have a legal interest in other real estate not listed in 8 above?", a("home.ownsOtherRealEstate"), YES_NO),
-  ...wrapped("otherRealEstate", [
-    "If Yes please describe the property and list its address below 1",
-    "If Yes please describe the property and list its address below 2",
-    "If Yes please describe the property and list its address below 3",
-  ]),
+  ...wrapped("otherRealEstate"),
 
   answer("17. Do you or your spouse have long-term-care insurance?", a("longTermCareInsurance.hasPolicy"), YES_NO),
   ...fitLines(POLICY_BLOCKS, SUPP_A_POLICY_LINES, "POLICY_BLOCKS").flatMap((block, index) => {

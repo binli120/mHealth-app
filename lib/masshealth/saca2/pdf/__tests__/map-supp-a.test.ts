@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from "vitest"
 import { completeFacilityCouple, completeHomeWithAllSupplements, completeSingleSenior } from "../../__tests__/complete-answers"
 import { getStepContent } from "../../questions"
 import type { Saca2Answers } from "../../types"
-import { wrapLines } from "../derived-supp-a"
+import { WRAPPED_TEXTS, lineWidths, measureHelvetica, wrapLines } from "../derived-supp-a"
 import { SUPP_A_ENTRIES } from "../field-map/supp-a"
 import { FIELD_MAP } from "../field-map"
 import { getFieldInfo } from "../inventory"
@@ -136,8 +136,8 @@ function richSuppA(): Saca2Answers {
   sa.home.childUnder21 = { has: "yes", name: "Young Child", livesInHome: "no", dateOfBirth: "2012-05-06" }
   sa.home.sibling = { has: "yes", name: "Sibling Testcase", livesInHome: "yes" }
   sa.home.caregiverChild = { has: "yes", name: "Caring Child", livesInHome: "no" }
-  // 16 words: 5 fit the first line (49 characters), 9 the second (89), 2 go to the continuation sheet
-  sa.home.dependentRelative = { has: "yes", name: "Dependent Kin", livesInHome: "yes", relationshipDescription: words(16) }
+  // 18 words: 5 fit the first line (263 pt wide), 11 the second (505 pt), 2 go to the continuation sheet
+  sa.home.dependentRelative = { has: "yes", name: "Dependent Kin", livesInHome: "yes", relationshipDescription: words(18) }
   sa.intendsToReturnHome = "yes"
   sa.longTermCareInsurance.hasPolicy = "yes"
   sa.longTermCareInsurance.policies = [
@@ -347,7 +347,7 @@ describe("Supplement A: every group, with rows beyond the form's capacity", () =
         "13. Name_11": "Caring Child",
         "14. Name_12": "Dependent Kin",
         "Describe the relationship and the nature of the dependency 1": words(5),
-        "Describe the relationship and the nature of the dependency 2": words(9),
+        "Describe the relationship and the nature of the dependency 2": words(11),
         [OTHER_RE_LINE(1)]: "Cottage at 9 Cape Rd, Testville MA",
         // insurance
         "17. Company name/Policy number_SuppA": "Acme Life P-100",
@@ -439,7 +439,7 @@ describe("Supplement A: every group, with rows beyond the form's capacity", () =
     const a = richSuppA()
     a.transfers = a.transfers.slice(0, 3)
     a.supplements.a.familyAtHome.members = a.supplements.a.familyAtHome.members.slice(0, 2)
-    a.supplements.a.home.dependentRelative.relationshipDescription = words(14)
+    a.supplements.a.home.dependentRelative.relationshipDescription = words(16)
     expect(buildOverflowSheets(a, ON).filter((s) => s.title.startsWith("Supplement A"))).toEqual([])
   })
 
@@ -649,20 +649,71 @@ describe("Supplement A: template checks", () => {
   })
 })
 
-describe("Supplement A: free text over several lines", () => {
-  it("breaks at spaces, cuts a word longer than a line, and returns what does not fit", () => {
-    expect(wrapLines("one two three four", [7, 10])).toEqual({ lines: ["one two", "three four"], rest: "" })
-    expect(wrapLines("one two three four five", [7, 5])).toEqual({ lines: ["one two", "three"], rest: "four five" })
-    expect(wrapLines("abcdefghij kl", [4, 4, 4])).toEqual({ lines: ["abcd", "efgh", "ij"], rest: "kl" })
-    expect(wrapLines("", [5, 5])).toEqual({ lines: ["", ""], rest: "" })
-    expect(wrapLines("  spaced\nout\ttext ", [20])).toEqual({ lines: ["spaced out text"], rest: "" })
-    expect(wrapLines(null, [5])).toEqual({ lines: [""], rest: "" })
+describe("Supplement A: free text over several lines (wrapped by measured width)", () => {
+  const PADDING = 4
+  const wide = (text: string) => measureHelvetica(text)
+
+  it("breaks at spaces, splits a word wider than a line by characters, and returns what does not fit", () => {
+    const w = (n: number) => wide("a".repeat(n))
+    expect(wrapLines("aa bb cc dd", [w(5), w(5)])).toEqual({ lines: ["aa bb", "cc dd"], rest: "" })
+    expect(wrapLines("aa bb cc dd ee", [w(5), w(2)])).toEqual({ lines: ["aa bb", "cc"], rest: "dd ee" })
+    expect(wrapLines("aaaaaaaaaa bb", [w(4), w(4), w(4)])).toEqual({ lines: ["aaaa", "aaaa", "aa"], rest: "bb" })
+    expect(wrapLines("", [100, 100])).toEqual({ lines: ["", ""], rest: "" })
+    expect(wrapLines("  spaced\nout\ttext ", [500])).toEqual({ lines: ["spaced out text"], rest: "" })
+    expect(wrapLines(null, [100])).toEqual({ lines: [""], rest: "" })
   })
 
-  it("repeats nothing: the lines and the sheet text together hold the whole answer once", () => {
-    const text = words(16)
-    const { lines, rest } = wrapLines(text, [55, 95])
-    expect([...lines, rest].filter((part) => part !== "").join(" ")).toBe(text)
+  const samples: Array<[string, string]> = [
+    ["all capitals", Array.from({ length: 40 }, (_, i) => `OWNER${i}WWMM STREET`).join(" ")],
+    ["digit-heavy", Array.from({ length: 40 }, (_, i) => `${1000000 + i * 7919}-${i}0${i}`).join(" ")],
+    ["mixed case", Array.from({ length: 40 }, (_, i) => `ownA${i} Mary-Jane O'Neil`).join(" ")],
+    ["one very long unbroken token", `Start ${"WMwm0123".repeat(60)} end`],
+  ]
+  for (const [label, text] of samples) {
+    for (const [name, spec] of Object.entries(WRAPPED_TEXTS)) {
+      it(`${name}: ${label} fits every line's widget width and loses no word`, () => {
+        // widths recomputed here from the inventory, independent of lineWidths()
+        const widths = spec.fields.map((f) => {
+          const r = getFieldInfo(f)!.widgets[0].rect
+          return r[2] - r[0] - PADDING
+        })
+        const { lines, rest } = wrapLines(text, lineWidths(spec))
+        expect(lines).toHaveLength(widths.length)
+        lines.forEach((line, i) => expect(wide(line), `line ${i + 1}`).toBeLessThanOrEqual(widths[i]))
+        // lossless: printed lines + sheet text, split at the original spaces (a hard split inside a long word is rejoined)
+        const printed = lines.filter((l) => l !== "")
+        const rejoined = [...printed, ...(rest === "" ? [] : [rest])].join(" ")
+        expect(rejoined.replace(/ /g, "")).toBe(text.replace(/ /g, ""))
+        // words stay in order: each original word is a prefix-chain of the printed/sheet words
+        const out = [...printed, rest].join(" ").split(" ").filter((p) => p !== "")
+        let at = 0
+        for (const word of text.split(" ")) {
+          let built = ""
+          while (built.length < word.length) built += out[at++]
+          expect(built).toBe(word)
+        }
+        expect(at).toBe(out.length)
+      })
+    }
+  }
+
+  it("takes the widths from the template inventory (widget width minus padding), not a character count", () => {
+    expect(lineWidths(WRAPPED_TEXTS["property0.owners"])[0]).toBeCloseTo(278.28 - PADDING, 1)
+    expect(lineWidths(WRAPPED_TEXTS.dependentRelative)[0]).toBeCloseTo(267.37 - PADDING, 1)
+  })
+
+  it("an all-capitals answer in the filled form keeps every word on the form or on the sheet", async () => {
+    const a = richSuppA()
+    const owners = Array.from({ length: 30 }, (_, i) => `OWNA${i}`).join(" ")
+    a.supplements.a.home.properties[0].ownerNames = owners
+    const out = await fillRegion(a)
+    const sheet = buildOverflowSheets(a, ON).find((s) => s.title === "Supplement A: text continued")!
+    const rest = sheet.rows.find((r) => r[0].includes("property 1"))?.[1] ?? ""
+    const lines = [
+      out.text["Name and address of persons on ownership papers_SuppA"],
+      out.text["Name and address of persons on ownership papers_SuppA_2"],
+    ]
+    expect([...lines, rest].join(" ").trim()).toBe(owners)
   })
 })
 
