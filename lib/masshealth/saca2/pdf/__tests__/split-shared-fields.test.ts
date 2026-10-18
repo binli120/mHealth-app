@@ -69,9 +69,9 @@ describe("splitSharedFields", () => {
     expect(straddling.sort()).toEqual([...SHARED].sort())
   })
 
-  it("keeps the committed inventory in step: 1,157 fields, the copies on page 12 only", () => {
+  it("keeps the committed inventory in step: 1,158 fields, the copies on page 12 only", () => {
     const inv = getInventory()
-    expect(inv).toHaveLength(1157)
+    expect(inv).toHaveLength(1158)
     for (const name of SHARED) {
       expect(inv.find((f) => f.name === name + SHARED_FIELD_SUFFIX)?.pages).toEqual([12])
       expect(inv.find((f) => f.name === name)?.pages).not.toContain(12)

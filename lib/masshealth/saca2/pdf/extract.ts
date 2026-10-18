@@ -15,7 +15,7 @@ import {
 } from "pdf-lib"
 
 import type { Saca2FieldInfo } from "./inventory"
-import { removeStrayTableWidgets, splitSharedFields } from "./split-shared-fields"
+import { removeStrayTableWidgets, splitCoverageNames, splitSharedFields } from "./split-shared-fields"
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 
@@ -25,7 +25,8 @@ const round2 = (n: number) => Math.round(n * 100) / 100
  */
 export async function extractInventory(bytes: Uint8Array): Promise<Saca2FieldInfo[]> {
   const doc = await PDFDocument.load(bytes)
-  splitSharedFields(doc) // the inventory describes the split template that is actually filled
+  splitSharedFields(doc)
+  splitCoverageNames(doc) // the inventory describes the split template that is actually filled
   removeStrayTableWidgets(doc)
   const pages = doc.getPages()
   const pageIndexByRef = new Map(pages.map((p, i) => [p.ref.toString(), i]))

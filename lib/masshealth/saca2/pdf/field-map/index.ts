@@ -9,6 +9,7 @@ import { INTAKE_ENTRIES } from "./intake"
 import { PERSON_TABLE, expandPersonTable } from "./person-table"
 import { PERSON1_A_ENTRIES } from "./person1-a"
 import { STEPS_3_4_ENTRIES } from "./steps-3-5"
+import { STEPS_6_9_ENTRIES } from "./steps-6-9"
 
 /**
  * The complete SACA-2 field map. Each region of the form contributes entries from its own module;
@@ -20,4 +21,5 @@ export const FIELD_MAP: FieldEntry[] = [
   ...expandPersonTable(PERSON_TABLE),
   ...STEPS_3_4_ENTRIES,
   ...ASSETS_ENTRIES,
+  ...STEPS_6_9_ENTRIES,
 ]

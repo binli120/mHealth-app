@@ -18,7 +18,7 @@ import { buildOverflowSheets } from "../overflow-plan"
 import { getInventory } from "../inventory"
 import { PAGE_RANGES, pagesToKeep, selectPages, TEMPLATE_PAGE_COUNT } from "../page-selection"
 import { collectFillValues, fillSaca2Pdf } from "../pdf-fill"
-import { splitSharedFields } from "../split-shared-fields"
+import { splitCoverageNames, splitSharedFields } from "../split-shared-fields"
 import type { FieldEntry } from "../types"
 import { loadSaca2Template } from "../template"
 import { readFilled } from "./helpers/read-filled"
@@ -65,6 +65,7 @@ function objectsContain(doc: PDFDocument, needle: string): boolean {
 async function loadSplit(): Promise<PDFDocument> {
   const doc = await PDFDocument.load(template)
   splitSharedFields(doc)
+  splitCoverageNames(doc)
   return doc
 }
 
@@ -151,12 +152,12 @@ describe("PAGE_RANGES", () => {
 })
 
 describe("selectPages", () => {
-  it("keeping every page is a no-op: 42 pages, the same 1,157 fields on the same pages", async () => {
+  it("keeping every page is a no-op: 42 pages, the same 1,158 fields on the same pages", async () => {
     const doc = await loadSplit()
     const before = widgetPages(doc)
     selectPages(doc, ALL)
     expect(doc.getPageCount()).toBe(42)
-    expect(doc.getForm().getFields()).toHaveLength(1157)
+    expect(doc.getForm().getFields()).toHaveLength(1158)
     expect(widgetPages(doc)).toEqual(before)
   })
 
@@ -169,7 +170,7 @@ describe("selectPages", () => {
     selectPages(doc, ALL.filter((i) => i !== 31))
     expect(doc.getPageCount()).toBe(41)
     const after = widgetPages(doc)
-    expect(after.size).toBe(1157 - 41)
+    expect(after.size).toBe(1158 - 41)
     expect([...before.keys()].filter((name) => !after.has(name)).sort()).toEqual([...suppCFields].sort())
   })
 
@@ -277,10 +278,10 @@ describe("fillSaca2Pdf with page selection and overflow sheets", () => {
     }
   })
 
-  it("a home applicant with every supplement keeps all 42 pages and all 1,157 fields", async () => {
+  it("a home applicant with every supplement keeps all 42 pages and all 1,158 fields", async () => {
     const out = await PDFDocument.load(await fillSaca2Pdf(completeHomeWithAllSupplements(), template, ON))
     expect(out.getPageCount()).toBe(42)
-    expect(out.getForm().getFields()).toHaveLength(1157)
+    expect(out.getForm().getFields()).toHaveLength(1158)
   })
 
   it("appends the overflow sheets after the kept form pages and keeps the filled values", async () => {
@@ -297,7 +298,7 @@ describe("fillSaca2Pdf with page selection and overflow sheets", () => {
     const out = await PDFDocument.load(bytes)
     expect(out.getPageCount()).toBe(29 + sheets.length)
     expect(out.getPage(29).getSize()).toEqual({ width: 612, height: 792 })
-    expect(out.getForm().getFields()).toHaveLength(1157 - fieldsOnlyOn(Object.values(PAGE_RANGES).flat()).length)
+    expect(out.getForm().getFields()).toHaveLength(1158 - fieldsOnlyOn(Object.values(PAGE_RANGES).flat()).length)
 
     const text = pageText(bytes, 29)
     if (text !== null) {

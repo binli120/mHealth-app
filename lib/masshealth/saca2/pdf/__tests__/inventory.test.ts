@@ -14,10 +14,10 @@ import { SACA2_TEMPLATE_PATH } from "../template"
 describe("SACA-2 field inventory", () => {
   const inv = getInventory()
 
-  it("has 1,157 uniquely named fields of the expected types", () => {
-    expect(inv).toHaveLength(1157)
-    expect(new Set(inv.map((f) => f.name)).size).toBe(1157)
-    expect(inv.filter((f) => f.type === "text")).toHaveLength(741)
+  it("has 1,158 uniquely named fields of the expected types", () => {
+    expect(inv).toHaveLength(1158)
+    expect(new Set(inv.map((f) => f.name)).size).toBe(1158)
+    expect(inv.filter((f) => f.type === "text")).toHaveLength(742)
     expect(inv.filter((f) => f.type === "checkbox")).toHaveLength(414)
     expect(inv.filter((f) => f.type === "button").map((f) => f.name).sort()).toEqual(["Clear", "Print"])
   })

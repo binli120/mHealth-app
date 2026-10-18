@@ -13,7 +13,7 @@ import { FIELD_MAP } from "./field-map"
 import { overflowSheet } from "./overflow"
 import { buildOverflowSheets, overflowHeader } from "./overflow-plan"
 import { fieldsOnDroppedPages, pagesToKeep, selectPages } from "./page-selection"
-import { removeStrayTableWidgets, splitSharedFields } from "./split-shared-fields"
+import { removeStrayTableWidgets, splitCoverageNames, splitSharedFields } from "./split-shared-fields"
 import { loadSaca2Template } from "./template"
 import type { FieldEntry, FillItem } from "./types"
 import { createVisibleReader, type VisibleReader } from "./visible-reader"
@@ -109,6 +109,7 @@ export async function fillSaca2Pdf(
   const items = collectFillValues(answers, on, map, derived)
   const doc = await PDFDocument.load(templateBytes ?? (await loadSaca2Template()))
   splitSharedFields(doc)
+  splitCoverageNames(doc)
   removeStrayTableWidgets(doc)
   const form = doc.getForm()
   const fields = indexFields(doc)

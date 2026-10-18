@@ -11,6 +11,7 @@ import {
   PDFRef,
   PDFTextField,
   type PDFDocument,
+  type PDFWidgetAnnotation,
 } from "pdf-lib"
 
 /** Name suffix of the Person 2 copy of a field the template shares between the two people's pages. */
@@ -24,6 +25,40 @@ const LAST_PERSON2_PAGE = 12
 const COPIED_KEYS = ["DA", "Ff", "MaxLen", "Q"].map((k) => PDFName.of(k))
 
 /**
+ * Moves `moving` widgets of a text field to a new terminal field `<name><suffix>` that copies the
+ * original's /FT, /DA, /Ff, /MaxLen and /Q. The original keeps its name and its other widgets.
+ */
+function moveWidgetsToCopy(
+  doc: PDFDocument,
+  field: PDFTextField,
+  moving: Array<{ widget: PDFWidgetAnnotation; ref: PDFRef | undefined }>,
+  suffix: string,
+): void {
+  const context = doc.context
+  const acroFields = doc.catalog.lookup(PDFName.of("AcroForm"), PDFDict).lookup(PDFName.of("Fields"), PDFArray)
+  const original = field.acroField.dict
+  const kids = original.lookup(PDFName.of("Kids"), PDFArray)
+  const copy = context.obj({
+    FT: PDFName.of("Tx"),
+    T: PDFHexString.fromText(`${field.getName()}${suffix}`),
+  }) as PDFDict
+  for (const key of COPIED_KEYS) {
+    const value = original.get(key)
+    if (value !== undefined) copy.set(key, value)
+  }
+  const copyRef = context.register(copy)
+  const moved = context.obj(moving.map((w) => w.ref as PDFRef))
+  copy.set(PDFName.of("Kids"), moved)
+
+  for (const w of moving) {
+    w.widget.dict.set(PDFName.of("Parent"), copyRef)
+    const at = kids.asArray().findIndex((k) => k === w.ref)
+    if (at >= 0) kids.remove(at)
+  }
+  acroFields.push(copyRef)
+}
+
+/**
  * The template reuses one text field for Person 1's and Person 2's copy of eight deduction amounts
  * (Q32 / Q42), so a single value would print on both pages. This gives Person 2 a field of her own:
  * for every text field with widgets both on Person 1's pages (up to index 8) and on Person 2's own
@@ -35,7 +70,6 @@ export function splitSharedFields(doc: PDFDocument): void {
   const form = doc.getForm()
   const pageIndexByRef = new Map(doc.getPages().map((p, i) => [p.ref.toString(), i]))
   const context = doc.context
-  const acroFields = doc.catalog.lookup(PDFName.of("AcroForm"), PDFDict).lookup(PDFName.of("Fields"), PDFArray)
 
   for (const field of form.getFields()) {
     if (!(field instanceof PDFTextField)) continue
@@ -48,26 +82,7 @@ export function splitSharedFields(doc: PDFDocument): void {
     if (!widgets.some((w) => w.page >= 0 && w.page <= LAST_PERSON1_PAGE)) continue
     if (moving.some((w) => w.ref === undefined)) throw new Error(`Cannot split a widget of "${field.getName()}"`)
 
-    const original = field.acroField.dict
-    const kids = original.lookup(PDFName.of("Kids"), PDFArray)
-    const copy = context.obj({
-      FT: PDFName.of("Tx"),
-      T: PDFHexString.fromText(`${field.getName()}${SHARED_FIELD_SUFFIX}`),
-    }) as PDFDict
-    for (const key of COPIED_KEYS) {
-      const value = original.get(key)
-      if (value !== undefined) copy.set(key, value)
-    }
-    const copyRef = context.register(copy)
-    const moved = context.obj(moving.map((w) => w.ref as PDFRef))
-    copy.set(PDFName.of("Kids"), moved)
-
-    for (const w of moving) {
-      w.widget.dict.set(PDFName.of("Parent"), copyRef)
-      const at = kids.asArray().findIndex((k) => k === w.ref)
-      if (at >= 0) kids.remove(at)
-    }
-    acroFields.push(copyRef)
+    moveWidgetsToCopy(doc, field, moving, SHARED_FIELD_SUFFIX)
   }
 }
 
@@ -111,4 +126,35 @@ export function removeStrayTableWidgets(doc: PDFDocument): void {
       if (kidAt >= 0) kids.remove(kidAt)
     }
   }
+}
+
+/** Name suffix of the employer-coverage copy of the covered-members line (Step 6). */
+export const EMPLOYER_NAMES_SUFFIX = "__employer"
+
+/** The Step 6 coverage page (form page 16). */
+const COVERAGE_PAGE = 17
+const COVERED_NAMES_FIELD = "Name(s) of covered household members"
+
+/**
+ * Step 6 prints "Name(s) of covered household members" twice, once under the other-coverage programs
+ * and once under employer coverage, but the template gives both widgets ONE field, so any value would
+ * print on both lines. The lower widget (the employer-coverage block) moves to its own field
+ * `Name(s) of covered household members__employer`. Idempotent: a field with a single widget is left
+ * alone. Call right after loading, with {@link splitSharedFields}.
+ */
+export function splitCoverageNames(doc: PDFDocument): void {
+  const form = doc.getForm()
+  const pageIndexByRef = new Map(doc.getPages().map((p, i) => [p.ref.toString(), i]))
+  const field = form.getFieldMaybe(COVERED_NAMES_FIELD)
+  if (!(field instanceof PDFTextField)) return
+  const widgets = field.acroField.getWidgets().map((widget) => ({
+    widget,
+    page: pageIndexByRef.get(widget.P()?.toString() ?? "") ?? -1,
+    y: widget.getRectangle().y,
+    ref: doc.context.getObjectRef(widget.dict),
+  }))
+  if (widgets.length < 2 || !widgets.every((w) => w.page === COVERAGE_PAGE)) return
+  const lowest = widgets.reduce((best, w) => (w.y < best.y ? w : best))
+  if (lowest.ref === undefined) throw new Error(`Cannot split a widget of "${COVERED_NAMES_FIELD}"`)
+  moveWidgetsToCopy(doc, field, [lowest], EMPLOYER_NAMES_SUFFIX)
 }

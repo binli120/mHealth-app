@@ -16,6 +16,7 @@ import { IMMIGRATION_DOCUMENT_OPTIONS, IMMIGRATION_STATUS_OPTIONS } from "../que
 import type { Saca2Option } from "../questions/types"
 import { isStepVisible } from "../visibility"
 import { ASSETS_DERIVED } from "./derived-assets"
+import { HEALTH_DERIVED } from "./derived-health"
 import { INCOME_DERIVED } from "./derived-income"
 import { encodeText } from "./encoders"
 import type { DerivedRegistry, DerivedResolver } from "./pdf-fill"
@@ -119,6 +120,7 @@ function nameDobLine(reader: VisibleReader, person: PersonIndex, path: string): 
 export const DERIVED: DerivedRegistry = {
   ...INCOME_DERIVED,
   ...ASSETS_DERIVED,
+  ...HEALTH_DERIVED,
 
   "person.fullName": (reader, _answers, _on, person) => fullName(reader, requirePerson(person, "person.fullName")),
 

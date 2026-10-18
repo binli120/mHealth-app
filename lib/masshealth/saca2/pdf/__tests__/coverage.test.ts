@@ -75,9 +75,9 @@ describe("coverage ratchet", () => {
     expect(Object.keys(NEVER_FILL)).toEqual(expect.arrayContaining(["Clear", "Print"]))
   })
 
-  it("lists every field that is neither mapped nor never-filled (1,157 in all)", () => {
+  it("lists every field that is neither mapped nor never-filled (1,158 in all)", () => {
     const mapped = new Set(FIELD_MAP.flatMap((e) => e.fields))
-    expect(unmappedJson).toHaveLength(1157 - mapped.size - Object.keys(NEVER_FILL).length)
+    expect(unmappedJson).toHaveLength(1158 - mapped.size - Object.keys(NEVER_FILL).length)
   })
 })
 

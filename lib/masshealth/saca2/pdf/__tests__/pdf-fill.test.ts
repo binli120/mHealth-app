@@ -130,11 +130,11 @@ describe("fillSaca2Pdf", () => {
     expect(checks["4 Are you applying for health or dental coverage for YOURSELF?"]).toBe("2")
   })
 
-  it("keeps the form editable: the 1,157 fields (1,149 plus the eight Person 2 copies), original names, not flattened", async () => {
+  it("keeps the form editable: the 1,158 fields (1,149 plus the eight Person 2 copies and the employer-names copy), original names, not flattened", async () => {
     // every supplement and attachment applies here, so page selection removes nothing
     const bytes = await fillSaca2Pdf(completeHomeWithAllSupplements(), template, ON, MAP)
     const names = (await PDFDocument.load(bytes)).getForm().getFields().map((f) => f.getName())
-    expect(names).toHaveLength(1157)
+    expect(names).toHaveLength(1158)
     expect([...names].sort()).toEqual(getInventory().map((f) => f.name).sort())
   })
 

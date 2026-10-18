@@ -64,4 +64,10 @@ export const NEVER_FILL: Record<string, { reason: NeverFillReason; note?: string
     reason: "other",
     note: "WIZARD GAP: vehicles (Your spouse) mobile-home address; the wizard has one 'year, make, and model (or mobile home address)' answer, written to the Year/make/model line",
   },
+
+  // Step 8 (form page 18, PDF index 19)
+  "eligibility as if you do not need PCA services": {
+    reason: "other",
+    note: "Stray text widget over the continuation of the printed Step 8 paragraph (\"...we will determine your MassHealth eligibility as if you do not need PCA services.\"); the form asks nothing here, so there is no wizard question",
+  },
 }
