@@ -206,3 +206,21 @@ describe("createVisibleReader: repeater rows", () => {
     expect(r2.get(kids(0))).toBe("Stale Kid")
   })
 })
+
+describe("createVisibleReader: isVisible", () => {
+  const health = (person: 0 | 1) => ({ kind: "answer", stepId: "suppC", path: `supplements.c.${person}.healthProblems.0` }) as const
+
+  it("is true for a shown question whatever its value, false when its step or gate hides it", () => {
+    const a = completeHomeWithAllSupplements()
+    a.supplements.c[0].healthProblems = ["", "", ""]
+    expect(createVisibleReader(a, ON).isVisible(health(0))).toBe(true)
+    // Person 2 has not been through the PCA chain, so her Supplement C questions are not shown
+    expect(createVisibleReader(a, ON).isVisible(health(1))).toBe(false)
+    a.pca.needsPca = "no"
+    expect(createVisibleReader(a, ON).isVisible(health(0))).toBe(false)
+  })
+
+  it("throws for an unknown path, naming the path only", () => {
+    expect(() => createVisibleReader(completeSingleSenior(), ON).isVisible({ kind: "answer", stepId: "suppC", path: "nope" })).toThrow(/nope/)
+  })
+})

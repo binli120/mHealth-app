@@ -8,6 +8,8 @@ import { PDFArray, PDFDict, PDFName, PDFRef, type PDFDocument, type PDFObject } 
 import type { Saca2StepId } from "../schema"
 import type { Saca2Answers } from "../types"
 import { isStepVisible } from "../visibility"
+import { copiesNeeded, type CopyRegion } from "./derived-supp-bcd"
+import { createVisibleReader } from "./visible-reader"
 
 /** Page count of the pinned template. */
 export const TEMPLATE_PAGE_COUNT = 42
@@ -41,10 +43,46 @@ export const PAGE_RANGES: Record<PageRangeKey, readonly number[]> = {
 
 const RANGE_KEYS = Object.keys(PAGE_RANGES) as PageRangeKey[]
 
-/** Every page of the template except those of a supplement or attachment whose step is hidden. */
+/**
+ * Pages the form asks to be copied ("make a copy of this page" / "attach a copy of this page for each job"):
+ * Supplement B (two people per page), C (one person) and D (one job). The fill appends `copies` copies of
+ * the `source` page to the document, in this order, so the copies have the page indexes
+ * TEMPLATE_PAGE_COUNT, TEMPLATE_PAGE_COUNT + 1, ... Copy `n` of a region (1-based) is placed right after
+ * its source page (and after copy `n - 1`) in the output; copies nobody needs are removed again.
+ */
+export const PAGE_COPIES: ReadonlyArray<{ region: CopyRegion; source: number; copies: number }> = [
+  { region: "suppB", source: 30, copies: 2 },
+  { region: "suppC", source: 31, copies: 1 },
+  { region: "suppD", source: 32, copies: 3 },
+]
+
+/** Document page index of copy `copy` (1-based) of `region` before pages are selected. */
+export function copyPageIndex(region: CopyRegion, copy: number): number {
+  let index = TEMPLATE_PAGE_COUNT
+  for (const spec of PAGE_COPIES) {
+    if (spec.region === region) {
+      if (copy < 1 || copy > spec.copies) throw new Error(`Region "${region}" has no copy ${copy}`)
+      return index + copy - 1
+    }
+    index += spec.copies
+  }
+  throw new Error(`Unknown copy region "${region}"`)
+}
+
+/**
+ * Every page of the template except those of a supplement or attachment whose step is hidden, plus
+ * the copy pages (indexes from TEMPLATE_PAGE_COUNT) the visible records need. Never reads a hidden
+ * step's records: its pages are dropped and the reader sees no rows there.
+ */
 export function pagesToKeep(answers: Saca2Answers, on: Date): number[] {
   const dropped = new Set(RANGE_KEYS.filter((key) => !isStepVisible(key, answers, on)).flatMap((key) => PAGE_RANGES[key]))
-  return Array.from({ length: TEMPLATE_PAGE_COUNT }, (_, i) => i).filter((i) => !dropped.has(i))
+  const template = Array.from({ length: TEMPLATE_PAGE_COUNT }, (_, i) => i).filter((i) => !dropped.has(i))
+  const reader = createVisibleReader(answers, on)
+  const copies = PAGE_COPIES.flatMap(({ region, copies: max }) => {
+    const needed = Math.min(max, copiesNeeded(region, reader))
+    return Array.from({ length: needed }, (_, i) => copyPageIndex(region, i + 1))
+  })
+  return [...template, ...copies]
 }
 
 /**

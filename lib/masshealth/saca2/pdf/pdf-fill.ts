@@ -9,9 +9,10 @@ import type { Saca2Answers } from "../types"
 import { applyCheckboxState } from "./checkbox-writer"
 import { DERIVED } from "./derived"
 import { encodeCheckbox, encodeToParts, isCheckboxEncoder } from "./encoders"
-import { FIELD_MAP } from "./field-map"
+import { FILL_MAP } from "./field-map"
 import { overflowSheet } from "./overflow"
 import { buildOverflowSheets, overflowHeader } from "./overflow-plan"
+import { createPageCopies, placePageCopies } from "./page-copies"
 import { fieldsOnDroppedPages, pagesToKeep, selectPages } from "./page-selection"
 import { removeStrayTableWidgets, splitCoverageNames, splitSharedFields } from "./split-shared-fields"
 import { loadSaca2Template } from "./template"
@@ -43,7 +44,7 @@ function assertNoDuplicateFields(map: FieldEntry[]): void {
 export function collectFillValues(
   answers: Saca2Answers,
   on: Date,
-  map: FieldEntry[] = FIELD_MAP,
+  map: FieldEntry[] = FILL_MAP,
   derived: DerivedRegistry = DERIVED,
 ): FillItem[] {
   assertNoDuplicateFields(map)
@@ -94,7 +95,8 @@ function clearInvalidCheckboxValues(fields: Map<string, PDFField>): void {
 /**
  * Fills the SACA-2 template from the wizard answers. `templateBytes` of `null` loads the pinned
  * template. Only visible answers are written; unmapped fields are untouched; pages of supplements and
- * attachments whose step is hidden are removed with their fields; rows that do not fit the form go on
+ * attachments whose step is hidden are removed with their fields; Supplement B, C and D pages are copied for the
+ * records that do not fit one page and placed right after the page they copy; rows that do not fit the form go on
  * appended continuation sheets headed with Person 1's name and SSN; the result stays an
  * editable form (not flattened). A mapped field that is missing from the template, of the wrong
  * type, or too short for its value is a mapping bug and throws with the field name only.
@@ -103,7 +105,7 @@ export async function fillSaca2Pdf(
   answers: Saca2Answers,
   templateBytes: Uint8Array | null,
   on: Date,
-  map: FieldEntry[] = FIELD_MAP,
+  map: FieldEntry[] = FILL_MAP,
   derived: DerivedRegistry = DERIVED,
 ): Promise<Uint8Array> {
   const items = collectFillValues(answers, on, map, derived)
@@ -111,6 +113,9 @@ export async function fillSaca2Pdf(
   splitSharedFields(doc)
   splitCoverageNames(doc)
   removeStrayTableWidgets(doc)
+  // the form's "attach a copy of this page" pages (Supplements B, C, D) exist as fillable pages up front, so
+  // the map can address their fields; the ones the answers do not need are removed again below
+  const pageCopies = createPageCopies(doc)
   const form = doc.getForm()
   const fields = indexFields(doc)
 
@@ -156,6 +161,7 @@ export async function fillSaca2Pdf(
   // Hidden supplements and attachments leave with their fields; then the continuation sheets (rows
   // the form's blocks cannot hold) are appended after the kept form pages.
   selectPages(doc, keep)
+  placePageCopies(doc, pageCopies)
   const header = overflowHeader(answers, on)
   for (const spec of buildOverflowSheets(answers, on)) await overflowSheet(doc, { ...header, ...spec })
 

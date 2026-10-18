@@ -20,6 +20,7 @@ import { HEALTH_DERIVED } from "./derived-health"
 import { INCOME_DERIVED } from "./derived-income"
 import { SIGNING_DERIVED } from "./derived-signing"
 import { SUPP_A_DERIVED } from "./derived-supp-a"
+import { SUPP_BCD_DERIVED } from "./derived-supp-bcd"
 import { encodeText } from "./encoders"
 import type { DerivedRegistry, DerivedResolver } from "./pdf-fill"
 import type { VisibleReader } from "./visible-reader"
@@ -125,6 +126,7 @@ export const DERIVED: DerivedRegistry = {
   ...HEALTH_DERIVED,
   ...SIGNING_DERIVED,
   ...SUPP_A_DERIVED,
+  ...SUPP_BCD_DERIVED,
 
   "person.fullName": (reader, _answers, _on, person) => fullName(reader, requirePerson(person, "person.fullName")),
 

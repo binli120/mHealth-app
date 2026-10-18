@@ -278,9 +278,10 @@ describe("fillSaca2Pdf with page selection and overflow sheets", () => {
     }
   })
 
-  it("a home applicant with every supplement keeps all 42 pages and all 1,158 fields", async () => {
+  it("a home applicant with every supplement keeps all 42 pages and all 1,158 fields (plus the Supplement D 14a sheet)", async () => {
     const out = await PDFDocument.load(await fillSaca2Pdf(completeHomeWithAllSupplements(), template, ON))
-    expect(out.getPageCount()).toBe(42)
+    // the unused page copies are removed again; the one extra page is the "Supplement D: additional information" sheet (item 14a has no field)
+    expect(out.getPageCount()).toBe(43)
     expect(out.getForm().getFields()).toHaveLength(1158)
   })
 

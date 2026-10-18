@@ -24,6 +24,11 @@ export interface VisibleReader {
   get(source: AnswerSource | Extract<Source, { kind: "derived" }>): unknown
   /** Number of rows in a repeater, `0` when the repeater (or its step) is hidden. */
   rows(stepId: Saca2StepId, path: string, person?: 0 | 1): number
+  /**
+   * Whether the answer question is visible (its step, person block and `visibleWhen` hold), whatever
+   * its value: a person qualifies for a form region when its questions are shown, even if still blank.
+   */
+  isVisible(source: Extract<Source, { kind: "answer" }>): boolean
 }
 
 interface Scope {
@@ -126,6 +131,14 @@ export function createVisibleReader(answers: Saca2Answers, on: Date): VisibleRea
 
     rows(stepId, path, person) {
       return readRows(locateRepeater(stepId, path, person), path)?.rows.length ?? 0
+    },
+
+    isVisible(source) {
+      const scope = resolveScope(source.stepId, source.person)
+      const question = findInStep(scope.content, source.path)
+      if (!question) throw new Error(`No question at path "${source.path}" in step "${source.stepId}"`)
+      const ctx = ctxFor(scope)
+      return ctx !== null && isQuestionVisible(question, ctx)
     },
   }
 }

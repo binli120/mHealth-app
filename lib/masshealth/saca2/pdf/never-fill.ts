@@ -97,4 +97,14 @@ export const NEVER_FILL: Record<string, { reason: NeverFillReason; note?: string
     reason: "signature",
     note: "Printed name of the Supplement A signer (form p.28); the signer may be the applicant or an authorized representative and signs and prints it by hand",
   },
+
+  // Supplement C (form page 30, PDF index 31): the signature block. The form has no widget on the signature line itself.
+  "Print name_SuppC_3": {
+    reason: "signature",
+    note: "Printed name of the Supplement C signer (form p.30); the signer may be the applicant or an authorized representative and signs and prints it by hand",
+  },
+  Date_SuppC_3: {
+    reason: "signature-date",
+    note: "Date of the Supplement C signature (form p.30); the person dates it when signing, never pre-filled",
+  },
 }

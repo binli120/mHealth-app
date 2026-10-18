@@ -10,6 +10,7 @@ import { PERSON_TABLE, expandPersonTable } from "./person-table"
 import { PERSON1_A_ENTRIES } from "./person1-a"
 import { STEP_10_ENTRIES } from "./step-10"
 import { SUPP_A_ENTRIES } from "./supp-a"
+import { SUPP_BCD_COPY_ENTRIES, SUPP_BCD_ENTRIES } from "./supp-bcd"
 import { STEPS_3_4_ENTRIES } from "./steps-3-5"
 import { STEPS_6_9_ENTRIES } from "./steps-6-9"
 
@@ -26,4 +27,12 @@ export const FIELD_MAP: FieldEntry[] = [
   ...STEPS_6_9_ENTRIES,
   ...STEP_10_ENTRIES,
   ...SUPP_A_ENTRIES,
+  ...SUPP_BCD_ENTRIES,
 ]
+
+/**
+ * What the fill uses: FIELD_MAP plus the entries of the page copies made at fill time (Supplement B pages 2-3,
+ * Supplement C's second person, Supplement D jobs 2-4). The coverage ratchet and the inventory describe the template
+ * only, so FIELD_MAP stays the template map; copy fields are `<template field>__copy<n>`.
+ */
+export const FILL_MAP: FieldEntry[] = [...FIELD_MAP, ...SUPP_BCD_COPY_ENTRIES]
