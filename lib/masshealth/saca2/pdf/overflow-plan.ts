@@ -11,6 +11,7 @@ import type { Saca2Answers } from "../types"
 import { DERIVED } from "./derived"
 import { RENTAL_LINES } from "./derived-income"
 import { encodeText } from "./encoders"
+import { assetsCollector, previousBillsCollector } from "./overflow-assets"
 import { createVisibleReader, type VisibleReader } from "./visible-reader"
 
 /** One continuation sheet's content: a title, column headings and plain-string rows. */
@@ -234,8 +235,15 @@ const notesCollector: OverflowCollector = (reader) => {
   return rows.length === 0 ? [] : [{ title: "Additional information", columns: ["Person", "Note"], rows }]
 }
 
-/** In sheet order. Tasks 8 and 11-12 append their collectors here. */
-export const OVERFLOW_COLLECTORS: OverflowCollector[] = [incomeCollector, rentalCollector, oneTimeCollector, notesCollector]
+/** In sheet order. Tasks 11-12 append their collectors here. */
+export const OVERFLOW_COLLECTORS: OverflowCollector[] = [
+  incomeCollector,
+  rentalCollector,
+  oneTimeCollector,
+  notesCollector,
+  previousBillsCollector,
+  assetsCollector,
+]
 
 /** All continuation sheets the answers need; empty when everything fits the form. Pure. */
 export function buildOverflowSheets(

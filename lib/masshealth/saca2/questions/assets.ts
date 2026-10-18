@@ -38,14 +38,14 @@ const OWNER_OPTIONS = opts([
   ["spouse", "Your spouse"],
 ])
 
-const PROPERTY_TYPES = opts([
+export const PROPERTY_TYPES = opts([
   ["oneFamily", "One-family"],
   ["twoFamily", "Two-family"],
   ["threeFamily", "Three-family"],
   ["other", "Other"],
 ])
 
-const ACCOUNT_TYPES = opts([
+export const ACCOUNT_TYPES = opts([
   ["checking", "Checking"],
   ["savings", "Savings"],
   ["certificateOfDeposit", "Certificate of deposit"],

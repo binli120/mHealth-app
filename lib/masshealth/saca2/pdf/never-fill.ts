@@ -46,4 +46,22 @@ export const NEVER_FILL: Record<string, { reason: NeverFillReason; note?: string
     reason: "other",
     note: "WIZARD GAP, not a deliberate skip: Person 2's 23b asks a noncitizen for the alien number on the immigration document, but the wizard asks the alien number only for naturalized citizens (same as Person 1's `Alien number_2`); add a wizard question or decide at Task 13",
   },
+
+  // Step 5 (form pages 12-15, PDF indexes 14-16): lines the wizard has no question for
+  "Insurance company_PBP": { reason: "other", note: "WIZARD GAP: prepaid burial (You) life-insurance company; the burial rows hold only owner, type and amount" },
+  "Policy number_PBP": { reason: "other", note: "WIZARD GAP: prepaid burial (You) life-insurance policy number; the burial rows hold only owner, type and amount" },
+  "Bank name_PBP": { reason: "other", note: "WIZARD GAP: prepaid burial (You) burial-only account bank; the burial rows hold only owner, type and amount" },
+  "Account number_PBP": { reason: "other", note: "WIZARD GAP: prepaid burial (You) burial-only account number; the burial rows hold only owner, type and amount" },
+  "Insurance company_PBP_2": { reason: "other", note: "WIZARD GAP: prepaid burial (Your spouse) life-insurance company; the burial rows hold only owner, type and amount" },
+  "Policy number_PBP_2": { reason: "other", note: "WIZARD GAP: prepaid burial (Your spouse) life-insurance policy number; the burial rows hold only owner, type and amount" },
+  "Bank name_PBP_2": { reason: "other", note: "WIZARD GAP: prepaid burial (Your spouse) burial-only account bank; the burial rows hold only owner, type and amount" },
+  "Account number_PBP_2": { reason: "other", note: "WIZARD GAP: prepaid burial (Your spouse) burial-only account number; the burial rows hold only owner, type and amount" },
+  "Mobile home address": {
+    reason: "other",
+    note: "WIZARD GAP: vehicles (You) mobile-home address; the wizard has one 'year, make, and model (or mobile home address)' answer, written to the Year/make/model line",
+  },
+  "Mobile home address_2": {
+    reason: "other",
+    note: "WIZARD GAP: vehicles (Your spouse) mobile-home address; the wizard has one 'year, make, and model (or mobile home address)' answer, written to the Year/make/model line",
+  },
 }
