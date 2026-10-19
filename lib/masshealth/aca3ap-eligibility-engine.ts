@@ -25,6 +25,7 @@ import {
   FPL_PCT_FAMILY_ASSIST,
   FPL_PCT_PREGNANCY_STANDARD,
 } from "./constants"
+import { buildRecommendedApplicationTypeHref } from "@/lib/applications/navigation"
 
 export type {
   Aca3CitizenshipStatus,
@@ -320,5 +321,6 @@ export function evaluateAca3ApEligibility(
     required_documents: requiredDocuments,
     findings,
     rule_results: ruleResults,
+    ...(status === "REDIRECT_SACA2" ? { redirect_href: buildRecommendedApplicationTypeHref("saca2") } : {}),
   }
 }

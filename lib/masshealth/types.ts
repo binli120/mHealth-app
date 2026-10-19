@@ -241,6 +241,8 @@ export interface Aca3ApEligibilityResult {
   required_documents: string[]
   findings: EligibilityFinding[]
   rule_results: EligibilityRuleResult[]
+  /** Present only when `status` is "REDIRECT_SACA2": the application chooser with SACA-2 highlighted. */
+  redirect_href?: string
 }
 
 // ── Extract workflow ──────────────────────────────────────────────────────────
