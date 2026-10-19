@@ -133,6 +133,7 @@ export function facilityCouple(overrides: Partial<Saca2EligibilityInputs> = {}):
     programs: { masshealthHsn: false, longTermCare: true, hcbsWaiver: false },
     suppA: makeSuppA({
       needsNursingFacility: "yes",
+      familyAtHome: "no",
       spouseExpenses: {
         rent: cents(900),
         mortgage: null,

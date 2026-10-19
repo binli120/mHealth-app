@@ -31,7 +31,7 @@ export const INCOME_KINDS = opts([
 ])
 
 /** Kinds reported as an average monthly net profit or loss instead of an amount and a frequency. */
-const MONTHLY_NET_KINDS: readonly unknown[] = ["selfEmployment", "capitalGains", "farmingFishing"]
+export const MONTHLY_NET_KINDS: readonly unknown[] = ["selfEmployment", "capitalGains", "farmingFishing"]
 
 const kindIs = (...kinds: string[]) => (ctx: Saca2QuestionContext) => kinds.includes(ctx.item?.kind as string)
 const isMonthlyNet = (ctx: Saca2QuestionContext) => MONTHLY_NET_KINDS.includes(ctx.item?.kind)
