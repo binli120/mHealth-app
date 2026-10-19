@@ -56,6 +56,16 @@ describe("Saca2ScreeningResult", () => {
     expect(screen.getByTestId("saca2-screening-status")).toHaveAttribute("data-status", "NEEDS_REVIEW")
     expect(screen.getByText(/couldn't estimate a result/)).toBeInTheDocument()
     expect(screen.getByTestId("saca2-screening-label")).toHaveTextContent(SACA2_SCREENING_LABEL)
+    expect(screen.getByText("We couldn't build a document list. MassHealth may still ask for proof.")).toBeInTheDocument()
+    expect(screen.queryByText(/No documents identified/)).toBeNull()
+  })
+
+  it("uses calm NEEDS_REVIEW copy that does not blame the answers", () => {
+    render(<Saca2ScreeningResult answers={getSyntheticCase("couple-spouse-in-nursing-facility").answers} on={ON} />)
+    const status = screen.getByTestId("saca2-screening-status")
+    expect(status).toHaveTextContent("MassHealth will review your application.")
+    expect(status).toHaveTextContent("This screening can't give a likely result yet. The figures below are estimates only. You can still apply.")
+    expect(status).not.toHaveTextContent(/closer look|approved/i)
   })
 
   it("does not log, store, or send anything", () => {

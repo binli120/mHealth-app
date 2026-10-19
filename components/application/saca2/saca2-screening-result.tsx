@@ -23,12 +23,12 @@ interface Saca2ScreeningResultProps {
 const STATUS_COPY: Record<Saca2ScreeningStatus, { title: string; body: string }> = {
   LIKELY_ELIGIBLE: { title: "You may qualify", body: "Based on your answers, you may qualify for MassHealth." },
   NEEDS_REVIEW: {
-    title: "MassHealth needs to review your answers",
-    body: "Some answers need a closer look, so we can't estimate a result. You can still apply.",
+    title: "MassHealth will review your application",
+    body: "This screening can't give a likely result yet. The figures below are estimates only. You can still apply.",
   },
   LIKELY_INELIGIBLE: {
     title: "You may not qualify right now",
-    body: "Based on your answers, you may not qualify yet. You can still apply; MassHealth makes the final decision.",
+    body: "Based on your answers, you may not qualify for SACA-2 right now. You can still apply; MassHealth makes the final decision.",
   },
   PENDING_DOCUMENTS: {
     title: "You may qualify once your documents are checked",
@@ -58,17 +58,17 @@ function describeEstimates(e: Saca2Estimates): string[] {
   return lines
 }
 
-function safeEvaluate(answers: Saca2Answers, on: Date): Saca2EligibilityResult {
+function safeEvaluate(answers: Saca2Answers, on: Date): { result: Saca2EligibilityResult; fellBack: boolean } {
   try {
-    return evaluateSaca2Eligibility(answers, SACA2_FIGURES, on)
+    return { result: evaluateSaca2Eligibility(answers, SACA2_FIGURES, on), fellBack: false }
   } catch {
-    return saca2ScreeningFallback()
+    return { result: saca2ScreeningFallback(), fellBack: true }
   }
 }
 
 export function Saca2ScreeningResult({ answers, on }: Saca2ScreeningResultProps) {
   const time = on?.getTime()
-  const result = useMemo(() => safeEvaluate(answers, time === undefined ? new Date() : new Date(time)), [answers, time])
+  const { result, fellBack } = useMemo(() => safeEvaluate(answers, time === undefined ? new Date() : new Date(time)), [answers, time])
   const copy = STATUS_COPY[result.status]
   const estimates = describeEstimates(result.estimates)
   const findings = result.findings.filter((f) => f.level !== "success")
@@ -118,7 +118,7 @@ export function Saca2ScreeningResult({ answers, on }: Saca2ScreeningResultProps)
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-muted-foreground">No documents identified from your answers. MassHealth may still ask for proof.</p>
+          <p className="text-sm text-muted-foreground">{fellBack ? "We couldn't build a document list. MassHealth may still ask for proof." : "No documents identified from your answers. MassHealth may still ask for proof."}</p>
         )}
       </div>
     </section>
