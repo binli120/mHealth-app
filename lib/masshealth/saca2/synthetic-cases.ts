@@ -3,14 +3,25 @@
  * @email: blee@comura.ai
  */
 
+import type { Saca2RuleId, Saca2RuleVerdict, Saca2ScreeningStatus } from "./eligibility/types"
 import type { Saca2StepId } from "./schema"
 import {
   emptySaca2Answers,
   emptySaca2Person,
+  type AssetCategory,
   type BankAccountRow,
   type Saca2Answers,
   type Saca2Person,
 } from "./types"
+
+export interface Saca2ExpectedScreening {
+  /** Status with the rule policy as shipped (rules 3-7 unconfirmed). */
+  asShipped: Saca2ScreeningStatus
+  /** Status if every rule were confirmed: pins each rule's own logic end to end. */
+  ifAllConfirmed: Saca2ScreeningStatus
+  /** Each rule's own verdict, before confirmation gating. */
+  verdicts: Record<Saca2RuleId, Saca2RuleVerdict>
+}
 
 /** All data below is fabricated. Never copy real applicant data here. */
 export interface Saca2SyntheticCase {
@@ -20,6 +31,7 @@ export interface Saca2SyntheticCase {
   referenceDate: string
   answers: Saca2Answers
   expectedVisibleSteps: Saca2StepId[]
+  expectedScreening: Saca2ExpectedScreening
 }
 
 function person(overrides: Partial<Saca2Person>): Saca2Person {
@@ -39,6 +51,32 @@ function account(n: number, balance: number): BankAccountRow {
     balanceWhenClosed: null,
   }
 }
+
+const ASSET_GATES: AssetCategory[] = [
+  "bankAccounts",
+  "retirementAccounts",
+  "closedAccounts",
+  "primaryResidence",
+  "otherRealEstate",
+  "lifeInsurance",
+  "securities",
+  "annuities",
+  "assistedLivingDeposit",
+  "vehicles",
+  "burial",
+  "trusts",
+]
+
+/** Answer every asset gate the way the wizard requires: Yes for the listed categories, No for the rest. */
+function answerGates(a: Saca2Answers, yes: AssetCategory[]) {
+  for (const gate of ASSET_GATES) a.assets.gates[gate] = yes.includes(gate) ? "yes" : "no"
+}
+
+const NOT_APPLICABLE_LTC = {
+  SACA2_R4_HOME_EQUITY: "notApplicable",
+  SACA2_R5_TRANSFERS: "notApplicable",
+  SACA2_R7_SPOUSAL_ALLOWANCE: "notApplicable",
+} as const
 
 const REFERENCE_DATE = "2026-10-13"
 
@@ -71,6 +109,7 @@ const FACILITY_COUPLE_STEPS: Saca2StepId[] = [
 
 function singleSenior(): Saca2Answers {
   const a = emptySaca2Answers()
+  a.intake.programs.masshealthHsn = true
   a.persons[0] = person({
     firstName: "Edna",
     lastName: "Testcase",
@@ -81,9 +120,12 @@ function singleSenior(): Saca2Answers {
     inInstitution: "no",
     isLegallyMarried: "no",
     caregiverOfChildUnder19: "no",
-    income: [{ kind: "socialSecurity", amount: 1400, frequency: "monthly" }],
+    hasIncome: "yes",
+    hasMedicareOrSsiOrSsdi: "yes",
+    income: [{ kind: "socialSecurity", amount: 1250, frequency: "monthly" }],
   })
   a.assets.bankAccounts = [account(1, 1200)]
+  answerGates(a, ["bankAccounts"])
   return a
 }
 
@@ -100,6 +142,8 @@ function spouseInNursingFacility(): Saca2Answers {
     inInstitution: "yes",
     isLegallyMarried: "yes",
     caregiverOfChildUnder19: "no",
+    hasIncome: "yes",
+    hasMedicareOrSsiOrSsdi: "yes",
     income: [
       { kind: "socialSecurity", amount: 2100, frequency: "monthly" },
       { kind: "pension", amount: 600, frequency: "monthly" },
@@ -114,7 +158,9 @@ function spouseInNursingFacility(): Saca2Answers {
       applyingForCoverage: "no",
       livesWithPerson1: "no",
       residentOfMassachusetts: "yes",
+      inInstitution: "no",
       caregiverOfChildUnder19: "no",
+      hasIncome: "yes",
       income: [{ kind: "socialSecurity", amount: 1300, frequency: "monthly" }],
     }),
   )
@@ -143,6 +189,33 @@ function spouseInNursingFacility(): Saca2Answers {
       amount: 30000,
     },
   ]
+  a.supplements.a.applyingHcbsWaiver = "no"
+  a.supplements.a.applyingPace = "no"
+  a.supplements.a.familyAtHome.hasFamily = "no"
+  a.supplements.a.transferAnswers = {
+    trust: "no",
+    income: "no",
+    assets: "yes",
+    deed: "no",
+    lifeEstateLivedOneYear: null,
+    addedToDeed: "no",
+    loanOrNote: "no",
+    annuity: "no",
+  }
+  a.supplements.a.facilityDeposit.gaveDeposit = "no"
+  a.supplements.a.home.ownsHome = "yes"
+  a.supplements.a.home.properties = [
+    { ownerNames: "Walter Testcase", propertyAddress: "1 Example St, Testville MA", ownershipType: "individual", fairMarketValue: 450000 },
+  ]
+  a.supplements.a.home.spouse = { has: "yes", name: "Dorothy Testcase", livesInHome: "yes" }
+  a.supplements.a.home.disabledChild.has = "no"
+  a.supplements.a.home.childUnder21.has = "no"
+  a.supplements.a.home.sibling.has = "no"
+  a.supplements.a.home.caregiverChild.has = "no"
+  a.supplements.a.home.dependentRelative.has = "no"
+  a.supplements.a.home.ownsOtherRealEstate = "no"
+  a.supplements.a.longTermCareInsurance.hasPolicy = "no"
+  answerGates(a, ["bankAccounts", "primaryResidence"])
   return a
 }
 
@@ -159,22 +232,42 @@ function hcbsWaiver(): Saca2Answers {
     inInstitution: "no",
     isLegallyMarried: "no",
     caregiverOfChildUnder19: "no",
+    hasIncome: "yes",
     income: [{ kind: "socialSecurity", amount: 1500, frequency: "monthly" }],
   })
   a.supplements.a.applyingHcbsWaiver = "yes"
   a.supplements.a.taxReturnsFiled = "oneYear"
   a.supplements.a.hasCopiesOfTaxReturns = "no"
+  a.supplements.a.needsNursingFacility = "no"
+  a.supplements.a.applyingPace = "no"
+  a.supplements.a.transferAnswers = {
+    trust: "no",
+    income: "no",
+    assets: "no",
+    deed: "no",
+    lifeEstateLivedOneYear: null,
+    addedToDeed: "no",
+    loanOrNote: "no",
+    annuity: "no",
+  }
+  a.supplements.a.facilityDeposit.gaveDeposit = "no"
+  a.supplements.a.home.ownsHome = "no"
+  a.supplements.a.home.ownsOtherRealEstate = "no"
+  a.supplements.a.longTermCareInsurance.hasPolicy = "no"
+  answerGates(a, [])
   return a
 }
 
 function seniorParentOfChild(): Saca2Answers {
   const a = singleSenior()
   a.persons[0].caregiverOfChildUnder19 = "yes"
+  a.persons[0].caregiverChildren = [{ name: "Test Child", dateOfBirth: "2012-05-01" }]
   return a
 }
 
 function mixedAgeCouple(): Saca2Answers {
   const a = emptySaca2Answers()
+  a.intake.programs.masshealthHsn = true
   a.persons[0] = person({
     firstName: "Harold",
     lastName: "Testcase",
@@ -184,6 +277,9 @@ function mixedAgeCouple(): Saca2Answers {
     usCitizenOrNational: "yes",
     isLegallyMarried: "yes",
     caregiverOfChildUnder19: "no",
+    hasIncome: "yes",
+    hasMedicareOrSsiOrSsdi: "yes",
+    income: [{ kind: "socialSecurity", amount: 1600, frequency: "monthly" }],
   })
   a.persons.push(
     person({
@@ -197,8 +293,12 @@ function mixedAgeCouple(): Saca2Answers {
       usCitizenOrNational: "yes",
       isLegallyMarried: "yes",
       caregiverOfChildUnder19: "no",
+      hasIncome: "yes",
+      hasMedicareOrSsiOrSsdi: "no",
+      income: [{ kind: "wages", amount: 400, frequency: "every2weeks", seasonal: "no" }],
     }),
   )
+  answerGates(a, [])
   return a
 }
 
@@ -219,6 +319,8 @@ function trustAndAnnuity(): Saca2Answers {
     { owners: "Walter Testcase", institution: "Example Annuity Co", contractNumber: "A-0001", purchasedOn: "2023-05-01" },
   ]
   a.aian.anyMember = "no"
+  a.supplements.a.transferAnswers.annuity = "yes"
+  answerGates(a, ["bankAccounts", "primaryResidence", "annuities", "trusts"])
   return a
 }
 
@@ -231,10 +333,22 @@ function overflowAccounts(): Saca2Answers {
 export const SACA2_SYNTHETIC_CASES: readonly Saca2SyntheticCase[] = [
   {
     id: "single-senior-home",
-    description: "Single 76-year-old at home, Social Security only, one savings account.",
+    description: "Single 76-year-old at home, Social Security only ($1,250/month), one savings account.",
     referenceDate: REFERENCE_DATE,
     answers: singleSenior(),
     expectedVisibleSteps: SINGLE_SENIOR_STEPS,
+    expectedScreening: {
+      asShipped: "NEEDS_REVIEW",
+      ifAllConfirmed: "LIKELY_ELIGIBLE",
+      verdicts: {
+        SACA2_R1_RESIDENCY_ROUTE: "pass",
+        SACA2_R2_CITIZENSHIP: "pass",
+        SACA2_R3_ASSETS: "pass",
+        SACA2_R6_INCOME: "pass",
+        SACA2_R8_MEDICARE_MSP: "notApplicable",
+        ...NOT_APPLICABLE_LTC,
+      },
+    },
   },
   {
     id: "couple-spouse-in-nursing-facility",
@@ -242,6 +356,20 @@ export const SACA2_SYNTHETIC_CASES: readonly Saca2SyntheticCase[] = [
     referenceDate: REFERENCE_DATE,
     answers: spouseInNursingFacility(),
     expectedVisibleSteps: FACILITY_COUPLE_STEPS,
+    expectedScreening: {
+      asShipped: "NEEDS_REVIEW",
+      ifAllConfirmed: "NEEDS_REVIEW",
+      verdicts: {
+        SACA2_R1_RESIDENCY_ROUTE: "pass",
+        SACA2_R2_CITIZENSHIP: "pass",
+        SACA2_R3_ASSETS: "review",
+        SACA2_R4_HOME_EQUITY: "pass",
+        SACA2_R5_TRANSFERS: "review",
+        SACA2_R6_INCOME: "pass",
+        SACA2_R7_SPOUSAL_ALLOWANCE: "pass",
+        SACA2_R8_MEDICARE_MSP: "notApplicable",
+      },
+    },
   },
   {
     id: "hcbs-waiver-applicant",
@@ -249,6 +377,20 @@ export const SACA2_SYNTHETIC_CASES: readonly Saca2SyntheticCase[] = [
     referenceDate: REFERENCE_DATE,
     answers: hcbsWaiver(),
     expectedVisibleSteps: [...SINGLE_SENIOR_STEPS, "suppA", "irs4506"],
+    expectedScreening: {
+      asShipped: "NEEDS_REVIEW",
+      ifAllConfirmed: "PENDING_DOCUMENTS",
+      verdicts: {
+        SACA2_R1_RESIDENCY_ROUTE: "pass",
+        SACA2_R2_CITIZENSHIP: "documents",
+        SACA2_R3_ASSETS: "pass",
+        SACA2_R4_HOME_EQUITY: "notApplicable",
+        SACA2_R5_TRANSFERS: "pass",
+        SACA2_R6_INCOME: "pass",
+        SACA2_R7_SPOUSAL_ALLOWANCE: "notApplicable",
+        SACA2_R8_MEDICARE_MSP: "notApplicable",
+      },
+    },
   },
   {
     id: "senior-parent-of-child-under-19",
@@ -256,6 +398,18 @@ export const SACA2_SYNTHETIC_CASES: readonly Saca2SyntheticCase[] = [
     referenceDate: REFERENCE_DATE,
     answers: seniorParentOfChild(),
     expectedVisibleSteps: SINGLE_SENIOR_STEPS,
+    expectedScreening: {
+      asShipped: "REDIRECT_ACA3",
+      ifAllConfirmed: "REDIRECT_ACA3",
+      verdicts: {
+        SACA2_R1_RESIDENCY_ROUTE: "redirect",
+        SACA2_R2_CITIZENSHIP: "pass",
+        SACA2_R3_ASSETS: "pass",
+        SACA2_R6_INCOME: "pass",
+        SACA2_R8_MEDICARE_MSP: "notApplicable",
+        ...NOT_APPLICABLE_LTC,
+      },
+    },
   },
   {
     id: "mixed-age-couple",
@@ -275,6 +429,18 @@ export const SACA2_SYNTHETIC_CASES: readonly Saca2SyntheticCase[] = [
       "additionalCoverage",
       "signature",
     ],
+    expectedScreening: {
+      asShipped: "NEEDS_REVIEW",
+      ifAllConfirmed: "NEEDS_REVIEW",
+      verdicts: {
+        SACA2_R1_RESIDENCY_ROUTE: "pass",
+        SACA2_R2_CITIZENSHIP: "documents",
+        SACA2_R3_ASSETS: "pass",
+        SACA2_R6_INCOME: "review",
+        SACA2_R8_MEDICARE_MSP: "notApplicable",
+        ...NOT_APPLICABLE_LTC,
+      },
+    },
   },
   {
     id: "trust-and-annuity-applicant",
@@ -282,6 +448,20 @@ export const SACA2_SYNTHETIC_CASES: readonly Saca2SyntheticCase[] = [
     referenceDate: REFERENCE_DATE,
     answers: trustAndAnnuity(),
     expectedVisibleSteps: FACILITY_COUPLE_STEPS,
+    expectedScreening: {
+      asShipped: "NEEDS_REVIEW",
+      ifAllConfirmed: "NEEDS_REVIEW",
+      verdicts: {
+        SACA2_R1_RESIDENCY_ROUTE: "pass",
+        SACA2_R2_CITIZENSHIP: "pass",
+        SACA2_R3_ASSETS: "review",
+        SACA2_R4_HOME_EQUITY: "pass",
+        SACA2_R5_TRANSFERS: "review",
+        SACA2_R6_INCOME: "pass",
+        SACA2_R7_SPOUSAL_ALLOWANCE: "pass",
+        SACA2_R8_MEDICARE_MSP: "notApplicable",
+      },
+    },
   },
   {
     id: "overflow-accounts",
@@ -289,6 +469,18 @@ export const SACA2_SYNTHETIC_CASES: readonly Saca2SyntheticCase[] = [
     referenceDate: REFERENCE_DATE,
     answers: overflowAccounts(),
     expectedVisibleSteps: SINGLE_SENIOR_STEPS,
+    expectedScreening: {
+      asShipped: "NEEDS_REVIEW",
+      ifAllConfirmed: "LIKELY_INELIGIBLE",
+      verdicts: {
+        SACA2_R1_RESIDENCY_ROUTE: "pass",
+        SACA2_R2_CITIZENSHIP: "pass",
+        SACA2_R3_ASSETS: "fail",
+        SACA2_R6_INCOME: "pass",
+        SACA2_R8_MEDICARE_MSP: "notApplicable",
+        ...NOT_APPLICABLE_LTC,
+      },
+    },
   },
 ]
 
