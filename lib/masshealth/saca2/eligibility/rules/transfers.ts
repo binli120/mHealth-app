@@ -32,6 +32,11 @@ export function evaluateTransfers(inputs: Saca2EligibilityInputs, figures: Saca2
     findings.push(finding("SACA2_TRANSFER_COMPLEX", "warning", "You reported a trust, deed, loan, or annuity change in the past 60 months. MassHealth reviews these."))
   }
 
+  if ((s.transferAnswers.income === "yes" || s.transferAnswers.assets === "yes") && s.transfers.length === 0) {
+    review = true
+    findings.push(finding("SACA2_TRANSFER_DETAILS_MISSING", "warning", "You said you transferred income or assets in the past 60 months, but no transfer is listed."))
+  }
+
   const lookBackStart = isoMonthsBefore(on, figures.lookBackMonths)
   const today = isoDay(on)
   let total = 0

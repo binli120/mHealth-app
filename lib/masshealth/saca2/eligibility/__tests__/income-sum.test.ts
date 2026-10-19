@@ -49,3 +49,10 @@ describe("monthlyIncomeOf", () => {
     expect(monthlyIncomeOf(makePerson({ hasIncome: "yes" })).cents).toBeNull()
   })
 })
+
+describe("monthlyIncomeOf: rental loss", () => {
+  it("subtracts a rental unit marked as a loss", () => {
+    const person = makePerson({ hasIncome: "yes", income: [incomeLine("pension", 500)], rental: [{ amount: cents(200), isLoss: true }] })
+    expect(monthlyIncomeOf(person).cents).toBe(cents(300))
+  })
+})

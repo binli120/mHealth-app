@@ -97,3 +97,20 @@ describe("evaluateResidencyRoute", () => {
     expect(codes(evaluateResidencyRoute(makeInputs({ persons: [makePerson({ applying: false })] })))).toContain("SACA2_NO_APPLICANT")
   })
 })
+
+describe("evaluateResidencyRoute: long-term-care caregivers", () => {
+  const caregiver = (overrides: Partial<Parameters<typeof makeInputs>[0]>) =>
+    makeInputs({ persons: [makePerson({ caregiverOfChildUnder19: "yes", childAges: [11] })], ...overrides })
+
+  it("gives review, not a redirect, for an HCBS-waiver applicant who cares for a child", () => {
+    const o = evaluateResidencyRoute(caregiver({ programs: { masshealthHsn: false, longTermCare: false, hcbsWaiver: true } }))
+    expect(o.verdict).toBe("review")
+    expect(codes(o)).toContain("SACA2_CAREGIVER_LONG_TERM_CARE")
+  })
+
+  it("gives review, not a redirect, for a PACE applicant who cares for a child", () => {
+    const o = evaluateResidencyRoute(caregiver({ suppA: makeSuppA({ applyingPace: "yes" }) }))
+    expect(o.verdict).toBe("review")
+    expect(codes(o)).toContain("SACA2_CAREGIVER_LONG_TERM_CARE")
+  })
+})

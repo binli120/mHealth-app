@@ -31,6 +31,11 @@ export function evaluateSpousalAllowance(inputs: Saca2EligibilityInputs, figures
   ) {
     return outcome(ID, "notApplicable", "A spousal allowance applies when one spouse is in a nursing facility and the other lives at home.")
   }
+  if (spouse?.inInstitution == null) {
+    return outcome(ID, "review", "It is not answered whether your spouse lives in a facility.", [
+      finding("SACA2_SPOUSE_FACILITY_UNKNOWN", "warning", "It is not answered whether your spouse lives in a facility, so the spousal allowance is not estimated."),
+    ])
+  }
   const e = s.spouseExpenses
   if (e.paysHeat === null || e.paysUtilities === null) {
     return outcome(ID, "review", "The heat and utility answers are needed.", [finding("SACA2_UTILITY_ANSWERS_MISSING", "warning", "Tell us whether your spouse pays for heat and for utilities.")])

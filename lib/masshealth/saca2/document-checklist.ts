@@ -4,7 +4,7 @@
  */
 
 import { SACA2_FIGURES } from "./figures-2026"
-import { dollarsToCents, totalCents } from "./eligibility/money"
+import { dollarsToCents, formatDollars, totalCents } from "./eligibility/money"
 import { determineRoutes } from "./eligibility/routes"
 import type { Saca2DocumentId, Saca2DocumentItem, Saca2EligibilityInputs, Saca2Figures } from "./eligibility/types"
 
@@ -41,8 +41,11 @@ export function buildSaca2DocumentChecklist(inputs: Saca2EligibilityInputs, figu
   if (a.lifeInsurance.length > 0) add("lifeInsurance", "The first page of each life-insurance policy", "You reported life insurance.")
   const face = totalCents(a.lifeInsurance.map((policy) => policy.faceValue))
   // A missing or invalid face value cannot be shown to be under the limit, so the letter is requested.
-  if (face.missing > 0 || face.invalid > 0 || face.total > dollarsToCents(figures.lifeInsuranceFaceValuePerPerson) * (inputs.hasSpouse ? 2 : 1)) {
-    add("cashSurrenderLetter", "A letter from the insurer showing the current cash-surrender value (not needed for term policies)", "Total face value is more than $1,500 per person.")
+  const letterLabel = "A letter from the insurer showing the current cash-surrender value (not needed for term policies)"
+  if (face.missing > 0 || face.invalid > 0) {
+    add("cashSurrenderLetter", letterLabel, "A life insurance face value is missing or invalid.")
+  } else if (face.total > dollarsToCents(figures.lifeInsuranceFaceValuePerPerson) * (inputs.hasSpouse ? 2 : 1)) {
+    add("cashSurrenderLetter", letterLabel, `Total face value is more than ${formatDollars(dollarsToCents(figures.lifeInsuranceFaceValuePerPerson))} per person.`)
   }
   if (a.securities.some((holding) => holding.kind !== "cash")) add("securities", "Proof of the current value of stocks, bonds, funds, and other investments", "You reported investments.")
   if (a.annuities > 0) add("annuities", "Each annuity contract and proof of its full value", "You reported an annuity.")

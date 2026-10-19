@@ -87,3 +87,14 @@ describe("evaluateSpousalAllowance", () => {
     expect(run({ ...facilityCouple(), programs: { masshealthHsn: true, longTermCare: false, hcbsWaiver: false }, suppA: null }).verdict).toBe("notApplicable")
   })
 })
+
+describe("evaluateSpousalAllowance: spouse facility answer missing", () => {
+  it("reviews with no estimates when the spouse's facility answer is unknown", () => {
+    const inputs = facilityCouple()
+    inputs.persons[1] = { ...inputs.persons[1], inInstitution: null }
+    const o = run(inputs)
+    expect(o.verdict).toBe("review")
+    expect(o.findings.map((f) => f.code)).toContain("SACA2_SPOUSE_FACILITY_UNKNOWN")
+    expect(o.estimates.spousalAllowance).toBeUndefined()
+  })
+})

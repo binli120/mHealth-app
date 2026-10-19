@@ -218,8 +218,9 @@ route to the real SACA-2 flow; SACA-2 emits `REDIRECT_ACA3` the other way.
   Medigap/Part D/LTC premium amounts, and the application or admission date for the look-back.
 - Known limits: assisted-living room and board is omitted from shelter costs (owner question); rule 4 checks every
   listed home against the limit although the limit applies to the principal home; the "Start a SACA-2 application" link
-  label is not flag-aware; `isoDay` in `eligibility/dates.ts` uses the UTC day, so a late-evening US local date can
-  read as the next day.
+  label is not flag-aware; the engine (`screeningDay` in `eligibility/dates.ts`) and the completion panel use the
+  local calendar day, so a late-evening US local time is still that day; the wizard's step visibility
+  (`getWizardSteps`, `validateStep`, person-income extras) still reads the raw date's UTC day (plan 5 follow-up).
 
 ### 4.5 Document checklist
 Derived from answers: pay stubs/pension statements; 60 months of account statements

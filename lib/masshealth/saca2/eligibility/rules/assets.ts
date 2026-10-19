@@ -49,6 +49,21 @@ export function evaluateAssets(inputs: Saca2EligibilityInputs, figures: Saca2Fig
 
   if (Object.values(assets.gates).some((gate) => gate === null)) flag("SACA2_ASSET_ANSWERS_MISSING", "Some asset questions are not answered.")
 
+  // A Yes gate whose list is empty means the amounts are unknown, not zero. One account list serves three gates.
+  const { gates } = assets
+  const yes = (...values: Array<"yes" | "no" | null>) => values.some((value) => value === "yes")
+  const detailsMissing =
+    (yes(gates.bankAccounts, gates.retirementAccounts, gates.closedAccounts) && assets.bankAccounts.length === 0) ||
+    (yes(gates.primaryResidence) && assets.primaryResidence.length === 0) ||
+    (yes(gates.otherRealEstate) && assets.otherRealEstate.length === 0) ||
+    (yes(gates.lifeInsurance) && assets.lifeInsurance.length === 0) ||
+    (yes(gates.securities) && assets.securities.length === 0) ||
+    (yes(gates.annuities) && assets.annuities === 0) ||
+    (yes(gates.assistedLivingDeposit) && assets.deposits === 0) ||
+    (yes(gates.vehicles) && assets.vehicles.length === 0) ||
+    (yes(gates.trusts) && assets.trusts.length === 0)
+  if (detailsMissing) flag("SACA2_ASSET_DETAILS_MISSING", "You answered Yes to an asset question but listed nothing for it, so your countable assets are not estimated.")
+
   const counted: AmountInput[] = []
   for (const account of assets.bankAccounts) if (account.open) counted.push(account.balance)
   counted.push(...assets.otherRealEstate, ...assets.securities.map((holding) => holding.value))
@@ -78,7 +93,7 @@ export function evaluateAssets(inputs: Saca2EligibilityInputs, figures: Saca2Fig
   const total = totalCents(counted)
   if (total.missing + total.invalid > 0) flag("SACA2_ASSET_VALUE_MISSING", "Some asset amounts are missing or not valid numbers.")
   const countable = total.total
-  const estimates: Partial<Saca2Estimates> = { countableAssets: centsToDollars(countable) }
+  const estimates: Partial<Saca2Estimates> = detailsMissing ? {} : { countableAssets: centsToDollars(countable) }
   const spouse = inputs.hasSpouse ? inputs.persons[1] : undefined
   let verdict: Saca2RuleVerdict
   let limitCents: number | null = null

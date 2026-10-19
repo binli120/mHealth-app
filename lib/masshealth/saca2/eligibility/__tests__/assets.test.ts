@@ -177,3 +177,25 @@ describe("evaluateAssets: missing answers never add assets", () => {
     expect(codes(o)).toContain("SACA2_SPOUSE_FACILITY_UNKNOWN")
   })
 })
+
+describe("evaluateAssets: Yes gate with no rows", () => {
+  const gate = (name: keyof ReturnType<typeof makeAssets>["gates"]) => ({ gates: { ...makeAssets().gates, [name]: "yes" as const } })
+  it.each(["bankAccounts", "retirementAccounts", "closedAccounts", "primaryResidence", "otherRealEstate", "lifeInsurance", "securities", "vehicles", "trusts", "annuities", "assistedLivingDeposit"] as const)(
+    "reviews %s = Yes with nothing listed and shows no final estimate",
+    (name) => {
+      const o = run(single(gate(name)))
+      expect(o.verdict).toBe("review")
+      expect(codes(o)).toContain("SACA2_ASSET_DETAILS_MISSING")
+      expect(o.estimates.countableAssets).toBeUndefined()
+    },
+  )
+
+  it("does not review when the gate's rows are listed", () => {
+    expect(run(single({ ...gate("bankAccounts"), bankAccounts: bank(100) })).verdict).toBe("pass")
+  })
+
+  it("lets one bank-account list satisfy any of the three account gates", () => {
+    const gates = { ...makeAssets().gates, retirementAccounts: "yes" as const, closedAccounts: "yes" as const }
+    expect(run(single({ gates, bankAccounts: bank(100) })).verdict).toBe("pass")
+  })
+})

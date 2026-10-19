@@ -79,6 +79,9 @@ export function evaluateIncome(
     return outcome(ID, review ? "review" : "pass", review ? "Income needs review." : "Income is within the special income limit.", findings, estimates)
   }
 
+  if (inputs.hasSpouse && p2?.livesWithPerson1 == null) {
+    return outcome(ID, "review", "Household size is unknown.", [...findings, finding("SACA2_HOUSEHOLD_SIZE_UNKNOWN", "warning", "It is not answered whether your spouse lives with you, so your household size is unknown.")], estimates)
+  }
   const size = inputs.householdSize
   if (!Number.isInteger(size) || size < 1) {
     return outcome(ID, "review", "Household size is unknown.", [...findings, finding("SACA2_HOUSEHOLD_SIZE_UNKNOWN", "warning", "We could not work out your household size.")], estimates)

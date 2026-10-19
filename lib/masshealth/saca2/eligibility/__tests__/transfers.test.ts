@@ -64,3 +64,22 @@ describe("evaluateTransfers", () => {
     expect(run({}, new Date("2028-02-29T12:00:00Z")).estimates.transfersInWindow?.lookBackStart).toBe("2023-02-28")
   })
 })
+
+describe("evaluateTransfers: gates answered Yes without details", () => {
+  const base = makeSuppA().transferAnswers
+  it.each(["income", "assets"] as const)("reviews a Yes to %s with no transfers listed", (key) => {
+    const o = run({ transferAnswers: { ...base, [key]: "yes" }, transfers: [] })
+    expect(o.verdict).toBe("review")
+    expect(codes(o)).toContain("SACA2_TRANSFER_DETAILS_MISSING")
+  })
+
+  it("passes a Yes to assets when a transfer outside the window is listed", () => {
+    const o = run({ transferAnswers: { ...base, assets: "yes" }, transfers: [{ date: "2019-01-01", amount: cents(100) }] })
+    expect(o.verdict).toBe("pass")
+  })
+
+  it("counts a transfer dated exactly on the screening date", () => {
+    const o = run({ transfers: [{ date: "2026-10-13", amount: cents(450) }] })
+    expect(o.estimates.transfersInWindow).toMatchObject({ count: 1, total: 450, penaltyDays: 1 })
+  })
+})

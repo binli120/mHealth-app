@@ -101,3 +101,18 @@ describe("buildSaca2DocumentChecklist", () => {
     expect(withValue("invalid")).toContain("cashSurrenderLetter")
   })
 })
+
+describe("buildSaca2DocumentChecklist: cash-surrender letter reason", () => {
+  const letter = (faceValue: number | null | "invalid") =>
+    buildSaca2DocumentChecklist(makeInputs({ assets: makeAssets({ lifeInsurance: [{ faceValue, cashSurrenderValue: null }] }) })).find((i) => i.id === "cashSurrenderLetter")
+
+  it("explains a high face value with the $1,500 limit", () => {
+    expect(letter(cents(2000))?.reason).toBe("Total face value is more than $1,500 per person.")
+  })
+
+  it("explains a missing or invalid face value separately", () => {
+    expect(letter(null)?.reason).toBe("A life insurance face value is missing or invalid.")
+    expect(letter("invalid")?.reason).toBe("A life insurance face value is missing or invalid.")
+  })
+})
+

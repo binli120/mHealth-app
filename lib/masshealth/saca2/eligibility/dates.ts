@@ -5,6 +5,14 @@
 
 import { isRealIsoDate } from "../questions/validate"
 
+/**
+ * The screening day: the caller's local calendar date, as a UTC-midnight Date (which is what every date helper
+ * and effective-dated figure reads). Without this, after ~8 pm US Eastern the UTC date is already tomorrow.
+ */
+export function screeningDay(d: Date = new Date()): Date {
+  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+}
+
 export function isoDay(on: Date): string {
   return on.toISOString().slice(0, 10)
 }

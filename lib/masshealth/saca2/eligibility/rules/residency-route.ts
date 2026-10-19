@@ -5,7 +5,7 @@
 
 import type { EligibilityFinding } from "@/lib/masshealth/types"
 import { finding, outcome } from "../outcome"
-import { determineRoutes } from "../routes"
+import { LONG_TERM_CARE_ROUTES, determineRoutes, hasAnyRoute } from "../routes"
 import type { Saca2EligibilityInputs, Saca2RuleOutcome } from "../types"
 
 const ID = "SACA2_R1_RESIDENCY_ROUTE"
@@ -29,7 +29,7 @@ export function evaluateResidencyRoute(inputs: Saca2EligibilityInputs): Saca2Rul
         finding("SACA2_CHILD_AGE_CONFLICT", "warning", "You said you care for a child under 19, but the children listed are 19 or older. Check these answers."),
       ], { routes })
     }
-    if (routes.includes("nursingFacility")) {
+    if (hasAnyRoute(routes, LONG_TERM_CARE_ROUTES)) {
       return outcome(ID, "review", "A long-term-care applicant who cares for a child under 19 needs review.", [
         finding("SACA2_CAREGIVER_LONG_TERM_CARE", "warning", "You need long-term care and you care for a child under 19. MassHealth decides which application fits; you may be asked to use ACA-3."),
       ], { routes })

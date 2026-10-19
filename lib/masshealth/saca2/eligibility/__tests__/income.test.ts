@@ -109,3 +109,25 @@ describe("evaluateIncome: Person 1 not applying", () => {
     expect(codes(run(inputs))).toContain("SACA2_PERSON1_NOT_APPLYING")
   })
 })
+
+describe("evaluateIncome: household answers and the special limit boundary", () => {
+  it("reviews a married applicant whose spouse's livesWithPerson1 is unanswered", () => {
+    const inputs = makeInputs({
+      persons: [
+        makePerson({ hasIncome: "yes", income: [incomeLine("socialSecurity", 800)] }),
+        makePerson({ index: 1, age: 58, livesWithPerson1: null, hasIncome: "yes", income: [incomeLine("wages", 5000)] }),
+      ],
+      hasSpouse: true,
+      householdSize: 1,
+    })
+    const o = run(inputs)
+    expect(o.verdict).toBe("review")
+    expect(codes(o)).toContain("SACA2_HOUSEHOLD_SIZE_UNKNOWN")
+  })
+
+  it("passes exactly $2,982.00 against the special income limit", () => {
+    const inputs = facilityCouple()
+    inputs.persons[0].income = [incomeLine("pension", 2982)]
+    expect(run(inputs, 0).verdict).toBe("pass")
+  })
+})

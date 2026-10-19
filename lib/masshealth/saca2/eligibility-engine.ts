@@ -8,6 +8,7 @@ import type { EligibilityRuleResult, EligibilityRuleStatus } from "@/lib/masshea
 import { buildSaca2DocumentChecklist } from "./document-checklist"
 import { readSaca2EligibilityInputs } from "./eligibility/inputs"
 import { dollarsToCents } from "./eligibility/money"
+import { screeningDay } from "./eligibility/dates"
 import { finding, worstVerdict } from "./eligibility/outcome"
 import { SACA2_RULE_POLICY, type Saca2RulePolicy } from "./eligibility/policy"
 import { evaluateAssets } from "./eligibility/rules/assets"
@@ -143,7 +144,7 @@ export function evaluateSaca2Eligibility(
   options: Saca2EvaluateOptions = {},
 ): Saca2EligibilityResult {
   try {
-    return evaluate(answers, figures, onDate, options.policy ?? SACA2_RULE_POLICY)
+    return evaluate(answers, figures, screeningDay(onDate), options.policy ?? SACA2_RULE_POLICY)
   } catch {
     return saca2ScreeningFallback()
   }

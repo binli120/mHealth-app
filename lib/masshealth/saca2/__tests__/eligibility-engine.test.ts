@@ -31,6 +31,53 @@ const codes = (r: { findings: Array<{ code: string }> }) => r.findings.map((f) =
 
 afterEach(() => vi.restoreAllMocks())
 
+describe("evaluateSaca2Eligibility: screening day and late-evening dates", () => {
+  const caregiverWithChildBorn = (dob: string) => {
+    const a = completeSingleSenior()
+    a.persons[0].caregiverOfChildUnder19 = "yes"
+    a.persons[0].caregiverChildren = [{ name: "Test Child", dateOfBirth: dob }]
+    return a
+  }
+
+  it("uses the local calendar day, so a 9:30 pm evening is still that day (child turns 19 tomorrow)", () => {
+    const evening = new Date(2026, 9, 19, 21, 30)
+    expect(evaluateSaca2Eligibility(caregiverWithChildBorn("2007-10-20"), SACA2_FIGURES, evening).status).toBe("REDIRECT_ACA3")
+    const noon = new Date(2026, 9, 19, 12, 0)
+    expect(evaluateSaca2Eligibility(caregiverWithChildBorn("2007-10-20"), SACA2_FIGURES, noon).status).toBe("REDIRECT_ACA3")
+    const nextDay = new Date(2026, 9, 20, 9, 0)
+    expect(evaluateSaca2Eligibility(caregiverWithChildBorn("2007-10-20"), SACA2_FIGURES, nextDay).status).toBe("NEEDS_REVIEW")
+  })
+})
+
+describe("evaluateSaca2Eligibility: long-term-care caregiver and missing spouse answers", () => {
+  it("gives review, not a redirect, for an HCBS-waiver caregiver", () => {
+    const a = completeSingleSenior()
+    a.intake.programs.hcbsWaiver = true
+    a.persons[0].caregiverOfChildUnder19 = "yes"
+    a.persons[0].caregiverChildren = [{ name: "Test Child", dateOfBirth: "2015-01-01" }]
+    expect(evaluateSaca2Eligibility(a, SACA2_FIGURES, ON).status).toBe("NEEDS_REVIEW")
+  })
+
+  it("shows no patient-paid amount or allowance when the spouse's facility answer is missing", () => {
+    const a = completeFacilityCouple()
+    a.persons[1].inInstitution = null
+    const r = evaluateSaca2Eligibility(a, SACA2_FIGURES, ON, { policy: ALL_CONFIRMED })
+    expect(r.rules.find((x) => x.id === "SACA2_R7_SPOUSAL_ALLOWANCE")?.verdict).toBe("review")
+    expect(r.estimates.patientPaidAmount).toBeNull()
+    expect(r.estimates.spousalAllowance).toBeNull()
+    expect(codes(r)).toContain("SACA2_PATIENT_PAID_AMOUNT_UNKNOWN")
+  })
+
+  it("is not LIKELY_ELIGIBLE when a Yes asset gate has no rows", () => {
+    const a = completeSingleSenior()
+    a.assets.gates.bankAccounts = "yes"
+    a.assets.bankAccounts = []
+    const r = evaluateSaca2Eligibility(a, SACA2_FIGURES, ON, { policy: ALL_CONFIRMED })
+    expect(r.status).toBe("NEEDS_REVIEW")
+    expect(r.estimates.countableAssets).toBeNull()
+  })
+})
+
 describe("evaluateSaca2Eligibility: gating and status", () => {
   it("as shipped, a clean single senior is NEEDS_REVIEW because rules 3-7 are unconfirmed", () => {
     const r = evaluateSaca2Eligibility(completeSingleSenior(), SACA2_FIGURES, ON)
