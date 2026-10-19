@@ -430,6 +430,18 @@ describe("Saca2Wizard: completion panel", () => {
     return answers
   }
 
+  it("shows the screening estimate and document checklist inside the completion panel", async () => {
+    await renderAtLastStep()
+    await userEvent.click(screen.getByRole("button", { name: "Finish" }))
+    const panel = await screen.findByTestId("saca2-complete")
+    const screening = within(panel).getByTestId("saca2-screening")
+    expect(within(screening).getByTestId("saca2-screening-label")).toHaveTextContent(/screening estimate only/i)
+    expect(within(screening).getByTestId("saca2-screening-status")).toHaveAttribute("data-status", "NEEDS_REVIEW")
+    expect(within(screening).getByText("Current statements for each account")).toBeInTheDocument()
+    // The download's signature note is still the panel's only note.
+    expect(within(panel).getByRole("note")).toHaveTextContent(/sign, and date the form yourself/)
+  })
+
   it("Finish on the last step shows the panel with the download, and Back to editing returns with answers intact", async () => {
     const answers = await renderAtLastStep()
     expect(screen.queryByTestId("saca2-complete")).toBeNull()

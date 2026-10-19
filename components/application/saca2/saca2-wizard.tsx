@@ -26,6 +26,7 @@ import { restorePhiDraftState } from "@/lib/phi-token/restore"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { Saca2Download } from "./saca2-download"
 import { Saca2SaveStatus, type Saca2SaveStatusValue } from "./saca2-save-status"
+import { Saca2ScreeningResult } from "./saca2-screening-result"
 import { Saca2StepForm } from "./saca2-step-form"
 
 interface Saca2WizardProps {
@@ -351,6 +352,7 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
               <p className="text-sm text-muted-foreground">
                 Download the filled SACA-2 to print, sign, and send in. You can also save your progress and finish later.
               </p>
+              <Saca2ScreeningResult answers={state.data} />
               <Saca2Download
                 applicationId={applicationId}
                 wizardState={buildSaca2Snapshot(state)}
