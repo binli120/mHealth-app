@@ -193,6 +193,34 @@ spec/plan records which rules are confirmed.
 Integration: the ACA-3-AP `REDIRECT_SACA2` link and `application-checks.ts` warning
 route to the real SACA-2 flow; SACA-2 emits `REDIRECT_ACA3` the other way.
 
+**As built (plan `docs/superpowers/plans/2026-10-19-saca2-eligibility.md`):**
+- `evaluateSaca2Eligibility(answers, figures = SACA2_FIGURES, onDate = new Date(), { policy })` in
+  `lib/masshealth/saca2/eligibility-engine.ts`; rules in `lib/masshealth/saca2/eligibility/rules/`. Inputs come only from
+  visible answers (`eligibility/inputs.ts`, built on the PDF fill's `createVisibleReader` and `householdHasSpouse`).
+- Result: `{ status, screening_label, findings, rule_results, rules[{ id, label, confirmed, verdict, effective_verdict }],
+  estimates, required_documents, document_checklist, redirect_href? }`. `EligibilityFinding` / `EligibilityRuleResult`
+  are reused unchanged (review and documents render as `"warning"`). No dashboard or social-worker view renders
+  eligibility results today; plan 5 decides any touchpoint.
+- Confirmation: `eligibility/policy.ts` `confirmed` flags, kept in step with `docs/superpowers/saca2-policy-review.md` by
+  a test. Rules 1, 2 and 8 are confirmed (form-derived). Rules 3-7 are unconfirmed, so every non-redirect result is
+  `NEEDS_REVIEW` until a named MassHealth-knowledgeable reviewer signs off (none named yet); confirmed rule 1/2 fails
+  still show.
+- Runs client-side in the completion panel; not persisted (no PHI-free status; plan 5 decides); no server route; never
+  throws (falls back to `NEEDS_REVIEW`).
+- Redirects: SACA-2 -> `/application/type?recommended=aca3`; ACA-3-AP `REDIRECT_SACA2` carries
+  `redirect_href = /application/type?recommended=saca2`; the ACA-3 checks panel links the 65+ warning there. A
+  long-term-care applicant who cares for a child under 19 gets `NEEDS_REVIEW`, not a redirect.
+- Fixtures: the spec §5.3 cases live in `lib/masshealth/saca2/synthetic-cases.ts` (no JSON copy) with expected outcomes.
+- Deviations from this spec: burial items are fully excluded from countable assets (reviewer to check); rule 4 uses
+  fair-market value as an upper bound for the home limit; new figure `lifeInsuranceFaceValuePerPerson: 1500`; a married
+  couple where only one spouse applies gets the $3,000 limit with a note.
+- Deferred to plan 5 (each resolves to `NEEDS_REVIEW`): annuity value, asset owner per spouse, mortgage balance,
+  Medigap/Part D/LTC premium amounts, and the application or admission date for the look-back.
+- Known limits: assisted-living room and board is omitted from shelter costs (owner question); rule 4 checks every
+  listed home against the limit although the limit applies to the principal home; the "Start a SACA-2 application" link
+  label is not flag-aware; `isoDay` in `eligibility/dates.ts` uses the UTC day, so a late-evening US local date can
+  read as the next day.
+
 ### 4.5 Document checklist
 Derived from answers: pay stubs/pension statements; 60 months of account statements
 (facility applicants); deeds, tax bills, loan balances; life-insurance first pages and
@@ -301,7 +329,7 @@ accessibility checks.
 | 0 | `types`, step registry (`schema.ts`), `visibility`, `figures-2026` + staleness guard, synthetic cases, and a guard so SACA-2 drafts show a notice instead of the ACA-3 wizard (plan `2026-10-13-saca2-foundation.md`). Question-level schema and the `saca2_enabled` flag move to Phase 1, where the renderer and the wizard they gate are built. |
 | 1 | `Saca2Wizard`, step renderer, question model/validation, flag, PHI-safe save/resume for: intake, Person 1/2, AI/AN, previous bills, who-signs (plan `2026-10-13-saca2-wizard-core.md`). **1b** is split into three plans: **1b-1** (plan `2026-10-14-saca2-remaining-steps.md`: previous-bills detail, Step 5 assets, Steps 6–7 health insurance and HRAs, Steps 8–9 PCA and additional coverage, Step 10 signer details), **1b-2** (plan `2026-10-14-saca2-supplements.md`: Supplements A–D and the ARD-1122 / IRS 4506 attachment data — done once merged), and **1b-3** (plan `2026-10-16-saca2-person-details.md`: remaining Person-block questions: optional demographics, tax/Health Connector, accommodations, pregnancy/foster care, deductions, rental/one-time/seasonal/self-employment income — done once merged), and the **pre-flag gate** (plan `2026-10-17-saca2-flag-gate.md`: the gate before the flag — done once merged). The flag stays off until 1b-3 ships and the pre-flag gate items from the Phase 1 final review are done. |
 | 2 | Field inventory, `pdf-field-map`, `pdf-fill`, `/api/forms/saca2/fill`, template hash, coverage test, wizard download (plan `2026-10-18-saca2-pdf-fill.md` — done once merged) |
-| 3 | `eligibility-engine`, `document-checklist`, redirects, results panel; 130 CMR confirmation of rules 3–7 |
+| 3 | `eligibility-engine`, `document-checklist`, redirects, results panel (plan `2026-10-19-saca2-eligibility.md` — done once merged); 130 CMR confirmation of rules 3–7 recorded in `docs/superpowers/saca2-policy-review.md` (open until the named reviewer signs off) |
 | 4 | 6-language strings and reference translations |
 | 5 | Chat intake driver |
 | 6 | Social-worker, dashboard, mobile touchpoints; Playwright e2e + a11y; docs updates; flag rollout |

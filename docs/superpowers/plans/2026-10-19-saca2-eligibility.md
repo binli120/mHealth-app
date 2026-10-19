@@ -3964,7 +3964,7 @@ const NOT_APPLICABLE_LTC = {
 
 (c) Make the builders answer the gates the wizard would show. Edit each builder as follows and leave every other line as it is:
 - `singleSenior()`: add `a.intake.programs.masshealthHsn = true`. In the `person({...})` call add `hasIncome: "yes"` and `hasMedicareOrSsiOrSsdi: "yes"`, and change the Social Security amount from `1400` to `1250`. After `a.assets.bankAccounts = …` add `answerGates(a, ["bankAccounts"])`.
-- `spouseInNursingFacility()`: in Walter's `person({...})` add `hasIncome: "yes"` and `hasMedicareOrSsiOrSsdi: "yes"`. In Dorothy's add `hasIncome: "yes"`. Before `return a` add:
+- `spouseInNursingFacility()`: in Walter's `person({...})` add `hasIncome: "yes"` and `hasMedicareOrSsiOrSsdi: "yes"`. In Dorothy's add `hasIncome: "yes"` and `inInstitution: "no"` (the non-applying spouse must answer it, or the spouse-institution check reads it as unknown). Before `return a` add:
 
 ```ts
   a.supplements.a.applyingHcbsWaiver = "no"

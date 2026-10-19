@@ -18,6 +18,8 @@ The wizard is hidden behind `SACA2_ENABLED` (read per request by `GET /api/confi
 - [ ] Social-worker edit page (`/social-worker/patients/<patientId>/applications/<applicationId>`) for a SACA-2 application shows the SACA-2 notice and no ACA-3 form.
 - [ ] A phone hand-off (`POST /api/handoff`) for a SACA-2 application is refused ("SACA-2 applications cannot be continued on a phone yet.").
 - [ ] An ACA-3 write to a SACA-2 draft returns HTTP 409 with body `{ ok: false, error: <message> }` (there is no `code` field).
+- [ ] Finish a SACA-2 draft: the panel shows "Screening estimate", the "Screening estimate only" label, a status, and a
+      "Documents to gather" list; a 65+ applicant who cares for a child under 19 sees "Go to the ACA-3 application".
 
 ## Verify the PDF download (smoke test)
 
@@ -35,7 +37,10 @@ The wizard is hidden behind `SACA2_ENABLED` (read per request by `GET /api/confi
 
 ## Known limits at flag-on
 
-- The PDF download ships with the wizard; the eligibility engine (plan 4) is not shipped yet.
+- The completion panel shows a **screening estimate** and a document checklist. Rules 3–7 are not yet confirmed against
+  130 CMR 519–520 (`docs/superpowers/saca2-policy-review.md`), so every result other than the ACA-3 redirect (and confirmed rule 1/2 fails) reads
+  "MassHealth needs to review your answers" until the named reviewer signs off. Decide before flag-on whether that is acceptable.
+- Deferred to plan 5: annuity value, asset owner per spouse, mortgage balance, Medigap/Part D/LTC premium amounts and the application or admission date are not asked, so those cases resolve to review. Assisted-living room and board is omitted from shelter costs (owner question); rule 4 checks every listed home against the limit; the "Start a SACA-2 application" link label is not flag-aware; the engine date uses the UTC day. No screening status is persisted.
 - Open: how a social worker acting for a patient should receive the PDF (the download works with the acting-for header, but the delivery flow is undecided).
 - Open: MassHealth confirmation that form version `2026-08` is current (spec §7.4).
 - Deferred minors (see "What comes next" in `docs/superpowers/plans/2026-10-17-saca2-flag-gate.md`): Supplement A is sticky once an intro question is answered Yes; caregiver-children list sits far from its gate; old `rental` income rows load as "Choose one"; cross-field step errors clear only on Next; terse year error; due-date sanity check.
