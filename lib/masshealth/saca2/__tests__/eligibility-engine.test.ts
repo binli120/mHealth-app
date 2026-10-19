@@ -3,7 +3,7 @@
  * @email: blee@comura.ai
  */
 
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import path from "node:path"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
@@ -135,32 +135,115 @@ describe("evaluateSaca2Eligibility: PHI", () => {
   })
 })
 
-describe("client-bundle safety", () => {
-  const FILES = [
-    "lib/masshealth/saca2/eligibility-engine.ts",
-    "lib/masshealth/saca2/document-checklist.ts",
-    "lib/masshealth/saca2/eligibility/inputs.ts",
-    "lib/masshealth/saca2/eligibility/money.ts",
-    "lib/masshealth/saca2/eligibility/dates.ts",
-    "lib/masshealth/saca2/eligibility/routes.ts",
-    "lib/masshealth/saca2/eligibility/income-sum.ts",
-    "lib/masshealth/saca2/eligibility/policy.ts",
-    "lib/masshealth/saca2/eligibility/rules/assets.ts",
-    "lib/masshealth/saca2/eligibility/rules/citizenship.ts",
-    "lib/masshealth/saca2/eligibility/rules/home-equity.ts",
-    "lib/masshealth/saca2/eligibility/rules/income.ts",
-    "lib/masshealth/saca2/eligibility/rules/medicare.ts",
-    "lib/masshealth/saca2/eligibility/rules/residency-route.ts",
-    "lib/masshealth/saca2/eligibility/rules/spousal-allowance.ts",
-    "lib/masshealth/saca2/eligibility/rules/transfers.ts",
-    "lib/masshealth/saca2/pdf/derived-assets.ts",
-    "lib/masshealth/saca2/pdf/visible-reader.ts",
-  ]
-  const FORBIDDEN = /^(pdf-lib|server-only|node:.*|.*\/pdf-fill|.*\/template)$/
+describe("evaluateSaca2Eligibility: default-policy and precedence", () => {
+  it("under the shipped policy the complete fixtures never reach LIKELY_ELIGIBLE or PENDING_DOCUMENTS", () => {
+    for (const build of [completeSingleSenior, completeFacilityCouple, completeRichHousehold, completeHomeWithAllSupplements]) {
+      expect(["NEEDS_REVIEW", "LIKELY_INELIGIBLE", "REDIRECT_ACA3"]).toContain(evaluateSaca2Eligibility(build(), SACA2_FIGURES, ON).status)
+    }
+    expect(evaluateSaca2Eligibility(completeSingleSenior(), SACA2_FIGURES, ON).status).toBe("NEEDS_REVIEW")
+  })
 
-  it.each(FILES)("%s has no runtime import of server-only modules", (file) => {
-    const source = readFileSync(path.join(process.cwd(), file), "utf8")
-    const runtimeImports = [...source.matchAll(/import\s+(?!type\b)[^"]*?from\s+"([^"]+)"/g)].map((m) => m[1])
-    expect(runtimeImports.filter((specifier) => FORBIDDEN.test(specifier))).toEqual([])
+  it("with every rule confirmed, a citizenship-proof need alone gives PENDING_DOCUMENTS", () => {
+    const a = completeSingleSenior()
+    a.persons[0].hasMedicareOrSsiOrSsdi = "no"
+    const r = evaluateSaca2Eligibility(a, SACA2_FIGURES, ON, { policy: ALL_CONFIRMED })
+    expect(r.rules.find((x) => x.id === "SACA2_R2_CITIZENSHIP")?.verdict).toBe("documents")
+    expect(r.status).toBe("PENDING_DOCUMENTS")
+  })
+
+  it("a redirect beats a simultaneous fail", () => {
+    const a = completeSingleSenior()
+    a.persons[0].caregiverOfChildUnder19 = "yes"
+    a.persons[0].caregiverChildren = [{ name: "Test Child", dateOfBirth: "2015-01-01" }]
+    a.assets.gates.bankAccounts = "yes"
+    a.assets.bankAccounts = [{ ownerName: "Edna Testcase", accountType: "savings", institution: "Example Bank", accountNumber: "1", currentBalance: 90000, balanceOnAdmissionDate: null, open: true, closedOn: null, balanceWhenClosed: null }]
+    const r = evaluateSaca2Eligibility(a, SACA2_FIGURES, ON, { policy: ALL_CONFIRMED })
+    expect(r.rules.find((x) => x.id === "SACA2_R3_ASSETS")?.verdict).toBe("fail")
+    expect(r.status).toBe("REDIRECT_ACA3")
+  })
+})
+
+/** Specifiers of every runtime import in `source`: skips `import type` / `export type`, includes side-effect, re-export and dynamic forms. */
+export function scanRuntimeImports(source: string): string[] {
+  const specs: string[] = []
+  const statement = /\b(import|export)\b(\s+type\b)?([^;"'`]*?)\bfrom\s*(["'])([^"']+)\4/g
+  for (const m of source.matchAll(statement)) {
+    if (m[2]) continue
+    if (m[1] === "export" && !/[{*]/.test(m[3])) continue
+    specs.push(m[5])
+  }
+  for (const m of source.matchAll(/(?:^|[;\n])\s*import\s*(["'])([^"']+)\1/g)) specs.push(m[2])
+  for (const m of source.matchAll(/\bimport\s*\(\s*(["'])([^"']+)\1\s*\)/g)) specs.push(m[2])
+  return specs
+}
+
+describe("scanRuntimeImports", () => {
+  it.each([
+    ['import { a } from "x"', ["x"]],
+    ["import a from 'x'", ["x"]],
+    ['import * as a from "x"', ["x"]],
+    ['import a, { b } from "x"', ["x"]],
+    ['import "server-only"', ["server-only"]],
+    ["import 'server-only'", ["server-only"]],
+    ['export { a } from "x"', ["x"]],
+    ['export * from "x"', ["x"]],
+    ['const m = await import("x")', ["x"]],
+    ['import type { A } from "x"', []],
+    ['export type { A } from "x"', []],
+    ['import {\n  a,\n  b,\n} from "x"\nimport "y"', ["x", "y"]],
+  ])("%s", (source, expected) => {
+    expect(scanRuntimeImports(source)).toEqual(expected)
+  })
+})
+
+describe("client-bundle safety", () => {
+  const ROOT = process.cwd()
+  const ENTRY = "lib/masshealth/saca2/eligibility-engine.ts"
+  const FORBIDDEN = /^(pdf-lib|server-only|node:.*)$|(^|\/)pdf\/(pdf-fill|template)$|^\.\/(pdf-fill|template)$/
+
+  function resolveFile(specifier: string, from: string): string | null {
+    let base: string
+    if (specifier.startsWith("@/")) base = specifier.slice(2)
+    else if (specifier.startsWith(".")) base = path.posix.join(path.posix.dirname(from), specifier)
+    else return null
+    for (const candidate of [`${base}.ts`, `${base}.tsx`, `${base}/index.ts`, `${base}/index.tsx`, base]) {
+      if (/\.tsx?$/.test(candidate) && existsSync(path.join(ROOT, candidate))) return candidate
+    }
+    throw new Error(`Unresolved import ${specifier} in ${from}`)
+  }
+
+  function walk() {
+    const visited = new Set<string>()
+    const offenders: string[] = []
+    const queue = [ENTRY]
+    while (queue.length) {
+      const file = queue.pop() as string
+      if (visited.has(file)) continue
+      visited.add(file)
+      for (const specifier of scanRuntimeImports(readFileSync(path.join(ROOT, file), "utf8"))) {
+        if (FORBIDDEN.test(specifier)) offenders.push(`${file} -> ${specifier}`)
+        const next = resolveFile(specifier, file)
+        if (next && !visited.has(next)) queue.push(next)
+      }
+    }
+    return { visited, offenders }
+  }
+
+  it("walks the real import graph from the engine", () => {
+    const { visited } = walk()
+    expect(visited.size).toBeGreaterThan(30)
+    expect(visited).toContain("lib/applications/navigation.ts")
+    expect(visited).toContain("lib/masshealth/saca2/figures-2026.ts")
+  })
+
+  it("has no runtime import of server-only modules anywhere in the graph", () => {
+    expect(walk().offenders).toEqual([])
+  })
+
+  it("flags forbidden specifiers", () => {
+    for (const bad of ["pdf-lib", "server-only", "node:fs", "@/lib/masshealth/saca2/pdf/pdf-fill", "./pdf/template", "../pdf/pdf-fill"]) {
+      expect(FORBIDDEN.test(bad)).toBe(true)
+    }
+    expect(FORBIDDEN.test("react")).toBe(false)
   })
 })
