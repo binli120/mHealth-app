@@ -91,11 +91,12 @@ function readPerson(reader: VisibleReader, index: 0 | 1, on: Date): Saca2PersonI
   }
 }
 
-function readSuppA(reader: VisibleReader, answers: Saca2Answers, on: Date): Saca2SuppAInputs | null {
+function readSuppA(reader: VisibleReader, answers: Saca2Answers, on: Date, hasSpouse: boolean): Saca2SuppAInputs | null {
   if (!isStepVisible("suppA", answers, on)) return null
   const s = rootView(reader, "suppA")
   const a = (path: string) => s.answer(`supplements.a.${path}`)
-  const expensesShown = reader.isVisible({ kind: "answer", stepId: "suppA", path: "supplements.a.spouseMonthlyExpenses.paysHeat" })
+  // The wizard gates these on Person 2's step, which stale data keeps open; spouse-side values need a real spouse.
+  const expensesShown = hasSpouse && reader.isVisible({ kind: "answer", stepId: "suppA", path: "supplements.a.spouseMonthlyExpenses.paysHeat" })
   const livesInHome = (key: string) => a(`home.${key}.livesInHome`) === "yes"
   const filed = a("taxReturnsFiled")
   const HOMES = "supplements.a.home.properties"
@@ -116,7 +117,7 @@ function readSuppA(reader: VisibleReader, answers: Saca2Answers, on: Date): Saca
           paysUtilities: yesNo(a("spouseMonthlyExpenses.paysUtilities")),
         }
       : null,
-    familyAtHome: yesNo(a("familyAtHome.hasFamily")),
+    familyAtHome: hasSpouse ? yesNo(a("familyAtHome.hasFamily")) : null,
     transferAnswers: Object.fromEntries(
       SACA2_TRANSFER_KEYS.map((key) => [key, yesNo(a(`transferAnswers.${key}`))]),
     ) as Record<Saca2TransferKey, YesNo | null>,
@@ -210,7 +211,7 @@ export function readSaca2EligibilityInputs(answers: Saca2Answers, on: Date): Sac
       disabledAndWorkingQualifies: yesNo(intake.answer("screening.disabledAndWorkingQualifies")),
       commonHealthTenYears: yesNo(intake.answer("screening.commonHealthTenYears")),
     },
-    suppA: readSuppA(reader, answers, on),
+    suppA: readSuppA(reader, answers, on, hasSpouse),
     assets: readAssets(reader),
     health: {
       hasMedicare: health.answer("health.hasMedicare") === true,

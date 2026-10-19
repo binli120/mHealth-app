@@ -74,10 +74,21 @@ describe("readSaca2EligibilityInputs: stale hidden answers are ignored", () => {
   it("does not treat a remaining Person 2 as a spouse after married -> No", () => {
     const a = completeFacilityCouple()
     a.persons[0].isLegallyMarried = "no"
+    a.persons[1].livesWithPerson1 = "yes" // stale: must not grow the household
     const inputs = readSaca2EligibilityInputs(a, ON)
     expect(inputs.persons).toHaveLength(2) // Person 2 still holds data, so the step stays
     expect(inputs.hasSpouse).toBe(false)
     expect(inputs.householdSize).toBe(1)
+  })
+
+  it("drops spouse-side Supplement A values after married -> No (stale Person 2 data left in place)", () => {
+    const a = completeFacilityCouple()
+    a.persons[0].isLegallyMarried = "no"
+    const inputs = readSaca2EligibilityInputs(a, ON)
+    expect(inputs.hasSpouse).toBe(false)
+    expect(inputs.suppA).not.toBeNull()
+    expect(inputs.suppA?.spouseExpenses).toBeNull()
+    expect(inputs.suppA?.familyAtHome).toBeNull()
   })
 
   it("does not treat Person 2 as a spouse when Person 1 is not applying (married question hidden)", () => {
