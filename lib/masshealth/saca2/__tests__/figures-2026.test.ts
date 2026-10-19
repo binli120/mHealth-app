@@ -23,6 +23,7 @@ describe("SACA2_FIGURES (2026)", () => {
     expect(SACA2_FIGURES.nursingFacilityDailyCost).toBe(450)
     expect(SACA2_FIGURES.medicarePartBPremiumMonthly).toBe(202.9)
     expect(SACA2_FIGURES.lookBackMonths).toBe(60)
+    expect(SACA2_FIGURES.lifeInsuranceFaceValuePerPerson).toBe(1500)
   })
 
   it("resolves mid-year effective-dated figures", () => {

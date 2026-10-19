@@ -70,6 +70,11 @@ export const SACA2_FIGURES = {
   /** Average daily cost of nursing-facility services (transfer-penalty divisor). */
   nursingFacilityDailyCost: 450,
   medicarePartBPremiumMonthly: 202.9,
+  /**
+   * Life insurance: a cash-surrender-value letter is needed (and the cash value counts) when total face value
+   * is more than this per person. Source: SACA-2 form Step 5 (life insurance) instructions.
+   */
+  lifeInsuranceFaceValuePerPerson: 1500,
   lookBackMonths: 60,
 } as const
 
