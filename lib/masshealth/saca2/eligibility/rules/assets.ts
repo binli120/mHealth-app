@@ -21,17 +21,19 @@ const ID = "SACA2_R3_ASSETS"
 function vehicleEquities(vehicles: Saca2AssetInputs["vehicles"]): AmountInput[] {
   return vehicles.map((v) => {
     if (v.fairMarketValue === null || v.fairMarketValue === INVALID_AMOUNT) return v.fairMarketValue
-    if (v.amountOwed === INVALID_AMOUNT) return INVALID_AMOUNT
-    return Math.max(0, v.fairMarketValue - (v.amountOwed ?? 0))
+    if (v.amountOwed === null || v.amountOwed === INVALID_AMOUNT) return v.amountOwed
+    return Math.max(0, v.fairMarketValue - v.amountOwed)
   })
 }
 
 /** The home is not counted unless a facility applicant will not return and no protected relative lives there. */
-function isHomeExcluded(inputs: Saca2EligibilityInputs): boolean {
+function homeStatus(inputs: Saca2EligibilityInputs): "excluded" | "counted" | "unknown" {
   const s = inputs.suppA
-  if (s === null) return true
+  if (s === null) return "excluded"
   const o = s.occupants
-  return s.intendsToReturnHome === "yes" || o.spouse || o.childUnder21 || o.disabledChild || o.dependentRelative
+  if (s.intendsToReturnHome === "yes" || o.spouse || o.childUnder21 || o.disabledChild || o.dependentRelative) return "excluded"
+  // Unanswered occupant questions read as false (Task 3 reader), so only the return-home answer can be checked for missing.
+  return s.intendsToReturnHome === null ? "unknown" : "counted"
 }
 
 /** Rule 3 (UNCONFIRMED): countable assets against $2,000 / $3,000, or the community-spouse band. */
@@ -51,7 +53,9 @@ export function evaluateAssets(inputs: Saca2EligibilityInputs, figures: Saca2Fig
   for (const account of assets.bankAccounts) if (account.open) counted.push(account.balance)
   counted.push(...assets.otherRealEstate, ...assets.securities.map((holding) => holding.value))
 
-  if (assets.primaryResidence.length > 0 && institutional && !isHomeExcluded(inputs)) {
+  const home = assets.primaryResidence.length > 0 && institutional ? homeStatus(inputs) : "excluded"
+  if (home === "unknown") flag("SACA2_HOME_ANSWER_MISSING", "It is not answered whether you plan to return home, so this estimate does not count your home. MassHealth reviews it.")
+  if (home === "counted") {
     counted.push(...assets.primaryResidence)
     findings.push(finding("SACA2_HOME_COUNTED", "warning", "Your home may count as an asset because you do not plan to return to it and no spouse or dependent relative lives there."))
   }
@@ -79,7 +83,10 @@ export function evaluateAssets(inputs: Saca2EligibilityInputs, figures: Saca2Fig
   let verdict: Saca2RuleVerdict
   let limitCents: number | null = null
 
-  if (institutional && inputs.hasSpouse && spouse?.inInstitution !== "yes") {
+  if (institutional && inputs.hasSpouse && spouse?.inInstitution == null) {
+    verdict = "review"
+    findings.push(finding("SACA2_SPOUSE_FACILITY_UNKNOWN", "warning", "It is not answered whether your spouse lives in a facility. MassHealth reviews assets."))
+  } else if (institutional && inputs.hasSpouse && spouse?.inInstitution !== "yes") {
     const { min, max } = figures.communitySpouseResource
     const keep = dollarsToCents(figures.assetLimit.individual)
     estimates.communitySpouseResource = { min, max }

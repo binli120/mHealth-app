@@ -137,8 +137,43 @@ describe("evaluateAssets: couples", () => {
   it("doubles the life-insurance threshold with a spouse", () => {
     const o = run(communityCouple(true, 0))
     expect(o.verdict).toBe("pass")
+    expect(o.estimates.countableAssets).toBe(0)
     const withPolicy = communityCouple(true, 0)
     withPolicy.assets.lifeInsurance = [{ faceValue: cents(3000), cashSurrenderValue: cents(2500) }]
     expect(run(withPolicy).estimates.countableAssets).toBe(0)
+    withPolicy.assets.lifeInsurance = [{ faceValue: cents(3000.01), cashSurrenderValue: cents(2500) }]
+    expect(run(withPolicy).estimates.countableAssets).toBe(2500)
+  })
+})
+
+describe("evaluateAssets: missing answers never add assets", () => {
+  it("does not count a vehicle whose loan balance is unanswered, and reviews", () => {
+    const o = run(single({ vehicles: [
+      { fairMarketValue: cents(9000), amountOwed: null },
+      { fairMarketValue: cents(4000), amountOwed: cents(0) },
+    ] }))
+    expect(o.verdict).toBe("review")
+    expect(o.estimates.countableAssets).toBe(0)
+    expect(codes(o)).toContain("SACA2_ASSET_VALUE_MISSING")
+  })
+
+  it("does not count the home and reviews when intent to return is unanswered", () => {
+    const o = run(makeInputs({
+      persons: [makePerson({ inInstitution: "yes" })],
+      programs: { masshealthHsn: false, longTermCare: true, hcbsWaiver: false },
+      suppA: makeSuppA({ needsNursingFacility: "yes", intendsToReturnHome: null }),
+      assets: makeAssets({ primaryResidence: [cents(300000)] }),
+    }))
+    expect(o.verdict).toBe("review")
+    expect(o.estimates.countableAssets).toBe(0)
+    expect(codes(o)).toContain("SACA2_HOME_ANSWER_MISSING")
+  })
+
+  it("reviews when the spouse's facility answer is unanswered", () => {
+    const i = facilityCouple()
+    i.persons[1].inInstitution = null
+    const o = run(i)
+    expect(o.verdict).toBe("review")
+    expect(codes(o)).toContain("SACA2_SPOUSE_FACILITY_UNKNOWN")
   })
 })
