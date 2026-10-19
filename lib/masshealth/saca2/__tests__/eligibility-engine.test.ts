@@ -5,6 +5,7 @@
 
 import { existsSync, readFileSync } from "node:fs"
 import path from "node:path"
+import ts from "typescript"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   SACA2_SCREENING_LABEL,
@@ -163,17 +164,36 @@ describe("evaluateSaca2Eligibility: default-policy and precedence", () => {
   })
 })
 
-/** Specifiers of every runtime import in `source`: skips `import type` / `export type`, includes side-effect, re-export and dynamic forms. */
+/** Specifiers of every runtime import in `source` (TypeScript AST): skips whole-statement type-only imports/exports. */
 export function scanRuntimeImports(source: string): string[] {
   const specs: string[] = []
-  const statement = /\b(import|export)\b(\s+type\b)?([^;"'`]*?)\bfrom\s*(["'])([^"']+)\4/g
-  for (const m of source.matchAll(statement)) {
-    if (m[2]) continue
-    if (m[1] === "export" && !/[{*]/.test(m[3])) continue
-    specs.push(m[5])
+  const file = ts.createSourceFile("scan.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  const visit = (node: ts.Node): void => {
+    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
+      const clause = node.importClause
+      let runtime = true
+      if (clause) {
+        if (clause.isTypeOnly) runtime = false
+        else if (!clause.name && clause.namedBindings && ts.isNamedImports(clause.namedBindings)) {
+          const els = clause.namedBindings.elements
+          runtime = els.length === 0 || els.some((el) => !el.isTypeOnly)
+        }
+      }
+      if (runtime) specs.push(node.moduleSpecifier.text)
+    } else if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+      let runtime = !node.isTypeOnly
+      if (runtime && node.exportClause && ts.isNamedExports(node.exportClause)) {
+        const els = node.exportClause.elements
+        runtime = els.length === 0 || els.some((el) => !el.isTypeOnly)
+      }
+      if (runtime) specs.push(node.moduleSpecifier.text)
+    } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+      const arg = node.arguments[0]
+      if (arg && ts.isStringLiteralLike(arg)) specs.push(arg.text)
+    }
+    ts.forEachChild(node, visit)
   }
-  for (const m of source.matchAll(/(?:^|[;\n])\s*import\s*(["'])([^"']+)\1/g)) specs.push(m[2])
-  for (const m of source.matchAll(/\bimport\s*\(\s*(["'])([^"']+)\1\s*\)/g)) specs.push(m[2])
+  visit(file)
   return specs
 }
 
@@ -191,6 +211,12 @@ describe("scanRuntimeImports", () => {
     ['import type { A } from "x"', []],
     ['export type { A } from "x"', []],
     ['import {\n  a,\n  b,\n} from "x"\nimport "y"', ["x", "y"]],
+    ['export type A = { a: number }\nexport { b } from "./pdf/pdf-fill"', ["./pdf/pdf-fill"]],
+    ['import x from "a"\nexport type T = number\nimport { q } from "b"', ["a", "b"]],
+    ['export interface I { a: number }\nimport { q } from "b"', ["b"]],
+    ['import { type X, y } from "m"', ["m"]],
+    ['import { type X } from "m"', []],
+    ['import type X, { y } from "m"', []],
   ])("%s", (source, expected) => {
     expect(scanRuntimeImports(source)).toEqual(expected)
   })
@@ -212,6 +238,8 @@ describe("client-bundle safety", () => {
     throw new Error(`Unresolved import ${specifier} in ${from}`)
   }
 
+  const FORBIDDEN_FILE = /^lib\/masshealth\/saca2\/pdf\/(pdf-fill|template)(\.[a-z]+|\/index\.[a-z]+)?$/
+
   function walk() {
     const visited = new Set<string>()
     const offenders: string[] = []
@@ -223,6 +251,7 @@ describe("client-bundle safety", () => {
       for (const specifier of scanRuntimeImports(readFileSync(path.join(ROOT, file), "utf8"))) {
         if (FORBIDDEN.test(specifier)) offenders.push(`${file} -> ${specifier}`)
         const next = resolveFile(specifier, file)
+        if (next && FORBIDDEN_FILE.test(next)) offenders.push(`${file} -> ${next}`)
         if (next && !visited.has(next)) queue.push(next)
       }
     }
@@ -245,5 +274,8 @@ describe("client-bundle safety", () => {
       expect(FORBIDDEN.test(bad)).toBe(true)
     }
     expect(FORBIDDEN.test("react")).toBe(false)
+    expect(FORBIDDEN_FILE.test("lib/masshealth/saca2/pdf/pdf-fill.ts")).toBe(true)
+    expect(FORBIDDEN_FILE.test("lib/masshealth/saca2/pdf/template/index.ts")).toBe(true)
+    expect(FORBIDDEN_FILE.test("lib/masshealth/saca2/pdf/visible-reader.ts")).toBe(false)
   })
 })
