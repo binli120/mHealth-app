@@ -35,6 +35,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install PDF tools for the SACA-2 PDF tests
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils ghostscript
+
       - name: Run eligibility regression sweep
         run: pnpm test:eligibility-cases
         env:

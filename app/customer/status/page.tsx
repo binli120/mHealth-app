@@ -9,6 +9,7 @@ import { useCallback, useMemo, useState } from "react"
 import { useAsyncData } from "@/hooks/use-async-data"
 import { useDebounce } from "@/hooks/use-debounce"
 import { getMessage } from "@/lib/i18n/messages"
+import { abortAfter } from "@/lib/utils/abort-after"
 import { formatDate } from "@/lib/utils/format"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -44,12 +45,19 @@ export default function StatusListPage() {
     if (statusFilter !== "all") params.set("status", statusFilter)
     if (debouncedSearch.trim()) params.set("q", debouncedSearch.trim())
 
-    const response = await authenticatedFetch(`/api/applications?${params.toString()}`, {
-      method: "GET",
-      cache: "no-store",
-      signal: AbortSignal.timeout(10_000),
-    })
-    const payload = (await response.json().catch(() => ({}))) as ApplicationListApiResponse
+    const timeout = abortAfter(10_000)
+    let response: Response
+    let payload: ApplicationListApiResponse
+    try {
+      response = await authenticatedFetch(`/api/applications?${params.toString()}`, {
+        method: "GET",
+        cache: "no-store",
+        signal: timeout.signal,
+      })
+      payload = (await response.json().catch(() => ({}))) as ApplicationListApiResponse
+    } finally {
+      timeout.cancel()
+    }
     if (!response.ok || !payload.ok) throw new Error(payload.error || getMessage(language, "dashboardLoadingApps"))
     return payload.records ?? []
   }, [debouncedSearch, language, statusFilter])

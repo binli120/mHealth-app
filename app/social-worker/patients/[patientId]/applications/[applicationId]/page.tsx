@@ -16,6 +16,8 @@ import { useState } from "react"
 import { useParams } from "next/navigation"
 import { FormWizard } from "@/components/application/aca3/form-wizard"
 import { IntakeChat } from "@/components/application/aca3/intake-chat"
+import { Saca2UnavailableNotice } from "@/components/application/saca2/saca2-unavailable-notice"
+import { useIsSaca2Application } from "@/components/application/saca2/use-is-saca2-application"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { ApplicationEntryMode } from "@/lib/applications/types"
 import { UserRound } from "lucide-react"
@@ -26,6 +28,50 @@ export default function SWEditApplicationPage() {
   const applicationId = params.applicationId as string
   const [entryMode, setEntryMode] = useState<ApplicationEntryMode>("chat")
   const [hasOpenedChat, setHasOpenedChat] = useState(true)
+  // Must run before any early return. "" = Redux type unknown, so the server draft is checked.
+  // Bumped by "Try again" to re-run a failed lookup without reloading the page (and the SW session with it).
+  const [lookupRetryKey, setLookupRetryKey] = useState(0)
+  const saca2Lookup = useIsSaca2Application(applicationId, "", patientId, lookupRetryKey)
+
+  if (saca2Lookup === "error") {
+    return (
+      <div className="container mx-auto px-4 py-6">
+        <section
+          data-testid="application-lookup-error"
+          role="alert"
+          className="space-y-3 rounded-lg border bg-card p-6 text-card-foreground"
+        >
+          <h2 className="text-lg font-semibold">We couldn&apos;t load this application</h2>
+          <p className="text-sm text-muted-foreground">
+            Check the connection and try again. The saved answers have not been changed.
+          </p>
+          <button
+            type="button"
+            className="rounded-md border px-3 py-1.5 text-sm font-medium"
+            onClick={() => setLookupRetryKey((key) => key + 1)}
+          >
+            Try again
+          </button>
+        </section>
+      </div>
+    )
+  }
+  if (saca2Lookup === "saca2") {
+    return (
+      <div className="container mx-auto px-4 py-6">
+        <Saca2UnavailableNotice variant="social-worker" />
+      </div>
+    )
+  }
+  if (saca2Lookup === "unknown") {
+    return (
+      <div className="container mx-auto px-4 py-6">
+        <p data-testid="sw-application-loading" className="text-sm text-muted-foreground">
+          Loading application…
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="container mx-auto space-y-4 px-4 py-6">

@@ -25,7 +25,6 @@ import {
   deserializeToken,
 } from "@/lib/phi-token/token"
 import { restorePhiDraftState } from "@/lib/phi-token/restore"
-import type { WizardState } from "@/components/application/aca3/types"
 
 // ─── Save & Exit dialog ───────────────────────────────────────────────────────
 
@@ -34,9 +33,14 @@ type SavePhase = "confirm" | "saving" | "done" | "error"
 interface PhiSaveExitDialogProps {
   open: boolean
   applicationId: string
-  wizardState: WizardState
+  /** Any wizard state with a `data` object (ACA-3 WizardState or a SACA-2 snapshot). */
+  wizardState: object
   actingForPatientId?: string
-  onBeforeSecureSave?: () => Promise<boolean>
+  /**
+   * Runs before the encrypted PHI upload. `false` / `{ ok: false }` stops the save with an error.
+   * `{ ok: true, warning }` proceeds and shows the warning on the final screen.
+   */
+  onBeforeSecureSave?: () => Promise<boolean | { ok: boolean; warning?: string }>
   onExit: () => void
   onCancel: () => void
 }
@@ -54,14 +58,18 @@ export function PhiSaveExitDialog({
   const [errorMessage, setErrorMessage] = useState("")
   const [backupToken, setBackupToken] = useState("")
   const [copied, setCopied] = useState(false)
+  const [warning, setWarning] = useState("")
 
   const handleSave = useCallback(async () => {
     setPhase("saving")
     setErrorMessage("")
+    setWarning("")
 
     try {
       if (onBeforeSecureSave) {
-        const saved = await onBeforeSecureSave()
+        const outcome = await onBeforeSecureSave()
+        const saved = typeof outcome === "boolean" ? outcome : outcome.ok
+        if (typeof outcome === "object" && outcome.ok && outcome.warning) setWarning(outcome.warning)
         if (!saved) {
           throw new Error("Unable to save application progress. Please try again.")
         }
@@ -180,10 +188,17 @@ export function PhiSaveExitDialog({
             <Alert className="bg-green-50 border-green-200">
               <CheckCircle2 className="h-4 w-4 text-green-700" />
               <AlertDescription className="text-green-800 text-sm ml-2">
-                Saved! Your progress will be restored automatically when you sign in and open this
-                application.
+                {warning
+                  ? "Your answers are secured."
+                  : "Saved! Your progress will be restored automatically when you sign in and open this application."}
               </AlertDescription>
             </Alert>
+
+            {warning ? (
+              <p role="alert" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                {warning}
+              </p>
+            ) : null}
 
             <details className="text-xs text-muted-foreground">
               <summary className="cursor-pointer select-none hover:text-foreground">
