@@ -208,13 +208,14 @@ describe("Saca2Wizard: hydration and PHI resume", () => {
     expect(await screen.findByTestId("resume-prompt")).toBeInTheDocument()
   })
 
-  it("starts a fresh form when the draft request fails or the draft is from another schema version", async () => {
+  it("blocks with a retryable error when the draft request fails, and starts fresh when the draft is from another schema version", async () => {
     mocks.authenticatedFetch.mockImplementation(async (_url: string, init?: { method?: string }) => {
       if (init?.method === "PUT") return ok({ ok: true })
       throw new Error("offline")
     })
     const failed = render(<Saca2Wizard applicationId={APP_ID} />)
-    expect(await screen.findByRole("heading", { name: "What are you applying for?" })).toBeInTheDocument()
+    expect(await screen.findByTestId("saca2-load-error")).toBeInTheDocument()
+    expect(screen.queryByRole("heading", { name: "What are you applying for?" })).not.toBeInTheDocument()
     failed.unmount()
 
     mocks.authenticatedFetch.mockImplementation(async (_url: string, init?: { method?: string }) => {

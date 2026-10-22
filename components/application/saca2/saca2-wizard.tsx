@@ -43,6 +43,7 @@ interface PendingResume {
 const AUTOSAVE_DELAY_MS = 700
 const FAILURE_BACKOFF_MS = 15_000
 // Retrying the same request cannot succeed (or isn't the client's to fix): no backoff, and never blocks Save & Exit.
+const STATUS_NOT_FOUND = 404
 const FATAL_SAVE_STATUSES = new Set([400, 403, 409, 413, 422])
 
 const PROGRESS_NOT_SAVED_WARNING =
@@ -63,6 +64,10 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
   // Finish on the last step shows the completion panel; the wizard state stays mounted behind it.
   const [showComplete, setShowComplete] = useState(false)
   const [restoreError, setRestoreError] = useState(false)
+  // A draft that could not be loaded (not "no draft yet") must block editing: saving over it would replace
+  // the saved answers with a blank or partial form.
+  const [loadError, setLoadError] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [saveStatus, setSaveStatus] = useState<Saca2SaveStatusValue>("idle")
 
   const stateRef = useRef(state)
@@ -86,6 +91,7 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
     let cancelled = false
 
     const run = async () => {
+      setLoadError(false)
       let draftState: unknown = null
       let resumeId: string | null = null
       let hasServerKey = false
@@ -104,9 +110,14 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
           draftState = payload.draftState ?? null
           resumeId = payload.record?.phiDraftResumeId ?? null
           hasServerKey = Boolean(payload.record?.phiDraftKeyEnc)
+        } else if (response.status !== STATUS_NOT_FOUND) {
+          // Only a 404 means "no draft yet" (autosave will create it). Anything else is a failed load.
+          if (!cancelled) setLoadError(true)
+          return
         }
       } catch {
-        // Fall through to a fresh form; autosave will create the draft.
+        if (!cancelled) setLoadError(true)
+        return
       }
 
       let restored: Record<string, unknown> | null = null
@@ -147,7 +158,7 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
     return () => {
       cancelled = true
     }
-  }, [applicationId, actingForPatientId, headers])
+  }, [applicationId, actingForPatientId, headers, loadAttempt])
 
   // ── Autosave the PHI-free snapshot ──
   // Only the most recently STARTED save may set the final status, so a slow older save can't overwrite it.
@@ -305,6 +316,17 @@ export function Saca2Wizard({ applicationId, actingForPatientId }: Saca2WizardPr
   const exitHref = actingForPatientId
     ? `/social-worker/patients/${encodeURIComponent(actingForPatientId)}/applications`
     : "/customer/dashboard"
+
+  if (loadError) {
+    return (
+      <div data-testid="saca2-load-error" role="alert" className="space-y-3 p-6 text-sm">
+        <p className="text-destructive">We couldn&apos;t load your saved application. Your saved answers have not been changed.</p>
+        <Button type="button" variant="outline" onClick={() => setLoadAttempt((n) => n + 1)}>
+          Try again
+        </Button>
+      </div>
+    )
+  }
 
   if (!hydrated) {
     return <div data-testid="saca2-loading" className="p-6 text-sm text-muted-foreground">Loading your application…</div>

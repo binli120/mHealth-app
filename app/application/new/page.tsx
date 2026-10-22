@@ -165,6 +165,7 @@ function NewApplicationPageContent() {
     if (saca2Enabled) {
       return (
         <Saca2Wizard
+          key={`${queryApplicationId}:${actingForPatientId ?? ""}`}
           applicationId={queryApplicationId as string}
           actingForPatientId={actingForPatientId}
         />
