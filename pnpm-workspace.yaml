@@ -55,3 +55,12 @@ trustPolicyExclude:
   - react-email@5.2.11 # gabrielmfern (upstream team), published 2026-04-17
   - semver@6.3.1 # npm-cli-ops/lukekarrys (upstream owner), published 2023-07-10
   - undici-types@6.21.0 # matteo.collina (upstream owner), published 2024-11-13
+
+auditConfig:
+  ignoreGhsas:
+    # zod <4.6.6: memory exhaustion when validating oversized constrained
+    # collections. Accepted 2026-11-25: the app is on zod 3 (^3.24.1, 37 files)
+    # and the vulnerable copy is the zod resolved for @ai-sdk/provider-utils;
+    # the fix needs a zod 3 -> 4 migration. Revisit when migrating; remove this
+    # entry then.
+    - GHSA-mrhx-c7xc-m3w5
