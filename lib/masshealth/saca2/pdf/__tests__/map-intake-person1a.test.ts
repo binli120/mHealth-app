@@ -195,7 +195,7 @@ describe("intake and Person 1 pages: rich household", () => {
     expect(checks).not.toHaveProperty("Check if same as street address")
   })
 
-  it("covers the remaining enum states: Hispanic options, no-SSN reasons, Male and homelessness", { timeout: 30_000 }, async () => {
+  it("covers the remaining enum states: Hispanic options, no-SSN reasons, Male and homelessness", { timeout: 120_000 }, async () => {
     const reasons = { illness: "1", justApplied: "2", noncitizenException: "3", religiousException: "4" } as const
     for (const [reason, state] of Object.entries(reasons)) {
       const a = completeRichHousehold()

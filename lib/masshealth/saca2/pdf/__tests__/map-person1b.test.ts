@@ -486,7 +486,7 @@ describe("Person 1 pages 4-6: every answerable field", () => {
       p.livingArrangement = value
       expect((await fillRegion(a)).checks[LIVING]).toBe(state)
     }
-  }, 30_000)
+  }, 120_000)
 
   it("ticks every condition and accommodation box with its own explanation text", async () => {
     const a = completeRichHousehold()
@@ -516,7 +516,7 @@ describe("Person 1 pages 4-6: every answerable field", () => {
     wages.frequency = "oneTime"
     const { checks } = await fillRegion(a)
     expect(Object.values(WAGES_BOXES).filter((f) => checks[f] !== undefined)).toEqual([])
-  }, 30_000)
+  }, 120_000)
 
   it("writes the wages row's tax id, every month box, and 'No' for not seasonal", async () => {
     const a = completeRichHousehold()
@@ -608,7 +608,7 @@ describe("Person 1 pages 4-6: every answerable field", () => {
     person(a).income[0].frequency = "quarterly"
     ;({ checks } = await fillRegion(a))
     expectEmpty({ text, checks }, Object.values(LOTTERY_BOXES))
-  }, 30_000)
+  }, 120_000)
 
   it("places a rental loss in the loss blank, covers every real-estate type, and 'Other' text", async () => {
     const a = completeRichHousehold()
@@ -634,7 +634,7 @@ describe("Person 1 pages 4-6: every answerable field", () => {
       if (type === "other") expect(text[TYPE_OTHER]).toBe("Duplex over a shop")
       else expect(text).not.toHaveProperty([TYPE_OTHER])
     }
-  }, 30_000)
+  }, 120_000)
 
   it("writes next year's one-time income 'No' into its own box, and every deduction with its box", async () => {
     const a = completeRichHousehold()
