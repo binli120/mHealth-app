@@ -33,7 +33,9 @@ const ON = new Date("2026-10-13T12:00:00Z")
 const SENTINEL = "STALE-SENTINEL"
 /** A number nobody enters by accident, for stale numeric answers (written as text on the form). */
 const STALE_NUMBER = 4242424
-const FILL_BUDGET_MS = 5000
+// Tight budget on a dev machine; CI runners with coverage instrumentation are
+// several times slower, so the budget there only guards against a hang.
+const FILL_BUDGET_MS = process.env.CI ? 30_000 : 5000
 
 // --- tools ------------------------------------------------------------------------------------------
 
