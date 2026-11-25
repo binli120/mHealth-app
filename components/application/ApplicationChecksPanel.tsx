@@ -8,6 +8,7 @@
  * @author: Bin Lee
  */
 
+import Link from "next/link"
 import {
   type ApplicationCheckResult,
 } from "@/lib/masshealth/application-checks"
@@ -79,6 +80,14 @@ export function ApplicationChecksPanel({ results }: { results: ApplicationCheckR
                     <div>
                       <p className="font-medium text-foreground">{result.title}</p>
                       <p className="mt-0.5 text-muted-foreground">{result.message}</p>
+                      {result.actionHref ? (
+                        <Link
+                          href={result.actionHref}
+                          className="mt-1 inline-block font-medium text-primary underline underline-offset-2"
+                        >
+                          {result.actionLabel ?? "Learn more"}
+                        </Link>
+                      ) : null}
                     </div>
                   </div>
                 </div>

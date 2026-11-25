@@ -8,6 +8,7 @@ import {
   buildApplicationContinueHref,
   buildApplicationHref,
   buildApplicationStartHref,
+  buildRecommendedApplicationTypeHref,
 } from "@/lib/applications/navigation"
 
 describe("application navigation", () => {
@@ -21,5 +22,10 @@ describe("application navigation", () => {
 
   it("omits mode only when no mode is requested", () => {
     expect(buildApplicationHref("app-123")).toBe("/application/new?applicationId=app-123")
+  })
+
+  it("builds static chooser links with one type highlighted", () => {
+    expect(buildRecommendedApplicationTypeHref("saca2")).toBe("/application/type?recommended=saca2")
+    expect(buildRecommendedApplicationTypeHref("aca3")).toBe("/application/type?recommended=aca3")
   })
 })

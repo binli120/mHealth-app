@@ -19,12 +19,14 @@ import { logServerError } from "@/lib/server/logger"
 import { parseParams, uuidSchema } from "@/lib/api/validation"
 import {
   ERROR_APPLICATION_DRAFT_NOT_FOUND,
+  ERROR_DRAFT_TYPE_CONFLICT,
   ERROR_LOAD_DRAFT_FAILED,
   ERROR_SAVE_DRAFT_FAILED,
   ERROR_UNKNOWN_SERVER,
   ERROR_WIZARD_STATE_REQUIRED,
   NODE_ENV_DEVELOPMENT,
   STATUS_BAD_REQUEST,
+  STATUS_CONFLICT,
   STATUS_FORBIDDEN,
   STATUS_INTERNAL_SERVER_ERROR,
   STATUS_NOT_FOUND,
@@ -58,6 +60,16 @@ function isApplicationDraftAccessError(error: unknown): boolean {
       error !== null &&
       "name" in error &&
       (error as { name?: unknown }).name === "ApplicationDraftAccessError")
+  )
+}
+
+// Name-based because the class can be duplicated across bundles.
+function isApplicationDraftTypeConflictError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    (error as { name?: unknown }).name === "ApplicationDraftTypeConflictError"
   )
 }
 
@@ -179,6 +191,12 @@ export async function PUT(request: Request, context: RouteContext) {
       record,
     })
   } catch (error) {
+    if (isApplicationDraftTypeConflictError(error)) {
+      return NextResponse.json(
+        { ok: false, error: ERROR_DRAFT_TYPE_CONFLICT },
+        { status: STATUS_CONFLICT },
+      )
+    }
     const isAccessError = isApplicationDraftAccessError(error)
     const isValidationError = isInvalidApplicationIdError(error)
     const message =

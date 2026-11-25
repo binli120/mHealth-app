@@ -14,6 +14,7 @@
  *   5. Dates of birth consistent with program thresholds
  */
 
+import { buildRecommendedApplicationTypeHref } from "@/lib/applications/navigation"
 import { parseCurrency } from "@/lib/utils/input-format"
 import { computeAgeFromDob, toAnnualAmount, toBooleanYesNo } from "@/lib/utils/aca3-form"
 
@@ -33,6 +34,9 @@ export interface ApplicationCheckResult {
   personLabel?: string
   title: string
   message: string
+  /** Optional next step shown as a link. A static route only; never applicant data. */
+  actionHref?: string
+  actionLabel?: string
 }
 
 /** Minimal shape of person data needed for checks — structurally compatible with PersonState. */
@@ -335,6 +339,8 @@ function checkAgeThresholds(
         personLabel,
         title: "Senior applicant — verify form type",
         message: `${personLabel} is ${age} years old. Seniors (65+) applying for coverage may need form SACA-2 (long-term care / nursing home) or an MSP application (Medicare Savings Programs) instead of or in addition to the ACA-3.`,
+        actionHref: buildRecommendedApplicationTypeHref("saca2"),
+        actionLabel: "Start a SACA-2 application",
       })
     }
 

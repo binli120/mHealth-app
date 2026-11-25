@@ -7,6 +7,7 @@ import "server-only"
 
 import { getDbPool } from "@/lib/db/server"
 import { APPLICATION_STATUS_SET } from "@/lib/application-status"
+import { PHI_DATA_KEY_SET } from "@/lib/phi-token/phi-fields"
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -14,11 +15,8 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3
  * Defense-in-depth: remove PHI keys from wizardState before any DB write.
  * The client is responsible for keeping PHI in the encrypted resume token,
  * but this guard ensures PHI is never persisted even if a client bug slips
- * through. Mirrors the keys in lib/phi-token/phi-fields.ts (server-side copy
- * avoids importing a browser-crypto module from server-only code).
+ * through. The key list is shared with the client (lib/phi-token/phi-fields.ts, a pure module) so the two cannot drift.
  */
-const SERVER_PHI_DATA_KEYS = new Set(["contact", "preApp", "persons"])
-
 function stripPhiFromWizardState(
   wizardState: Record<string, unknown>,
 ): Record<string, unknown> {
@@ -29,7 +27,7 @@ function stripPhiFromWizardState(
 
   const safeData: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
-    if (!SERVER_PHI_DATA_KEYS.has(key)) {
+    if (!PHI_DATA_KEY_SET.has(key)) {
       safeData[key] = value
     }
   }
@@ -99,6 +97,14 @@ export class ApplicationDraftAccessError extends Error {
   constructor(message = "Application draft is not accessible for this user.") {
     super(message)
     this.name = "ApplicationDraftAccessError"
+  }
+}
+
+/** An ACA-3-shaped write was refused because the stored application is a SACA-2 draft. */
+export class ApplicationDraftTypeConflictError extends Error {
+  constructor(message = "This application is a SACA-2 application and cannot be changed by this form.") {
+    super(message)
+    this.name = "ApplicationDraftTypeConflictError"
   }
 }
 
@@ -524,11 +530,19 @@ export async function upsertApplicationDraft(params: {
         application_type = COALESCE(NULLIF($4::text, ''), public.applications.application_type),
         -- Only advance draft_state / draft_step; never let a low-step save
         -- (e.g. intake-chat initialising at step 1) overwrite higher wizard progress.
+        -- A differing schemaVersion is a different document (e.g. a leftover ACA-3-shaped
+        -- draft under a SACA-2 row), so the step guard must not block overwriting it.
+        -- ACA-3 states carry no schemaVersion: NULL IS DISTINCT FROM NULL is false, so its
+        -- guard is unchanged. All SET expressions read the OLD row.
         draft_state = CASE
-          WHEN COALESCE(public.applications.draft_step, 0) <= $6::int THEN $5::jsonb
+          WHEN (public.applications.draft_state->>'schemaVersion') IS DISTINCT FROM ($5::jsonb->>'schemaVersion')
+            OR COALESCE(public.applications.draft_step, 0) <= $6::int THEN $5::jsonb
           ELSE public.applications.draft_state
         END,
-        draft_step = GREATEST(COALESCE(public.applications.draft_step, 0), $6::int),
+        draft_step = CASE
+          WHEN (public.applications.draft_state->>'schemaVersion') IS DISTINCT FROM ($5::jsonb->>'schemaVersion') THEN $6::int
+          ELSE GREATEST(COALESCE(public.applications.draft_step, 0), $6::int)
+        END,
         last_saved_at = now(),
         needs_customer_review = CASE WHEN $7::uuid IS NOT NULL THEN true ELSE public.applications.needs_customer_review END,
         sw_last_modified_at   = CASE WHEN $7::uuid IS NOT NULL THEN now() ELSE public.applications.sw_last_modified_at END,
@@ -538,6 +552,17 @@ export async function upsertApplicationDraft(params: {
           ELSE public.applications.submitted_at
         END
       WHERE public.applications.applicant_id = $2::uuid
+        -- Never let a schemaVersion-less (ACA-3) write overwrite a SACA-2 row.
+        -- SACA-2 writes are never blocked, so they can still replace a leftover ACA-3 draft.
+        -- NULL-safe: stored application_type / draft_state are NULL on freshly created rows,
+        -- which makes the inner predicate NULL; "IS NOT TRUE" keeps those writable.
+        AND (
+          (
+            public.applications.application_type = 'saca2'
+            OR jsonb_exists(public.applications.draft_state, 'schemaVersion')
+          )
+          AND NOT jsonb_exists($5::jsonb, 'schemaVersion')
+        ) IS NOT TRUE
       RETURNING
         id,
         status,
@@ -562,6 +587,21 @@ export async function upsertApplicationDraft(params: {
   )
 
   if (rows.length === 0) {
+    // Either the row is not owned by this applicant (access error) or the SACA-2
+    // guard blocked the update. Distinguish the two with one extra read.
+    const { rows: owned } = await pool.query(
+      `
+        SELECT id
+        FROM public.applications
+        WHERE id = $1::uuid
+          AND applicant_id = $2::uuid
+        LIMIT 1
+      `,
+      [params.applicationId, applicantId],
+    )
+    if (owned.length > 0) {
+      throw new ApplicationDraftTypeConflictError()
+    }
     throw new ApplicationDraftAccessError()
   }
 
