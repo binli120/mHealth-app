@@ -17,6 +17,11 @@ export default defineConfig({
     },
   },
   test: {
+    // SACA-2 PDF tests load a large AcroForm template; CI runners with coverage
+    // instrumentation run several times slower than a dev machine (the default
+    // 5s timed out there).
+    testTimeout: 60_000,
+    hookTimeout: 60_000,
     // jsdom covers all component / hook tests; pure-function tests run fine
     // under jsdom too, so a single global environment is sufficient.
     environment: "jsdom",
