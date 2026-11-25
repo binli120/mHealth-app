@@ -11,6 +11,7 @@ import {
   fetchBenefitPolicyUpdatesFromLocalPython,
   type BenefitPolicyFinding,
 } from "@/lib/masshealth/benefit-policy-updates-client"
+import { logServerWarn } from "@/lib/server/logger"
 
 const ANALYSIS_BASE = process.env.NEXT_PUBLIC_MASSHEALTH_ANALYSIS_BASE_URL ?? "http://localhost:8000"
 const MASSHEALTH_API_TOKEN = process.env.MASSHEALTH_API_TOKEN ?? ""
@@ -57,7 +58,7 @@ export interface NotifyBenefitPolicyUpdatesResult {
   notified: boolean
   benefitNames: string[]
   findingCount: number
-  reason?: "no_benefits" | "no_relevant_findings" | "duplicate"
+  reason?: "no_benefits" | "no_relevant_findings" | "duplicate" | "service_unavailable"
 }
 
 export async function notifyBenefitPolicyUpdatesForApplication(
@@ -68,7 +69,18 @@ export async function notifyBenefitPolicyUpdatesForApplication(
     return { checked: false, notified: false, benefitNames, findingCount: 0, reason: "no_benefits" }
   }
 
-  const response = await fetchPolicyUpdates(input.userId, benefitNames)
+  let response: Awaited<ReturnType<typeof fetchPolicyUpdates>>
+  try {
+    response = await fetchPolicyUpdates(input.userId, benefitNames)
+  } catch (error) {
+    logServerWarn("masshealth.benefitPolicyUpdates.notify.serviceUnavailable", {
+      userId: input.userId,
+      applicationId: input.applicationId,
+      error: error instanceof Error ? error.message : String(error),
+    })
+    return { checked: false, notified: false, benefitNames, findingCount: 0, reason: "service_unavailable" }
+  }
+
   const findings = response.findings.filter(isNotificationWorthyFinding)
   if (findings.length === 0) {
     return { checked: true, notified: false, benefitNames, findingCount: 0, reason: "no_relevant_findings" }
@@ -134,7 +146,12 @@ async function fetchPolicyUpdates(userId: string, benefitNames: string[]) {
         userId,
       },
     )
-  } catch {
+  } catch (error) {
+    logServerWarn("masshealth.benefitPolicyUpdates.notify.analysisServiceFailed", {
+      userId,
+      baseUrl: ANALYSIS_BASE,
+      error: error instanceof Error ? error.message : String(error),
+    })
     return fetchBenefitPolicyUpdatesFromLocalPython({ benefitNames, includeUnchanged: true })
   }
 }

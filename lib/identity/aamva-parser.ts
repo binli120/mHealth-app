@@ -143,10 +143,18 @@ export function parseAamvaBarcode(raw: string): AamvaParseResult {
  */
 function extractDataElements(raw: string): Record<string, string> {
   const elements: Record<string, string> = {}
-  const lines = raw.split(/\r?\n|\r/)
+  // The first element follows the DL/ID subfile marker without a newline.
+  // Strip the ANSI directory separately so it cannot swallow that element.
+  const header = /ANSI \d{6}\d{2}\d{2}(\d{2})/.exec(raw)
+  let body = raw
+  if (header) {
+    const directoryEnd = header.index + header[0].length + Number(header[1]) * 10
+    body = raw.slice(directoryEnd)
+  }
+  const lines = body.split(/[\n\r\x1e\x1d]/)
 
   for (const line of lines) {
-    const trimmed = line.trim()
+    const trimmed = line.trim().replace(/^(?:DL|ID)(?=D[A-Z]{2})/, "")
     if (trimmed.length >= 4 && /^[A-Z]{2}[A-Z0-9]/.test(trimmed)) {
       const code = trimmed.substring(0, 3)
       const value = trimmed.substring(3).trim()

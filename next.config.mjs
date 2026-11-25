@@ -4,6 +4,8 @@
  */
 
 import path from "node:path"
+// Also prepare the decoder when Next is started directly by a hosting platform.
+import "./scripts/copy-zxing-wasm.mjs"
 import { createRequire } from "node:module"
 import { fileURLToPath } from "node:url"
 

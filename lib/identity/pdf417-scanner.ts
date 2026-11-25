@@ -8,8 +8,8 @@
  * rotation on a dense AAMVA driver's-license barcode, so hand-held scans
  * essentially never decode. zxing-cpp is better but still tops out around
  * ±2°, so this module additionally re-decodes each frame rotated through
- * a small sweep of angles (±2°…±6°) on a canvas. Combined with the
- * decoder's own tolerance this recovers tilts up to roughly ±7° — enough
+ * a sweep of angles (±2°…±20°) on a canvas. Combined with the
+ * decoder's own tolerance this recovers tilts up to roughly ±21° — enough
  * for a hand-held card aligned against the on-screen guide.
  *
  * The wasm binary is self-hosted at /wasm/zxing_reader.wasm (copied from
@@ -26,7 +26,7 @@ export interface Pdf417ScanOptions {
   video: HTMLVideoElement
   /** Called once with the raw barcode text on the first successful decode. */
   onResult: (rawBarcode: string) => void
-  /** Called for non-fatal decode-loop errors (scanning continues). */
+  /** Called once for a terminal scan error, after releasing the camera. */
   onError?: (error: unknown) => void
 }
 
@@ -53,8 +53,8 @@ function ensureModulePrepared(): void {
 // ─── Decode loop tuning ───────────────────────────────────────────────────────
 
 // 0° first (cheapest, most common), then alternating tilts. With the
-// decoder's own ~±1–2° tolerance this covers a continuous ±7° band.
-const SWEEP_ANGLES_DEG = [0, -2, 2, -4, 4, -6, 6]
+// decoder's own ~±1–2° tolerance this covers a continuous ±21° band.
+const SWEEP_ANGLES_DEG = [0, -2, 2, -4, 4, -6, 6, -8, 8, -10, 10, -12, 12, -14, 14, -16, 16, -18, 18, -20, 20]
 // Pause between full sweeps so the main thread can breathe on slow phones.
 const SWEEP_PAUSE_MS = 150
 
@@ -98,6 +98,10 @@ function createWorkerDecoder(): DecoderHandle | null {
       if (msg.ok) entry.resolve(msg.text)
       else entry.reject(new Error(msg.error))
     }
+    worker.onmessageerror = () => {
+      for (const entry of pending.values()) entry.reject(new Error("PDF417 worker response could not be read"))
+      pending.clear()
+    }
     worker.onerror = (event) => {
       const err = new Error(event.message || "PDF417 worker error")
       for (const entry of pending.values()) entry.reject(err)
@@ -128,6 +132,7 @@ function createWorkerDecoder(): DecoderHandle | null {
       },
       dispose() {
         worker.terminate()
+        for (const entry of pending.values()) entry.reject(new Error("Scan stopped"))
         pending.clear()
       },
     }
@@ -175,8 +180,6 @@ export async function startPdf417Scan({
   onResult,
   onError,
 }: Pdf417ScanOptions): Promise<Pdf417ScanControls> {
-  const decoder = createWorkerDecoder() ?? createInlineDecoder()
-
   const stream = await navigator.mediaDevices.getUserMedia({
     video: {
       facingMode: { ideal: "environment" },
@@ -185,9 +188,14 @@ export async function startPdf417Scan({
     },
   })
 
+  const decoder = createWorkerDecoder() ?? createInlineDecoder()
   let stopped = false
+  let scanTimer: ReturnType<typeof setTimeout> | undefined
+  let decodeTimer: ReturnType<typeof setTimeout> | undefined
   const stop = () => {
     stopped = true
+    clearTimeout(scanTimer)
+    clearTimeout(decodeTimer)
     decoder.dispose()
     stream.getTracks().forEach((track) => track.stop())
     if (video.srcObject === stream) {
@@ -235,8 +243,23 @@ export async function startPdf417Scan({
       ctx.restore()
     }
 
-    return decoder.decode(ctx.getImageData(0, 0, width, height))
+    try {
+      return await Promise.race([
+        decoder.decode(ctx.getImageData(0, 0, width, height)),
+        new Promise<never>((_, reject) => {
+          decodeTimer = setTimeout(() => reject(new Error("Barcode reader did not respond")), 12_000)
+        }),
+      ])
+    } finally {
+      clearTimeout(decodeTimer)
+    }
   }
+
+  scanTimer = setTimeout(() => {
+    if (stopped) return
+    stop()
+    onError?.(new Error("Could not read the barcode within 60 seconds. Try again with the entire barcode in focus, good lighting, and no glare."))
+  }, 60_000)
 
   void (async () => {
     while (!stopped) {
@@ -247,12 +270,17 @@ export async function startPdf417Scan({
           if (text) {
             if (!stopped) {
               stopped = true // end the loop; caller releases the camera
+              clearTimeout(scanTimer)
+              decoder.dispose()
               onResult(text)
             }
             return
           }
         } catch (err) {
-          onError?.(err)
+          if (stopped) return
+          stop()
+          onError?.(new Error("The barcode reader could not complete the scan. Please retry or use a clear photo of the back of your license.", { cause: err }))
+          return
         }
         // Yield between heavy decode attempts to keep the UI responsive.
         await delay(0)

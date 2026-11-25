@@ -12,13 +12,21 @@
  *      every successful scan score below the "verified" threshold.
  */
 
+import { readFileSync } from "node:fs"
+import { createRequire } from "node:module"
 import { describe, expect, it } from "vitest"
 import { PNG } from "pngjs"
-import { readBarcodes } from "zxing-wasm/reader"
+import { prepareZXingModule, readBarcodes } from "zxing-wasm/reader"
 import bwipjs, { type RenderOptions } from "bwip-js/node"
 import { buildTestLicensePayload, TEST_LICENSE_PROFILE } from "../test-license-data"
 import { parseAamvaBarcode } from "../aamva-parser"
 import { verifyLicenseAgainstProfile } from "../verify-license"
+
+// Use the installed binary so the round-trip never depends on CDN access.
+const require = createRequire(import.meta.url)
+prepareZXingModule({
+  overrides: { wasmBinary: readFileSync(require.resolve("zxing-wasm/reader/zxing_reader.wasm")) },
+})
 
 async function renderBarcodePng(payload: string): Promise<PNG> {
   // eclevel (PDF417 error-correction level) is a pass-through symbology

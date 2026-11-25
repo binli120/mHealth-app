@@ -501,6 +501,83 @@ function createServer() {
     },
   );
 
+  // ── 11. Evaluate eligibility ────────────────────────────────────────────────
+  server.tool(
+    'evaluate_eligibility',
+    'Stateless, anonymous pre-screening of MassHealth programs eligibility based on demographics and income. Does not touch database records.',
+    {
+      livesInMA: z.boolean().default(true).describe('Whether the applicant lives in Massachusetts'),
+      age: z.number().int().min(0).max(130).describe('Applicant age in years'),
+      isPregnant: z.boolean().default(false).describe('Whether the applicant is pregnant'),
+      hasDisability: z.boolean().default(false).describe('Whether the applicant has a documented disability or receives SSI/SSDI'),
+      hasMedicare: z.boolean().default(false).describe('Whether the applicant has Medicare'),
+      householdSize: z.number().int().min(1).max(20).describe('Total people in household including applicant'),
+      annualIncome: z.number().min(0).describe('Total household annual income in USD'),
+      citizenshipStatus: z.enum(['citizen', 'qualified_immigrant', 'undocumented', 'other']).describe('Citizenship/immigration status'),
+      hasEmployerInsurance: z.boolean().default(false).describe('Whether the applicant has employer-sponsored health insurance'),
+    },
+    async ({
+      livesInMA,
+      age,
+      isPregnant,
+      hasDisability,
+      hasMedicare,
+      householdSize,
+      annualIncome,
+      citizenshipStatus,
+      hasEmployerInsurance,
+    }) => {
+      try {
+        const response = await fetch(`${BASE_URL}/api/masshealth/eligibility/check`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(process.env.MASSHEALTH_API_TOKEN ? { 'Authorization': `Bearer ${process.env.MASSHEALTH_API_TOKEN}` } : {}),
+          },
+          body: JSON.stringify({
+            livesInMA,
+            age,
+            isPregnant,
+            hasDisability,
+            hasMedicare,
+            householdSize,
+            annualIncome,
+            citizenshipStatus,
+            hasEmployerInsurance,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to evaluate eligibility: Next.js API returned status ${response.status}. Details: ${errorText}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        const data = await response.json();
+        return {
+          content: [{ type: 'text', text: JSON.stringify(data.report, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Failed to evaluate eligibility: Network or internal error. Details: ${error.message || error}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
+
   return server;
 }
 
