@@ -30,6 +30,7 @@ import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
 import { buildApplicationContinueHref, buildApplicationStartHref } from "@/lib/applications/navigation"
 import { cn } from "@/lib/utils"
+import { abortAfter } from "@/lib/utils/abort-after"
 import { createUuid } from "@/lib/utils/random-id"
 import { ArrowLeft, Bot, CheckCircle2, ChevronRight, FileText, Sparkles } from "lucide-react"
 import { ShieldHeartIcon } from "@/lib/icons"
@@ -120,6 +121,7 @@ export default function ApplicationTypePage({ recommendedParam }: ApplicationTyp
 
   const startNewApplication = async (applicationType: ApplicationTypeId) => {
     const applicationId = createUuid()
+    const timeout = abortAfter(8_000)
     try {
       await authenticatedFetch("/api/applications", {
         method: "POST",
@@ -130,10 +132,12 @@ export default function ApplicationTypePage({ recommendedParam }: ApplicationTyp
           applicationId,
           applicationType,
         }),
-        signal: AbortSignal.timeout(8_000),
+        signal: timeout.signal,
       })
     } catch {
       // Continue using local app context; draft autosave will upsert later.
+    } finally {
+      timeout.cancel()
     }
 
     dispatch(
@@ -146,8 +150,9 @@ export default function ApplicationTypePage({ recommendedParam }: ApplicationTyp
   }
 
   const handleSelectType = async (applicationType: ApplicationTypeId) => {
+    const timeout = abortAfter(6_000)
     try {
-      const res = await authenticatedFetch(`/api/applications?status=draft`, { method: "GET", signal: AbortSignal.timeout(6_000) })
+      const res = await authenticatedFetch(`/api/applications?status=draft`, { method: "GET", signal: timeout.signal })
       const data = (await res.json()) as {
         ok: boolean
         records?: Array<{ id: string; applicationType: string | null }>
@@ -161,6 +166,8 @@ export default function ApplicationTypePage({ recommendedParam }: ApplicationTyp
       }
     } catch {
       // If the check fails, fall through to start a new application.
+    } finally {
+      timeout.cancel()
     }
 
     await startNewApplication(applicationType)

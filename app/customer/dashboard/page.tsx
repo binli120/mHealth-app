@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/alert-dialog"
 import { type ApplicationStatus } from "@/lib/application-status"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
-import { toUserFacingError } from "@/lib/errors/user-facing"
 import { CUSTOMER_SUPPORT_EMAIL, CUSTOMER_SUPPORT_MAILTO } from "@/lib/support/contact"
 import { useAppSelector, useAppDispatch } from "@/lib/redux/hooks"
 import { resetProfile, setProfile } from "@/lib/redux/features/user-profile-slice"
@@ -54,7 +53,7 @@ import {
   Loader2,
 } from "lucide-react"
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { dispatchOpenSwChat } from "@/lib/events/chat-events"
+import { dispatchOpenSwChat, dispatchOpenLiveAssistant, SW_REQUEST_CHANGED_EVENT } from "@/lib/events/chat-events"
 import { NotificationBell } from "@/components/notifications/NotificationBell"
 import { SessionInviteBanner } from "@/components/collaborative-sessions/SessionInviteBanner"
 import { IdentityVerificationBanner } from "@/components/identity/IdentityVerificationBanner"
@@ -119,11 +118,17 @@ export default function CustomerDashboardPage() {
     (_prev: SocialWorker[], next: SocialWorker[]) => next,
     [],
   )
-  const [swModalOpen, setSwModalOpen] = useState(false)
-  const [swSearchEmail, setSwSearchEmail] = useState("")
-  const [swSearchLoading, setSwSearchLoading] = useState(false)
-  const [swSearchError, setSwSearchError] = useState("")
-  const [swGranting, setSwGranting] = useState(false)
+  type PendingSwRequest = {
+    id: string
+    swUserId: string
+    swName: string | null
+    swEmail: string
+    companyName: string
+  }
+  const [pendingSwRequests, setPendingSwRequests] = useReducer(
+    (_prev: PendingSwRequest[], next: PendingSwRequest[]) => next,
+    [],
+  )
   const [swRevokeTarget, setSwRevokeTarget] = useState<{ swUserId: string; name: string } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -162,36 +167,45 @@ export default function CustomerDashboardPage() {
     }
   }, [])
 
-  useEffect(() => { void loadSocialWorkers() }, [loadSocialWorkers])
-
-  const handleGrantAccess = async () => {
-    if (!swSearchEmail.trim()) return
-    setSwSearchLoading(true)
-    setSwSearchError("")
-    setSwGranting(true)
+  const loadPendingSwRequests = useCallback(async () => {
     try {
-      const res = await authenticatedFetch("/api/patient/social-worker-access", {
-        method: "POST",
-        body: JSON.stringify({ socialWorkerEmail: swSearchEmail.trim() }),
-      })
+      const res = await authenticatedFetch("/api/patient/sw-request", { cache: "no-store" })
       const data = await res.json().catch(() => ({}))
-      if (!data.ok) {
-        setSwSearchError(toUserFacingError(data.error, {
-          fallback: "Not found. Make sure the email belongs to an approved social worker.",
-          context: "profile",
-        }))
-      } else {
-        setSwModalOpen(false)
-        setSwSearchEmail("")
-        void loadSocialWorkers()
+      if (data.ok) {
+        const requests = (data.requests ?? []) as Array<{
+          id: string
+          swUserId: string
+          status: string
+          swName: string | null
+          swEmail: string
+          companyName: string
+        }>
+        setPendingSwRequests(
+          requests
+            .filter((r) => r.status === "pending")
+            .map((r) => ({
+              id: r.id,
+              swUserId: r.swUserId,
+              swName: r.swName,
+              swEmail: r.swEmail,
+              companyName: r.companyName,
+            })),
+        )
       }
-    } catch (error) {
-      setSwSearchError(toUserFacingError(error, "Failed to grant access."))
-    } finally {
-      setSwSearchLoading(false)
-      setSwGranting(false)
+    } catch {
+      // non-fatal
     }
-  }
+  }, [])
+
+  useEffect(() => { void loadSocialWorkers(); void loadPendingSwRequests() }, [loadSocialWorkers, loadPendingSwRequests])
+
+  // Sent from the corner chat widget's Live Assistant panel when a request is
+  // sent/accepted/rejected — keeps this card's pending list in sync with it.
+  useEffect(() => {
+    const handler = () => { void loadSocialWorkers(); void loadPendingSwRequests() }
+    window.addEventListener(SW_REQUEST_CHANGED_EVENT, handler)
+    return () => window.removeEventListener(SW_REQUEST_CHANGED_EVENT, handler)
+  }, [loadSocialWorkers, loadPendingSwRequests])
 
   const handleRevokeAccess = async (swUserId: string) => {
     try {
@@ -828,7 +842,7 @@ export default function CustomerDashboardPage() {
                   </CardTitle>
                   <button
                     type="button"
-                    onClick={() => { setSwModalOpen(true); setSwSearchError(""); setSwSearchEmail("") }}
+                    onClick={() => dispatchOpenLiveAssistant()}
                     className="flex items-center gap-1 text-xs text-primary hover:underline font-medium"
                   >
                     <Plus className="h-3 w-3" /> Add
@@ -836,12 +850,25 @@ export default function CustomerDashboardPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                {socialWorkers.length === 0 ? (
+                {socialWorkers.length === 0 && pendingSwRequests.length === 0 ? (
                   <p className="text-xs text-muted-foreground">
                     No social workers have access. You can add a social worker to help you with your applications.
                   </p>
                 ) : (
                   <div className="space-y-2">
+                    {pendingSwRequests.map((req) => (
+                      <div key={req.id} className="flex items-center justify-between gap-2 rounded-lg bg-secondary/30 px-3 py-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {req.swName ?? req.swEmail}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">{req.companyName}</p>
+                        </div>
+                        <span className="flex items-center gap-1 flex-shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                          <Clock className="h-3 w-3" /> Pending
+                        </span>
+                      </div>
+                    ))}
                     {socialWorkers.map((sw) => (
                       <div key={sw.access_id} className="flex items-center justify-between gap-2 rounded-lg bg-secondary/30 px-3 py-2">
                         <div className="min-w-0">
@@ -888,53 +915,6 @@ export default function CustomerDashboardPage() {
           <DeletePersonalDataCard />
         </div>
       </main>
-
-      {/* Add Social Worker Modal */}
-      {swModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-card border border-border shadow-xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-semibold text-card-foreground">Add Social Worker</h2>
-              <button onClick={() => setSwModalOpen(false)} className="text-muted-foreground hover:text-foreground">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <p className="text-xs text-muted-foreground mb-4">
-              Enter the email address of an approved social worker or case manager to grant them access to your applications.
-            </p>
-            <div className="space-y-3">
-              <input
-                type="email"
-                placeholder="socialworker@agency.org"
-                value={swSearchEmail}
-                onChange={(e) => { setSwSearchEmail(e.target.value); setSwSearchError("") }}
-                onKeyDown={(e) => e.key === "Enter" && void handleGrantAccess()}
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              {swSearchError && <p className="text-xs text-destructive">{swSearchError}</p>}
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setSwModalOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  className="flex-1 gap-1.5"
-                  disabled={swGranting || !swSearchEmail.trim()}
-                  onClick={() => void handleGrantAccess()}
-                >
-                  {swSearchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                  Grant Access
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Revoke SW access confirmation */}
       <AlertDialog open={!!swRevokeTarget} onOpenChange={(o) => { if (!o) setSwRevokeTarget(null) }}>

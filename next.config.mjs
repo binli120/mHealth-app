@@ -117,6 +117,7 @@ const nextConfig = {
   // guessing the one worker variant actually used keeps this from silently
   // breaking again if pdf-parse changes which build it loads.
   outputFileTracingIncludes: {
+    "/api/forms/saca2/fill": ["./resources/forms/**"],
     "/api/appeals/extract-document": ["./node_modules/.pnpm/pdf-parse@*/node_modules/pdf-parse/dist/**"],
     "/api/pdf/extract": ["./node_modules/.pnpm/pdf-parse@*/node_modules/pdf-parse/dist/**"],
     "/api/agents/vision": ["./node_modules/.pnpm/pdf-parse@*/node_modules/pdf-parse/dist/**"],

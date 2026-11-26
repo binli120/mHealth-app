@@ -32,6 +32,10 @@ vi.mock("@/components/application/aca3/form-wizard", () => ({
   FormWizard: mocks.formWizard,
 }))
 
+vi.mock("@/components/application/saca2/use-is-saca2-application", () => ({
+  useIsSaca2Application: () => "other",
+}))
+
 import SWEditApplicationPage from "@/app/social-worker/patients/[patientId]/applications/[applicationId]/page"
 import SWNewApplicationPage from "@/app/social-worker/patients/[patientId]/applications/new/page"
 

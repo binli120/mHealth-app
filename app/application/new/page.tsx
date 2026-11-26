@@ -10,6 +10,10 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { ApplicationAssistant } from "@/components/application/aca3/application-assistant"
 import { FormWizard } from "@/components/application/aca3/form-wizard"
 import { IntakeChat } from "@/components/application/aca3/intake-chat"
+import { Saca2Wizard } from "@/components/application/saca2/saca2-wizard"
+import { Saca2UnavailableNotice } from "@/components/application/saca2/saca2-unavailable-notice"
+import { useIsSaca2Application } from "@/components/application/saca2/use-is-saca2-application"
+import { useSaca2Enabled } from "@/components/application/saca2/use-saca2-enabled"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { ApplicationEntryMode } from "@/lib/applications/types"
 import type { ApplicationFormData } from "@/lib/redux/features/application-slice"
@@ -117,11 +121,64 @@ function NewApplicationPageContent() {
     if (!queryApplicationId) return ""
     return state.application.applicationsById[queryApplicationId]?.newApplicationForm.applicationType ?? ""
   })
+  const saca2Lookup = useIsSaca2Application(queryApplicationId || undefined, savedApplicationType, actingForPatientId)
+  const saca2Enabled = useSaca2Enabled(saca2Lookup === "saca2")
   const typeLabel = getApplicationTypeLabel(savedApplicationType || null)
   const isResuming = Boolean(queryApplicationId)
   const pageTitle = isResuming
     ? `Continue ${savedApplicationType ? typeLabel + " " : ""}Application`
     : "New Application"
+
+  if (saca2Lookup === "unknown") {
+    return <div className="container mx-auto px-4 py-6" />
+  }
+
+  if (saca2Lookup === "error") {
+    return (
+      <div className="container mx-auto space-y-4 px-4 py-6">
+        <section
+          data-testid="application-lookup-error"
+          role="alert"
+          className="space-y-3 rounded-lg border bg-card p-6 text-card-foreground"
+        >
+          <h2 className="text-lg font-semibold">We couldn&apos;t load your application</h2>
+          <p className="text-sm text-muted-foreground">
+            Check your connection and try again. Your saved answers have not been changed.
+          </p>
+          <button
+            type="button"
+            className="rounded-md border px-3 py-1.5 text-sm font-medium"
+            onClick={() => window.location.reload()}
+          >
+            Try again
+          </button>
+        </section>
+      </div>
+    )
+  }
+
+  if (saca2Lookup === "saca2") {
+    if (saca2Enabled === null) {
+      return <div className="container mx-auto px-4 py-6" />
+    }
+
+    if (saca2Enabled) {
+      return (
+        <Saca2Wizard
+          key={`${queryApplicationId}:${actingForPatientId ?? ""}`}
+          applicationId={queryApplicationId as string}
+          actingForPatientId={actingForPatientId}
+        />
+      )
+    }
+
+    return (
+      <div className="container mx-auto space-y-4 px-4 py-6">
+        <h1 className="text-xl font-semibold text-foreground">SACA-2 Application</h1>
+        <Saca2UnavailableNotice />
+      </div>
+    )
+  }
 
   return (
     <div className="container mx-auto space-y-4 px-4 py-6">

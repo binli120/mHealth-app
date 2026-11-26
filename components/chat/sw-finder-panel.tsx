@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { authenticatedFetch } from "@/lib/supabase/authenticated-fetch"
+import { dispatchSwRequestChanged } from "@/lib/events/chat-events"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -136,6 +137,7 @@ export function SwFinderPanel({ onOpenChat }: SwFinderPanelProps) {
         setRequests((prev) => [data.request, ...prev])
         setSelectedSw(null)
         setMessage("")
+        dispatchSwRequestChanged()
       }
     } finally {
       setRequestingId(null)
