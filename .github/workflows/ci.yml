@@ -9,7 +9,10 @@ on:
   workflow_call:
 
 concurrency:
-  group: ci-${{ github.ref }}
+  # github.workflow is the CALLER's name when this runs via workflow_call, so the
+  # standalone push run and the run inside Deploy Staging no longer share a group
+  # and cancel each other (which left the deploy job skipped).
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
