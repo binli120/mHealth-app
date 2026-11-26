@@ -15,7 +15,7 @@ import { fillSaca2Pdf } from "../pdf-fill"
 import { readFilled, type FilledValues } from "./helpers/read-filled"
 
 // each test fills the 1.7 MB template; the full suite runs many files in parallel
-vi.setConfig({ testTimeout: 60_000 })
+vi.setConfig({ testTimeout: 180_000 })
 
 const ON = new Date("2026-10-13T12:00:00Z")
 const SENTINEL = "STALE-SENTINEL"
