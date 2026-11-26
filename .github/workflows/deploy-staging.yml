@@ -152,6 +152,7 @@ jobs:
               "PROFILE_ENCRYPTION_KEY=${{ secrets.PROFILE_ENCRYPTION_KEY }}" \
               "ADMIN_PASSKEY_SESSION_SECRET=${{ secrets.ADMIN_PASSKEY_SESSION_SECRET }}" \
               "CRON_SECRET=${{ secrets.CRON_SECRET }}" \
+              "SACA2_ENABLED=true" \
               > "$ENV_FILE"
             chmod 600 "$ENV_FILE"
 
